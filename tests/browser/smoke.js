@@ -260,7 +260,7 @@ async function main() {
       'card.querySelectorAll(".btn--small")[0].click(); return true;'
     );
     const stageRows = await evaluate(
-      'return document.querySelector(\'[data-project-code="DEMO-002"]\').querySelectorAll(".stage").length;'
+      'return document.querySelector(\'[data-project-code="DEMO-002"]\').querySelectorAll(".srow").length;'
     );
     check('rozwinięcie karty pokazuje listę 14 etapów', stageRows === 14, 'wierszy: ' + stageRows);
 
@@ -271,9 +271,9 @@ async function main() {
     );
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const rows = card.querySelectorAll(".stage");' +
+      'const rows = card.querySelectorAll(".srow");' +
       'const last = rows[rows.length - 1];' +
-      'last.querySelector(".stage__status").click(); return true;'
+      'last.querySelector(".srow__status").click(); return true;'
     );
     const statusAfter = await evaluate(
       'const ws = window.ETROM.app.store.getState().workspace;' +
@@ -284,8 +284,8 @@ async function main() {
 
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const rows = card.querySelectorAll(".stage");' +
-      'rows[rows.length - 1].querySelector(".stage__status").click(); return true;'
+      'const rows = card.querySelectorAll(".srow");' +
+      'rows[rows.length - 1].querySelector(".srow__status").click(); return true;'
     );
     const after = await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
@@ -315,7 +315,6 @@ async function main() {
       'document.getElementById("pf-code").value = "NOWY-9";' +
       'document.getElementById("pf-name").value = "Projekt z testu";' +
       'document.getElementById("pf-client").value = "Klient testowy";' +
-      'document.getElementById("pf-stages").checked = false;' +
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(150);
@@ -329,7 +328,6 @@ async function main() {
       'document.getElementById("pf-code").value = "XSS-1";' +
       'document.getElementById("pf-name").value = \'<img src=x onerror="window.__xss=1">\';' +
       'document.getElementById("pf-client").value = "Klient";' +
-      'document.getElementById("pf-stages").checked = false;' +
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(250);
@@ -472,7 +470,7 @@ async function main() {
     check('Enter zamyka paletę i rozwija wybrany projekt',
       await evaluate(
         'return !document.querySelector("dialog.palette[open]") &&' +
-        ' !!document.querySelector(\'[data-project-code="DEMO-001"] .stage\');'
+        ' !!document.querySelector(\'[data-project-code="DEMO-001"] .srow\');'
       ));
 
     await pressKey('k', CTRL);
@@ -492,7 +490,92 @@ async function main() {
     check('Escape zamyka paletę',
       await evaluate('return !document.querySelector("dialog.palette[open]");'));
 
-    /* 20. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 20. Wybór etapów przy zakładaniu projektu */
+    await pressKey('n');
+    check('formularz pokazuje listę etapów do wyboru, domyślnie pustą',
+      await evaluate(
+        'const boxes = [...document.querySelectorAll(".picker__item input")];' +
+        'return boxes.length === 14 && boxes.every(b => !b.checked);'
+      ));
+
+    await evaluate(
+      'document.getElementById("pf-code").value = "PICK-1";' +
+      'document.getElementById("pf-name").value = "Projekt z wyborem etapów";' +
+      'document.getElementById("pf-client").value = "Gmina Testowa";' +
+      '["preparation", "water-docs", "handover"].forEach(function (id) {' +
+      '  document.getElementById("pf-stage-" + id).checked = true;' +
+      '});' +
+      'document.getElementById("project-form").requestSubmit(); return true;'
+    );
+    await sleep(300);
+
+    const picked = await evaluate(
+      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
+      'return p ? p.stages.map(s => s.id).join(",") : "";'
+    );
+    check('projekt dostaje tylko wybrane etapy, w kolejności standardu',
+      picked === 'preparation,water-docs,handover', 'etapy: ' + picked);
+
+    /* 21. Etap spoza standardu */
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
+      'card.querySelectorAll(".btn--small")[0].click(); return true;'
+    );
+    await sleep(250);
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
+      'const btn = [...card.querySelectorAll("button")].find(b => b.textContent.indexOf("Dopisz") === 0);' +
+      'btn.click(); return true;'
+    );
+    await sleep(250);
+
+    await evaluate(
+      'document.getElementById("cs-name").value = "";' +
+      'document.getElementById("custom-stage-form").requestSubmit(); return true;'
+    );
+    await sleep(200);
+    check('etap własny bez nazwy nie przechodzi',
+      await evaluate('return !!document.querySelector("#custom-stage-form .field__error");'));
+
+    await evaluate(
+      'document.getElementById("cs-name").value = "Uzgodnienie z PKP";' +
+      'document.getElementById("cs-domain").value = "location";' +
+      'document.getElementById("cs-hours").value = "12";' +
+      'document.getElementById("custom-stage-form").requestSubmit(); return true;'
+    );
+    await sleep(300);
+
+    const custom = await evaluate(
+      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
+      'const last = p.stages[p.stages.length - 1];' +
+      'return { count: p.stages.length, source: last.source, name: last.name, domain: last.domain };'
+    );
+    check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
+      custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location',
+      JSON.stringify(custom));
+
+    check('wiersz etapu własnego jest oznaczony w podpisie',
+      await evaluate(
+        'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
+        'const metas = [...card.querySelectorAll(".srow__meta")].map(n => n.textContent);' +
+        'return metas.some(m => m.indexOf("własny") >= 0) && metas.some(m => m.indexOf("standard 07") >= 0);'
+      ));
+
+    /* 22. Przesuwanie etapu */
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
+      'const rows = card.querySelectorAll(".srow");' +
+      'rows[rows.length - 1].querySelector(".srow__tools > button").click(); return true;'
+    );
+    await sleep(250);
+    const stageOrder = await evaluate(
+      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
+      'return p.stages.map(s => s.id).join(",");'
+    );
+    check('etap własny daje się przesunąć pomiędzy standardowe',
+      stageOrder === 'preparation,water-docs,custom-1,handover', 'kolejność: ' + stageOrder);
+
+    /* 23. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu',
       pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

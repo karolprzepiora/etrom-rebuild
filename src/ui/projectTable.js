@@ -4,7 +4,6 @@
 
   var D = root.ETROM.Dom;
   var Model = root.ETROM.Model;
-  var Catalog = root.ETROM.Catalog;
   var Progress = root.ETROM.Progress;
   var Icons = root.ETROM.Icons;
   var StageList = root.ETROM.StageList;
@@ -67,7 +66,7 @@
     var stats = Progress.projectProgress(project);
     var deadline = Progress.deadlineInfo(project.deadline);
     var stage = Progress.activeStage(project);
-    var stripColor = stage ? Catalog.domain(Catalog.find(stage.id).domain).color : 'transparent';
+    var stripColor = stage ? Model.describeStage(stage).color : 'transparent';
 
     return D.el('tr', {
       class: 'table__row' + (expanded ? ' table__row--open' : ''),
@@ -129,10 +128,10 @@
     ]);
   }
 
-  function detailRow(project, handlers, motion) {
+  function detailRow(project, handlers, motion, stageForm) {
     return D.el('tr', { class: 'table__detail' }, [
       D.el('td', { attrs: { colspan: String(COLUMNS.length) } }, [
-        StageList.stageList(project, handlers, motion)
+        StageList.stageList(project, handlers, motion, stageForm)
       ])
     ]);
   }
@@ -143,12 +142,15 @@
    * @param {Object} handlers onToggle, onEdit, onDelete, onSort + obsługa etapów
    * @param {Function} motionFor zwraca dane ruchu dla projektu
    */
-  function projectTable(projects, state, handlers, motionFor) {
+  function projectTable(projects, state, handlers, motionFor, stageFormFor) {
     var body = [];
     projects.forEach(function (project) {
       var expanded = !!state.expanded[project.id];
       body.push(row(project, expanded, handlers));
-      if (expanded) body.push(detailRow(project, handlers, motionFor(project)));
+      if (expanded) {
+        body.push(detailRow(project, handlers, motionFor(project),
+          stageFormFor ? stageFormFor(project) : null));
+      }
     });
 
     return D.el('div', { class: 'table-wrap' }, [

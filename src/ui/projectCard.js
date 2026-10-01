@@ -4,7 +4,6 @@
 
   var D = root.ETROM.Dom;
   var Model = root.ETROM.Model;
-  var Catalog = root.ETROM.Catalog;
   var Progress = root.ETROM.Progress;
   var Identity = root.ETROM.Identity;
   var Icons = root.ETROM.Icons;
@@ -27,12 +26,11 @@
         })
       ]);
     }
-    var entry = Catalog.find(stage.id);
-    var domain = Catalog.domain(entry.domain);
-    return D.el('p', { class: 'project__active', style: { '--dot': domain.color } }, [
+    var info = Model.describeStage(stage);
+    return D.el('p', { class: 'project__active', style: { '--dot': info.color } }, [
       D.el('span', { class: 'project__dot', attrs: { 'aria-hidden': 'true' } }),
       D.el('span', { class: 'project__activeLabel', text: stage.status === 'working' ? 'W toku' : 'Następny' }),
-      D.el('span', { class: 'project__activeName', text: entry.name })
+      D.el('span', { class: 'project__activeName', text: info.name })
     ]);
   }
 
@@ -41,10 +39,11 @@
     if (!project.stages.length) return null;
     return D.el('div', { class: 'strip', attrs: { 'aria-hidden': 'true' } },
       project.stages.map(function (stage) {
-        var entry = Catalog.find(stage.id);
+        var info = Model.describeStage(stage);
+        var prefix = info.catalogNumber ? 'standard ' + info.catalogNumber + ' · ' : 'własny · ';
         return D.el('span', {
           class: 'strip__seg strip__seg--' + stage.status,
-          attrs: { title: entry.number + '. ' + entry.name + ' — ' + Model.STAGE_STATUS[stage.status] }
+          attrs: { title: prefix + info.name + ' — ' + Model.STAGE_STATUS[stage.status] }
         });
       }));
   }
@@ -80,7 +79,7 @@
 
   function cover(project, handlers) {
     var stage = Progress.activeStage(project);
-    var stripColor = stage ? Catalog.domain(Catalog.find(stage.id).domain).color : 'transparent';
+    var stripColor = stage ? Model.describeStage(stage).color : 'transparent';
     var deadline = Progress.deadlineInfo(project.deadline);
 
     var top = [
@@ -158,7 +157,7 @@
       children.push(D.el('div', {
         class: motion && motion.justExpanded ? 'stages-enter' : '',
         attrs: { id: panelId }
-      }, [StageList.stageList(project, handlers, motion)]));
+      }, [StageList.stageList(project, handlers, motion, view && view.stageForm)]));
     }
 
     return D.el('article', {

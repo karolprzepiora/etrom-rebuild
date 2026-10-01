@@ -22,7 +22,9 @@ przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postę
 - lista projektów w kartach, z postępem rzeczowym liczonym **wagą godzin etapów**,
 - dodawanie, edycja i usuwanie projektu, z walidacją przy polach
   (kod projektu musi być niepowtarzalny),
-- 14 standardowych etapów z kolorami dziedzin; dokładanie i usuwanie etapów,
+- 14 standardowych etapów jako **szablon do wyboru** — projekt bierze tylko te, które go dotyczą,
+- **etapy spoza standardu** z własną nazwą, dziedziną, budżetem i terminem,
+- kolejność etapów ustawiana w projekcie, więc własny etap może stanąć pomiędzy standardowymi,
 - status etapu przełączany kliknięciem: *Do wykonania → W toku → Zakończony*,
 - terminy z opisem stanu: *po terminie*, *termin dzisiaj*, *pozostało N dni*,
 - szukanie po kodzie, nazwie i zamawiającym; filtr statusu; cztery sortowania,
@@ -75,8 +77,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 93 testy logiki, bez przeglądarki
-node tests/browser/smoke.js     # 35 sprawdzeń w Chromium, na adresie file://
+node --test tests/*.test.js     # 106 testów logiki, bez przeglądarki
+node tests/browser/smoke.js     # 41 sprawdzeń w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
@@ -126,6 +128,21 @@ wszystko naraz: przy czyszczeniu danych programu.
 stronę. Przy zmianie układu, gdzie ten sam projekt wędruje z kafla do
 wiersza, to się opłaca. Przy rozwijaniu etapów nie — tam wystarcza tania
 animacja wejścia, a przejście tylko opóźniałoby reakcję.
+
+**Skąd numery etapów, skoro projekt nie ma wszystkich czternastu?**
+Na kafelku jest numer kolejny w tym projekcie, żeby lista nie miała dziur,
+a przynależność do standardu stoi w podpisie („Wodnoprawne · standard 07”).
+Dzięki temu lista czyta się ciągle, a wspólny język biura zostaje.
+Etap dopisany w projekcie ma w podpisie „własny”.
+
+**Dlaczego lista etapów jest tak oszczędna w kolorze?**
+Wcześniej każdy etap miał duży nagłówek w kolorze dziedziny — czternaście
+plam konkurujących o uwagę. Dziedzina to klasyfikacja, nie powód do
+reakcji, więc został po niej tylko mały kafelek ikony. Ciężar wizualny
+przejął stan: etap w toku ma krawędź w kolorze akcentu, zakończony jest
+wyciszony. Kolor terminu pojawia się wyłącznie przy przekroczeniu lub
+tygodniu zapasu — bursztyn dla miesięcznego zapasu w czternastu wierszach
+był szumem, nie informacją.
 
 **Dlaczego pasek etapów pokazuje stan, a nie dziedzinę?**
 Czternaście segmentów w kolorach dziedzin zlewało się w tęczę, z której

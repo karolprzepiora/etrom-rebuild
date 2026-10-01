@@ -143,3 +143,131 @@ test('normalizeWorkspace radzi sobie z pustym i błędnym wejściem', () => {
   assert.deepEqual(Model.normalizeWorkspace({}), Model.emptyWorkspace());
   assert.deepEqual(Model.normalizeWorkspace({ projects: 'nie tablica' }), Model.emptyWorkspace());
 });
+
+/* ---------- etapy spoza katalogu ---------- */
+
+test('createCustomStage wymaga nazwy, dziedziny i dodatnich godzin', () => {
+  const bad = Model.createCustomStage({ name: '', domain: 'kosmos', hours: 0 }, []);
+  assert.equal(bad.valid, false);
+  assert.ok(bad.errors.name);
+  assert.ok(bad.errors.domain);
+  assert.ok(bad.errors.hours);
+  assert.equal(bad.stage, null);
+});
+
+test('createCustomStage tworzy etap z własną nazwą i dziedziną', () => {
+  const made = Model.createCustomStage(
+    { name: '  Uzgodnienie z PKP ', domain: 'location', hours: 12, deadline: '2026-07-01' }, []
+  );
+  assert.equal(made.valid, true);
+  assert.deepEqual(made.stage, {
+    id: 'custom-1', source: 'custom', name: 'Uzgodnienie z PKP',
+    domain: 'location', status: 'todo', hours: 12, deadline: '2026-07-01'
+  });
+});
+
+test('identyfikatory etapów własnych nie powtarzają się w projekcie', () => {
+  const first = Model.createCustomStage({ name: 'A', domain: 'general', hours: 4 }, []).stage;
+  const second = Model.createCustomStage({ name: 'B', domain: 'general', hours: 4 }, [first]).stage;
+  assert.equal(first.id, 'custom-1');
+  assert.equal(second.id, 'custom-2');
+  assert.equal(Model.nextCustomStageId([first, second]), 'custom-3');
+});
+
+test('describeStage daje jednolity opis dla obu rodzajów etapów', () => {
+  const fromCatalog = Model.describeStage(Model.createStage('water-docs'));
+  assert.equal(fromCatalog.catalogNumber, '07');
+  assert.equal(fromCatalog.isCustom, false);
+  assert.equal(fromCatalog.name, 'Dokumentacja wodnoprawna');
+
+  const own = Model.describeStage({ id: 'custom-1', source: 'custom', name: 'Uzgodnienie', domain: 'water' });
+  assert.equal(own.catalogNumber, null);
+  assert.equal(own.isCustom, true);
+  assert.equal(own.domainLabel, 'Wodnoprawne');
+});
+
+test('describeStage znosi uszkodzony etap własny', () => {
+  const broken = Model.describeStage({ id: 'custom-9', source: 'custom' });
+  assert.equal(broken.name, 'Etap bez nazwy');
+  assert.equal(broken.domain, 'general');
+});
+
+test('etap katalogowy trafia na swoje miejsce w kolejności katalogu', () => {
+  const stages = [Model.createStage('preparation'), Model.createStage('water-docs')];
+  const withConcept = Model.insertCatalogStage(stages, Model.createStage('concept'));
+  assert.deepEqual(withConcept.map((s) => s.id), ['preparation', 'concept', 'water-docs']);
+
+  const withHandover = Model.insertCatalogStage(withConcept, Model.createStage('handover'));
+  assert.equal(withHandover[withHandover.length - 1].id, 'handover');
+});
+
+test('wstawianie etapu katalogowego nie przesuwa etapów własnych', () => {
+  const own = Model.createCustomStage({ name: 'Uzgodnienie', domain: 'location', hours: 8 }, []).stage;
+  const stages = [Model.createStage('preparation'), own, Model.createStage('handover')];
+  const result = Model.insertCatalogStage(stages, Model.createStage('technical'));
+  assert.deepEqual(result.map((s) => s.id), ['preparation', 'custom-1', 'technical', 'handover']);
+});
+
+test('moveStage przesuwa etap o jedną pozycję', () => {
+  const stages = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  assert.deepEqual(Model.moveStage(stages, 'b', -1).map((s) => s.id), ['b', 'a', 'c']);
+  assert.deepEqual(Model.moveStage(stages, 'b', 1).map((s) => s.id), ['a', 'c', 'b']);
+});
+
+test('moveStage nie wypycha etapu poza listę ani nie zmienia oryginału', () => {
+  const stages = [{ id: 'a' }, { id: 'b' }];
+  assert.deepEqual(Model.moveStage(stages, 'a', -1).map((s) => s.id), ['a', 'b']);
+  assert.deepEqual(Model.moveStage(stages, 'b', 1).map((s) => s.id), ['a', 'b']);
+  assert.deepEqual(Model.moveStage(stages, 'nie-ma', 1).map((s) => s.id), ['a', 'b']);
+  assert.deepEqual(stages.map((s) => s.id), ['a', 'b'], 'oryginał zostaje nietknięty');
+});
+
+test('normalizeWorkspace zachowuje etapy własne i ich kolejność', () => {
+  const result = Model.normalizeWorkspace({
+    projects: [{
+      id: 1, code: 'W-1', name: 'A', client: 'K',
+      stages: [
+        { id: 'preparation', source: 'catalog', status: 'done', hours: 40 },
+        { id: 'custom-1', source: 'custom', name: 'Uzgodnienie z PKP', domain: 'location', hours: 12, status: 'working' },
+        { id: 'handover', source: 'catalog', status: 'todo', hours: 24 }
+      ]
+    }]
+  });
+  const stages = result.projects[0].stages;
+  assert.deepEqual(stages.map((s) => s.id), ['preparation', 'custom-1', 'handover']);
+  assert.equal(stages[1].name, 'Uzgodnienie z PKP');
+  assert.equal(stages[1].status, 'working');
+});
+
+test('normalizeWorkspace naprawia etap własny bez dziedziny i z błędnymi godzinami', () => {
+  const result = Model.normalizeWorkspace({
+    projects: [{
+      id: 1, code: 'W-1', name: 'A', client: 'K',
+      stages: [{ id: 'custom-5', source: 'custom', name: 'Coś własnego', domain: 'kosmos', hours: -3 }]
+    }]
+  });
+  const stage = result.projects[0].stages[0];
+  assert.equal(stage.domain, 'general');
+  assert.equal(stage.hours, 8);
+});
+
+test('starsze dane bez oznaczenia źródła są traktowane jako katalogowe', () => {
+  const result = Model.normalizeWorkspace({
+    projects: [{
+      id: 1, code: 'W-1', name: 'A', client: 'K',
+      stages: [{ id: 'water-docs', status: 'done', hours: 70 }]
+    }]
+  });
+  assert.equal(result.projects[0].stages[0].source, 'catalog');
+  assert.equal(Model.describeStage(result.projects[0].stages[0]).catalogNumber, '07');
+});
+
+test('etap spoza katalogu i bez nazwy nadal jest odrzucany', () => {
+  const result = Model.normalizeWorkspace({
+    projects: [{
+      id: 1, code: 'W-1', name: 'A', client: 'K',
+      stages: [{ id: 'wymyslony', status: 'todo', hours: 10 }]
+    }]
+  });
+  assert.equal(result.projects[0].stages.length, 0);
+});

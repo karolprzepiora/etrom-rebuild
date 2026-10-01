@@ -22,6 +22,7 @@
     filters: { query: '', status: 'all', sort: 'deadline' },
     prefs: E.Prefs.defaults(),
     form: null,
+    stageForm: null,
     expanded: {},
     notice: ''
   });
@@ -103,9 +104,10 @@
         return Object.assign({}, project, check.value);
       });
     } else {
-      var stages = values.withStages
-        ? Catalog.all.map(function (entry) { return Model.createStage(entry.id); })
-        : [];
+      var picked = Array.isArray(values.stageIds) ? values.stageIds : [];
+      var stages = Catalog.all
+        .filter(function (entry) { return picked.indexOf(entry.id) >= 0; })
+        .map(function (entry) { return Model.createStage(entry.id); });
       setWorkspace(function (list) {
         return list.concat([Model.createProject(Object.assign({}, check.value, { stages: stages }), list)]);
       });
@@ -169,11 +171,9 @@
     pendingFlash = { projectId: projectId, stageId: catalogId };
     mapProject(projectId, function (project) {
       if (project.stages.some(function (s) { return s.id === catalogId; })) return project;
-      var added = project.stages.concat([Model.createStage(catalogId)]);
-      added.sort(function (a, b) {
-        return Catalog.find(a.id).number.localeCompare(Catalog.find(b.id).number);
+      return Object.assign({}, project, {
+        stages: Model.insertCatalogStage(project.stages, Model.createStage(catalogId))
       });
-      return Object.assign({}, project, { stages: added });
     });
   }
 
@@ -183,7 +183,7 @@
     var index = project.stages.findIndex(function (s) { return s.id === stageId; });
     if (index < 0) return;
     var stage = project.stages[index];
-    var entry = Catalog.find(stage.id);
+    var entry = Model.describeStage(stage);
 
     mapProject(projectId, function (current) {
       return Object.assign({}, current, {
@@ -203,6 +203,35 @@
         });
       }
     });
+  }
+
+  function moveStage(projectId, stageId, delta) {
+    mapProject(projectId, function (project) {
+      return Object.assign({}, project, { stages: Model.moveStage(project.stages, stageId, delta) });
+    });
+  }
+
+  function openCustomStage(projectId) {
+    store.set({ stageForm: { projectId: projectId, values: { domain: 'general', hours: '8' }, errors: {} } });
+  }
+
+  function cancelCustomStage() {
+    store.set({ stageForm: null });
+  }
+
+  function submitCustomStage(projectId, values) {
+    var project = findProject(projectId);
+    if (!project) return;
+    var made = Model.createCustomStage(values, project.stages);
+    if (!made.valid) {
+      store.set({ stageForm: { projectId: projectId, values: values, errors: made.errors } });
+      return;
+    }
+    pendingFlash = { projectId: projectId, stageId: made.stage.id };
+    mapProject(projectId, function (current) {
+      return Object.assign({}, current, { stages: current.stages.concat([made.stage]) });
+    });
+    store.set({ stageForm: null });
   }
 
   function setSort(key) {
@@ -401,6 +430,10 @@
     onCycleStage: cycleStage,
     onAddStage: addStage,
     onRemoveStage: removeStage,
+    onMoveStage: moveStage,
+    onOpenCustomStage: openCustomStage,
+    onCancelCustomStage: cancelCustomStage,
+    onSubmitCustomStage: submitCustomStage,
     onSort: setSort
   };
 
@@ -671,18 +704,22 @@
       return;
     }
 
+    function stageFormFor(project) {
+      return state.stageForm && state.stageForm.projectId === project.id ? state.stageForm : null;
+    }
+
     if (state.prefs.view === 'list') {
       D.render(nodes.list, [
         E.ProjectTable.projectTable(visible, state, handlers, function (project) {
           return motionMap[project.id] || {};
-        })
+        }, stageFormFor)
       ]);
     } else {
       D.render(nodes.list, [
         D.el('div', { class: 'projects' }, visible.map(function (project) {
           return E.ProjectCard.projectCard(
             project,
-            { expanded: !!state.expanded[project.id] },
+            { expanded: !!state.expanded[project.id], stageForm: stageFormFor(project) },
             handlers,
             motionMap[project.id] || {}
           );

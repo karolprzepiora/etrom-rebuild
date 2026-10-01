@@ -5,6 +5,7 @@
 
   var D = root.ETROM.Dom;
   var Model = root.ETROM.Model;
+  var Catalog = root.ETROM.Catalog;
 
   function field(id, label, control, error, hint) {
     var children = [
@@ -51,9 +52,56 @@
       });
     }));
 
-    var stagesCheckbox = D.el('input', {
-      attrs: { id: 'pf-stages', type: 'checkbox', checked: true }
-    });
+    // Wybór etapów: domyślnie żaden, bo niewiele projektów obejmuje całość
+    // standardu. Jedno kliknięcie zaznacza komplet.
+    var stageBoxes = {};
+    var pickedCount = D.el('span', { class: 'picker__count' });
+
+    function refreshCount() {
+      var picked = Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; });
+      pickedCount.textContent = 'wybrano ' + picked.length + ' z ' + Catalog.all.length;
+    }
+
+    function setAll(value) {
+      Object.keys(stageBoxes).forEach(function (id) { stageBoxes[id].checked = value; });
+      refreshCount();
+    }
+
+    var stagePicker = D.el('div', { class: 'picker' }, [
+      D.el('div', { class: 'picker__head' }, [
+        D.el('span', { class: 'label', text: 'Etapy projektu' }),
+        pickedCount,
+        D.el('button', {
+          class: 'btn btn--small btn--ghost', text: 'Zaznacz wszystkie',
+          attrs: { type: 'button' }, on: { click: function () { setAll(true); } }
+        }),
+        D.el('button', {
+          class: 'btn btn--small btn--ghost', text: 'Wyczyść',
+          attrs: { type: 'button' }, on: { click: function () { setAll(false); } }
+        })
+      ]),
+      D.el('ul', { class: 'picker__list' }, Catalog.all.map(function (entry) {
+        var box = D.el('input', {
+          attrs: { id: 'pf-stage-' + entry.id, type: 'checkbox', value: entry.id },
+          on: { change: refreshCount }
+        });
+        stageBoxes[entry.id] = box;
+        return D.el('li', { class: 'picker__item' }, [
+          box,
+          D.el('label', { attrs: { for: 'pf-stage-' + entry.id } }, [
+            D.el('span', { class: 'picker__no', text: entry.number }),
+            D.el('span', { class: 'picker__name', text: entry.name }),
+            D.el('span', { class: 'picker__hours', text: entry.defaultHours + ' h' })
+          ])
+        ]);
+      })),
+      D.el('p', {
+        class: 'field__hint',
+        text: 'Etapy spoza standardu dopiszesz w projekcie po jego założeniu.'
+      })
+    ]);
+
+    refreshCount();
 
     function collect() {
       return {
@@ -63,7 +111,7 @@
         client: clientInput.value,
         status: statusSelect.value,
         deadline: deadlineInput.value,
-        withStages: !editing && stagesCheckbox.checked
+        stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; })
       };
     }
 
@@ -84,13 +132,7 @@
         field('pf-status', 'Status', statusSelect, problems.status),
         field('pf-deadline', 'Termin umowy', deadlineInput, problems.deadline, 'Pole opcjonalne.')
       ]),
-      !editing && D.el('div', { class: 'field field--check' }, [
-        stagesCheckbox,
-        D.el('label', {
-          text: 'Dodaj od razu wszystkie 14 standardowych etapów',
-          attrs: { for: 'pf-stages' }
-        })
-      ]),
+      !editing && stagePicker,
       D.el('div', { class: 'form__actions' }, [
         D.el('button', {
           class: 'btn',

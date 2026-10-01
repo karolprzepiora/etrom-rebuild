@@ -94,10 +94,114 @@
     if (!Number.isFinite(hours) || hours <= 0) hours = entry.defaultHours;
     return {
       id: entry.id,
+      source: 'catalog',
       status: 'todo',
       hours: hours,
       deadline: isDate(options.deadline) ? options.deadline : ''
     };
+  }
+
+  /** Kolejny wolny identyfikator etapu własnego w obrębie projektu. */
+  function nextCustomStageId(stages) {
+    var max = 0;
+    (stages || []).forEach(function (stage) {
+      var match = /^custom-(\d+)$/.exec(String(stage && stage.id));
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+    return 'custom-' + (max + 1);
+  }
+
+  /**
+   * Etap spoza katalogu: własna nazwa i dziedzina.
+   * @returns {{valid: boolean, errors: Object, stage: (Object|null)}}
+   */
+  function createCustomStage(input, stages) {
+    var data = input || {};
+    var errors = {};
+    var name = text(data.name);
+    var domain = text(data.domain) || 'general';
+    var hours = Number(data.hours);
+
+    if (!name) errors.name = 'Podaj nazwę etapu.';
+    else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
+    if (!Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain)) errors.domain = 'Wybierz dziedzinę.';
+    if (!Number.isFinite(hours) || hours <= 0) errors.hours = 'Podaj budżet godzin większy od zera.';
+    if (data.deadline && !isDate(data.deadline)) errors.deadline = 'Użyj poprawnej daty.';
+
+    if (Object.keys(errors).length) return { valid: false, errors: errors, stage: null };
+
+    return {
+      valid: true,
+      errors: {},
+      stage: {
+        id: nextCustomStageId(stages),
+        source: 'custom',
+        name: name,
+        domain: domain,
+        status: 'todo',
+        hours: hours,
+        deadline: isDate(data.deadline) ? data.deadline : ''
+      }
+    };
+  }
+
+  /**
+   * Jednolity opis etapu dla widoku — niezależnie od tego, czy pochodzi
+   * z katalogu, czy został dopisany w projekcie.
+   */
+  function describeStage(stage) {
+    var entry = stage && stage.source !== 'custom' ? Catalog.find(stage.id) : null;
+    if (entry) {
+      return {
+        name: entry.name,
+        domain: entry.domain,
+        domainLabel: Catalog.domain(entry.domain).label,
+        color: Catalog.domain(entry.domain).color,
+        catalogNumber: entry.number,
+        isCustom: false
+      };
+    }
+    var domain = Catalog.domain(stage && stage.domain);
+    return {
+      name: (stage && stage.name) || 'Etap bez nazwy',
+      domain: domain.id,
+      domainLabel: domain.label,
+      color: domain.color,
+      catalogNumber: null,
+      isCustom: true
+    };
+  }
+
+  /**
+   * Wstawia etap katalogowy tak, żeby etapy katalogowe zachowały swoją
+   * kolejność względem siebie. Etapy własne zostają tam, gdzie są.
+   */
+  function insertCatalogStage(stages, stage) {
+    var list = (stages || []).slice();
+    var entry = Catalog.find(stage.id);
+    if (!entry) return list.concat([stage]);
+
+    for (var i = 0; i < list.length; i += 1) {
+      var other = Catalog.find(list[i].id);
+      if (list[i].source === 'custom' || !other) continue;
+      if (other.number > entry.number) {
+        list.splice(i, 0, stage);
+        return list;
+      }
+    }
+    return list.concat([stage]);
+  }
+
+  /** Przesuwa etap o jedną pozycję. Zwraca nową tablicę. */
+  function moveStage(stages, id, delta) {
+    var list = (stages || []).slice();
+    var from = list.findIndex(function (stage) { return stage.id === id; });
+    if (from < 0) return list;
+    var to = from + delta;
+    if (to < 0 || to >= list.length) return list;
+    var moved = list.splice(from, 1)[0];
+    list.splice(to, 0, moved);
+    return list;
   }
 
   /**
@@ -148,16 +252,34 @@
       var status = Object.prototype.hasOwnProperty.call(PROJECT_STATUS, item.status)
         ? item.status : 'planned';
 
+      // Kolejność tablicy jest kolejnością etapów w projekcie.
       var stages = (Array.isArray(item.stages) ? item.stages : []).reduce(function (acc, stage) {
-        if (!stage || !Catalog.find(stage.id)) return acc;
+        if (!stage || !stage.id) return acc;
         if (acc.some(function (s) { return s.id === stage.id; })) return acc;
+
+        var entry = Catalog.find(stage.id);
+        var custom = stage.source === 'custom' || (!entry && text(stage.name));
+        if (!entry && !custom) return acc;
+
         var hours = Number(stage.hours);
-        acc.push({
-          id: stage.id,
+        var fallbackHours = entry ? entry.defaultHours : 8;
+        var common = {
           status: Object.prototype.hasOwnProperty.call(STAGE_STATUS, stage.status) ? stage.status : 'todo',
-          hours: Number.isFinite(hours) && hours > 0 ? hours : Catalog.find(stage.id).defaultHours,
+          hours: Number.isFinite(hours) && hours > 0 ? hours : fallbackHours,
           deadline: isDate(stage.deadline) ? stage.deadline : ''
-        });
+        };
+
+        if (custom) {
+          var domain = text(stage.domain);
+          acc.push(Object.assign({
+            id: String(stage.id),
+            source: 'custom',
+            name: text(stage.name) || 'Etap bez nazwy',
+            domain: Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain) ? domain : 'general'
+          }, common));
+        } else {
+          acc.push(Object.assign({ id: entry.id, source: 'catalog' }, common));
+        }
         return acc;
       }, []);
 
@@ -200,6 +322,11 @@
     nextProjectId: nextProjectId,
     createProject: createProject,
     createStage: createStage,
+    createCustomStage: createCustomStage,
+    nextCustomStageId: nextCustomStageId,
+    describeStage: describeStage,
+    insertCatalogStage: insertCatalogStage,
+    moveStage: moveStage,
     cycleStageStatus: cycleStageStatus,
     normalizeWorkspace: normalizeWorkspace,
     emptyWorkspace: emptyWorkspace
