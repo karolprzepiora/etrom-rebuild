@@ -16,7 +16,7 @@
       <header class="topbar">
         <p class="topbar__path">ETROM / <strong>Projekty</strong></p>
         <span class="topbar__spacer"></span>
-        <button class="btn btn--primary" type="button" id="action-new">Nowy projekt</button>
+        <button class="btn btn--primary" type="button" id="action-new">Nowy projekt <kbd class="kbd">N</kbd></button>
         <button class="btn" type="button" id="action-demo">Dane testowe</button>
         <button class="btn" type="button" id="action-export">Pobierz kopię</button>
         <button class="btn" type="button" id="action-import">Wczytaj kopię</button>
@@ -34,7 +34,6 @@
 
         <p class="notice notice--hidden" id="notice" role="status" aria-live="polite"></p>
         <div class="filters" id="filters"></div>
-        <div id="form-slot"></div>
         <div id="project-list"></div>
       </main>
 
@@ -56,10 +55,13 @@
   <script src="src/core/storage.js"></script>
   <script src="src/core/store.js"></script>
   <script src="src/core/identity.js"></script>
+  <script src="src/core/prefs.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
+  <script src="src/ui/dialog.js"></script>
   <script src="src/ui/stageList.js"></script>
   <script src="src/ui/projectCard.js"></script>
+  <script src="src/ui/projectTable.js"></script>
   <script src="src/ui/projectForm.js"></script>
   <script src="src/ui/app.js"></script>
 </body>

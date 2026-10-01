@@ -29,7 +29,10 @@ przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postę
 - zapis lokalny w przeglądarce (`localStorage`) oraz pobieranie i wczytywanie kopii JSON,
 - automatyczny odczyt danych ze starszej wersji ETROM (klucz `etrom.workspace.v2`) —
   stary zapis zostaje nietknięty,
-- motyw jasny i ciemny zgodnie z ustawieniem systemu.
+- widok kart i gęsty widok listy z sortowaniem po kolumnach,
+- motyw jasny, ciemny albo zgodny z systemem — wybór zostaje na urządzeniu,
+- obsługa klawiatury: `N` nowy projekt, `/` skok do wyszukiwarki, `Esc` zamyka panel,
+- formularz w panelu wysuwanym, potwierdzenia we własnych oknach aplikacji.
 
 ## Czego jeszcze nie ma
 
@@ -68,8 +71,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 70 testów logiki, bez przeglądarki
-node tests/browser/smoke.js     # 19 sprawdzeń w Chromium, na adresie file://
+node --test tests/*.test.js     # 81 testów logiki, bez przeglądarki
+node tests/browser/smoke.js     # 27 sprawdzeń w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
@@ -100,6 +103,20 @@ projekt zawsze wygląda tak samo, a sąsiednie kody dostają odległe odcienie.
 Warstwice na okładce nawiązują do map terenu — to język tej branży.
 Paleta marki (malinowy akcent, mięta, granatowy pasek) jest przeniesiona
 z poprzedniej wersji aplikacji, nie wymyślona od nowa.
+
+**Dlaczego własne okna zamiast `confirm()` przeglądarki?**
+Systemowe okienko z napisem „localhost mówi” wygląda jak awaria, a nie jak
+część programu. Potwierdzenia i panel formularza korzystają z natywnego
+`<dialog>`, więc uwięzienie fokusa i zamykanie Escapem działają bez
+dopisywania własnej obsługi, a wygląd jest w całości nasz.
+
+**Dlaczego ruch pojawia się tylko miejscami?**
+Aplikacja przerysowuje listę przy każdej zmianie, więc animacja wejścia
+na każdym elemencie włączałaby się także przy wpisywaniu w wyszukiwarkę.
+Zamiast tego pamiętany jest poprzedni stan i ruch pokazuje wyłącznie to,
+co naprawdę się zmieniło: pasek postępu przechodzi ze starej wartości,
+zmieniony etap błyska, lista etapów wsuwa się przy rozwinięciu.
+Wszystko ustępuje przy włączonym ograniczeniu ruchu w systemie.
 
 **Dlaczego nie ma webfontu?**
 Aplikacja musi działać z dysku, bez sieci. Pobierany krój by się nie wczytał,

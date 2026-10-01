@@ -79,11 +79,28 @@
     return days !== null && days < 0;
   }
 
+  /**
+   * Etap, na którym stoi projekt: najpierw pierwszy w toku,
+   * potem pierwszy jeszcze niezaczęty. Null, gdy nie ma czego robić.
+   * @returns {(Object|null)}
+   */
+  function activeStage(project) {
+    var stages = (project && Array.isArray(project.stages)) ? project.stages : [];
+    var working = null;
+    var todo = null;
+    for (var i = 0; i < stages.length; i += 1) {
+      if (stages[i].status === 'working' && !working) working = stages[i];
+      if (stages[i].status === 'todo' && !todo) todo = stages[i];
+    }
+    return working || todo || null;
+  }
+
   var api = {
     daysUntil: daysUntil,
     deadlineInfo: deadlineInfo,
     projectProgress: projectProgress,
-    isOverdue: isOverdue
+    isOverdue: isOverdue,
+    activeStage: activeStage
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

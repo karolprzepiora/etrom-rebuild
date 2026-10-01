@@ -154,6 +154,27 @@ async function main() {
       'node.click(); return true;'
     );
 
+    // Prawdziwe zdarzenia klawiatury — inaczej natywny <dialog> nie zareaguje na Escape.
+    const KEYS = {
+      n: { key: 'n', code: 'KeyN', vk: 78, text: 'n' },
+      slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
+      escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' }
+    };
+    async function pressKey(name) {
+      const spec = KEYS[name];
+      await client.send('Input.dispatchKeyEvent', {
+        type: spec.text ? 'keyDown' : 'rawKeyDown',
+        key: spec.key, code: spec.code,
+        windowsVirtualKeyCode: spec.vk, nativeVirtualKeyCode: spec.vk,
+        text: spec.text
+      });
+      await client.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: spec.key, code: spec.code,
+        windowsVirtualKeyCode: spec.vk, nativeVirtualKeyCode: spec.vk
+      });
+      await sleep(180);
+    }
+
     await waitForApp();
 
     /* 1. Start na czystym profilu */
@@ -275,11 +296,11 @@ async function main() {
       'document.getElementById("pf-code").value = "DEMO-001";' +
       'document.getElementById("pf-name").value = "Próba duplikatu";' +
       'document.getElementById("pf-client").value = "Klient";' +
-      'document.querySelector("#form-slot form").requestSubmit(); return true;'
+      'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(150);
     const duplicateError = await evaluate(
-      'const node = document.querySelector("#form-slot .field__error");' +
+      'const node = document.querySelector("#project-form .field__error");' +
       'return node ? node.textContent : "";'
     );
     check('formularz blokuje powtórzony kod projektu',
@@ -291,11 +312,11 @@ async function main() {
       'document.getElementById("pf-name").value = "Projekt z testu";' +
       'document.getElementById("pf-client").value = "Klient testowy";' +
       'document.getElementById("pf-stages").checked = false;' +
-      'document.querySelector("#form-slot form").requestSubmit(); return true;'
+      'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(150);
     check('poprawny formularz dodaje projekt i zamyka panel',
-      (await cardCount()) === 6 && (await evaluate('return document.querySelectorAll("#form-slot form").length;')) === 0,
+      (await cardCount()) === 6 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
       'kart: ' + (await cardCount()));
 
     /* 12. Dane użytkownika nie są wykonywane jako HTML */
@@ -305,7 +326,7 @@ async function main() {
       'document.getElementById("pf-name").value = \'<img src=x onerror="window.__xss=1">\';' +
       'document.getElementById("pf-client").value = "Klient";' +
       'document.getElementById("pf-stages").checked = false;' +
-      'document.querySelector("#form-slot form").requestSubmit(); return true;'
+      'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(250);
     const xss = await evaluate('return { flag: !!window.__xss, imgs: document.querySelectorAll(".project img").length };');
@@ -318,12 +339,15 @@ async function main() {
       JSON.stringify(xss) + ' tekst: ' + xssText);
 
     /* 13. Usuwanie projektu */
-    await evaluate('window.confirm = () => true; return true;');
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
       'card.querySelector(".project__remove").click(); return true;'
     );
-    await sleep(150);
+    await sleep(200);
+    const dialogShown = await evaluate('return !!document.querySelector("dialog.dialog[open]");');
+    check('usunięcie prosi o potwierdzenie we własnym oknie, nie w oknie przeglądarki', dialogShown);
+    await evaluate('document.querySelector("[data-dialog-confirm]").click(); return true;');
+    await sleep(200);
     check('usuwanie projektu działa po potwierdzeniu',
       (await evaluate('return !document.querySelector(\'[data-project-code="XSS-1"]\');')));
 
@@ -336,7 +360,59 @@ async function main() {
         'return codes.length === new Set(codes).size;'
       )));
 
-    /* 15. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 15. Klawiatura */
+    await pressKey('n');
+    check('klawisz N otwiera panel nowego projektu',
+      await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form");'));
+
+    await pressKey('escape');
+    check('Escape zamyka panel',
+      await evaluate('return !document.querySelector("dialog.drawer[open]");'));
+
+    await pressKey('slash');
+    check('ukośnik przenosi kursor do wyszukiwarki',
+      (await evaluate('return document.activeElement ? document.activeElement.id : "";')) === 'tb-search');
+    await evaluate('document.activeElement.blur(); return true;');
+
+    /* 16. Widok listy */
+    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok listy"]\').click(); return true;');
+    await sleep(200);
+    const listCheck = await evaluate(
+      'return { rows: document.querySelectorAll(".table__row").length,' +
+      ' projects: window.ETROM.app.store.getState().workspace.projects.length };'
+    );
+    check('przełącznik pokazuje listę z wierszem na każdy projekt',
+      listCheck.rows === listCheck.projects && listCheck.rows > 0, JSON.stringify(listCheck));
+
+    check('sortowanie z nagłówka kolumny działa w widoku listy',
+      await evaluate(
+        'const headers = [...document.querySelectorAll(".table__sort")];' +
+        'const byName = headers.find(h => h.textContent.indexOf("Projekt") === 0);' +
+        'byName.click();' +
+        'return document.getElementById("tb-sort").value === "name";'
+      ));
+
+    /* 17. Zapamiętanie widoku i motywu */
+    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Motyw ciemny"]\').click(); return true;');
+    await sleep(150);
+    check('przełącznik motywu ustawia motyw ciemny',
+      (await evaluate('return document.documentElement.getAttribute("data-theme");')) === 'dark');
+
+    await evaluate('location.reload(); return true;');
+    await sleep(600);
+    await waitForApp();
+    const kept = await evaluate(
+      'return { theme: document.documentElement.getAttribute("data-theme"),' +
+      ' rows: document.querySelectorAll(".table__row").length,' +
+      ' projects: window.ETROM.app.store.getState().workspace.projects.length };'
+    );
+    check('po przeładowaniu zostają wybrany motyw i widok listy',
+      kept.theme === 'dark' && kept.rows === kept.projects && kept.rows > 0, JSON.stringify(kept));
+
+    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok kart"]\').click(); return true;');
+    await sleep(150);
+
+    /* 18. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu',
       pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

@@ -24,7 +24,7 @@
     ]);
   }
 
-  function stageCard(project, stage, handlers) {
+  function stageCard(project, stage, handlers, motion) {
     var entry = Catalog.find(stage.id);
     var domain = Catalog.domain(entry.domain);
     var deadline = Progress.deadlineInfo(stage.deadline);
@@ -33,8 +33,10 @@
       ? D.el('span', { class: 'chip ' + DEADLINE_CHIP[deadline.tone], text: deadline.text })
       : D.el('span', { class: 'stage__factValue', text: 'Nie ustalono' });
 
+    var flash = motion && motion.flashStage === stage.id;
+
     return D.el('li', {
-      class: 'stage' + (stage.status === 'done' ? ' stage--done' : ''),
+      class: 'stage' + (stage.status === 'done' ? ' stage--done' : '') + (flash ? ' stage--flash' : ''),
       style: { '--stage-color': domain.color }
     }, [
       D.el('div', { class: 'stage__head' }, [
@@ -108,12 +110,12 @@
   }
 
   /** @returns {Node} sekcja etapów wstawiana pod kartę projektu */
-  function stageList(project, handlers) {
+  function stageList(project, handlers, motion) {
     var stats = Progress.projectProgress(project);
 
     var body = project.stages.length
       ? D.el('ul', { class: 'stages__grid' }, project.stages.map(function (stage) {
-          return stageCard(project, stage, handlers);
+          return stageCard(project, stage, handlers, motion);
         }))
       : D.el('p', {
           class: 'stages__note',

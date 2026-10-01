@@ -1,5 +1,5 @@
 /* ETROM — uruchomienie aplikacji i obsługa zdarzeń.
-   Ten plik łączy stan z widokiem. Cała logika liczenia siedzi w src/core. */
+   Ten plik łączy stan z widokiem. Liczenie siedzi w src/core. */
 (function (root) {
   'use strict';
 
@@ -9,11 +9,16 @@
   var Query = E.Query;
   var Catalog = E.Catalog;
   var Progress = E.Progress;
+  var Icons = E.Icons;
+  var Dialog = E.Dialog;
 
   var storage = E.Storage.createStorage();
+  var prefsStore = E.Prefs.createPrefs();
+
   var store = E.Store.createStore({
     workspace: Model.emptyWorkspace(),
     filters: { query: '', status: 'all', sort: 'deadline' },
+    prefs: E.Prefs.defaults(),
     form: null,
     expanded: {},
     notice: ''
@@ -22,14 +27,20 @@
   var nodes = {};
   var lastForm = null;
   var lastWorkspace = null;
+  var drawerEl = null;
+
+  /* Pamięć poprzedniego widoku — dzięki niej ruch pokazuje zmianę,
+     a nie powtarza się przy każdym przerysowaniu listy. */
+  var lastPercent = {};
+  var lastExpanded = {};
+  var pendingFlash = null;
 
   /* ---------- operacje na danych ---------- */
 
   function setWorkspace(producer) {
     store.update(function (state) {
-      var projects = producer(state.workspace.projects);
       return Object.assign({}, state, {
-        workspace: { version: Model.WORKSPACE_VERSION, projects: projects }
+        workspace: { version: Model.WORKSPACE_VERSION, projects: producer(state.workspace.projects) }
       });
     });
   }
@@ -42,14 +53,18 @@
     });
   }
 
-  /* ---------- obsługa formularza ---------- */
+  function findProject(id) {
+    return store.getState().workspace.projects.filter(function (p) { return p.id === id; })[0];
+  }
+
+  /* ---------- formularz ---------- */
 
   function openCreate() {
     store.set({ form: { draft: { status: 'planned' }, errors: {} } });
   }
 
   function openEdit(id) {
-    var project = store.getState().workspace.projects.filter(function (p) { return p.id === id; })[0];
+    var project = findProject(id);
     if (!project) return;
     store.set({
       form: {
@@ -90,24 +105,27 @@
         ? Catalog.all.map(function (entry) { return Model.createStage(entry.id); })
         : [];
       setWorkspace(function (list) {
-        return list.concat([Model.createProject(
-          Object.assign({}, check.value, { stages: stages }),
-          list
-        )]);
+        return list.concat([Model.createProject(Object.assign({}, check.value, { stages: stages }), list)]);
       });
     }
-
     closeForm();
   }
 
   /* ---------- projekty i etapy ---------- */
 
   function deleteProject(id) {
-    var project = store.getState().workspace.projects.filter(function (p) { return p.id === id; })[0];
+    var project = findProject(id);
     if (!project) return;
-    if (!window.confirm('Usunąć projekt „' + project.name + '” wraz z etapami?')) return;
-    setWorkspace(function (projects) {
-      return projects.filter(function (p) { return p.id !== id; });
+    Dialog.confirm({
+      title: 'Usunąć projekt?',
+      message: 'Projekt „' + project.name + '” zniknie razem ze wszystkimi etapami. Tej operacji nie można cofnąć.',
+      confirm: 'Usuń projekt',
+      tone: 'danger'
+    }).then(function (accepted) {
+      if (!accepted) return;
+      setWorkspace(function (projects) {
+        return projects.filter(function (p) { return p.id !== id; });
+      });
     });
   }
 
@@ -121,6 +139,7 @@
   }
 
   function cycleStage(projectId, stageId) {
+    pendingFlash = { projectId: projectId, stageId: stageId };
     mapProject(projectId, function (project) {
       return Object.assign({}, project, {
         stages: project.stages.map(function (stage) {
@@ -134,10 +153,10 @@
 
   function addStage(projectId, catalogId) {
     if (!catalogId) return;
+    pendingFlash = { projectId: projectId, stageId: catalogId };
     mapProject(projectId, function (project) {
       if (project.stages.some(function (s) { return s.id === catalogId; })) return project;
       var added = project.stages.concat([Model.createStage(catalogId)]);
-      // Kolejność zgodna z katalogiem, nie z kolejnością dodawania.
       added.sort(function (a, b) {
         return Catalog.find(a.id).number.localeCompare(Catalog.find(b.id).number);
       });
@@ -153,7 +172,32 @@
     });
   }
 
-  /* ---------- dane testowe ---------- */
+  function setSort(key) {
+    store.update(function (state) {
+      return Object.assign({}, state, {
+        filters: Object.assign({}, state.filters, { sort: key })
+      });
+    });
+    if (nodes.sortSelect) nodes.sortSelect.value = key;
+  }
+
+  /* ---------- preferencje ---------- */
+
+  function applyTheme(theme) {
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  function setPref(patch) {
+    store.update(function (state) {
+      var prefs = E.Prefs.normalize(Object.assign({}, state.prefs, patch));
+      prefsStore.save(prefs);
+      applyTheme(prefs.theme);
+      return Object.assign({}, state, { prefs: prefs });
+    });
+  }
+
+  /* ---------- dane testowe i kopie ---------- */
 
   function demoDate(offsetDays) {
     var d = new Date();
@@ -182,12 +226,8 @@
           return stage;
         });
         result = result.concat([Model.createProject({
-          code: row.code,
-          name: row.name,
-          client: row.client,
-          status: row.status,
-          deadline: row.deadline,
-          stages: stages
+          code: row.code, name: row.name, client: row.client,
+          status: row.status, deadline: row.deadline, stages: stages
         }, result)]);
       });
       return result;
@@ -195,22 +235,26 @@
   }
 
   function clearAll() {
-    if (!window.confirm('Usunąć wszystkie projekty z tego urządzenia?')) return;
-    store.update(function (state) {
-      return Object.assign({}, state, {
-        workspace: Model.emptyWorkspace(),
-        expanded: {},
-        form: null
+    Dialog.confirm({
+      title: 'Wyczyścić dane programu?',
+      message: 'Z tego urządzenia znikną wszystkie projekty i etapy. Ustawienia wyglądu zostaną zachowane.',
+      confirm: 'Wyczyść dane',
+      tone: 'danger'
+    }).then(function (accepted) {
+      if (!accepted) return;
+      lastPercent = {};
+      lastExpanded = {};
+      store.update(function (state) {
+        return Object.assign({}, state, {
+          workspace: Model.emptyWorkspace(), expanded: {}, form: null
+        });
       });
     });
   }
 
-  /* ---------- kopia JSON ---------- */
-
   function exportJson() {
     var data = JSON.stringify(store.getState().workspace, null, 2);
-    var blob = new Blob([data], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
+    var url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
     var link = D.el('a', { attrs: { href: url, download: 'etrom-kopia.json' } });
     document.body.appendChild(link);
     link.click();
@@ -223,11 +267,11 @@
     reader.onload = function () {
       try {
         var parsed = Model.normalizeWorkspace(JSON.parse(String(reader.result)));
+        lastPercent = {};
+        lastExpanded = {};
         store.update(function (state) {
           return Object.assign({}, state, {
-            workspace: parsed,
-            expanded: {},
-            form: null,
+            workspace: parsed, expanded: {}, form: null,
             notice: 'Wczytano kopię: ' + parsed.projects.length + ' projektów.'
           });
         });
@@ -238,6 +282,31 @@
     reader.readAsText(file);
   }
 
+  /* ---------- ruch ---------- */
+
+  function buildMotion(state) {
+    var map = {};
+    state.workspace.projects.forEach(function (project) {
+      var motion = {};
+      var percent = Progress.projectProgress(project).percent;
+      if (Object.prototype.hasOwnProperty.call(lastPercent, project.id) && lastPercent[project.id] !== percent) {
+        motion.progressFrom = lastPercent[project.id];
+      }
+      if (state.expanded[project.id] && !lastExpanded[project.id]) motion.justExpanded = true;
+      if (pendingFlash && pendingFlash.projectId === project.id) motion.flashStage = pendingFlash.stageId;
+      map[project.id] = motion;
+    });
+    return map;
+  }
+
+  function commitMotion(state) {
+    state.workspace.projects.forEach(function (project) {
+      lastPercent[project.id] = Progress.projectProgress(project).percent;
+      lastExpanded[project.id] = !!state.expanded[project.id];
+    });
+    pendingFlash = null;
+  }
+
   /* ---------- widok ---------- */
 
   var handlers = {
@@ -246,12 +315,28 @@
     onDelete: deleteProject,
     onCycleStage: cycleStage,
     onAddStage: addStage,
-    onRemoveStage: removeStage
+    onRemoveStage: removeStage,
+    onSort: setSort
   };
 
-  function buildRail() {
-    var Icons = E.Icons;
+  function segmented(options) {
+    var buttons = {};
+    var wrap = D.el('div', {
+      class: 'segmented',
+      attrs: { role: 'group', 'aria-label': options.label }
+    }, options.items.map(function (item) {
+      var button = D.el('button', {
+        class: 'segmented__btn',
+        attrs: { type: 'button', title: item.title, 'aria-label': item.title, 'aria-pressed': 'false' },
+        on: { click: function () { options.onPick(item.value); } }
+      }, [Icons.icon(item.icon, 16)]);
+      buttons[item.value] = button;
+      return button;
+    }));
+    return { node: wrap, buttons: buttons };
+  }
 
+  function buildRail() {
     function item(options) {
       var children = [Icons.icon(options.icon, 18), D.el('span', { text: options.label })];
       if (options.active) {
@@ -270,6 +355,17 @@
         [D.el('p', { class: 'rail__legend', text: legend })].concat(items));
     }
 
+    var theme = segmented({
+      label: 'Motyw',
+      items: [
+        { value: 'light', icon: 'sun', title: 'Motyw jasny' },
+        { value: 'dark', icon: 'moon', title: 'Motyw ciemny' },
+        { value: 'system', icon: 'auto', title: 'Jak w systemie' }
+      ],
+      onPick: function (value) { setPref({ theme: value }); }
+    });
+    nodes.themeButtons = theme.buttons;
+
     D.render(nodes.rail, [
       D.el('div', { class: 'rail__brand' }, [
         D.el('p', { class: 'rail__mark', text: 'ETROM' }),
@@ -285,22 +381,25 @@
         item({ icon: 'alert', label: 'Nadzór' }),
         item({ icon: 'people', label: 'Zespół' })
       ]),
-      D.el('p', {
-        class: 'rail__foot',
-        text: 'Moduły oznaczone „wkrótce” są jeszcze w poprzedniej wersji aplikacji.'
-      })
+      D.el('div', { class: 'rail__foot' }, [
+        D.el('div', { class: 'rail__themeRow' }, [
+          D.el('span', { class: 'rail__legend', text: 'Motyw' }),
+          theme.node
+        ]),
+        D.el('p', { text: 'Moduły oznaczone „wkrótce” są jeszcze w poprzedniej wersji aplikacji.' })
+      ])
     ]);
   }
 
   function buildFilters() {
-    var search = D.el('input', {
-      class: 'input',
+    nodes.search = D.el('input', {
+      class: 'input input--search',
       attrs: { id: 'tb-search', type: 'search', placeholder: 'Kod, nazwa lub zamawiający' },
       on: {
         input: function () {
           store.update(function (state) {
             return Object.assign({}, state, {
-              filters: Object.assign({}, state.filters, { query: search.value })
+              filters: Object.assign({}, state.filters, { query: nodes.search.value })
             });
           });
         }
@@ -325,21 +424,23 @@
       })
     ));
 
-    var sortSelect = D.el('select', {
+    nodes.sortSelect = D.el('select', {
       class: 'select',
       attrs: { id: 'tb-sort' },
-      on: {
-        change: function () {
-          store.update(function (state) {
-            return Object.assign({}, state, {
-              filters: Object.assign({}, state.filters, { sort: sortSelect.value })
-            });
-          });
-        }
-      }
+      on: { change: function () { setSort(nodes.sortSelect.value); } }
     }, Object.keys(Query.SORTS).map(function (key) {
       return D.el('option', { text: Query.SORTS[key], attrs: { value: key } });
     }));
+
+    var view = segmented({
+      label: 'Sposób wyświetlania',
+      items: [
+        { value: 'cards', icon: 'cards', title: 'Widok kart' },
+        { value: 'list', icon: 'rows', title: 'Widok listy' }
+      ],
+      onPick: function (value) { setPref({ view: value }); }
+    });
+    nodes.viewButtons = view.buttons;
 
     nodes.tallyValue = D.el('b', { text: '0' });
     nodes.tallyLabel = D.el('span', { text: 'projektów' });
@@ -347,7 +448,10 @@
     D.render(nodes.filters, [
       D.el('div', { class: 'filters__field', style: { flex: '1 1 280px' } }, [
         D.el('label', { class: 'label', text: 'Szukaj', attrs: { for: 'tb-search' } }),
-        search
+        D.el('div', { class: 'searchbox' }, [
+          nodes.search,
+          D.el('kbd', { class: 'kbd kbd--inField', text: '/' })
+        ])
       ]),
       D.el('div', { class: 'filters__field' }, [
         D.el('label', { class: 'label', text: 'Status', attrs: { for: 'tb-status' } }),
@@ -355,36 +459,69 @@
       ]),
       D.el('div', { class: 'filters__field' }, [
         D.el('label', { class: 'label', text: 'Sortowanie', attrs: { for: 'tb-sort' } }),
-        sortSelect
+        nodes.sortSelect
+      ]),
+      D.el('div', { class: 'filters__field' }, [
+        D.el('span', { class: 'label', text: 'Widok' }),
+        view.node
       ]),
       D.el('div', { class: 'filters__tally' }, [nodes.tallyValue, nodes.tallyLabel])
     ]);
   }
 
+  function renderChrome(state) {
+    Object.keys(nodes.themeButtons || {}).forEach(function (key) {
+      nodes.themeButtons[key].setAttribute('aria-pressed', String(state.prefs.theme === key));
+    });
+    Object.keys(nodes.viewButtons || {}).forEach(function (key) {
+      nodes.viewButtons[key].setAttribute('aria-pressed', String(state.prefs.view === key));
+    });
+  }
+
   function renderNotice(state) {
-    var hasNotice = !!state.notice;
-    nodes.notice.className = 'notice' + (hasNotice ? '' : ' notice--hidden');
+    var has = !!state.notice;
+    nodes.notice.className = 'notice' + (has ? '' : ' notice--hidden');
     nodes.notice.textContent = state.notice || '';
   }
 
   function renderForm(state) {
     if (state.form === lastForm) return;
     lastForm = state.form;
+
     if (!state.form) {
-      D.clear(nodes.form);
+      if (drawerEl) Dialog.closeDrawer();
       return;
     }
-    D.render(nodes.form, [
-      E.ProjectForm.projectForm(state.form.draft, state.form.errors, {
-        onSubmit: submitForm,
-        onCancel: closeForm
-      })
-    ]);
+
+    var content = E.ProjectForm.projectForm(state.form.draft, state.form.errors, {
+      onSubmit: submitForm,
+      onCancel: closeForm
+    });
+    var title = state.form.draft.id != null ? 'Edytuj projekt' : 'Nowy projekt';
+
+    if (drawerEl) {
+      // Panel zostaje otwarty — podmieniamy tylko treść, żeby błędy walidacji
+      // nie zamykały i nie otwierały go na nowo.
+      drawerEl.querySelector('.drawer__title').textContent = title;
+      D.render(drawerEl.querySelector('.drawer__body'), [content]);
+      return;
+    }
+
+    drawerEl = Dialog.openDrawer({
+      title: title,
+      content: content,
+      onClose: function () {
+        drawerEl = null;
+        lastForm = null;
+        if (store.getState().form) store.set({ form: null });
+      }
+    });
   }
 
   function renderList(state) {
     var all = state.workspace.projects;
     var visible = Query.filterAndSort(all, state.filters);
+    var motionMap = buildMotion(state);
 
     nodes.tallyValue.textContent = all.length === visible.length
       ? String(all.length)
@@ -406,17 +543,12 @@
             text: 'Załóż pierwszy projekt albo wczytaj zestaw testowy, żeby zobaczyć listę, etapy i postęp na przykładzie.'
           }),
           D.el('div', { class: 'project__actions' }, [
-            D.el('button', {
-              class: 'btn btn--primary', text: 'Nowy projekt',
-              attrs: { type: 'button' }, on: { click: openCreate }
-            }),
-            D.el('button', {
-              class: 'btn', text: 'Dodaj dane testowe',
-              attrs: { type: 'button' }, on: { click: loadDemo }
-            })
+            D.el('button', { class: 'btn btn--primary', text: 'Nowy projekt', attrs: { type: 'button' }, on: { click: openCreate } }),
+            D.el('button', { class: 'btn', text: 'Dodaj dane testowe', attrs: { type: 'button' }, on: { click: loadDemo } })
           ])
         ])
       ]);
+      commitMotion(state);
       return;
     }
 
@@ -427,30 +559,70 @@
           D.el('p', { class: 'empty__text', text: 'Zmień wyszukiwaną frazę albo wybierz inny status.' })
         ])
       ]);
+      commitMotion(state);
       return;
     }
 
-    D.render(nodes.list, [
-      D.el('div', { class: 'projects' }, visible.map(function (project) {
-        return E.ProjectCard.projectCard(project, { expanded: !!state.expanded[project.id] }, handlers);
-      }))
-    ]);
+    if (state.prefs.view === 'list') {
+      D.render(nodes.list, [
+        E.ProjectTable.projectTable(visible, state, handlers, function (project) {
+          return motionMap[project.id] || {};
+        })
+      ]);
+    } else {
+      D.render(nodes.list, [
+        D.el('div', { class: 'projects' }, visible.map(function (project) {
+          return E.ProjectCard.projectCard(
+            project,
+            { expanded: !!state.expanded[project.id] },
+            handlers,
+            motionMap[project.id] || {}
+          );
+        }))
+      ]);
+    }
+
+    commitMotion(state);
   }
 
   function persist(state) {
     if (state.workspace === lastWorkspace) return;
     lastWorkspace = state.workspace;
     var result = storage.save(state.workspace);
-    nodes.save.textContent = result.ok
-      ? 'Zapisano na tym urządzeniu'
-      : 'Zapis lokalny niedostępny';
+    nodes.save.textContent = result.ok ? 'Zapisano na tym urządzeniu' : 'Zapis lokalny niedostępny';
   }
 
   function renderAll(state) {
+    renderChrome(state);
     renderNotice(state);
     renderForm(state);
     renderList(state);
     persist(state);
+  }
+
+  /* ---------- klawiatura ---------- */
+
+  function isTyping(target) {
+    if (!target) return false;
+    var tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
+  function onKeydown(event) {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (isTyping(event.target)) return;
+
+    if (event.key === '/') {
+      event.preventDefault();
+      nodes.search.focus();
+      nodes.search.select();
+      return;
+    }
+    if (event.key === 'n' || event.key === 'N') {
+      if (Dialog.anyOpen()) return;
+      event.preventDefault();
+      openCreate();
+    }
   }
 
   /* ---------- start ---------- */
@@ -459,7 +631,6 @@
     nodes.rail = D.byId('rail');
     nodes.notice = D.byId('notice');
     nodes.filters = D.byId('filters');
-    nodes.form = D.byId('form-slot');
     nodes.list = D.byId('project-list');
     nodes.summary = D.byId('summary');
     nodes.save = D.byId('save-state');
@@ -474,9 +645,13 @@
       if (nodes.fileInput.files && nodes.fileInput.files[0]) importJson(nodes.fileInput.files[0]);
       nodes.fileInput.value = '';
     });
+    document.addEventListener('keydown', onKeydown);
 
     buildRail();
     buildFilters();
+
+    var prefs = prefsStore.load();
+    applyTheme(prefs.theme);
 
     var loaded = storage.load();
     lastWorkspace = loaded.workspace;
@@ -484,6 +659,7 @@
     store.update(function (state) {
       return Object.assign({}, state, {
         workspace: loaded.workspace,
+        prefs: prefs,
         notice: loaded.importedFromLegacy
           ? 'Wczytano dane ze starszej wersji ETROM (' + loaded.workspace.projects.length + ' projektów). Stary zapis pozostał nietknięty.'
           : loaded.warning
@@ -496,5 +672,5 @@
   else init();
 
   // Udostępnione na potrzeby testów przeglądarkowych.
-  E.app = { store: store, loadDemo: loadDemo };
+  E.app = { store: store, loadDemo: loadDemo, openCreate: openCreate };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -108,3 +108,44 @@ test('isOverdue pomija projekty zakończone i bez terminu', () => {
   assert.equal(Progress.isOverdue({ status: 'active', deadline: '2026-06-16' }, NOW), false);
   assert.equal(Progress.isOverdue(null, NOW), false);
 });
+
+test('activeStage wskazuje pierwszy etap w toku', () => {
+  const project = {
+    stages: [
+      { id: 'a', status: 'done' },
+      { id: 'b', status: 'working' },
+      { id: 'c', status: 'working' },
+      { id: 'd', status: 'todo' }
+    ]
+  };
+  assert.equal(Progress.activeStage(project).id, 'b');
+});
+
+test('activeStage bez etapu w toku wskazuje pierwszy niezaczęty', () => {
+  const project = {
+    stages: [
+      { id: 'a', status: 'done' },
+      { id: 'b', status: 'done' },
+      { id: 'c', status: 'todo' },
+      { id: 'd', status: 'todo' }
+    ]
+  };
+  assert.equal(Progress.activeStage(project).id, 'c');
+});
+
+test('activeStage przedkłada etap w toku nad wcześniejszy niezaczęty', () => {
+  const project = {
+    stages: [
+      { id: 'a', status: 'todo' },
+      { id: 'b', status: 'working' }
+    ]
+  };
+  assert.equal(Progress.activeStage(project).id, 'b', 'praca trwająca jest ważniejsza niż kolejność');
+});
+
+test('activeStage zwraca null, gdy nie ma czego robić', () => {
+  assert.equal(Progress.activeStage({ stages: [{ id: 'a', status: 'done' }] }), null);
+  assert.equal(Progress.activeStage({ stages: [] }), null);
+  assert.equal(Progress.activeStage(null), null);
+  assert.equal(Progress.activeStage({}), null);
+});

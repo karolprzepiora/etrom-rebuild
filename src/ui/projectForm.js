@@ -1,4 +1,5 @@
-/* ETROM — formularz projektu (dodawanie i edycja). */
+/* ETROM — formularz projektu. Mieszka w panelu bocznym, więc nagłówek
+   zapewnia panel, a formularz zajmuje się wyłącznie polami. */
 (function (root) {
   'use strict';
 
@@ -67,8 +68,8 @@
     }
 
     var form = D.el('form', {
-      class: 'panel',
-      attrs: { novalidate: true, 'aria-labelledby': 'pf-title' },
+      class: 'form',
+      attrs: { id: 'project-form', novalidate: true },
       on: {
         submit: function (event) {
           event.preventDefault();
@@ -76,17 +77,12 @@
         }
       }
     }, [
-      D.el('h2', {
-        class: 'panel__title',
-        text: editing ? 'Edytuj projekt' : 'Nowy projekt',
-        attrs: { id: 'pf-title' }
-      }),
-      D.el('div', { class: 'panel__grid' }, [
+      D.el('div', { class: 'form__grid' }, [
         field('pf-code', 'Kod projektu', codeInput, problems.code, 'Musi być niepowtarzalny.'),
         field('pf-name', 'Nazwa', nameInput, problems.name),
         field('pf-client', 'Zamawiający', clientInput, problems.client),
         field('pf-status', 'Status', statusSelect, problems.status),
-        field('pf-deadline', 'Termin umowny', deadlineInput, problems.deadline, 'Opcjonalny.')
+        field('pf-deadline', 'Termin umowy', deadlineInput, problems.deadline, 'Pole opcjonalne.')
       ]),
       !editing && D.el('div', { class: 'field field--check' }, [
         stagesCheckbox,
@@ -95,7 +91,7 @@
           attrs: { for: 'pf-stages' }
         })
       ]),
-      D.el('div', { class: 'panel__actions' }, [
+      D.el('div', { class: 'form__actions' }, [
         D.el('button', {
           class: 'btn',
           text: 'Anuluj',
@@ -108,11 +104,9 @@
           attrs: { type: 'submit' }
         })
       ])
-    ]);
+    ].filter(Boolean));
 
-    // Fokus na pierwszym polu, żeby dało się pracować z klawiatury.
     window.setTimeout(function () { codeInput.focus(); }, 0);
-
     return form;
   }
 

@@ -92,20 +92,42 @@ async function main() {
     }
 
     await run('document.getElementById("action-demo").click(); return true;');
+    await sleep(300);
+
+    async function shoot(name) {
+      await sleep(350);
+      const shot = await client.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+      const file = path.join(OUT, 'etrom-' + name + '.png');
+      fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
+      process.stdout.write('zapisano ' + file + '\n');
+    }
+    const theme = (value) => run('document.documentElement.setAttribute("data-theme", "' + value + '"); return true;');
+    const pick = (label) => run('document.querySelector(\'.segmented__btn[aria-label="' + label + '"]\').click(); return true;');
+
+    // Karty z rozwiniętymi etapami
     await run(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
       'card.querySelectorAll(".btn--small")[0].click(); return true;'
     );
-    await sleep(400);
+    await theme('light');
+    await shoot('light');
+    await theme('dark');
+    await shoot('dark');
 
-    for (const theme of ['light', 'dark']) {
-      await run('document.documentElement.setAttribute("data-theme", "' + theme + '"); return true;');
-      await sleep(250);
-      const shot = await client.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-      const file = path.join(OUT, 'etrom-' + theme + '.png');
-      fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
-      process.stdout.write('zapisano ' + file + '\n');
-    }
+    // Widok listy
+    await theme('light');
+    await run(
+      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+      'card.querySelectorAll(".btn--small")[0].click(); return true;'
+    );
+    await pick('Widok listy');
+    await shoot('lista');
+
+    // Panel nowego projektu
+    await pick('Widok kart');
+    await run('document.getElementById("action-new").click(); return true;');
+    await shoot('panel');
+
   } finally {
     client.close();
     child.kill('SIGKILL');
