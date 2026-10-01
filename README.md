@@ -1,96 +1,100 @@
-# ETROM v2 — Zarządzanie Projektami
+# ETROM — wersja 2
 
-🚀 Przebudowana aplikacja ETROM od nowa w React + TypeScript + Tailwind CSS.
+Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
+**bez instalacji i bez serwera** — wystarczy dwuklik na `index.html`.
 
-## MVP v1.0 Features
+![ETROM — widok projektów](docs/screenshots/etrom-light.png)
 
-✅ **Projekty** — Lista projektów w widoku kart z:
-- Kod, nazwa, klient
-- Status (Planowanie/Aktywny/Wstrzymany/Zakończony)
-- Postęp etapów (progress bar)
-- Podgląd zespołu
+## Uruchomienie
 
-✅ **Zarządzanie** — Dodawanie, edycja, usuwanie projektów
+1. Pobierz i rozpakuj **cały** folder.
+2. Kliknij dwukrotnie `index.html`.
 
-✅ **Przechowywanie** — localStorage JSON (kompatybilne ze starym ETROM)
+To wszystko. Nie trzeba Node.js, npm ani niczego instalować.
+Jeśli wolisz adres `http://`, działa też przez dowolny serwer statyczny,
+na przykład `python -m http.server 8000`.
 
-## Instalacja
+Pierwsze uruchomienie jest puste. Przycisk **Dane testowe** dopisuje pięć
+przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postęp.
+
+## Co już działa
+
+- lista projektów w kartach, z postępem rzeczowym liczonym **wagą godzin etapów**,
+- dodawanie, edycja i usuwanie projektu, z walidacją przy polach
+  (kod projektu musi być niepowtarzalny),
+- 14 standardowych etapów z kolorami dziedzin; dokładanie i usuwanie etapów,
+- status etapu przełączany kliknięciem: *Do wykonania → W toku → Zakończony*,
+- terminy z opisem stanu: *po terminie*, *termin dzisiaj*, *pozostało N dni*,
+- szukanie po kodzie, nazwie i zamawiającym; filtr statusu; cztery sortowania,
+- zapis lokalny w przeglądarce (`localStorage`) oraz pobieranie i wczytywanie kopii JSON,
+- automatyczny odczyt danych ze starszej wersji ETROM (klucz `etrom.workspace.v2`) —
+  stary zapis zostaje nietknięty,
+- motyw jasny i ciemny zgodnie z ustawieniem systemu.
+
+## Czego jeszcze nie ma
+
+Zadania wewnątrz etapów, Kroki, zespół i role, ewidencja czasu pracy, Nadzór,
+Plan pracy, Kanban i Gantt. To kolejne kroki przebudowy — poprzednia wersja
+aplikacji ma je i zostaje nienaruszona do czasu, aż nowa je dogoni.
+
+## Układ plików
+
+```
+index.html              jedyny plik do otwarcia
+styles/
+  tokens.css            kolory, odstępy, typografia — jedno źródło prawdy
+  app.css               komponenty i układ
+src/core/               logika, zero kodu dotykającego DOM
+  catalog.js            14 etapów i dziedziny
+  model.js              fabryki i walidacja
+  progress.js           postęp i terminy
+  query.js              szukanie, filtrowanie, sortowanie
+  storage.js            zapis lokalny i odczyt starej wersji
+  store.js              pojemnik na stan
+src/ui/                 warstwa widoku
+  dom.js                budowanie elementów
+  stageList.js          lista etapów
+  projectCard.js        karta projektu
+  projectForm.js        formularz
+  app.js                spięcie całości
+tests/                  testy logiki (Node) i test przeglądarki
+tools/screenshot.js     zrzuty ekranu obu motywów
+```
+
+Podział jest celowy: w `src/core` nie ma ani jednego odwołania do DOM, więc
+liczenie postępu, terminów i walidację da się przetestować bez przeglądarki.
+Widok tylko czyta stan i rysuje.
+
+## Testy
 
 ```bash
-# 1. Instalacja dependencies
-npm install
-
-# 2. Development server
-npm run dev
-
-# 3. Build do produkcji
-npm run build
-
-# 4. Preview buildowanej aplikacji
-npm preview
+node --test tests/*.test.js     # 63 testy logiki, bez przeglądarki
+node tests/browser/smoke.js     # 19 sprawdzeń w Chromium, na adresie file://
+node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
-Otwórz w przeglądarce: `http://localhost:5173`
+Testy nie mają żadnych zależności z npm — korzystają z wbudowanego
+`node:test` i protokołu DevTools. Test przeglądarkowy uruchamia aplikację
+dokładnie tak, jak robi to dwuklik z dysku, więc sprawdza także to,
+czy zapis lokalny działa na `file://`.
 
-## Struktura Projektu
+Wymagany Node.js 22 lub nowszy — **tylko do testów**, nie do działania aplikacji.
 
-```
-src/
-├── components/       # Komponenty React
-│   └── ProjectCard.tsx
-├── pages/           # Strony aplikacji (przyszłość)
-├── stores/          # Zustand state management
-│   └── workspaceStore.ts
-├── types/           # TypeScript interfaces
-│   └── index.ts
-├── utils/           # Utility functions
-├── styles/          # Global styles
-├── App.tsx          # Root component
-├── main.tsx         # Vite entry point
-└── index.css        # Tailwind CSS
-```
+## Decyzje techniczne
 
-## Tech Stack
+**Dlaczego klasyczne skrypty, a nie moduły ES ani framework?**
+Aplikacja ma działać po dwukliku z rozpakowanego folderu. Moduły ES
+(`<script type="module">`) nie wczytują się z adresu `file://`, bo przeglądarka
+blokuje je regułami CORS. Framework taki jak React wymagałby kroku budowania,
+czyli instalacji Node.js po stronie użytkownika. Dlatego pliki ładują się jako
+zwykłe skrypty i wystawiają się w jednej przestrzeni nazw `window.ETROM`,
+z zabezpieczeniem pozwalającym wczytać je też w Node do testów.
 
-- **React 19** — Framework UI
-- **TypeScript** — Type safety
-- **Tailwind CSS** — Styling (5k lines zamiast 37k!)
-- **Zustand** — State management
-- **Vite** — Build tool
-- **localStorage** — Data persistence
+**Dlaczego elementy budowane są przez DOM, a nie przez sklejanie HTML?**
+Nazwa projektu wpisana przez użytkownika nigdy nie trafia do `innerHTML`.
+Znika przez to cała klasa błędów z escapowaniem — jest na to test.
 
-## Plan Dalszego Rozwoju
-
-### Phase 2 (Tydzień 2-3)
-- [ ] Stages (Etapy) w projekcie
-- [ ] Team (Zarządzanie osobami)
-- [ ] Filtry i sortowanie
-- [ ] Responsive design
-
-### Phase 3 (Tydzień 4+)
-- [ ] Planning View (Plan pracy)
-- [ ] Supervision View (Nadzór)
-- [ ] Time tracking
-- [ ] Backend (Node.js + PostgreSQL)
-
-## Development
-
-```bash
-# Uruchomić dev server z hot reload
-npm run dev
-
-# Type checking
-npx tsc --noEmit
-
-# Build production
-npm run build
-```
-
-## Migracja Danych
-
-Aplikacja automatycznie wczytuje dane z localStorage pod kluczem `etrom.workspace.v2`. Jeśli masz stare dane, będą automatycznie załadowane.
-
-## Autor
-
-Claude Haiku 4.5 — AI Developer  
-🚀 Przebudowuję ETROM od nowa, krok po kroku!
+**Dlaczego sortowanie po terminie odsuwa projekty zakończone?**
+Projekt zamknięty nie ma już czynnego terminu, a przy sortowaniu po dacie
+potrafił zająć czoło listy datą sprzed wielu tygodni. Wyszło to dopiero
+w teście przeglądarkowym.

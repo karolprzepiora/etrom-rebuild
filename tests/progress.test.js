@@ -1,0 +1,110 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const Progress = require('../src/core/progress.js');
+
+// Stały punkt odniesienia: 15 czerwca 2026, czas lokalny.
+const NOW = new Date(2026, 5, 15, 13, 45);
+
+test('daysUntil liczy pełne dni kalendarzowe', () => {
+  assert.equal(Progress.daysUntil('2026-06-15', NOW), 0);
+  assert.equal(Progress.daysUntil('2026-06-16', NOW), 1);
+  assert.equal(Progress.daysUntil('2026-06-22', NOW), 7);
+  assert.equal(Progress.daysUntil('2026-07-15', NOW), 30);
+  assert.equal(Progress.daysUntil('2026-06-14', NOW), -1);
+});
+
+test('daysUntil ignoruje godzinę w punkcie odniesienia', () => {
+  const early = new Date(2026, 5, 15, 0, 1);
+  const late = new Date(2026, 5, 15, 23, 59);
+  assert.equal(Progress.daysUntil('2026-06-20', early), Progress.daysUntil('2026-06-20', late));
+});
+
+test('daysUntil zwraca null dla braku lub błędnej daty', () => {
+  assert.equal(Progress.daysUntil('', NOW), null);
+  assert.equal(Progress.daysUntil('2026-02-30', NOW), null);
+  assert.equal(Progress.daysUntil(undefined, NOW), null);
+});
+
+test('deadlineInfo dobiera ton na granicach progów', () => {
+  assert.equal(Progress.deadlineInfo('', NOW).tone, 'none');
+  assert.equal(Progress.deadlineInfo('2026-06-14', NOW).tone, 'overdue');
+  assert.equal(Progress.deadlineInfo('2026-06-15', NOW).tone, 'urgent');
+  assert.equal(Progress.deadlineInfo('2026-06-22', NOW).tone, 'urgent');
+  assert.equal(Progress.deadlineInfo('2026-06-23', NOW).tone, 'warning');
+  assert.equal(Progress.deadlineInfo('2026-07-15', NOW).tone, 'warning');
+  assert.equal(Progress.deadlineInfo('2026-07-16', NOW).tone, 'normal');
+});
+
+test('deadlineInfo opisuje termin po polsku', () => {
+  assert.equal(Progress.deadlineInfo('2026-06-15', NOW).text, 'Termin dzisiaj');
+  assert.equal(Progress.deadlineInfo('2026-06-16', NOW).text, 'Pozostało 1 dzień');
+  assert.equal(Progress.deadlineInfo('2026-06-17', NOW).text, 'Pozostało 2 dni');
+  assert.equal(Progress.deadlineInfo('2026-06-14', NOW).text, '1 dzień po terminie');
+  assert.equal(Progress.deadlineInfo('2026-06-13', NOW).text, '2 dni po terminie');
+  assert.equal(Progress.deadlineInfo('', NOW).text, 'Bez terminu');
+});
+
+test('projectProgress waży postęp godzinami etapów', () => {
+  const project = {
+    stages: [
+      { id: 'a', status: 'done', hours: 10 },
+      { id: 'b', status: 'todo', hours: 30 }
+    ]
+  };
+  const stats = Progress.projectProgress(project);
+  assert.equal(stats.percent, 25);
+  assert.equal(stats.done, 1);
+  assert.equal(stats.total, 2);
+  assert.equal(stats.hoursDone, 10);
+  assert.equal(stats.hoursTotal, 40);
+});
+
+test('projectProgress nie liczy etapów w toku jako zakończonych', () => {
+  const stats = Progress.projectProgress({
+    stages: [
+      { status: 'working', hours: 50 },
+      { status: 'done', hours: 50 }
+    ]
+  });
+  assert.equal(stats.percent, 50);
+  assert.equal(stats.done, 1);
+});
+
+test('projectProgress zaokrągla do pełnych procent', () => {
+  const stats = Progress.projectProgress({
+    stages: [
+      { status: 'done', hours: 1 },
+      { status: 'todo', hours: 1 },
+      { status: 'todo', hours: 1 }
+    ]
+  });
+  assert.equal(stats.percent, 33);
+});
+
+test('projectProgress bez etapów daje zero bez dzielenia przez zero', () => {
+  assert.deepEqual(Progress.projectProgress({ stages: [] }), {
+    percent: 0, done: 0, total: 0, hoursDone: 0, hoursTotal: 0
+  });
+  assert.equal(Progress.projectProgress(null).percent, 0);
+  assert.equal(Progress.projectProgress({}).percent, 0);
+});
+
+test('projectProgress traktuje błędne godziny jako zero', () => {
+  const stats = Progress.projectProgress({
+    stages: [
+      { status: 'done', hours: 'dużo' },
+      { status: 'done', hours: 20 }
+    ]
+  });
+  assert.equal(stats.hoursTotal, 20);
+  assert.equal(stats.percent, 100);
+});
+
+test('isOverdue pomija projekty zakończone i bez terminu', () => {
+  assert.equal(Progress.isOverdue({ status: 'active', deadline: '2026-06-14' }, NOW), true);
+  assert.equal(Progress.isOverdue({ status: 'done', deadline: '2026-06-14' }, NOW), false);
+  assert.equal(Progress.isOverdue({ status: 'active', deadline: '' }, NOW), false);
+  assert.equal(Progress.isOverdue({ status: 'active', deadline: '2026-06-16' }, NOW), false);
+  assert.equal(Progress.isOverdue(null, NOW), false);
+});

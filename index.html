@@ -1,13 +1,63 @@
-<!doctype html>
-<html lang="pl">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ETROM - Zarządzanie Projektami</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="pl" >
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ETROM — zarządzanie projektami</title>
+  <meta name="description" content="ETROM — lokalna aplikacja do prowadzenia projektów, etapów i terminów.">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/app.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="app-header__inner">
+        <div class="brand">
+          <span class="brand__name">ETROM</span>
+          <span class="brand__tag">projekty i etapy</span>
+        </div>
+        <div class="app-header__spacer"></div>
+        <div class="app-header__actions">
+          <button class="btn btn--primary" type="button" id="action-new">Nowy projekt</button>
+          <button class="btn" type="button" id="action-demo">Dane testowe</button>
+          <button class="btn" type="button" id="action-export">Pobierz kopię</button>
+          <button class="btn" type="button" id="action-import">Wczytaj kopię</button>
+          <button class="btn btn--danger" type="button" id="action-clear">Wyczyść</button>
+          <input type="file" id="import-file" accept="application/json,.json" class="sr-only" tabindex="-1">
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <p class="notice notice--hidden" id="notice" role="status" aria-live="polite"></p>
+      <h1 class="sr-only">Lista projektów</h1>
+      <div class="toolbar" id="toolbar"></div>
+      <div id="form-slot"></div>
+      <div id="project-list"></div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="app-footer__inner">
+        <span id="summary"></span>
+        <span id="save-state">Zapis lokalny</span>
+        <span class="app-header__spacer"></span>
+        <span>Dane zostają na tym urządzeniu (localStorage). Przed przenoszeniem folderu pobierz kopię JSON.</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Klasyczne skrypty w kolejności zależności: działa po dwukliku z dysku (file://),
+       bez serwera i bez kompilacji. Moduły ES nie zadziałałyby z file:// (CORS). -->
+  <script src="src/core/catalog.js"></script>
+  <script src="src/core/model.js"></script>
+  <script src="src/core/progress.js"></script>
+  <script src="src/core/query.js"></script>
+  <script src="src/core/storage.js"></script>
+  <script src="src/core/store.js"></script>
+  <script src="src/ui/dom.js"></script>
+  <script src="src/ui/stageList.js"></script>
+  <script src="src/ui/projectCard.js"></script>
+  <script src="src/ui/projectForm.js"></script>
+  <script src="src/ui/app.js"></script>
+</body>
 </html>

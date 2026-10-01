@@ -1,0 +1,159 @@
+/* ETROM — design tokens. Jedno źródło prawdy dla kolorów, odstępów i typografii.
+   Zmiana wartości tutaj zmienia cały interfejs. */
+
+:root {
+  color-scheme: light dark;
+
+  /* Skala odstępów (4 px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Promienie */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Typografia */
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  /* Powierzchnie i tekst — jasny motyw */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eceef1;
+  --border: #d8dce2;
+  --border-strong: #b9c0c9;
+  --text: #171a1f;
+  --text-muted: #5b636e;
+  --text-faint: #858d98;
+
+  /* Akcent marki */
+  --accent: #1f6feb;
+  --accent-hover: #1a5fd0;
+  --accent-soft: #e8f0fe;
+  --accent-text: #ffffff;
+
+  /* Semantyka stanów */
+  --ok: #1a7f46;
+  --ok-soft: #e4f4ea;
+  --warn: #9a6400;
+  --warn-soft: #fdf3dd;
+  --danger: #b3261e;
+  --danger-soft: #fdeceb;
+  --info: #0b6a79;
+  --info-soft: #e2f3f6;
+  --neutral-soft: #eceef1;
+
+  /* Kolory dziedzin etapów (zgodne z katalogiem ETROM) */
+  --domain-general: #64748b;
+  --domain-design: #6d4aff;
+  --domain-environment: #2f8f4e;
+  --domain-water: #0b8fa8;
+  --domain-location: #b07400;
+  --domain-building: #c1543a;
+
+  /* Cienie */
+  --shadow-sm: 0 1px 2px rgba(16, 20, 28, 0.08);
+  --shadow-md: 0 2px 8px rgba(16, 20, 28, 0.10);
+  --shadow-lg: 0 8px 24px rgba(16, 20, 28, 0.14);
+
+  /* Fokus */
+  --focus-ring: 0 0 0 3px rgba(31, 111, 235, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1116;
+    --surface: #161b22;
+    --surface-raised: #1c222b;
+    --surface-sunken: #0b0e13;
+    --border: #2b323c;
+    --border-strong: #3d4551;
+    --text: #e7eaef;
+    --text-muted: #9aa4b1;
+    --text-faint: #6e7884;
+
+    --accent: #4c8dff;
+    --accent-hover: #6a9fff;
+    --accent-soft: #16263f;
+    --accent-text: #0b1016;
+
+    --ok: #56d48a;
+    --ok-soft: #10261a;
+    --warn: #e0ad4a;
+    --warn-soft: #2a2110;
+    --danger: #ff7a72;
+    --danger-soft: #2d1513;
+    --info: #54c6d8;
+    --info-soft: #0e2429;
+    --neutral-soft: #222934;
+
+    --domain-general: #94a3b8;
+    --domain-design: #a78bfa;
+    --domain-environment: #5bc27f;
+    --domain-water: #4bc2d8;
+    --domain-location: #dcae4a;
+    --domain-building: #e58b72;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+    --focus-ring: 0 0 0 3px rgba(76, 141, 255, 0.45);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1116;
+  --surface: #161b22;
+  --surface-raised: #1c222b;
+  --surface-sunken: #0b0e13;
+  --border: #2b323c;
+  --border-strong: #3d4551;
+  --text: #e7eaef;
+  --text-muted: #9aa4b1;
+  --text-faint: #6e7884;
+
+  --accent: #4c8dff;
+  --accent-hover: #6a9fff;
+  --accent-soft: #16263f;
+  --accent-text: #0b1016;
+
+  --ok: #56d48a;
+  --ok-soft: #10261a;
+  --warn: #e0ad4a;
+  --warn-soft: #2a2110;
+  --danger: #ff7a72;
+  --danger-soft: #2d1513;
+  --info: #54c6d8;
+  --info-soft: #0e2429;
+  --neutral-soft: #222934;
+
+  --domain-general: #94a3b8;
+  --domain-design: #a78bfa;
+  --domain-environment: #5bc27f;
+  --domain-water: #4bc2d8;
+  --domain-location: #dcae4a;
+  --domain-building: #e58b72;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  --focus-ring: 0 0 0 3px rgba(76, 141, 255, 0.45);
+}
