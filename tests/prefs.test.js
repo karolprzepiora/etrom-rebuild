@@ -14,24 +14,30 @@ function fakeBackend(initial) {
 }
 
 test('domyślnie motyw idzie za systemem, a lista pokazuje karty', () => {
-  assert.deepEqual(Prefs.defaults(), { theme: 'system', view: 'cards' });
+  assert.deepEqual(Prefs.defaults(), { theme: 'system', view: 'cards', accent: 'standard' });
+});
+
+test('wariant barw przyjmuje tylko znane nazwy', () => {
+  assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'hydro');
+  assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'topo');
+  assert.equal(Prefs.normalize({ accent: 'neonowy' }).accent, 'standard');
 });
 
 test('normalize odrzuca nieznane wartości', () => {
-  assert.deepEqual(Prefs.normalize({ theme: 'neon', view: 'kafelki' }), { theme: 'system', view: 'cards' });
-  assert.deepEqual(Prefs.normalize(null), { theme: 'system', view: 'cards' });
-  assert.deepEqual(Prefs.normalize({ theme: 'dark', view: 'list' }), { theme: 'dark', view: 'list' });
+  assert.deepEqual(Prefs.normalize({ theme: 'neon', view: 'kafelki' }), { theme: 'system', view: 'cards', accent: 'standard' });
+  assert.deepEqual(Prefs.normalize(null), { theme: 'system', view: 'cards', accent: 'standard' });
+  assert.deepEqual(Prefs.normalize({ theme: 'dark', view: 'list' }), { theme: 'dark', view: 'list', accent: 'standard' });
 });
 
 test('normalize uzupełnia brakujące pole, zachowując podane', () => {
-  assert.deepEqual(Prefs.normalize({ theme: 'light' }), { theme: 'light', view: 'cards' });
-  assert.deepEqual(Prefs.normalize({ view: 'list' }), { theme: 'system', view: 'list' });
+  assert.deepEqual(Prefs.normalize({ theme: 'light' }), { theme: 'light', view: 'cards', accent: 'standard' });
+  assert.deepEqual(Prefs.normalize({ view: 'list' }), { theme: 'system', view: 'list', accent: 'standard' });
 });
 
 test('zapis i odczyt przenoszą ustawienia', () => {
   const prefs = Prefs.createPrefs(fakeBackend());
   assert.equal(prefs.save({ theme: 'dark', view: 'list' }), true);
-  assert.deepEqual(prefs.load(), { theme: 'dark', view: 'list' });
+  assert.deepEqual(prefs.load(), { theme: 'dark', view: 'list', accent: 'standard' });
 });
 
 test('uszkodzony zapis ustawień nie wywraca aplikacji', () => {

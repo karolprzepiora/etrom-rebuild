@@ -71,6 +71,7 @@
 
     return D.el('tr', {
       class: 'table__row' + (expanded ? ' table__row--open' : ''),
+      style: { 'view-transition-name': 'project-' + project.id },
       dataset: { projectCode: project.code }
     }, [
       D.el('td', { class: 'table__td' }, [

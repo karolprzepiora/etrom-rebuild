@@ -7,16 +7,18 @@
   var KEY = 'etrom.prefs.v1';
   var THEMES = ['system', 'light', 'dark'];
   var VIEWS = ['cards', 'list'];
+  var ACCENTS = ['standard', 'hydro', 'topo'];
 
   function defaults() {
-    return { theme: 'system', view: 'cards' };
+    return { theme: 'system', view: 'cards', accent: 'standard' };
   }
 
   function normalize(raw) {
     var source = (raw && typeof raw === 'object') ? raw : {};
     return {
       theme: THEMES.indexOf(source.theme) >= 0 ? source.theme : 'system',
-      view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'cards'
+      view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'cards',
+      accent: ACCENTS.indexOf(source.accent) >= 0 ? source.accent : 'standard'
     };
   }
 
@@ -59,6 +61,7 @@
     KEY: KEY,
     THEMES: THEMES,
     VIEWS: VIEWS,
+    ACCENTS: ACCENTS,
     defaults: defaults,
     normalize: normalize,
     createPrefs: createPrefs

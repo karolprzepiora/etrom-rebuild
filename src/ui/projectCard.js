@@ -36,6 +36,19 @@
     ]);
   }
 
+  /** Czternaście segmentów: stan całego projektu bez rozwijania karty. */
+  function stageStrip(project) {
+    if (!project.stages.length) return null;
+    return D.el('div', { class: 'strip', attrs: { 'aria-hidden': 'true' } },
+      project.stages.map(function (stage) {
+        var entry = Catalog.find(stage.id);
+        return D.el('span', {
+          class: 'strip__seg strip__seg--' + stage.status,
+          attrs: { title: entry.number + '. ' + entry.name + ' — ' + Model.STAGE_STATUS[stage.status] }
+        });
+      }));
+  }
+
   function meter(stats, motion) {
     var fillClass = 'meter__fill' + (stats.percent === 100 ? ' meter__fill--full' : '');
     var style = { width: stats.percent + '%' };
@@ -114,6 +127,7 @@
         D.el('p', { class: 'project__client', text: project.client || 'Zamawiający nieokreślony' }),
         activeLine(project),
         meter(stats, motion),
+        stageStrip(project),
         D.el('div', { class: 'tiles' }, [
           tile(stats.done + ' / ' + stats.total, 'etapów zakończonych'),
           tile(stats.hoursDone + '/' + stats.hoursTotal + ' h', 'budżet godzin')
@@ -149,7 +163,7 @@
 
     return D.el('article', {
       class: 'project' + (expanded ? ' project--open' : ''),
-      style: Identity.coverStyle(project.code),
+      style: Object.assign({ 'view-transition-name': 'project-' + project.id }, Identity.coverStyle(project.code)),
       dataset: { projectCode: project.code }
     }, children);
   }

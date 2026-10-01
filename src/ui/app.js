@@ -11,6 +11,8 @@
   var Progress = E.Progress;
   var Icons = E.Icons;
   var Dialog = E.Dialog;
+  var Toast = E.Toast;
+  var Motion = E.Motion;
 
   var storage = E.Storage.createStorage();
   var prefsStore = E.Prefs.createPrefs();
@@ -114,22 +116,33 @@
   /* ---------- projekty i etapy ---------- */
 
   function deleteProject(id) {
-    var project = findProject(id);
-    if (!project) return;
-    Dialog.confirm({
-      title: 'Usunąć projekt?',
-      message: 'Projekt „' + project.name + '” zniknie razem ze wszystkimi etapami. Tej operacji nie można cofnąć.',
-      confirm: 'Usuń projekt',
-      tone: 'danger'
-    }).then(function (accepted) {
-      if (!accepted) return;
-      setWorkspace(function (projects) {
-        return projects.filter(function (p) { return p.id !== id; });
+    var projects = store.getState().workspace.projects;
+    var index = projects.findIndex(function (p) { return p.id === id; });
+    if (index < 0) return;
+    var project = projects[index];
+
+    Motion.withTransition(function () {
+      setWorkspace(function (list) {
+        return list.filter(function (p) { return p.id !== id; });
       });
+    });
+
+    Toast.show({
+      message: 'Usunięto projekt „' + project.name + '”',
+      actionLabel: 'Cofnij',
+      onAction: function () {
+        setWorkspace(function (list) {
+          var copy = list.slice();
+          copy.splice(Math.min(index, copy.length), 0, project);
+          return copy;
+        });
+      }
     });
   }
 
   function toggleExpand(id) {
+    // Bez przejścia widoku: rozwinięcie ma własną animację wejścia listy etapów,
+    // a startViewTransition odkładałoby zmianę o klatkę i zamrażało stronę.
     store.update(function (state) {
       var expanded = Object.assign({}, state.expanded);
       if (expanded[id]) delete expanded[id];
@@ -165,10 +178,30 @@
   }
 
   function removeStage(projectId, stageId) {
-    mapProject(projectId, function (project) {
-      return Object.assign({}, project, {
-        stages: project.stages.filter(function (s) { return s.id !== stageId; })
+    var project = findProject(projectId);
+    if (!project) return;
+    var index = project.stages.findIndex(function (s) { return s.id === stageId; });
+    if (index < 0) return;
+    var stage = project.stages[index];
+    var entry = Catalog.find(stage.id);
+
+    mapProject(projectId, function (current) {
+      return Object.assign({}, current, {
+        stages: current.stages.filter(function (s) { return s.id !== stageId; })
       });
+    });
+
+    Toast.show({
+      message: 'Usunięto etap „' + entry.name + '” z projektu ' + project.code,
+      actionLabel: 'Cofnij',
+      onAction: function () {
+        mapProject(projectId, function (current) {
+          if (current.stages.some(function (s) { return s.id === stageId; })) return current;
+          var copy = current.stages.slice();
+          copy.splice(Math.min(index, copy.length), 0, stage);
+          return Object.assign({}, current, { stages: copy });
+        });
+      }
     });
   }
 
@@ -183,6 +216,11 @@
 
   /* ---------- preferencje ---------- */
 
+  function applyAccent(accent) {
+    if (accent === 'standard') document.documentElement.removeAttribute('data-accent');
+    else document.documentElement.setAttribute('data-accent', accent);
+  }
+
   function applyTheme(theme) {
     if (theme === 'system') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
@@ -193,6 +231,7 @@
       var prefs = E.Prefs.normalize(Object.assign({}, state.prefs, patch));
       prefsStore.save(prefs);
       applyTheme(prefs.theme);
+      applyAccent(prefs.accent);
       return Object.assign({}, state, { prefs: prefs });
     });
   }
@@ -282,6 +321,52 @@
     reader.readAsText(file);
   }
 
+  /* ---------- paleta poleceń ---------- */
+
+  function revealProject(project) {
+    store.update(function (state) {
+      var expanded = Object.assign({}, state.expanded);
+      expanded[project.id] = true;
+      return Object.assign({}, state, { expanded: expanded });
+    });
+    window.requestAnimationFrame(function () {
+      var node = document.querySelector('[data-project-code="' + window.CSS.escape(project.code) + '"]');
+      if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
+  function paletteCommands() {
+    var prefs = store.getState().prefs;
+    return [
+      { label: 'Nowy projekt', icon: 'folder', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
+      { label: 'Dodaj dane testowe', icon: 'board', keywords: 'demo przykład', run: loadDemo },
+      { label: 'Pobierz kopię JSON', icon: 'auto', keywords: 'eksport zapis backup', run: exportJson },
+      { label: 'Wczytaj kopię JSON', icon: 'auto', keywords: 'import przywróć', run: function () { nodes.fileInput.click(); } },
+      { label: 'Wyczyść dane programu', icon: 'alert', keywords: 'skasuj usuń wszystko', run: clearAll },
+      { label: 'Widok kart', icon: 'cards', meta: prefs.view === 'cards' ? 'teraz' : '', keywords: 'kafelki', run: function () { setView('cards'); } },
+      { label: 'Widok listy', icon: 'rows', meta: prefs.view === 'list' ? 'teraz' : '', keywords: 'tabela wiersze', run: function () { setView('list'); } },
+      { label: 'Motyw jasny', icon: 'sun', meta: prefs.theme === 'light' ? 'teraz' : '', run: function () { setPref({ theme: 'light' }); } },
+      { label: 'Motyw ciemny', icon: 'moon', meta: prefs.theme === 'dark' ? 'teraz' : '', run: function () { setPref({ theme: 'dark' }); } },
+      { label: 'Motyw jak w systemie', icon: 'auto', meta: prefs.theme === 'system' ? 'teraz' : '', run: function () { setPref({ theme: 'system' }); } },
+      { label: 'Barwy: standard', icon: 'cards', meta: prefs.accent === 'standard' ? 'teraz' : '', keywords: 'malinowy', run: function () { setPref({ accent: 'standard' }); } },
+      { label: 'Barwy: hydro', icon: 'water', meta: prefs.accent === 'hydro' ? 'teraz' : '', keywords: 'turkus morski', run: function () { setPref({ accent: 'hydro' }); } },
+      { label: 'Barwy: topo', icon: 'location', meta: prefs.accent === 'topo' ? 'teraz' : '', keywords: 'ziemiste mapowe', run: function () { setPref({ accent: 'topo' }); } }
+    ];
+  }
+
+  function openPalette() {
+    E.Palette.open({
+      projects: store.getState().workspace.projects,
+      commands: paletteCommands(),
+      onProject: revealProject
+    });
+  }
+
+  function setView(view) {
+    if (store.getState().prefs.view === view) return;
+    Motion.withTransition(function () { setPref({ view: view }); });
+  }
+
   /* ---------- ruch ---------- */
 
   function buildMotion(state) {
@@ -366,6 +451,17 @@
     });
     nodes.themeButtons = theme.buttons;
 
+    var accent = segmented({
+      label: 'Barwy',
+      items: [
+        { value: 'standard', icon: 'cards', title: 'Barwy standardowe' },
+        { value: 'hydro', icon: 'water', title: 'Barwy hydro' },
+        { value: 'topo', icon: 'location', title: 'Barwy topo' }
+      ],
+      onPick: function (value) { setPref({ accent: value }); }
+    });
+    nodes.accentButtons = accent.buttons;
+
     D.render(nodes.rail, [
       D.el('div', { class: 'rail__brand' }, [
         D.el('p', { class: 'rail__mark', text: 'ETROM' }),
@@ -385,6 +481,15 @@
         D.el('div', { class: 'rail__themeRow' }, [
           D.el('span', { class: 'rail__legend', text: 'Motyw' }),
           theme.node
+        ]),
+        D.el('div', { class: 'rail__themeRow' }, [
+          D.el('span', { class: 'rail__legend', text: 'Barwy' }),
+          accent.node
+        ]),
+        D.el('p', { class: 'rail__hintRow' }, [
+          D.el('kbd', { class: 'kbd', text: 'Ctrl' }),
+          D.el('kbd', { class: 'kbd', text: 'K' }),
+          D.el('span', { text: 'paleta poleceń' })
         ]),
         D.el('p', { text: 'Moduły oznaczone „wkrótce” są jeszcze w poprzedniej wersji aplikacji.' })
       ])
@@ -438,7 +543,7 @@
         { value: 'cards', icon: 'cards', title: 'Widok kart' },
         { value: 'list', icon: 'rows', title: 'Widok listy' }
       ],
-      onPick: function (value) { setPref({ view: value }); }
+      onPick: setView
     });
     nodes.viewButtons = view.buttons;
 
@@ -475,6 +580,9 @@
     });
     Object.keys(nodes.viewButtons || {}).forEach(function (key) {
       nodes.viewButtons[key].setAttribute('aria-pressed', String(state.prefs.view === key));
+    });
+    Object.keys(nodes.accentButtons || {}).forEach(function (key) {
+      nodes.accentButtons[key].setAttribute('aria-pressed', String(state.prefs.accent === key));
     });
   }
 
@@ -609,7 +717,15 @@
   }
 
   function onKeydown(event) {
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.defaultPrevented) return;
+
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+      event.preventDefault();
+      if (!Dialog.anyOpen() && !E.Palette.isOpen()) openPalette();
+      return;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (isTyping(event.target)) return;
 
     if (event.key === '/') {
@@ -619,7 +735,7 @@
       return;
     }
     if (event.key === 'n' || event.key === 'N') {
-      if (Dialog.anyOpen()) return;
+      if (Dialog.anyOpen() || E.Palette.isOpen()) return;
       event.preventDefault();
       openCreate();
     }
@@ -652,6 +768,7 @@
 
     var prefs = prefsStore.load();
     applyTheme(prefs.theme);
+    applyAccent(prefs.accent);
 
     var loaded = storage.load();
     lastWorkspace = loaded.workspace;
@@ -672,5 +789,5 @@
   else init();
 
   // Udostępnione na potrzeby testów przeglądarkowych.
-  E.app = { store: store, loadDemo: loadDemo, openCreate: openCreate };
+  E.app = { store: store, loadDemo: loadDemo, openCreate: openCreate, openPalette: openPalette };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -31,7 +31,11 @@ przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postę
   stary zapis zostaje nietknięty,
 - widok kart i gęsty widok listy z sortowaniem po kolumnach,
 - motyw jasny, ciemny albo zgodny z systemem — wybór zostaje na urządzeniu,
+- paleta poleceń pod `Ctrl+K`: skok do projektu po fragmencie nazwy albo uruchomienie działania,
 - obsługa klawiatury: `N` nowy projekt, `/` skok do wyszukiwarki, `Esc` zamyka panel,
+- pasek czternastu etapów na karcie — stan całego projektu bez rozwijania,
+- usuwanie działa od razu i przez kilka sekund da się je cofnąć,
+- trzy warianty barw (standard, hydro, topo) obok motywu jasnego i ciemnego,
 - formularz w panelu wysuwanym, potwierdzenia we własnych oknach aplikacji.
 
 ## Czego jeszcze nie ma
@@ -71,8 +75,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 81 testów logiki, bez przeglądarki
-node tests/browser/smoke.js     # 27 sprawdzeń w Chromium, na adresie file://
+node --test tests/*.test.js     # 93 testy logiki, bez przeglądarki
+node tests/browser/smoke.js     # 35 sprawdzeń w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
@@ -109,6 +113,24 @@ Systemowe okienko z napisem „localhost mówi” wygląda jak awaria, a nie jak
 część programu. Potwierdzenia i panel formularza korzystają z natywnego
 `<dialog>`, więc uwięzienie fokusa i zamykanie Escapem działają bez
 dopisywania własnej obsługi, a wygląd jest w całości nasz.
+
+**Dlaczego „Cofnij” zamiast „czy na pewno”?**
+Pytanie przed każdym usunięciem spowalnia pracę, a i tak klika się je
+odruchowo. Usunięcie wykonuje się od razu, a pasek na dole pozwala je
+odwołać przez kilka sekund — to ratuje również pomyłki, które zostałyby
+potwierdzone bez czytania. Okno potwierdzenia zostało tam, gdzie znika
+wszystko naraz: przy czyszczeniu danych programu.
+
+**Dlaczego przejścia widoku tylko przy zmianie kart na listę?**
+`startViewTransition` odkłada zmianę o klatkę i na czas przejścia zamraża
+stronę. Przy zmianie układu, gdzie ten sam projekt wędruje z kafla do
+wiersza, to się opłaca. Przy rozwijaniu etapów nie — tam wystarcza tania
+animacja wejścia, a przejście tylko opóźniałoby reakcję.
+
+**Dlaczego pasek etapów pokazuje stan, a nie dziedzinę?**
+Czternaście segmentów w kolorach dziedzin zlewało się w tęczę, z której
+nie dało się odczytać postępu. Teraz kolor niesie stan: zakończone,
+w toku, przed nami. Dziedzinę pokazuje pasek na okładce i karty etapów.
 
 **Dlaczego ruch pojawia się tylko miejscami?**
 Aplikacja przerysowuje listę przy każdej zmianie, więc animacja wejścia

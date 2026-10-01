@@ -168,3 +168,65 @@
 
   --focus-ring: 0 0 0 3px rgba(236, 116, 174, 0.45);
 }
+
+/* ============ Warianty barw ============
+   Zmieniają wyłącznie akcent, barwę wspierającą i pasek boczny.
+   Powierzchnie i kontrast zostają takie same, żeby czytelność
+   nie zależała od wybranego wariantu. Bloki stoją po motywach,
+   więc nadpisują je przewidywalnie. */
+
+:root[data-accent="hydro"] {
+  --accent: #10808f;
+  --accent-deep: #0b5f6b;
+  --accent-soft: #e2f4f6;
+  --mint: #58c2aa;
+  --mint-deep: #1f7f6a;
+  --mint-soft: #e3f5f0;
+  --navy-a: #0e2029;
+  --navy-b: #103440;
+  --focus-ring: 0 0 0 3px rgba(16, 128, 143, 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="hydro"]:not([data-theme="light"]) {
+    --accent: #4cc2d8;
+    --accent-deep: #6fd4e6;
+    --accent-soft: #11303a;
+    --mint-soft: #11302b;
+    --focus-ring: 0 0 0 3px rgba(76, 194, 216, 0.45);
+  }
+}
+:root[data-theme="dark"][data-accent="hydro"] {
+  --accent: #4cc2d8;
+  --accent-deep: #6fd4e6;
+  --accent-soft: #11303a;
+  --mint-soft: #11302b;
+  --focus-ring: 0 0 0 3px rgba(76, 194, 216, 0.45);
+}
+
+:root[data-accent="topo"] {
+  --accent: #a6632c;
+  --accent-deep: #7f4a1f;
+  --accent-soft: #f8eee2;
+  --mint: #7fa65e;
+  --mint-deep: #4f7336;
+  --mint-soft: #eef3e6;
+  --navy-a: #231d17;
+  --navy-b: #2e2a20;
+  --focus-ring: 0 0 0 3px rgba(166, 99, 44, 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="topo"]:not([data-theme="light"]) {
+    --accent: #d79a62;
+    --accent-deep: #e8b184;
+    --accent-soft: #2e2318;
+    --mint-soft: #212a19;
+    --focus-ring: 0 0 0 3px rgba(215, 154, 98, 0.45);
+  }
+}
+:root[data-theme="dark"][data-accent="topo"] {
+  --accent: #d79a62;
+  --accent-deep: #e8b184;
+  --accent-soft: #2e2318;
+  --mint-soft: #212a19;
+  --focus-ring: 0 0 0 3px rgba(215, 154, 98, 0.45);
+}

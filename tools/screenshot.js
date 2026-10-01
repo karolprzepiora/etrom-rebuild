@@ -127,6 +127,23 @@ async function main() {
     await pick('Widok kart');
     await run('document.getElementById("action-new").click(); return true;');
     await shoot('panel');
+    await run('document.querySelector("[data-drawer-close]").click(); return true;');
+    await sleep(300);
+
+    // Paleta poleceń
+    await run('window.ETROM.app.openPalette(); return true;');
+    await sleep(200);
+    await run(
+      'const i = document.querySelector(".palette__input");' +
+      'i.value = "do"; i.dispatchEvent(new Event("input", { bubbles: true })); return true;'
+    );
+    await shoot('paleta');
+    await run('document.querySelector("dialog.palette").close(); return true;');
+    await sleep(300);
+
+    // Wariant barw hydro
+    await run('document.documentElement.setAttribute("data-accent", "hydro"); return true;');
+    await shoot('hydro');
 
   } finally {
     client.close();

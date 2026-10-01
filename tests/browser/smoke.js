@@ -158,22 +158,26 @@ async function main() {
     const KEYS = {
       n: { key: 'n', code: 'KeyN', vk: 78, text: 'n' },
       slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
+      k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
+      enter: { key: 'Enter', code: 'Enter', vk: 13, text: '' },
       escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' }
     };
-    async function pressKey(name) {
+    async function pressKey(name, modifiers) {
       const spec = KEYS[name];
+      const mod = modifiers || 0;
       await client.send('Input.dispatchKeyEvent', {
-        type: spec.text ? 'keyDown' : 'rawKeyDown',
-        key: spec.key, code: spec.code,
+        type: spec.text && !mod ? 'keyDown' : 'rawKeyDown',
+        key: spec.key, code: spec.code, modifiers: mod,
         windowsVirtualKeyCode: spec.vk, nativeVirtualKeyCode: spec.vk,
-        text: spec.text
+        text: mod ? '' : spec.text
       });
       await client.send('Input.dispatchKeyEvent', {
-        type: 'keyUp', key: spec.key, code: spec.code,
+        type: 'keyUp', key: spec.key, code: spec.code, modifiers: mod,
         windowsVirtualKeyCode: spec.vk, nativeVirtualKeyCode: spec.vk
       });
-      await sleep(180);
+      await sleep(200);
     }
+    const CTRL = 2;
 
     await waitForApp();
 
@@ -338,18 +342,44 @@ async function main() {
       xss.flag === false && xss.imgs === 0 && xssText.indexOf('<img') === 0,
       JSON.stringify(xss) + ' tekst: ' + xssText);
 
-    /* 13. Usuwanie projektu */
+    /* 13. Usuwanie z możliwością cofnięcia */
+    const codesBefore = await evaluate(
+      'return window.ETROM.app.store.getState().workspace.projects.map(p => p.code).join(",");'
+    );
+
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
       'card.querySelector(".project__remove").click(); return true;'
     );
-    await sleep(200);
-    const dialogShown = await evaluate('return !!document.querySelector("dialog.dialog[open]");');
-    check('usunięcie prosi o potwierdzenie we własnym oknie, nie w oknie przeglądarki', dialogShown);
-    await evaluate('document.querySelector("[data-dialog-confirm]").click(); return true;');
-    await sleep(200);
-    check('usuwanie projektu działa po potwierdzeniu',
-      (await evaluate('return !document.querySelector(\'[data-project-code="XSS-1"]\');')));
+    await sleep(500);
+
+    check('usunięcie działa od razu, bez pytania w osobnym oknie',
+      await evaluate(
+        'return !document.querySelector(\'[data-project-code="XSS-1"]\') && !document.querySelector("dialog[open]");'
+      ));
+
+    check('pojawia się pasek z możliwością cofnięcia',
+      await evaluate('return !!document.querySelector("[data-toast-action]");'));
+
+    await evaluate('document.querySelector("[data-toast-action]").click(); return true;');
+    await sleep(300);
+
+    const codesAfterUndo = await evaluate(
+      'return window.ETROM.app.store.getState().workspace.projects.map(p => p.code).join(",");'
+    );
+    check('cofnięcie przywraca projekt na to samo miejsce listy',
+      codesAfterUndo === codesBefore, 'przed: ' + codesBefore + ' | po cofnięciu: ' + codesAfterUndo);
+
+    // Usuwamy ponownie i tym razem zostawiamy, zamykając pasek.
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
+      'card.querySelector(".project__remove").click(); return true;'
+    );
+    await sleep(500);
+    await evaluate('document.querySelector(".toast__close").click(); return true;');
+    await sleep(300);
+    check('po zamknięciu paska usunięcie zostaje w mocy',
+      await evaluate('return !document.querySelector(\'[data-project-code="XSS-1"]\');'));
 
     /* 14. Dane testowe nie duplikują się */
     await click('#action-demo');
@@ -376,7 +406,7 @@ async function main() {
 
     /* 16. Widok listy */
     await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok listy"]\').click(); return true;');
-    await sleep(200);
+    await sleep(500);
     const listCheck = await evaluate(
       'return { rows: document.querySelectorAll(".table__row").length,' +
       ' projects: window.ETROM.app.store.getState().workspace.projects.length };'
@@ -410,9 +440,59 @@ async function main() {
       kept.theme === 'dark' && kept.rows === kept.projects && kept.rows > 0, JSON.stringify(kept));
 
     await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok kart"]\').click(); return true;');
-    await sleep(150);
+    await sleep(500);
 
-    /* 18. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 18. Pasek etapów na karcie */
+    check('karta pokazuje po jednym segmencie na każdy etap',
+      await evaluate(
+        'const card = document.querySelector(\'[data-project-code="DEMO-001"]\');' +
+        'return card.querySelectorAll(".strip__seg").length === 14;'
+      ));
+
+    /* 19. Paleta poleceń */
+    await pressKey('k', CTRL);
+    check('Ctrl+K otwiera paletę poleceń',
+      await evaluate('return !!document.querySelector("dialog.palette[open]");'));
+
+    await evaluate(
+      'const input = document.querySelector(".palette__input");' +
+      'input.value = "lipnic";' +
+      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
+    );
+    await sleep(200);
+    const firstRow = await evaluate(
+      'const row = document.querySelector(".palette__row--active .palette__rowLabel");' +
+      'return row ? row.textContent : "";'
+    );
+    check('wpisanie fragmentu nazwy podnosi właściwy projekt na pierwsze miejsce',
+      firstRow.indexOf('Lipnic') >= 0, 'pierwszy wynik: "' + firstRow + '"');
+
+    await pressKey('enter');
+    await sleep(300);
+    check('Enter zamyka paletę i rozwija wybrany projekt',
+      await evaluate(
+        'return !document.querySelector("dialog.palette[open]") &&' +
+        ' !!document.querySelector(\'[data-project-code="DEMO-001"] .stage\');'
+      ));
+
+    await pressKey('k', CTRL);
+    await evaluate(
+      'const input = document.querySelector(".palette__input");' +
+      'input.value = "barwy hydro";' +
+      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
+    );
+    await sleep(200);
+    await pressKey('enter');
+    await sleep(300);
+    check('polecenie z palety zmienia wariant barw',
+      (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'hydro');
+
+    await pressKey('k', CTRL);
+    await pressKey('escape');
+    check('Escape zamyka paletę',
+      await evaluate('return !document.querySelector("dialog.palette[open]");'));
+
+    /* 20. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu',
       pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
