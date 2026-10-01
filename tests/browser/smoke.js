@@ -147,7 +147,7 @@ async function main() {
       throw new Error('Aplikacja nie wystartowała.');
     }
 
-    const cardCount = () => evaluate('return document.querySelectorAll(".project-card").length;');
+    const cardCount = () => evaluate('return document.querySelectorAll(".project").length;');
     const click = (selector) => evaluate(
       'const node = document.querySelector(' + JSON.stringify(selector) + ');' +
       'if (!node) throw new Error("brak elementu: ' + selector + '");' +
@@ -158,7 +158,7 @@ async function main() {
 
     /* 1. Start na czystym profilu */
     check('start bez danych pokazuje stan pusty',
-      (await cardCount()) === 0 && (await evaluate('return document.querySelector(".empty__title").textContent;')) === 'Brak projektów');
+      (await cardCount()) === 0 && (await evaluate('return document.querySelector(".empty__title").textContent;')) === 'Nie ma jeszcze żadnego projektu');
 
     check('skrypty wczytały się z file:// (bez serwera)',
       (await evaluate('return location.protocol;')) === 'file:' &&
@@ -224,7 +224,7 @@ async function main() {
       'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
     );
     const order = await evaluate(
-      'return [...document.querySelectorAll(".project-card")].map(c => c.dataset.projectCode).join(",");'
+      'return [...document.querySelectorAll(".project")].map(c => c.dataset.projectCode).join(",");'
     );
     check('sortowanie po terminie: czynny projekt po terminie na czele, zakończony na końcu',
       order.split(',')[0] === 'DEMO-002' && order.split(',').pop() === 'DEMO-005', 'kolejność: ' + order);
@@ -242,13 +242,13 @@ async function main() {
     /* 9. Zmiana statusu etapu przelicza postęp */
     const before = await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'return card.querySelector(".progress__track").getAttribute("aria-valuenow");'
+      'return card.querySelector(".meter__track").getAttribute("aria-valuenow");'
     );
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
       'const rows = card.querySelectorAll(".stage");' +
       'const last = rows[rows.length - 1];' +
-      'last.querySelector("button").click(); return true;'
+      'last.querySelector(".stage__status").click(); return true;'
     );
     const statusAfter = await evaluate(
       'const ws = window.ETROM.app.store.getState().workspace;' +
@@ -260,11 +260,11 @@ async function main() {
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
       'const rows = card.querySelectorAll(".stage");' +
-      'rows[rows.length - 1].querySelector("button").click(); return true;'
+      'rows[rows.length - 1].querySelector(".stage__status").click(); return true;'
     );
     const after = await evaluate(
       'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'return card.querySelector(".progress__track").getAttribute("aria-valuenow");'
+      'return card.querySelector(".meter__track").getAttribute("aria-valuenow");'
     );
     check('oznaczenie etapu jako zakończony podnosi postęp',
       Number(after) > Number(before), 'przed ' + before + '%, po ' + after + '%');
@@ -308,10 +308,10 @@ async function main() {
       'document.querySelector("#form-slot form").requestSubmit(); return true;'
     );
     await sleep(250);
-    const xss = await evaluate('return { flag: !!window.__xss, imgs: document.querySelectorAll(".project-card img").length };');
+    const xss = await evaluate('return { flag: !!window.__xss, imgs: document.querySelectorAll(".project img").length };');
     const xssText = await evaluate(
       'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
-      'return card ? card.querySelector(".project-card__name").textContent : "";'
+      'return card ? card.querySelector(".project__name").textContent : "";'
     );
     check('nazwa ze znacznikami HTML wyświetla się jako tekst, nie wykonuje się',
       xss.flag === false && xss.imgs === 0 && xssText.indexOf('<img') === 0,
@@ -321,7 +321,7 @@ async function main() {
     await evaluate('window.confirm = () => true; return true;');
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
-      'card.querySelector(".btn--icon").click(); return true;'
+      'card.querySelector(".project__remove").click(); return true;'
     );
     await sleep(150);
     check('usuwanie projektu działa po potwierdzeniu',

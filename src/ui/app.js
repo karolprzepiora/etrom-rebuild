@@ -249,7 +249,50 @@
     onRemoveStage: removeStage
   };
 
-  function buildToolbar() {
+  function buildRail() {
+    var Icons = E.Icons;
+
+    function item(options) {
+      var children = [Icons.icon(options.icon, 18), D.el('span', { text: options.label })];
+      if (options.active) {
+        nodes.railCount = D.el('span', { class: 'rail__count', text: '0' });
+        children.push(nodes.railCount);
+      } else {
+        children.push(D.el('span', { class: 'rail__soon', text: 'wkrótce' }));
+      }
+      return D.el('p', {
+        class: 'rail__item' + (options.active ? ' rail__item--active' : ' rail__item--muted')
+      }, children);
+    }
+
+    function section(legend, items) {
+      return D.el('nav', { class: 'rail__section' },
+        [D.el('p', { class: 'rail__legend', text: legend })].concat(items));
+    }
+
+    D.render(nodes.rail, [
+      D.el('div', { class: 'rail__brand' }, [
+        D.el('p', { class: 'rail__mark', text: 'ETROM' }),
+        D.el('p', { class: 'rail__title', text: 'Centrum projektów' }),
+        D.el('p', { class: 'rail__subtitle', text: 'Planowanie · realizacja · kontrola' })
+      ]),
+      section('Portfel', [item({ icon: 'folder', label: 'Projekty', active: true })]),
+      section('Twoja praca', [
+        item({ icon: 'board', label: 'Moje' }),
+        item({ icon: 'calendar', label: 'Plan pracy' })
+      ]),
+      section('Zarządzanie', [
+        item({ icon: 'alert', label: 'Nadzór' }),
+        item({ icon: 'people', label: 'Zespół' })
+      ]),
+      D.el('p', {
+        class: 'rail__foot',
+        text: 'Moduły oznaczone „wkrótce” są jeszcze w poprzedniej wersji aplikacji.'
+      })
+    ]);
+  }
+
+  function buildFilters() {
     var search = D.el('input', {
       class: 'input',
       attrs: { id: 'tb-search', type: 'search', placeholder: 'Kod, nazwa lub zamawiający' },
@@ -298,22 +341,23 @@
       return D.el('option', { text: Query.SORTS[key], attrs: { value: key } });
     }));
 
-    nodes.count = D.el('p', { class: 'toolbar__count', attrs: { 'data-count': '' } });
+    nodes.tallyValue = D.el('b', { text: '0' });
+    nodes.tallyLabel = D.el('span', { text: 'projektów' });
 
-    D.render(nodes.toolbar, [
-      D.el('div', { class: 'toolbar__field', style: { flex: '1 1 260px' } }, [
-        D.el('label', { class: 'toolbar__label', text: 'Szukaj', attrs: { for: 'tb-search' } }),
+    D.render(nodes.filters, [
+      D.el('div', { class: 'filters__field', style: { flex: '1 1 280px' } }, [
+        D.el('label', { class: 'label', text: 'Szukaj', attrs: { for: 'tb-search' } }),
         search
       ]),
-      D.el('div', { class: 'toolbar__field' }, [
-        D.el('label', { class: 'toolbar__label', text: 'Status', attrs: { for: 'tb-status' } }),
+      D.el('div', { class: 'filters__field' }, [
+        D.el('label', { class: 'label', text: 'Status', attrs: { for: 'tb-status' } }),
         statusSelect
       ]),
-      D.el('div', { class: 'toolbar__field' }, [
-        D.el('label', { class: 'toolbar__label', text: 'Sortowanie', attrs: { for: 'tb-sort' } }),
+      D.el('div', { class: 'filters__field' }, [
+        D.el('label', { class: 'label', text: 'Sortowanie', attrs: { for: 'tb-sort' } }),
         sortSelect
       ]),
-      nodes.count
+      D.el('div', { class: 'filters__tally' }, [nodes.tallyValue, nodes.tallyLabel])
     ]);
   }
 
@@ -342,24 +386,26 @@
     var all = state.workspace.projects;
     var visible = Query.filterAndSort(all, state.filters);
 
-    nodes.count.textContent = all.length === visible.length
-      ? 'Projekty: ' + all.length
-      : 'Pokazano ' + visible.length + ' z ' + all.length;
+    nodes.tallyValue.textContent = all.length === visible.length
+      ? String(all.length)
+      : visible.length + ' / ' + all.length;
+    nodes.tallyLabel.textContent = all.length === visible.length ? 'projektów' : 'pasujących';
+    if (nodes.railCount) nodes.railCount.textContent = String(all.length);
 
     var overdue = all.filter(function (p) { return Progress.isOverdue(p); }).length;
     nodes.summary.textContent = overdue
       ? 'Projekty po terminie: ' + overdue
-      : 'Brak projektów po terminie';
+      : 'Żaden projekt nie jest po terminie';
 
     if (!all.length) {
       D.render(nodes.list, [
         D.el('div', { class: 'empty' }, [
-          D.el('p', { class: 'empty__title', text: 'Brak projektów' }),
+          D.el('p', { class: 'empty__title', text: 'Nie ma jeszcze żadnego projektu' }),
           D.el('p', {
             class: 'empty__text',
-            text: 'Dodaj pierwszy projekt albo wczytaj zestaw danych testowych, żeby zobaczyć, jak działa lista, etapy i postęp.'
+            text: 'Załóż pierwszy projekt albo wczytaj zestaw testowy, żeby zobaczyć listę, etapy i postęp na przykładzie.'
           }),
-          D.el('div', { class: 'project-card__actions' }, [
+          D.el('div', { class: 'project__actions' }, [
             D.el('button', {
               class: 'btn btn--primary', text: 'Nowy projekt',
               attrs: { type: 'button' }, on: { click: openCreate }
@@ -377,15 +423,15 @@
     if (!visible.length) {
       D.render(nodes.list, [
         D.el('div', { class: 'empty' }, [
-          D.el('p', { class: 'empty__title', text: 'Brak wyników' }),
-          D.el('p', { class: 'empty__text', text: 'Żaden projekt nie odpowiada ustawionym filtrom.' })
+          D.el('p', { class: 'empty__title', text: 'Nic nie pasuje do filtrów' }),
+          D.el('p', { class: 'empty__text', text: 'Zmień wyszukiwaną frazę albo wybierz inny status.' })
         ])
       ]);
       return;
     }
 
     D.render(nodes.list, [
-      D.el('div', { class: 'projects-grid' }, visible.map(function (project) {
+      D.el('div', { class: 'projects' }, visible.map(function (project) {
         return E.ProjectCard.projectCard(project, { expanded: !!state.expanded[project.id] }, handlers);
       }))
     ]);
@@ -410,8 +456,9 @@
   /* ---------- start ---------- */
 
   function init() {
+    nodes.rail = D.byId('rail');
     nodes.notice = D.byId('notice');
-    nodes.toolbar = D.byId('toolbar');
+    nodes.filters = D.byId('filters');
     nodes.form = D.byId('form-slot');
     nodes.list = D.byId('project-list');
     nodes.summary = D.byId('summary');
@@ -428,7 +475,8 @@
       nodes.fileInput.value = '';
     });
 
-    buildToolbar();
+    buildRail();
+    buildFilters();
 
     var loaded = storage.load();
     lastWorkspace = loaded.workspace;

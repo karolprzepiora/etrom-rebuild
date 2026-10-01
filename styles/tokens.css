@@ -1,10 +1,10 @@
-/* ETROM — design tokens. Jedno źródło prawdy dla kolorów, odstępów i typografii.
-   Zmiana wartości tutaj zmienia cały interfejs. */
+/* ETROM — tokeny marki. Barwy przeniesione z dotychczasowej aplikacji:
+   malinowy akcent, mięta, granatowy pasek boczny, głęboki morski tekst. */
 
 :root {
   color-scheme: light dark;
 
-  /* Skala odstępów (4 px) */
+  /* Odstępy (4 px) */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -13,147 +13,158 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Promienie */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-pill: 999px;
 
-  /* Typografia */
-  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --leading-tight: 1.25;
-  --leading-normal: 1.5;
+  /* Krój: bez webfontów — aplikacja musi działać z dysku, bez sieci.
+     Charakter buduje skala i grubość, nie pobierany plik. */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", ui-monospace, Consolas, monospace;
 
-  /* Powierzchnie i tekst — jasny motyw */
-  --bg: #f4f5f7;
+  --text-2xs: 0.6875rem;  /* 11 — etykiety pól */
+  --text-xs: 0.75rem;     /* 12 */
+  --text-sm: 0.8125rem;   /* 13 */
+  --text-base: 0.9375rem; /* 15 — tekst podstawowy */
+  --text-md: 1.0625rem;   /* 17 */
+  --text-lg: 1.375rem;    /* 22 — nazwa projektu */
+  --text-xl: 1.75rem;     /* 28 */
+  --text-2xl: 2.25rem;    /* 36 — nagłówek ekranu */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.55;
+  --track-label: 0.08em;
+  --track-display: -0.015em;
+
+  /* Marka */
+  --accent: #d65198;
+  --accent-deep: #b02a70;
+  --accent-soft: #fbeaf3;
+  --accent-ink: #ffffff;
+  --mint: #75cdb9;
+  --mint-deep: #2f8d79;
+  --mint-soft: #e6f6f1;
+
+  --navy-a: #17192f;
+  --navy-b: #142a36;
+  --navy-line: #2d3b4a;
+  --navy-text: #e8f0f2;
+  --navy-muted: #93a7b1;
+
+  /* Powierzchnie — motyw jasny */
+  --page: #eef2f4;
   --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-sunken: #eceef1;
-  --border: #d8dce2;
-  --border-strong: #b9c0c9;
-  --text: #171a1f;
-  --text-muted: #5b636e;
-  --text-faint: #858d98;
+  --surface-sunken: #f4f7f8;
+  --line: #dce5e9;
+  --line-strong: #c3d2d8;
+  --ink: #1b3440;
+  --ink-soft: #5b7480;
+  --ink-faint: #87a0aa;
 
-  /* Akcent marki */
-  --accent: #1f6feb;
-  --accent-hover: #1a5fd0;
-  --accent-soft: #e8f0fe;
-  --accent-text: #ffffff;
-
-  /* Semantyka stanów */
-  --ok: #1a7f46;
-  --ok-soft: #e4f4ea;
-  --warn: #9a6400;
-  --warn-soft: #fdf3dd;
+  /* Stany */
+  --ok: #1d7f5e;
+  --ok-soft: #e3f4ee;
+  --warn: #92610c;
+  --warn-soft: #fdf1da;
   --danger: #b3261e;
-  --danger-soft: #fdeceb;
-  --info: #0b6a79;
-  --info-soft: #e2f3f6;
-  --neutral-soft: #eceef1;
+  --danger-soft: #fdecea;
+  --info: #0f6e85;
+  --info-soft: #e3f2f6;
+  --neutral-soft: #eaeff1;
 
-  /* Kolory dziedzin etapów (zgodne z katalogiem ETROM) */
-  --domain-general: #64748b;
-  --domain-design: #6d4aff;
-  --domain-environment: #2f8f4e;
-  --domain-water: #0b8fa8;
-  --domain-location: #b07400;
-  --domain-building: #c1543a;
+  /* Dziedziny etapów */
+  --domain-general: #5d7683;
+  --domain-design: #6f5bd0;
+  --domain-environment: #2f8d55;
+  --domain-water: #117f9b;
+  --domain-location: #9a6a14;
+  --domain-building: #b4553d;
 
-  /* Cienie */
-  --shadow-sm: 0 1px 2px rgba(16, 20, 28, 0.08);
-  --shadow-md: 0 2px 8px rgba(16, 20, 28, 0.10);
-  --shadow-lg: 0 8px 24px rgba(16, 20, 28, 0.14);
+  --shadow-sm: 0 1px 2px rgba(20, 42, 54, 0.07);
+  --shadow-md: 0 4px 16px rgba(20, 42, 54, 0.10);
+  --shadow-lg: 0 14px 36px rgba(20, 42, 54, 0.16);
 
-  /* Fokus */
-  --focus-ring: 0 0 0 3px rgba(31, 111, 235, 0.35);
+  --focus-ring: 0 0 0 3px rgba(214, 81, 152, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1116;
-    --surface: #161b22;
-    --surface-raised: #1c222b;
-    --surface-sunken: #0b0e13;
-    --border: #2b323c;
-    --border-strong: #3d4551;
-    --text: #e7eaef;
-    --text-muted: #9aa4b1;
-    --text-faint: #6e7884;
+    --page: #0e181d;
+    --surface: #17262c;
+    --surface-sunken: #122025;
+    --line: #2a3d45;
+    --line-strong: #3d545e;
+    --ink: #e6eef0;
+    --ink-soft: #a7bcc3;
+    --ink-faint: #7e969f;
 
-    --accent: #4c8dff;
-    --accent-hover: #6a9fff;
-    --accent-soft: #16263f;
-    --accent-text: #0b1016;
+    --accent: #ec74ae;
+    --accent-deep: #f08cbd;
+    --accent-soft: #34202c;
 
-    --ok: #56d48a;
-    --ok-soft: #10261a;
+    --mint-soft: #15302b;
+    --ok: #5fcb9f;
+    --ok-soft: #12302a;
     --warn: #e0ad4a;
-    --warn-soft: #2a2110;
-    --danger: #ff7a72;
-    --danger-soft: #2d1513;
-    --info: #54c6d8;
-    --info-soft: #0e2429;
-    --neutral-soft: #222934;
+    --warn-soft: #2e2512;
+    --danger: #ff8077;
+    --danger-soft: #331715;
+    --info: #52bdd6;
+    --info-soft: #102a31;
+    --neutral-soft: #20323a;
 
-    --domain-general: #94a3b8;
-    --domain-design: #a78bfa;
-    --domain-environment: #5bc27f;
-    --domain-water: #4bc2d8;
-    --domain-location: #dcae4a;
-    --domain-building: #e58b72;
+    --domain-general: #90a6b1;
+    --domain-design: #a496ef;
+    --domain-environment: #5cbd80;
+    --domain-water: #46b4cc;
+    --domain-location: #cca05a;
+    --domain-building: #e08a72;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.55);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.6);
 
-    --focus-ring: 0 0 0 3px rgba(76, 141, 255, 0.45);
+    --focus-ring: 0 0 0 3px rgba(236, 116, 174, 0.45);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0e1116;
-  --surface: #161b22;
-  --surface-raised: #1c222b;
-  --surface-sunken: #0b0e13;
-  --border: #2b323c;
-  --border-strong: #3d4551;
-  --text: #e7eaef;
-  --text-muted: #9aa4b1;
-  --text-faint: #6e7884;
+  --page: #0e181d;
+  --surface: #17262c;
+  --surface-sunken: #122025;
+  --line: #2a3d45;
+  --line-strong: #3d545e;
+  --ink: #e6eef0;
+  --ink-soft: #a7bcc3;
+  --ink-faint: #7e969f;
 
-  --accent: #4c8dff;
-  --accent-hover: #6a9fff;
-  --accent-soft: #16263f;
-  --accent-text: #0b1016;
+  --accent: #ec74ae;
+  --accent-deep: #f08cbd;
+  --accent-soft: #34202c;
 
-  --ok: #56d48a;
-  --ok-soft: #10261a;
+  --mint-soft: #15302b;
+  --ok: #5fcb9f;
+  --ok-soft: #12302a;
   --warn: #e0ad4a;
-  --warn-soft: #2a2110;
-  --danger: #ff7a72;
-  --danger-soft: #2d1513;
-  --info: #54c6d8;
-  --info-soft: #0e2429;
-  --neutral-soft: #222934;
+  --warn-soft: #2e2512;
+  --danger: #ff8077;
+  --danger-soft: #331715;
+  --info: #52bdd6;
+  --info-soft: #102a31;
+  --neutral-soft: #20323a;
 
-  --domain-general: #94a3b8;
-  --domain-design: #a78bfa;
-  --domain-environment: #5bc27f;
-  --domain-water: #4bc2d8;
-  --domain-location: #dcae4a;
-  --domain-building: #e58b72;
+  --domain-general: #90a6b1;
+  --domain-design: #a496ef;
+  --domain-environment: #5cbd80;
+  --domain-water: #46b4cc;
+  --domain-location: #cca05a;
+  --domain-building: #e08a72;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.55);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.6);
 
-  --focus-ring: 0 0 0 3px rgba(76, 141, 255, 0.45);
+  --focus-ring: 0 0 0 3px rgba(236, 116, 174, 0.45);
 }

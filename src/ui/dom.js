@@ -75,7 +75,22 @@
     return node;
   }
 
-  var api = { el: el, append: append, clear: clear, render: render, byId: byId };
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /**
+   * Buduje element SVG. createElement nie działa dla SVG — potrzebna
+   * przestrzeń nazw, inaczej przeglądarka tworzy nieznany element HTML.
+   */
+  function svg(tag, attrs, children) {
+    var node = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      node.setAttribute(key, String(attrs[key]));
+    });
+    (children || []).forEach(function (child) { node.appendChild(child); });
+    return node;
+  }
+
+  var api = { el: el, append: append, clear: clear, render: render, byId: byId, svg: svg };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Dom = api; }

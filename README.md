@@ -68,7 +68,7 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 63 testy logiki, bez przeglądarki
+node --test tests/*.test.js     # 70 testów logiki, bez przeglądarki
 node tests/browser/smoke.js     # 19 sprawdzeń w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
@@ -93,6 +93,17 @@ z zabezpieczeniem pozwalającym wczytać je też w Node do testów.
 **Dlaczego elementy budowane są przez DOM, a nie przez sklejanie HTML?**
 Nazwa projektu wpisana przez użytkownika nigdy nie trafia do `innerHTML`.
 Znika przez to cała klasa błędów z escapowaniem — jest na to test.
+
+**Skąd biorą się kolory okładek projektów?**
+Barwa jest wyliczana z kodu projektu (`src/core/identity.js`), więc ten sam
+projekt zawsze wygląda tak samo, a sąsiednie kody dostają odległe odcienie.
+Warstwice na okładce nawiązują do map terenu — to język tej branży.
+Paleta marki (malinowy akcent, mięta, granatowy pasek) jest przeniesiona
+z poprzedniej wersji aplikacji, nie wymyślona od nowa.
+
+**Dlaczego nie ma webfontu?**
+Aplikacja musi działać z dysku, bez sieci. Pobierany krój by się nie wczytał,
+więc charakter buduje skala, grubość i światło, a nie plik z serwera.
 
 **Dlaczego sortowanie po terminie odsuwa projekty zakończone?**
 Projekt zamknięty nie ma już czynnego terminu, a przy sortowaniu po dacie

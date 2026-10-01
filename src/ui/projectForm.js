@@ -88,15 +88,12 @@
         field('pf-status', 'Status', statusSelect, problems.status),
         field('pf-deadline', 'Termin umowny', deadlineInput, problems.deadline, 'Opcjonalny.')
       ]),
-      !editing && D.el('div', { class: 'field', style: { 'margin-top': 'var(--space-4)' } }, [
+      !editing && D.el('div', { class: 'field field--check' }, [
+        stagesCheckbox,
         D.el('label', {
-          class: 'field__label',
-          style: { display: 'flex', 'align-items': 'center', gap: 'var(--space-2)', 'font-weight': '500' },
+          text: 'Dodaj od razu wszystkie 14 standardowych etapów',
           attrs: { for: 'pf-stages' }
-        }, [
-          stagesCheckbox,
-          'Dodaj od razu wszystkie 14 standardowych etapów'
-        ])
+        })
       ]),
       D.el('div', { class: 'panel__actions' }, [
         D.el('button', {

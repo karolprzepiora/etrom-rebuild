@@ -1,61 +1,75 @@
-/* ETROM — karta projektu. */
+/* ETROM — karta projektu: okładka z własną barwą, metryki i etapy. */
 (function (root) {
   'use strict';
 
   var D = root.ETROM.Dom;
   var Model = root.ETROM.Model;
   var Progress = root.ETROM.Progress;
+  var Identity = root.ETROM.Identity;
+  var Icons = root.ETROM.Icons;
   var StageList = root.ETROM.StageList;
 
-  var STATUS_BADGE = {
-    planned: '',
-    active: 'badge--accent',
-    paused: 'badge--warn',
-    done: 'badge--ok'
+  var STATUS_CHIP = {
+    planned: 'chip--onCover',
+    active: 'chip--onCover',
+    paused: 'chip--onCover',
+    done: 'chip--onCover'
   };
 
-  var STATUS_ACCENT = {
-    planned: 'var(--border-strong)',
-    active: 'var(--accent)',
-    paused: 'var(--warn)',
-    done: 'var(--ok)'
-  };
-
-  var DEADLINE_BADGE = {
-    overdue: 'badge--danger',
-    urgent: 'badge--danger',
-    warning: 'badge--warn',
+  var DEADLINE_TONE = {
+    overdue: 'tile--alert',
+    urgent: '',
+    warning: '',
     normal: '',
     none: ''
   };
 
-  function progressBlock(project) {
-    var stats = Progress.projectProgress(project);
-    var label = stats.total
-      ? stats.done + ' z ' + stats.total + ' etapów · ' + stats.hoursDone + '/' + stats.hoursTotal + ' h'
-      : 'Brak etapów';
+  function tile(value, label, extraClass) {
+    return D.el('div', { class: 'tile ' + (extraClass || '') }, [
+      D.el('p', { class: 'tile__value', text: value }),
+      D.el('p', { class: 'tile__label', text: label })
+    ]);
+  }
 
-    return D.el('div', { class: 'progress' }, [
-      D.el('div', { class: 'progress__row' }, [
-        D.el('span', { text: 'Postęp rzeczowy' }),
-        D.el('span', { text: stats.percent + '%' })
+  function meter(stats) {
+    return D.el('div', { class: 'meter' }, [
+      D.el('div', { class: 'meter__top' }, [
+        D.el('span', { class: 'label', text: 'Postęp rzeczowy' }),
+        D.el('span', { class: 'meter__value', text: stats.percent + '%' })
       ]),
       D.el('div', {
-        class: 'progress__track',
+        class: 'meter__track',
         attrs: {
           role: 'progressbar',
           'aria-valuenow': stats.percent,
           'aria-valuemin': '0',
           'aria-valuemax': '100',
-          'aria-label': 'Postęp projektu ' + project.name
+          'aria-label': 'Postęp rzeczowy'
         }
       }, [
         D.el('div', {
-          class: 'progress__fill' + (stats.percent === 100 ? ' progress__fill--complete' : ''),
+          class: 'meter__fill' + (stats.percent === 100 ? ' meter__fill--full' : ''),
           style: { width: stats.percent + '%' }
         })
+      ])
+    ]);
+  }
+
+  function cover(project, handlers) {
+    return D.el('header', { class: 'project__cover' }, [
+      D.el('div', { class: 'project__coverTop' }, [
+        D.el('span', {
+          class: 'chip ' + STATUS_CHIP[project.status],
+          text: Model.PROJECT_STATUS[project.status]
+        }),
+        D.el('button', {
+          class: 'project__remove',
+          attrs: { type: 'button', title: 'Usuń projekt', 'aria-label': 'Usuń projekt ' + project.name },
+          on: { click: function () { handlers.onDelete(project.id); } }
+        }, [Icons.icon('close', 16)])
       ]),
-      D.el('p', { class: 'progress__row' }, [D.el('span', { text: label })])
+      D.el('p', { class: 'project__code', text: project.code }),
+      D.el('h3', { class: 'project__name', text: project.name })
     ]);
   }
 
@@ -65,60 +79,40 @@
    * @param {Object} handlers onToggle, onEdit, onDelete, onCycleStage, onAddStage, onRemoveStage
    */
   function projectCard(project, view, handlers) {
+    var stats = Progress.projectProgress(project);
     var deadline = Progress.deadlineInfo(project.deadline);
     var expanded = !!(view && view.expanded);
-    var panelId = 'stages-panel-' + project.id;
-
-    var meta = [
-      D.el('span', {
-        class: 'badge ' + STATUS_BADGE[project.status],
-        text: Model.PROJECT_STATUS[project.status]
-      })
-    ];
-    if (project.deadline) {
-      meta.push(D.el('span', {
-        class: 'badge ' + (DEADLINE_BADGE[deadline.tone] || ''),
-        text: deadline.text
-      }));
-    }
+    var panelId = 'stages-' + project.id;
 
     var children = [
-      D.el('div', { class: 'project-card__head' }, [
-        D.el('div', { class: 'project-card__titles' }, [
-          D.el('p', { class: 'project-card__code', text: project.code }),
-          D.el('h3', { class: 'project-card__name', text: project.name }),
-          D.el('p', { class: 'project-card__client', text: project.client || 'Zamawiający nieokreślony' })
+      cover(project, handlers),
+      D.el('div', { class: 'project__body' }, [
+        D.el('p', { class: 'project__client', text: project.client || 'Zamawiający nieokreślony' }),
+        meter(stats),
+        D.el('div', { class: 'tiles' }, [
+          tile(stats.done + ' / ' + stats.total, 'etapów zakończonych'),
+          tile(stats.hoursDone + ' / ' + stats.hoursTotal + ' h', 'budżet godzin'),
+          tile(
+            deadline.days === null ? 'Brak' : (deadline.days < 0 ? Math.abs(deadline.days) : deadline.days),
+            deadline.days === null ? 'terminu umowy'
+              : (deadline.days < 0 ? 'dni po terminie' : 'dni do końca umowy'),
+            DEADLINE_TONE[deadline.tone]
+          )
         ]),
-        D.el('button', {
-          class: 'btn btn--icon',
-          text: '✕',
-          attrs: {
-            type: 'button',
-            title: 'Usuń projekt',
-            'aria-label': 'Usuń projekt ' + project.name
-          },
-          on: { click: function () { handlers.onDelete(project.id); } }
-        })
-      ]),
-      D.el('div', { class: 'project-card__meta' }, meta),
-      progressBlock(project),
-      D.el('div', { class: 'project-card__actions' }, [
-        D.el('button', {
-          class: 'btn btn--small',
-          text: expanded ? 'Ukryj etapy' : 'Etapy i postęp',
-          attrs: {
-            type: 'button',
-            'aria-expanded': expanded ? 'true' : 'false',
-            'aria-controls': panelId
-          },
-          on: { click: function () { handlers.onToggle(project.id); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--small',
-          text: 'Edytuj',
-          attrs: { type: 'button' },
-          on: { click: function () { handlers.onEdit(project.id); } }
-        })
+        D.el('div', { class: 'project__actions' }, [
+          D.el('button', {
+            class: 'btn btn--small',
+            text: expanded ? 'Ukryj etapy' : 'Etapy i postęp',
+            attrs: { type: 'button', 'aria-expanded': expanded ? 'true' : 'false', 'aria-controls': panelId },
+            on: { click: function () { handlers.onToggle(project.id); } }
+          }),
+          D.el('button', {
+            class: 'btn btn--small btn--ghost',
+            text: 'Edytuj',
+            attrs: { type: 'button' },
+            on: { click: function () { handlers.onEdit(project.id); } }
+          })
+        ])
       ])
     ];
 
@@ -127,8 +121,8 @@
     }
 
     return D.el('article', {
-      class: 'project-card' + (expanded ? ' project-card--open' : ''),
-      style: { '--card-accent': STATUS_ACCENT[project.status] },
+      class: 'project' + (expanded ? ' project--open' : ''),
+      style: Identity.coverStyle(project.code),
       dataset: { projectCode: project.code }
     }, children);
   }
