@@ -222,7 +222,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .pcard__client { font-size: var(--fs-sm); color: var(--ink-3); }
 .pcard__stage, .pcard__reason { font-size: var(--fs-sm); align-self: end; }
 .pcard__stage { color: var(--ink-2); }
-.pcard__foot { display: flex; align-items: center; gap: var(--space-3); min-height: var(--control-sm); font-size: var(--fs-sm); }
+.pcard__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-height: var(--control-sm); min-width: 0; font-size: var(--fs-sm); }
+.pcard__foot > * { min-width: 0; }
 .pcard__due { font-weight: 500; }
 /* =========================================================
    Przestrzeń robocza projektu
@@ -720,7 +721,10 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 
 .livenow { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
 .livenow__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-1); }
-.livenow__item { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.4fr) auto; gap: var(--s-2); font-size: var(--fs-sm); align-items: baseline; }
+.livenow__item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: var(--space-2); font-size: var(--fs-sm); align-items: baseline; }
+.livenow__stats { display: flex; align-items: baseline; gap: var(--space-2); margin: 0; flex-wrap: wrap; }
+.livenow__big { font-size: var(--fs-2xl, 1.5rem); font-weight: 600; letter-spacing: var(--tracking-title); }
+.livenow__sub { font-size: var(--fs-sm); color: var(--ink-3); }
 .livenow__who { font-weight: 600; }
 .livenow__what, .livenow__since { color: var(--text-muted); }
 
@@ -769,3 +773,41 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .naction__go { all: unset; display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); font-size: var(--fs-sm); font-weight: 600; color: var(--flow-ink); cursor: pointer; border-radius: var(--radius-sm); width: fit-content; }
 .naction__go:hover { text-decoration: underline; text-underline-offset: 3px; }
 .naction__go:focus-visible { box-shadow: var(--focus-ring); }
+
+/* Pasek dnia: segmenty w barwach projektów */
+.topbar__timer { display: flex; align-items: center; }
+.daymeter { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-2); margin-right: var(--space-2); border-radius: var(--radius-full); cursor: pointer; }
+.daymeter:hover { background: var(--hover); }
+.daymeter:focus-visible { box-shadow: var(--focus-ring); }
+.daymeter__label { font-size: var(--fs-xs); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.daymeter__of { font-weight: 400; color: var(--ink-3); }
+.daymeter.is-empty .daymeter__label { color: var(--ink-3); font-weight: 500; }
+.dmtrack { position: relative; display: flex; align-items: stretch; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.dmtrack--bar { width: 7rem; height: 8px; }
+.dmtrack--big { width: 100%; height: 12px; border-radius: 4px; }
+.dmseg { flex: none; width: calc(var(--m) / var(--cap) * 100%); background: hsl(var(--seg-h) 45% 52%); box-shadow: inset -1px 0 0 var(--sheet); transition: width .4s ease; }
+.dmseg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
+.dmgoal { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .55; }
+@media (max-width: 56rem) { .dmtrack--bar { width: 4rem; } }
+@media (max-width: 40rem) { .daymeter .dmtrack { display: none; } }
+@media (prefers-reduced-motion: reduce) { .dmseg { transition: none; } .dmseg.is-live { animation: none; } }
+
+/* Panel „Dzisiaj” w Mojej pracy */
+.etoday { gap: var(--space-3); }
+.etoday__total { font-size: var(--fs-lg); font-weight: 600; }
+.etoday__goal { font-size: var(--fs-sm); font-weight: 400; color: var(--ink-3); }
+.etoday__hint { margin: calc(var(--space-2) * -1) 0 0; }
+.eproj { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.eproj__row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "dot what time" ". share share"; gap: 2px var(--space-2); align-items: center; font-size: var(--fs-sm); }
+.eproj__dot { grid-area: dot; width: 8px; height: 8px; border-radius: 2px; background: hsl(var(--seg-h) 45% 52%); }
+.eproj__what { grid-area: what; display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.eproj__name { color: var(--ink-3); font-size: var(--fs-xs); }
+.eproj__time { grid-area: time; font-weight: 600; }
+.eproj__share { grid-area: share; height: 3px; border-radius: 2px; background: linear-gradient(to right, hsl(var(--seg-h) 45% 52%) var(--share), color-mix(in srgb, var(--ink) 8%, transparent) var(--share)); }
+.etoday__log > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); padding: var(--space-1) 0; list-style-position: inside; }
+.etoday__log > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+.etoday__log .erows { margin-top: var(--space-1); }
+.dayaxis__track { height: 1.5rem; }
+
+/* Szeroki ekran: lista projektów i Moja praca korzystają z szerokości */
+.page:has(#view-projects:not([hidden])), .page:has(#view-mywork:not([hidden])) { max-width: min(112rem, 100%); }

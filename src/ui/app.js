@@ -1393,6 +1393,7 @@
     moveTask: moveTaskStatus,
     toggleTimer: toggleTimer,
     resumeLast: resumeLast,
+    openMyWork: function () { goTo('mywork'); },
     lastTimedTask: lastTimedTask,
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
@@ -1824,7 +1825,12 @@
 
     nodes.app.classList.toggle('app--collapsed', !!state.prefs.sidebarCollapsed);
     if (route.name !== 'project') D.clear(nodes.topbarActions);
-    D.render(nodes.timerSlot, [E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })]);
+    var meCurrent = currentMe();
+    var todays = meCurrent ? TL.forDay(state.workspace.entries || [], meCurrent, new Date()) : [];
+    D.render(nodes.timerSlot, [
+      meCurrent ? E.Timer.dayMeter(todays, { find: locateEntry, actions: actions }) : null,
+      E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
+    ]);
 
     if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';

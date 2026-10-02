@@ -347,24 +347,47 @@
     return out;
   }
 
-  /** Kto teraz pracuje: chodzące zegary wszystkich osób, z godziną startu. */
+  /**
+   * Biuro dziś: ile czasu zapisano i ile osób pracuje teraz — w podziale na projekty,
+   * bez nazwisk (czas konkretnych osób widzi tylko lider projektu i dyrekcja).
+   */
   function liveNow(projects, ctx) {
-    var running = ((ctx.state.workspace && ctx.state.workspace.entries) || []).filter(function (e) { return !e.end; });
-    var people = ctx.people || [];
-    var header = D.el('p', { class: 'cockpit__label', text: 'Teraz w pracy' });
-    if (!running.length) {
-      return D.el('div', { class: 'livenow' }, [header, D.el('p', { class: 'cockpit__empty', text: 'Nikt nie ma włączonego zegara.' })]);
+    var all = (ctx.state.workspace && ctx.state.workspace.entries) || [];
+    var now = new Date();
+    var today = all.filter(function (e) { return E.TimeLog.dayKey(e.start) === E.TimeLog.dayKey(now.getTime()); });
+    var people = {};
+    var byProject = {};
+    var order = [];
+    var live = 0;
+    today.forEach(function (e) {
+      people[e.personId] = true;
+      if (!byProject[e.projectId]) { byProject[e.projectId] = { minutes: 0, live: {} }; order.push(e.projectId); }
+      byProject[e.projectId].minutes += E.TimeLog.minutes(e, now);
+      if (!e.end) { byProject[e.projectId].live[e.personId] = true; live += 1; }
+    });
+    var total = today.reduce(function (sum, e) { return sum + E.TimeLog.minutes(e, now); }, 0);
+    var header = D.el('p', { class: 'cockpit__label', text: 'Biuro dziś' });
+    if (!today.length) {
+      return D.el('div', { class: 'livenow' }, [header, D.el('p', { class: 'cockpit__empty', text: 'Nikt jeszcze nie zapisał czasu. Zegar włączysz przy zadaniu (▶).' })]);
     }
-    return D.el('div', { class: 'livenow' }, [header, D.el('ul', { class: 'livenow__list' }, running.slice(0, 4).map(function (e) {
-      var project = projects.filter(function (p) { return p.id === e.projectId; })[0];
-      var person = people.filter(function (x) { return x.id === e.personId; })[0];
-      var startMs = Date.parse(e.start);
-      return D.el('li', { class: 'livenow__item' }, [
-        D.el('span', { class: 'livenow__who truncate', text: person ? person.name : 'Osoba' }),
-        D.el('span', { class: 'livenow__what truncate', text: (e.label || 'Zadanie') + (project ? ' · ' + project.code : '') }),
-        D.el('span', { class: 'livenow__since t-num', text: 'od ' + E.Timer.hm(startMs) })
-      ]);
-    }))]);
+    order.sort(function (a, b) { return byProject[b].minutes - byProject[a].minutes; });
+    return D.el('div', { class: 'livenow' }, [
+      header,
+      D.el('p', { class: 'livenow__stats' }, [
+        D.el('span', { class: 'livenow__big t-num', text: E.TimeLog.duration(total) }),
+        D.el('span', { class: 'livenow__sub', text: 'zapisano · ' + F.count(Object.keys(people).length, 'osoba', 'osoby', 'osób') + (live ? ' · teraz pracuje ' + live : '') })
+      ]),
+      D.el('ul', { class: 'livenow__list' }, order.slice(0, 3).map(function (id) {
+        var project = projects.filter(function (p) { return p.id === id; })[0];
+        var row = byProject[id];
+        var working = Object.keys(row.live).length;
+        return D.el('li', { class: 'livenow__item' }, [
+          D.el('span', { class: 'code', text: project ? project.code : '—' }),
+          D.el('span', { class: 'livenow__what truncate', text: project ? project.name : 'Usunięty projekt' }),
+          D.el('span', { class: 'livenow__since t-num', text: (working ? '● ' : '') + E.TimeLog.duration(row.minutes) })
+        ]);
+      }))
+    ]);
   }
 
   function cockpit(projects, ctx) {

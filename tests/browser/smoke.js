@@ -562,6 +562,10 @@ async function main() {
       await evaluate('return !!document.querySelector(".timer-pill") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__time").textContent);'));
     check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
       (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+    check('pasek dnia w górnej belce pokazuje czas i segment projektu',
+      await evaluate('const m = document.querySelector(".topbar .daymeter"); return !!m && !!m.querySelector(".dmseg.is-live") && /\\/ 8 h/.test(m.textContent);'));
+    check('pasek zegara pokazuje godzinę startu „od HH:MM”',
+      await evaluate('return /^od \\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__since").textContent);'));
     await sleep(1700);
     check('zegar tyka bez przerysowania aplikacji',
       await evaluate('return document.querySelector(".timer-pill__time").textContent !== "0:00:00";'));
@@ -575,6 +579,8 @@ async function main() {
       (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
     check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
+    check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
+      await evaluate('return document.querySelectorAll(".etoday .eproj__row").length >= 1 && !!document.querySelector(".etoday .dmtrack--big");'));
     check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
       await evaluate('return !!document.querySelector(".etoday__resume");'));
     await pressKey('t');

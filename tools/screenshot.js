@@ -318,6 +318,12 @@ async function main() {
     await run('window.ETROM.app.store.set({ navOpen: false }); return true;');
     await go('#/zespol');
     await shoot('zespol-390');
+
+    // Spokojny portfel (bez alarmów) na szerokim ekranie: „Biuro dziś” w kokpicie.
+    await viewport(1900, 1000);
+    await run('const a = window.ETROM.app; a.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { projects: s2.workspace.projects.filter(function (p) { return ["DEMO-001", "DEMO-005", "DEMO-006"].indexOf(p.code) >= 0; }) }) }); }); return true;');
+    await go('#/projekty');
+    await shoot('projekty-spokojnie-szeroko', { wait: 400 });
   } finally {
     client.close();
     child.kill('SIGKILL');

@@ -153,7 +153,7 @@ Widok tylko czyta stan i rysuje.
 
 ```bash
 node --test tests/*.test.js     # 226 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 156 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tests/browser/smoke.js     # 159 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -290,3 +290,10 @@ w teście przeglądarkowym.
 - **Najbliższa akcja** (`Insight.nextAction`): zwrócone → zaległe → do zatwierdzenia → bez realizatora → termin ≤ 14 dni; inaczej „Brak działań wymagających uwagi”.
 - **Hero:** Budżet godzin (z odchyleniem), Zadania otwarte, Termin (z prognozą); zespół bez powtórzeń osób („Lider · Koordynator”).
 - **Aktywny etap:** delikatny tint i cienka szyna zamiast pełnego wypełnienia.
+
+## Pasek dnia i panel „Dzisiaj”
+
+- Górna belka: pasek dnia (czas / cel 8 h) z segmentami w barwach projektów — rośnie na żywo z chodzącym zegarem; klik prowadzi do Mojej pracy. Cel dnia na razie stały (8 h), ustawienie osobiste dojdzie z kontami.
+- Moja praca → „Dzisiaj”: pasek celu, podział czasu na projekty, przybliżona oś dnia (od godziny przed pierwszym startem), „Wznów”, wpisy zwijane.
+- Kokpit portfela: „Biuro dziś” pokazuje sumy i projekty, bez nazwisk (czas osób widzi tylko lider i dyrekcja — do wymuszenia po wprowadzeniu kont).
+- Stan projektu: wspólna oś tekstu, dzielniki sekcji; lista projektów i Moja praca korzystają z szerokiego ekranu.

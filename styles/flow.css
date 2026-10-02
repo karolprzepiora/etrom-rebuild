@@ -200,3 +200,18 @@ button.gauge__lag:focus-visible { box-shadow: var(--focus-ring); }
 .level__reason:focus-visible { box-shadow: var(--focus-ring); }
 .level__limit { display: grid; gap: 1px; margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
 .level__limit-label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 500; }
+
+/* Stan projektu: wspólna oś pionowa tekstu, dzielniki między sekcjami */
+.level--hero { gap: 0; }
+.level--hero .level__kicker { padding: 0 var(--space-2) var(--space-2); }
+.level--hero .level__ladder { margin-bottom: var(--space-3); }
+.level--hero .level__lead { padding: 0 var(--space-2); margin: 0; font-size: var(--fs-lg); }
+.level--hero .level__lead--calm { font-size: var(--fs-md); }
+.level--hero .level__more { padding: var(--space-2) var(--space-2) 0; }
+.level--hero .level__more li::before { left: 0; }
+.level--hero .level__limit { margin-top: var(--space-3); padding: var(--space-3) var(--space-2) 0; box-shadow: inset 0 1px 0 var(--line); font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; }
+.level--hero .level__limit-label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; letter-spacing: .01em; }
+.workspace-head__side .naction { margin-top: var(--space-3); padding: var(--space-3) var(--space-2) var(--space-1); }
+.naction__label { font-weight: 600; }
+.naction__title { font-size: var(--fs-md); }
+.naction__parts { font-size: var(--fs-sm); }
