@@ -2085,6 +2085,10 @@
 
   function renderMyWork(state) {
     var screen = E.MyWork.view(state, { actions: actions, find: locateEntry });
+    var meNow = Team.findPerson(people(), state.prefs.me);
+    var hour = new Date().getHours();
+    var hello = hour >= 5 && hour < 18 ? 'Dzień dobry' : 'Dobry wieczór';
+    document.getElementById('mywork-title').textContent = meNow ? hello + ', ' + (meNow.firstName || Team.fullName(meNow)) : 'Moja praca';
     nodes.myworkSummary.textContent = screen.summary;
     D.render(nodes.myworkWho, screen.who ? [screen.who] : []);
     D.patch(nodes.myworkBody, [screen.body]);
