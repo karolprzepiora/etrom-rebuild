@@ -14,6 +14,12 @@
   var TL = E.TimeLog;
   var Team = E.Team;
   var F = E.Format;
+  var Identity = E.Identity;
+
+  function hm(value) {
+    var d = value instanceof Date ? value : new Date(value);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
 
   /** Przycisk start/stop w wierszu zadania. */
   function timerButton(project, stage, task, actions) {
@@ -43,6 +49,7 @@
         class: 'timer-pill__time t-num', text: TL.clock(Date.now() - startMs),
         attrs: { 'data-timer-start': String(startMs), 'aria-hidden': 'true' }
       }),
+      D.el('span', { class: 'timer-pill__since t-num', text: 'od ' + hm(startMs), attrs: { 'data-tooltip': 'Zegar włączony o ' + hm(startMs) } }),
       D.el('button', {
         class: 'timer-pill__what',
         attrs: { type: 'button', 'data-tooltip': 'Pokaż zadanie', 'data-fk': 'timer-open' },
@@ -64,7 +71,6 @@
     var live = !entry.end;
     var start = new Date(entry.start);
     var end = entry.end ? new Date(entry.end) : null;
-    var hm = function (d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
     var name = (found && found.task && found.task.name) || entry.label || 'Usunięte zadanie';
     var project = found && found.project;
     var more = live ? null : UI.iconButton({ icon: 'more', label: 'Działania wpisu: ' + name, size: 'sm', class: 'row-actions', attrs: { 'data-fk': 'entry-more-' + entry.id } });
@@ -96,6 +102,64 @@
     ]);
   }
 
+  /**
+   * Oś dnia: gdzie w ciągu dnia pracowała osoba. Każdy wpis to odcinek
+   * w barwie projektu; chodzący zegar rośnie do znacznika „teraz”.
+   * Nad osią: pierwszy start i ostatni koniec dnia.
+   */
+  function dayAxis(entries, ctx, now) {
+    var DAY_START = 7 * 60;
+    var DAY_END = 19 * 60;
+    var minutesOf = function (value) { var d = new Date(value); return d.getHours() * 60 + d.getMinutes(); };
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var list = (entries || []).slice().sort(function (a, b) { return Date.parse(a.start) - Date.parse(b.start); });
+    var from = DAY_START;
+    var to = DAY_END;
+    list.forEach(function (entry) {
+      from = Math.min(from, Math.floor(minutesOf(entry.start) / 60) * 60);
+      to = Math.max(to, Math.ceil((entry.end ? minutesOf(entry.end) : nowMin) / 60) * 60);
+    });
+    to = Math.min(24 * 60, Math.max(to, from + 6 * 60));
+    var span = to - from;
+    var pct = function (m) { return Math.max(0, Math.min(100, (m - from) / span * 100)); };
+
+    var ticks = [];
+    for (var h = Math.ceil(from / 60); h * 60 <= to; h += 1) {
+      if ((h - Math.ceil(from / 60)) % 2) continue;
+      ticks.push(D.el('span', { class: 'dayaxis__tick t-num', style: { left: pct(h * 60) + '%' }, text: String(h).padStart(2, '0') }));
+    }
+
+    var segs = list.map(function (entry) {
+      var found = ctx.find(entry);
+      var begin = minutesOf(entry.start);
+      var finish = entry.end ? minutesOf(entry.end) : nowMin;
+      var width = Math.max(0.6, pct(Math.max(finish, begin)) - pct(begin));
+      var code = found && found.project ? found.project.code : 'x';
+      var name = (found && found.task && found.task.name) || entry.label || 'Zadanie';
+      var label = name + ' — ' + (found && found.project ? found.project.code + ', ' : '') + hm(entry.start) + '–' + (entry.end ? hm(entry.end) : 'teraz') + ' (' + TL.duration(TL.minutes(entry)) + ')';
+      return D.el('span', {
+        class: 'dayaxis__seg' + (entry.end ? '' : ' is-live'),
+        style: { left: pct(begin) + '%', width: width + '%', '--seg-h': String(Identity.hue(code)) },
+        attrs: { 'data-tooltip': label, role: 'img', 'aria-label': label }
+      });
+    });
+
+    var showNow = nowMin >= from && nowMin <= to;
+    var first = list[0];
+    var ended = list.filter(function (e) { return e.end; });
+    var last = ended.length ? ended.reduce(function (a, b) { return Date.parse(a.end) > Date.parse(b.end) ? a : b; }) : null;
+    var live = list.filter(function (e) { return !e.end; })[0];
+    var summary = !first
+      ? 'Dziś jeszcze nic nie zapisano.'
+      : 'Start dnia ' + hm(first.start) + (live ? ' · zegar chodzi od ' + hm(live.start) : (last ? ' · ostatni zapis zakończony o ' + hm(last.end) : ''));
+
+    return D.el('div', { class: 'dayaxis', attrs: { 'aria-label': 'Oś dnia pracy' } }, [
+      D.el('p', { class: 'dayaxis__summary t-num', text: summary }),
+      D.el('div', { class: 'dayaxis__track' }, segs.concat(showNow ? [D.el('span', { class: 'dayaxis__now', style: { left: pct(nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [])),
+      D.el('div', { class: 'dayaxis__ticks', attrs: { 'aria-hidden': 'true' } }, ticks)
+    ]);
+  }
+
   /** Czas zapisany dziś: suma i lista wpisów. */
   function todayBlock(entries, ctx) {
     var total = TL.sum(entries);
@@ -104,6 +168,7 @@
         D.el('h2', { class: 'msec__title', text: 'Zapisany czas dziś' }),
         D.el('span', { class: 'etoday__total t-num', text: total ? TL.duration(total) : '0 min', attrs: { 'data-total': '1' } })
       ]),
+      dayAxis(entries, ctx, new Date()),
       entries.length
         ? D.el('ul', { class: 'erows' }, entries.map(function (entry) { return entryRow(entry, ctx); }))
         : D.el('p', { class: 'maside__empty', text: 'Włącz zegar przy zadaniu (▶) albo dopisz czas ręcznie z menu zadania.' })
@@ -149,5 +214,5 @@
     }
   }
 
-  E.Timer = { timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
+  E.Timer = { hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

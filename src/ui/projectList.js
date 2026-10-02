@@ -333,6 +333,40 @@
     }, children);
   }
 
+  /** Terminy tego samego projektu w tym samym dniu łączą się w jedną pozycję. */
+  function groupAhead(list) {
+    var seen = {};
+    var out = [];
+    list.forEach(function (u) {
+      var key = u.project.id + '|' + u.days;
+      if (seen[key]) { seen[key].more += 1; return; }
+      var copy = Object.assign({}, u, { more: 0 });
+      seen[key] = copy;
+      out.push(copy);
+    });
+    return out;
+  }
+
+  /** Kto teraz pracuje: chodzące zegary wszystkich osób, z godziną startu. */
+  function liveNow(projects, ctx) {
+    var running = ((ctx.state.workspace && ctx.state.workspace.entries) || []).filter(function (e) { return !e.end; });
+    var people = ctx.people || [];
+    var header = D.el('p', { class: 'cockpit__label', text: 'Teraz w pracy' });
+    if (!running.length) {
+      return D.el('div', { class: 'livenow' }, [header, D.el('p', { class: 'cockpit__empty', text: 'Nikt nie ma włączonego zegara.' })]);
+    }
+    return D.el('div', { class: 'livenow' }, [header, D.el('ul', { class: 'livenow__list' }, running.slice(0, 4).map(function (e) {
+      var project = projects.filter(function (p) { return p.id === e.projectId; })[0];
+      var person = people.filter(function (x) { return x.id === e.personId; })[0];
+      var startMs = Date.parse(e.start);
+      return D.el('li', { class: 'livenow__item' }, [
+        D.el('span', { class: 'livenow__who truncate', text: person ? person.name : 'Osoba' }),
+        D.el('span', { class: 'livenow__what truncate', text: (e.label || 'Zadanie') + (project ? ' · ' + project.code : '') }),
+        D.el('span', { class: 'livenow__since t-num', text: 'od ' + E.Timer.hm(startMs) })
+      ]);
+    }))]);
+  }
+
   function cockpit(projects, ctx) {
     var now = new Date();
     var view = Insight.portfolio(projects, now, HORIZON);
@@ -390,7 +424,8 @@
             D.el('span', { class: 'cockpit__title cockpit__title--big', text: 'Wszystko w normie' }),
             D.el('span', { class: 'cockpit__sub', text: 'Żaden projekt nie przekracza terminu ani nie ma zaległości.' })
           ])
-        ])
+        ]),
+        liveNow(projects, ctx)
       ]);
     }
 
@@ -455,7 +490,7 @@
       ]),
       axis,
       ahead.length
-        ? D.el('ol', { class: 'upcoming' }, ahead.slice(0, 3).map(function (u) {
+        ? D.el('ol', { class: 'upcoming' }, groupAhead(ahead).slice(0, 3).map(function (u) {
             return D.el('li', null, [D.el('button', {
               class: 'upcoming__item',
               attrs: { type: 'button', 'aria-label': 'Otwórz: ' + whatOf(u) + ', ' + u.project.code + ', ' + F.date(u.date), 'data-fk': 'up-' + u.project.id + '-' + (u.kind === 'stage' ? u.stage.id : 'p') },
@@ -463,7 +498,7 @@
             }, [
               D.el('span', { class: 'upcoming__date t-num', text: F.date(u.date) }),
               D.el('span', { class: 'upcoming__what' }, [
-                D.el('span', { class: 'upcoming__name truncate', text: whatOf(u) }),
+                D.el('span', { class: 'upcoming__name truncate', text: whatOf(u) + (u.more ? ' · +' + F.count(u.more, 'etap', 'etapy', 'etapów') : '') }),
                 D.el('span', { class: 'code', text: u.project.code })
               ]),
               D.el('span', { class: 'upcoming__in t-num' + (u.days <= 7 ? ' is-soon' : ''), text: u.days === 0 ? 'dziś' : (u.days === 1 ? 'jutro' : 'za ' + u.days + ' dni') })

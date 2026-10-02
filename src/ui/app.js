@@ -701,6 +701,7 @@
     setEntries(function () { return result.entries; });
     // Praca nad zadaniem oznacza, że jest w toku.
     if (task.status === 'todo' || task.status === 'changes') applyTaskMove(projectId, stageId, taskId, 'working', '');
+    Toast.show({ message: 'Zegar włączony o ' + E.Timer.hm(new Date()) + ' · „' + task.name + '”.', tone: 'success', timeout: 4000 });
     if (result.stopped) {
       var before = locateEntry(result.stopped);
       Toast.show({ message: 'Poprzedni zegar zatrzymany: ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (before.task ? before.task.name : result.stopped.label) + '”.', tone: 'info', timeout: 4000 });
@@ -715,7 +716,7 @@
     var result = TL.stop(entries(), me, new Date());
     setEntries(function () { return result.entries; });
     var where = locateEntry(result.stopped);
-    Toast.show({ message: 'Zapisano ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (where.task ? where.task.name : result.stopped.label) + '”.', tone: 'success', timeout: 4000 });
+    Toast.show({ message: 'Zakończono o ' + E.Timer.hm(new Date()) + ' (start ' + E.Timer.hm(result.stopped.start) + ') · ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (where.task ? where.task.name : result.stopped.label) + '”.', tone: 'success', timeout: 4000 });
   }
 
   function openTimeForm(spec) {

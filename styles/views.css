@@ -704,3 +704,22 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .insp-time__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); }
 .insp-time__list li { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--ink-2); }
 .insp-time__actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* Zegar: godzina startu i oś dnia */
+.timer-pill__since { flex: none; font-size: var(--fs-xs); color: var(--text-muted); }
+.dayaxis { display: grid; gap: var(--s-1); margin-block: var(--s-2) var(--s-3); }
+.dayaxis__summary { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); }
+.dayaxis__track { position: relative; height: 1.1rem; border-radius: var(--r-sm); background: var(--surface-sunken, color-mix(in srgb, var(--text) 6%, transparent)); overflow: hidden; }
+.dayaxis__seg { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: hsl(var(--seg-h) 45% 52%); }
+.dayaxis__seg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
+.dayaxis__now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--flow); }
+.dayaxis__ticks { position: relative; height: 1rem; }
+.dayaxis__tick { position: absolute; transform: translateX(-50%); font-size: var(--fs-xs); color: var(--text-muted); }
+@keyframes dayaxis-pulse { 50% { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .dayaxis__seg.is-live { animation: none; } }
+
+.livenow { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
+.livenow__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-1); }
+.livenow__item { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.4fr) auto; gap: var(--s-2); font-size: var(--fs-sm); align-items: baseline; }
+.livenow__who { font-weight: 600; }
+.livenow__what, .livenow__since { color: var(--text-muted); }

@@ -268,3 +268,10 @@ tak samo na każdym komputerze. Oba kroje mają licencję SIL OFL 1.1.
 Projekt zamknięty nie ma już czynnego terminu, a przy sortowaniu po dacie
 potrafił zająć czoło listy datą sprzed wielu tygodni. Wyszło to dopiero
 w teście przeglądarkowym.
+
+
+## Zegar — czytelność czasu
+
+- Pasek zegara pokazuje „od HH:MM”; komunikaty: „Zegar włączony o …”, „Zakończono o … (start …)”.
+- Moja praca: oś dnia (odcinki w barwach projektów, znacznik „teraz”, start dnia i ostatni koniec).
+- Kokpit portfela: „Teraz w pracy” (chodzące zegary) oraz łączenie terminów tego samego projektu z tego samego dnia.
