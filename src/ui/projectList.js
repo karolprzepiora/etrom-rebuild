@@ -297,15 +297,33 @@
 
   /* ---------- Karty ---------- */
 
+  /** Wstęga czasu umowy: od założenia projektu do terminu, ze znacznikiem „dziś”. */
+  function timeRibbon(project, now) {
+    var start = Date.parse(project.createdAt || '');
+    var end = Date.parse(project.deadline || '');
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    var pct = Math.max(0, Math.min(100, ((now.getTime() - start) / (end - start)) * 100));
+    var late = now.getTime() > end && project.status !== 'done';
+    return D.el('div', { class: 'pc-ribbon' + (late ? ' is-late' : ''), attrs: { 'data-tooltip': 'Upłynęło ' + Math.round(pct) + '% czasu umowy' } }, [
+      D.el('div', { class: 'pc-ribbon__dates t-num' }, [D.el('span', { text: F.date(project.createdAt.slice(0, 10)) }), D.el('span', { text: F.date(project.deadline) })]),
+      D.el('div', { class: 'pc-ribbon__track' }, [
+        D.el('span', { class: 'pc-ribbon__fill', style: { width: pct + '%' } }),
+        D.el('span', { class: 'pc-ribbon__now', style: { left: pct + '%' } })
+      ])
+    ]);
+  }
+
   function card(project, ctx, now) {
     var health = Insight.health(project, now);
-    var hidden = ctx.state.prefs.hiddenColumns || [];
     var risk = health.level === 'alarm' || health.level === 'warning';
-    var leader = Team.findPerson(ctx.people, project.team && project.team.leader);
     var done = project.status === 'done';
+    var pinned = ctx.actions.isPinned && ctx.actions.isPinned(project.id);
+    var team = Team.projectPeople(project.team).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
+    var leaderId = project.team && project.team.leader;
+    team.sort(function (a, b) { return (b.id === leaderId) - (a.id === leaderId); });
 
     return D.el('article', {
-      class: 'pcard pf-card project level-' + health.level + (done ? ' is-closed' : ''),
+      class: 'pcard pf-card pc project level-' + health.level + (done ? ' is-closed' : ''),
       dataset: { projectCode: project.code, projectId: project.id },
       on: {
         click: function (event) {
@@ -314,19 +332,21 @@
         }
       }
     }, [
-      D.el('div', { class: 'pcard__top' }, [
-        Sig.datum(health.level),
-        D.el('span', { class: 'code pf-num' , text: project.code }),
+      D.el('div', { class: 'pc__top' }, [
+        D.el('span', { class: 'pc__num t-num', text: '#' + project.code }),
+        risk ? D.el('span', { class: 'pc__state pc__state--' + health.level }, [Sig.datum(health.level, { size: 12, label: false }), D.el('span', { text: health.level === 'alarm' ? 'Alarm' : 'Uwaga' })]) : (done ? D.el('span', { class: 'pc__state pc__state--done', text: 'Zakończony' }) : null),
         D.el('span', { class: 'pcard__spacer' }),
+        ctx.actions.togglePin ? UI.iconButton({ icon: 'star', label: pinned ? 'Odepnij z panelu' : 'Przypnij w panelu', size: 'sm', class: 'pc__star' + (pinned ? ' is-on' : ''), attrs: { 'aria-pressed': String(!!pinned) }, onClick: function () { ctx.actions.togglePin(project.id); } }) : null,
         moreButton(project, ctx.actions, 'pcard__more')
       ]),
-      D.el('h3', { class: 'pcard__name' }, [
+      D.el('h3', { class: 'pc__name' }, [
         D.el('a', { class: 'project-link clamp-2', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id }, dataset: { projectTitle: project.id } })
       ]),
-      D.el('p', { class: 'pcard__client truncate', text: hidden.indexOf('client') < 0 ? (project.client || 'Bez zamawiającego') : '' }),
-      risk ? D.el('p', { class: 'pf-reason pf-reason--' + health.level + ' pcard__reason', text: health.reasons[0].text }) : null,
-      D.el('div', { class: 'pcard__foot' }, [
-        leader ? D.el('span', { class: 'pf-card__lead' }, [Avatar.avatar(leader, { size: 'xs' }), D.el('span', { class: 'truncate', text: shortName(leader) })]) : D.el('span', { class: 't-muted', text: 'Bez lidera' }),
+      D.el('p', { class: 'pc__client truncate', text: project.client || 'Bez zamawiającego' }),
+      risk ? D.el('p', { class: 'pf-reason pf-reason--' + health.level + ' pc__reason', text: health.reasons[0].text }) : null,
+      timeRibbon(project, now),
+      D.el('div', { class: 'pc__foot' }, [
+        team.length ? Avatar.avatarStack(team, { max: 4, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Bez zespołu' }),
         D.el('span', { class: 'pcard__spacer' }),
         signalsCell(project, ctx, now),
         dueCell(project, ctx, now)
@@ -338,7 +358,9 @@
     var now = new Date();
     var groupBy = ctx.state.prefs.groupBy || 'none';
     if (groupBy === 'none') {
-      return D.el('div', { class: 'pcard-grid' }, visible.map(function (project) { return card(project, ctx, now); }));
+      var pins = (ctx.state.prefs.pinned || []);
+      var ordered = visible.filter(function (p) { return pins.indexOf(p.id) >= 0; }).concat(visible.filter(function (p) { return pins.indexOf(p.id) < 0; }));
+      return D.el('div', { class: 'pcard-grid' }, ordered.map(function (project) { return card(project, ctx, now); }));
     }
     var groups = {};
     visible.forEach(function (p) {
