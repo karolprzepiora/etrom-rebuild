@@ -1007,8 +1007,8 @@ async function main() {
     check('lista projektów nie ma paska stanu portfela (analiza trafi do osobnej zakładki)',
       await evaluate('return !document.querySelector(".pf-strip") && document.getElementById("portfolio").hidden;'));
     await go('#/projekty/' + id2);
-    check('nagłówek projektu ma jeden rząd właściwości: stan, termin umowy, lider (bez postępu i godzin)',
-      await evaluate('const l = [...document.querySelectorAll(".pd-props .pd-prop__label")].map(x => x.textContent).join(","); return l === "Stan,Termin umowy,Lider" && /Wymaga uwagi/.test(document.querySelector(".pd-state").textContent) && !document.querySelector(".pd-progress");'));
+    check('nagłówek projektu ma kafelki: stan, termin umowy, lider, czas umowy (bez postępu i godzin)',
+      await evaluate('const l = [...document.querySelectorAll(".pd-props .pd-prop__label")].map(x => x.textContent).join(","); return l === "Stan,Termin umowy,Lider,Czas umowy" && /Wymaga uwagi/.test(document.querySelector(".pd-state").textContent) && !document.querySelector(".pd-progress");'));
     check('„Wymaga uwagi” w projekcie wylicza powody z działaniami',
       await evaluate('const a = document.querySelector(".pd-attention"); return !!a && a.querySelectorAll(".pd-attention__item").length >= 1 && !!a.querySelector(".pd-attention__actions button") && /Wymaga uwagi/.test(a.querySelector(".pd-attention__title").textContent);'));
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',

@@ -174,6 +174,22 @@
     return n;
   }
 
+  /** Oś przebiegu: jedna kropka na etap — zakończone, w toku (świeci), zaległe, przyszłe. */
+  function journey(project, ctx) {
+    var firstOpen = -1;
+    project.stages.forEach(function (st, i) { if (firstOpen < 0 && st.status !== 'done') firstOpen = i; });
+    var nodes = project.stages.map(function (stage, index) {
+      var late = stage.status !== 'done' && Tasks.taskStats(stage.tasks || []).overdue > 0;
+      var state = stage.status === 'done' ? 'done' : (stage.status === 'working' ? 'working' : 'todo');
+      var current = index === firstOpen;
+      return D.el('li', { class: 'jr__node jr__node--' + state + (late ? ' is-late' : '') + (current ? ' is-current' : ''), attrs: { 'data-tooltip': (index + 1) + '. ' + Model.describeStage(stage).name + ' — ' + (E.Model.STAGE_STATUS ? E.Model.STAGE_STATUS[stage.status] || '' : '') } }, [
+        D.el('span', { class: 'jr__dot' }, [state === 'done' ? Icons.icon('check', 12) : D.el('span', { class: 't-num', text: String(index + 1) })]),
+        current ? D.el('span', { class: 'jr__label', text: Model.describeStage(stage).name }) : null
+      ]);
+    });
+    return D.el('ol', { class: 'jr', attrs: { 'aria-label': 'Przebieg etapów' } }, nodes);
+  }
+
   function stageList(project, ctx) {
     var count = project.stages.length;
     var stats = Progress.projectProgress(project);
@@ -229,6 +245,7 @@
           addStageButton(project, ctx.actions)
         ])
       ]),
+      journey(project, ctx),
       D.el('div', { class: 'plan-row plan-row--head', attrs: { 'aria-hidden': 'true' } }, [
         D.el('span', { text: 'Etap' }), D.el('span', { text: 'Najbliższy termin' }), D.el('span', { text: 'Budżet etapu' }), D.el('span', { text: 'Status' }), D.el('span')
       ]),

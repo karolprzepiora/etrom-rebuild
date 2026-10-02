@@ -113,8 +113,9 @@
     return D.el('dl', { class: 'pd-props' }, [
       prop('Stan', [D.el('span', { class: 'pd-state', attrs: { 'data-tooltip': health.reasons.map(function (r) { return r.text; }).join('; ') || null } }, [Sig.datum(health.level, { label: false }), D.el('span', { text: stateLabel })])]),
       prop('Termin umowy', deadlineProp(project, ctx, now)),
-      prop('Lider', [PL.leaderCell(project, ctx)])
-    ]);
+      prop('Lider', [PL.leaderCell(project, ctx)]),
+      PL.timeRibbon(project, now) ? D.el('div', { class: 'pd-prop pd-prop--ribbon' }, [D.el('dt', { class: 'pd-prop__label', text: 'Czas umowy' }), D.el('dd', { class: 'pd-prop__value' }, [PL.timeRibbon(project, now)])]) : null
+    ].filter(Boolean));
   }
 
   /* ---------- „Wymaga uwagi”: lista z działaniami ---------- */
@@ -157,7 +158,7 @@
     var health = Insight.health(project, now);
     return D.el('header', { class: 'pd-head' }, [
       D.el('div', { class: 'pd-head__id' }, [
-        D.el('span', { class: 'code', text: project.code }),
+        D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + project.code }),
         statusControl(project, ctx)
       ]),
       D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),

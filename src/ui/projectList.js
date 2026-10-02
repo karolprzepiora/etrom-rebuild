@@ -563,6 +563,7 @@
     allViews: allViews,
     COLUMNS: COLUMNS,
     projectHref: projectHref,
+    timeRibbon: timeRibbon,
     projectMenuItems: projectMenuItems,
     PAGE_SIZE: PAGE_SIZE
   };
