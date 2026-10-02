@@ -1,0 +1,79 @@
+/* ETROM — warstwa „polish”: głębia, światło i ruch.
+   Ładowana jako ostatnia; zmienia wygląd, nie układ ani zachowanie. */
+
+/* ---------- Tło okna: delikatna łuna marki i nurtu ---------- */
+body, .app {
+  background:
+    radial-gradient(900px 520px at 4% -8%, color-mix(in srgb, var(--brand) 11%, transparent), transparent 70%),
+    radial-gradient(1000px 600px at 100% 0%, color-mix(in srgb, var(--flow) 13%, transparent), transparent 65%),
+    var(--canvas);
+  background-attachment: fixed;
+}
+
+/* ---------- Arkusz treści: większe zaokrąglenie i unoszenie nad tłem ---------- */
+.sheet {
+  border-radius: 22px;
+  box-shadow: 0 0 0 1px light-dark(rgb(16 26 34 / .05), rgb(255 255 255 / .06)), 0 2px 6px light-dark(rgb(16 26 34 / .05), rgb(0 0 0 / .4)), 0 30px 60px -30px var(--shadow-tint);
+}
+
+/* ---------- Panel boczny ---------- */
+.nav__item { height: 2.5rem; border-radius: 12px; font-weight: 500; }
+.nav__item > svg { width: 18px; height: 18px; }
+.nav__item:hover { background: color-mix(in srgb, var(--sheet) 70%, transparent); transform: translateX(2px); transition: transform .15s, background-color .15s; }
+.nav__item[aria-current="page"] {
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px light-dark(rgb(16 26 34 / .06), rgb(255 255 255 / .07)), 0 8px 18px -10px var(--shadow-tint);
+}
+.nav__item[aria-current="page"] > svg { color: var(--brand); }
+.nav__item[aria-current="page"]:not(.nav__item--project)::before { left: -6px; top: 10px; bottom: 10px; width: 4px; border-radius: 4px; box-shadow: 0 0 12px var(--brand); }
+.sidebar__search { border-radius: 12px; }
+
+/* ---------- Tytuł strony ---------- */
+.t-page-title { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; }
+.page-header__description { color: var(--ink-3); }
+
+/* ---------- Zakładki widoków jako „pigułki” ---------- */
+.pf-views { border-bottom: 0; gap: 6px; padding: 4px; background: var(--wash); border-radius: 999px; width: fit-content; max-width: 100%; }
+.pf-view { height: 2.25rem; padding: 0 14px; border: 0; margin: 0; border-radius: 999px; transition: background-color .15s, color .15s, box-shadow .15s; }
+.pf-view:hover { background: color-mix(in srgb, var(--sheet) 60%, transparent); }
+.pf-view.is-active { background: var(--sheet); box-shadow: 0 1px 3px light-dark(rgb(16 26 34 / .12), rgb(0 0 0 / .5)), 0 0 0 1px light-dark(rgb(16 26 34 / .05), rgb(255 255 255 / .06)); border: 0; }
+.pf-view.is-active .pf-view__count { background: var(--brand); color: #fff; }
+
+/* ---------- Przyciski główne ---------- */
+.btn--primary { border-radius: 12px; box-shadow: 0 8px 20px -10px var(--shadow-tint), inset 0 1px 0 rgb(255 255 255 / .12); transition: transform .15s, box-shadow .15s; }
+.btn--primary:hover { transform: translateY(-1px); }
+
+/* ---------- Tabela projektów: pływające wiersze ---------- */
+.pf-table .table { border-spacing: 0 8px; margin-top: -8px; }
+.pf-table .table thead th { background: transparent; border: 0; box-shadow: none; text-transform: none; font-size: var(--fs-xs); letter-spacing: .04em; color: var(--ink-3); }
+.pf-table .table tbody tr.table__row > td {
+  background: var(--sheet);
+  box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line);
+  transition: background-color .15s;
+}
+.pf-table .table tbody tr.table__row > td:first-child { box-shadow: inset 1px 0 0 var(--line), inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); border-radius: 14px 0 0 14px; }
+.pf-table .table tbody tr.table__row > td:last-child { box-shadow: inset -1px 0 0 var(--line), inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); border-radius: 0 14px 14px 0; }
+.pf-table .table tbody tr.table__row:hover > td { background: var(--wash); }
+.pf-table .table tbody tr.level-alarm > td:first-child { box-shadow: inset 4px 0 0 var(--alarm), inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+.pf-table .table tbody tr.level-warning > td:first-child { box-shadow: inset 4px 0 0 var(--warn), inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+.pf-table .table tbody tr.table__row { cursor: pointer; }
+.pf-table .project-link { font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.01em; }
+.pf-num--pill { display: inline-flex; padding: 3px 10px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-weight: 600; font-size: var(--fs-sm); }
+.pf-table .col-code { width: 5.75rem; }
+.pf-table .col-time { width: 12rem; }
+.pf-table .pc-ribbon { margin: 0; padding: 0; --pc-accent: var(--flow); }
+.pf-table tr.level-alarm .pc-ribbon { --pc-accent: var(--alarm); }
+.pf-table tr.level-warning .pc-ribbon { --pc-accent: var(--warn); }
+.pf-table tr.is-closed .pc-ribbon { --pc-accent: var(--ink-4); }
+@container page (max-width: 62rem) { .pf-table .col-time { display: none; } }
+
+@media (prefers-reduced-motion: reduce) { .nav__item:hover, .btn--primary:hover { transform: none; } }
+.pf-table .col-code { width: 5rem; }
+.pf-table .col-time { width: 9.5rem; }
+.pf-table .col-team { width: 6.75rem; }
+.pf-table .col-deadline { width: 7.25rem; }
+.pf-table .col-tasks { width: 4.25rem; }
+.pf-table .pc-ribbon__dates { font-size: .6875rem; }
+.pf-table .pf-leader > span:not(.avatar) { display: none; }
+.pf-table .col-team { width: 3.75rem; }
+.pf-table .col-time { width: 10.5rem; }

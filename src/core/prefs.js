@@ -12,7 +12,7 @@
   var DENSITIES = ['comfortable', 'compact'];
   var TASK_VIEWS = ['list', 'kanban'];
   // Elementy wiersza projektu, które można ukryć w opcjach widoku.
-  var COLUMNS = ['client', 'progress', 'stages', 'tasks', 'deadline', 'team'];
+  var COLUMNS = ['client', 'progress', 'stages', 'tasks', 'deadline', 'team', 'time'];
   // Nazwy z wcześniejszych wersji przeniesione na obecne.
   var LEGACY_ACCENTS = { hydro: 'standard', topo: 'graphite', raspberry: 'standard' };
   var MAX_PINNED = 8;

@@ -23,6 +23,7 @@
   var COLUMNS = [
     { key: 'client', label: 'Zamawiający (pod nazwą)', optional: true },
     { key: 'team', label: 'Lider', optional: true },
+    { key: 'time', label: 'Czas umowy', optional: true },
     { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline', optional: true },
     { key: 'tasks', label: 'Sygnały', optional: true }
   ];
@@ -197,6 +198,7 @@
       { key: 'code', label: 'Nr', sort: 'code' },
       { key: 'name', label: 'Projekt', sort: 'name' },
       hidden.indexOf('team') < 0 ? { key: 'team', label: 'Lider' } : null,
+      hidden.indexOf('time') < 0 ? { key: 'time', label: 'Czas umowy' } : null,
       hidden.indexOf('deadline') < 0 ? { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline' } : null,
       hidden.indexOf('tasks') < 0 ? { key: 'tasks', label: 'Sygnały' } : null
     ].filter(Boolean);
@@ -213,7 +215,8 @@
       on: { change: function (event) { ctx.actions.selectProjects([project.id], event.target.checked); } }
     });
     var cells = {
-      code: D.el('span', { class: 'pf-num t-num' }, [project.code]),
+      code: D.el('span', { class: 'pf-num pf-num--pill t-num' }, [project.code]),
+      time: timeRibbon(project, now) || D.el('span', { class: 't-muted', text: '—' }),
       name: nameCell(project, health, hidden),
       team: leaderCell(project, ctx),
       deadline: dueCell(project, ctx, now),
