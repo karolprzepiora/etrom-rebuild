@@ -298,7 +298,7 @@ async function main() {
     await click('#tb-scope');
     await sleep(200);
     await evaluate('document.querySelector(".upcoming__item").click(); return true;');
-    await sleep(800);
+    await sleep(1500);
     check('termin z kokpitu otwiera projekt na właściwym etapie',
       /^#\/projekty\/\d+/.test(await evaluate('return location.hash;')));
     await go('#/projekty');

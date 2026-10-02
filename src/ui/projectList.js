@@ -448,7 +448,7 @@
             D.el('span', { class: 'mixlegend__measure', style: { '--share': share + '%' }, attrs: { 'aria-hidden': 'true' } })
           ], 'mix-' + l)]);
       })),
-      view.hoursTotal ? D.el('p', { class: 'cockpit__hours' }, [
+      view.hoursTotal && view.hoursDone ? D.el('p', { class: 'cockpit__hours' }, [
         D.el('span', { class: 't-num cockpit__hours-value', text: F.number(view.hoursDone) }),
         D.el('span', { class: 'cockpit__hours-of t-num', text: ' z ' + F.hours(view.hoursTotal) }),
         D.el('span', { class: 'cockpit__hours-label', text: 'wykonane w czynnych projektach' })

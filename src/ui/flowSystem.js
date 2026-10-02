@@ -126,9 +126,9 @@
         dataset: { to: String(g.percent) },
         attrs: { type: 'button', 'aria-label': 'Przejdź do etapu ' + (cur.index + 1) + ': ' + cur.name }
       }, [
-        D.el('span', { class: 'gauge__note-stage', text: 'Etap ' + (cur.index + 1) }),
-        D.el('span', { class: 'gauge__note-range t-num', text: Math.round(cur.from) + ' → ' + Math.round(cur.to) + '%' })
+        D.el('span', { class: 'gauge__note-stage', text: 'Etap ' + (cur.index + 1) })
       ]);
+      note.setAttribute('data-tooltip', cur.name + ' — ' + Math.round(cur.from) + '–' + Math.round(cur.to) + '%');
       if (typeof o.onStage === 'function') note.addEventListener('click', function () { o.onStage(cur.id); });
       nodes.push(note);
     }
