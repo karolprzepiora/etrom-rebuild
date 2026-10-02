@@ -565,8 +565,8 @@
     var overdueDays = project.status === 'active' ? -Progress.daysUntil(project.deadline, reference) : null;
     if (overdueDays !== null && overdueDays > 0) {
       return {
-        rule: 'project-overdue', kind: 'project', title: 'Termin umowy minął',
-        parts: ['Minęło ' + days(overdueDays) + ' od terminu umowy', 'Ustal nowy termin (aneks) albo zamknij projekt'],
+        rule: 'project-overdue', kind: 'project', title: 'Ustal nowy termin umowy',
+        parts: ['Aneks z nowym terminem albo zamknięcie projektu'],
         tone: 'alarm', stageId: null, taskId: null
       };
     }

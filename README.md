@@ -127,7 +127,7 @@ src/ui/                 warstwa widoku
   icons.js              jeden zestaw ikon
   components.js         komponenty bazowe (ETROM.UI)
   signature.js          rzędna ▽ (ETROM.Sig)
-  flowSystem.js         ETROM Flow System: Gauge, Flow, Level, Marker (ETROM.Flow)
+  flowSystem.js         ETROM Flow System: PlanBar, Flow, Verdict, Level, Marker (ETROM.Flow)
   inspector.js          inspektor: zadanie, osoba, projekt
   menu.js, tooltip.js   menu rozwijane, popover, podpowiedzi
   dialog.js, toast.js   okna, panel boczny, powiadomienia
@@ -286,9 +286,9 @@ w teście przeglądarkowym.
 
 ## Project Workspace — Project Intelligence Pass
 
-- **Gauge:** rzeczywisty postęp, plan (upływ czasu umowy), linia odchylenia i odczyt „Za planem o N pp”; klik otwiera panel „Plan i odchylenia”.
+- **Pas planu:** tor etapów jest paskiem postępu; na nim znacznik planu na dziś, odległość od postępu i odczyt „Za planem o N pp” (klik → „Plan i odchylenia”). Termin umowy podany raz, pod torem.
 - **Plan i odchylenia** (`Insight.variance`): postęp (pp), godziny zapisane vs oczekiwane na dziś (h), termin umowny vs prognoza liniowa (dni). Brak danych = brak liczby i jawny powód (nic nie jest zgadywane); prognoza dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu.
-- **Stan projektu:** osobny od postępu; przyczyna, „Najbliższy próg” (`Insight.threshold`), powody klikalne (prowadzą do zadań, etapu albo planu).
+- **Werdykt:** stan osobny od postępu — jeden stan, powód słowami (klikalny) i „Co teraz zrobić” w jednym pasie nad torem.
 - **Najbliższa akcja** (`Insight.nextAction`): zwrócone → zaległe → do zatwierdzenia → bez realizatora → termin ≤ 14 dni; inaczej „Brak działań wymagających uwagi”.
 - **Hero:** Budżet godzin (z odchyleniem), Zadania otwarte, Termin (z prognozą); zespół bez powtórzeń osób („Lider · Koordynator”).
 - **Aktywny etap:** delikatny tint i cienka szyna zamiast pełnego wypełnienia.

@@ -62,136 +62,88 @@
     return { text: 'Zgodnie z planem', level: 'normal' };
   }
 
-  /** Plan i odchylenie pod liczbą; z onDetail to przycisk otwierający szczegóły plan vs rzeczywistość. */
-  function lagBlock(g, lag, onDetail) {
-    var kids = [
-      D.el('span', { class: 'gauge__lag-plan t-num', text: 'Plan ' + g.expected + '%' }),
-      D.el('span', { class: 'gauge__lag-text', text: lag.text })
-    ];
-    if (typeof onDetail !== 'function') return D.el('span', { class: 'gauge__lag gauge__lag--' + lag.level }, kids);
-    return D.el('button', {
-      class: 'gauge__lag gauge__lag--' + lag.level + ' gauge__lag--link',
-      attrs: { type: 'button', 'aria-label': 'Plan ' + g.expected + '%, ' + lag.text + '. Pokaż plan i odchylenia.', 'data-tooltip': 'Plan i odchylenia', 'data-fk': 'gauge-detail' },
-      on: { click: onDetail }
-    }, kids);
-  }
-
-  function gaugeLabel(g) {
-    var parts = ['Postęp ' + g.percent + '%'];
-    if (g.expected !== null) {
-      var lag = lagInfo(g);
-      parts.push('plan ' + g.expected + '% (' + lag.text.toLowerCase() + ')');
-    }
-    if (g.current) {
-      parts.push('bieżący etap ' + (g.current.index + 1) + ' z ' + g.stages.length + ': ' + g.current.name
-        + ', zakres ' + Math.round(g.current.from) + '–' + Math.round(g.current.to) + '%');
-    } else if (g.stages.length) {
-      parts.push('wszystkie etapy zakończone');
-    }
-    return parts.join('. ');
-  }
-
   /**
-   * Miernik postępu — pionowa łata z progami na granicach etapów.
+   * Pas planu: postęp prac na torze etapów, z planem na dziś (czas umowy, który już minął)
+   * i odległością od planu. Jedna skala, jedno miejsce na termin umowy — pod torem.
    * @param {Object} project
-   * @param {{now?: Date, from?: number, onStage?: Function}} [options]
-   *   from — poprzednia wartość (animacja), onStage(stageId) — przejście do etapu
+   * @param {{now?: Date, from?: number, stage?: Node, onStage?: Function, onDetail?: Function}} [options]
    */
-  function gauge(project, options) {
+  function planBar(project, options) {
     var o = options || {};
     var g = Insight.gauge(project, o.now);
     var from = typeof o.from === 'number' ? o.from : g.percent;
     var lag = lagInfo(g);
-    var cur = g.current;
+    var plan = project.status !== 'done' ? Insight.schedule(project, o.now) : null;
 
-    var scale = D.el('div', { class: 'gauge__scale', attrs: { 'aria-hidden': 'true' } });
-    var nodes = [D.el('span', { class: 'gauge__axis' })];
-
-    g.majors.forEach(function (m) {
-      nodes.push(D.el('span', { class: 'gauge__major', style: { '--at': String(m) } }, [
-        D.el('span', { class: 'gauge__major-label', text: String(m) })
-      ]));
+    var track = flowTrack(project, {
+      size: 'hero', now: o.now, onSegment: o.onStage,
+      plan: g.expected !== null ? { at: g.expected, percent: g.percent, level: lag ? lag.level : 'normal' } : null
     });
-    g.stages.forEach(function (stage) {
-      var hit = D.el('span', {
-        class: 'gauge__stage gauge__stage--' + stage.state,
-        style: { '--from': String(stage.from), '--to': String(stage.to) },
-        attrs: { 'data-tooltip': (stage.index + 1) + '. ' + stage.name + ' — ' + Math.round(stage.from) + '–' + Math.round(stage.to) + '%' },
-        dataset: { stageId: stage.id }
-      });
-      nodes.push(hit);
-      if (stage.to < 99.5) nodes.push(D.el('span', { class: 'gauge__tick', style: { '--at': String(stage.to) } }));
-    });
-    nodes.push(D.el('span', { class: 'gauge__done', style: { '--at': String(from) }, dataset: { to: String(g.percent) } }));
-    if (cur) nodes.push(D.el('span', { class: 'gauge__span' + (cur.state === 'blocked' ? ' gauge__span--blocked' : ''), style: { '--from': String(cur.from), '--to': String(cur.to) } }));
-    if (g.expected !== null) {
-      nodes.push(D.el('span', { class: 'gauge__plan' + (lag && lag.level !== 'normal' ? ' gauge__plan--' + lag.level : ''), style: { '--at': String(g.expected) } }, [
-        marker('plan', { tooltip: 'Plan: ' + g.expected + '% — tyle czasu umowy już minęło' })
-      ]));
-    }
-    if (g.expected !== null && Math.abs(g.expected - g.percent) >= 1) {
-      nodes.push(D.el('span', {
-        class: 'gauge__gap' + (lag && lag.level !== 'normal' ? ' gauge__gap--' + lag.level : ''),
-        style: { '--lo': String(Math.min(g.expected, g.percent)), '--hi': String(Math.max(g.expected, g.percent)) },
-        attrs: { 'aria-hidden': 'true' }
-      }));
-    }
-    var now = D.el('span', { class: 'gauge__now', style: { '--at': String(from) }, dataset: { to: String(g.percent) } }, [marker('now')]);
-    nodes.push(now);
 
-    var note = null;
-    if (cur) {
-      note = D.el('button', {
-        class: 'gauge__note',
-        style: { '--at': String(from) },
-        dataset: { to: String(g.percent) },
-        attrs: { type: 'button', 'aria-label': 'Przejdź do etapu ' + (cur.index + 1) + ': ' + cur.name }
-      }, [
-        D.el('span', { class: 'gauge__note-stage', text: 'Etap ' + (cur.index + 1) })
+    var lagNode = null;
+    if (lag) {
+      var kids = [
+        D.el('span', { class: 'planbar__plan t-num', text: 'Plan na dziś ' + g.expected + '%' }),
+        D.el('span', { class: 'planbar__lag-text', text: lag.text })
+      ];
+      lagNode = typeof o.onDetail === 'function'
+        ? D.el('button', {
+            class: 'planbar__lag planbar__lag--' + lag.level,
+            attrs: { type: 'button', 'aria-label': 'Plan na dziś ' + g.expected + '%, ' + lag.text + '. Pokaż plan i odchylenia.', 'data-tooltip': 'Plan i odchylenia', 'data-fk': 'gauge-detail' },
+            on: { click: o.onDetail }
+          }, kids)
+        : D.el('span', { class: 'planbar__lag planbar__lag--' + lag.level }, kids);
+    }
+
+    var axis = null;
+    if (plan && project.deadline) {
+      var over = plan.daysLeft < 0;
+      var start = new Date(project.createdAt);
+      var startIso = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+      var left = over ? 'minął ' + F.count(-plan.daysLeft, 'dzień', 'dni', 'dni') + ' temu'
+        : (plan.daysLeft === 0 ? 'dziś' : 'za ' + F.count(plan.daysLeft, 'dzień', 'dni', 'dni'));
+      axis = D.el('div', { class: 'planbar__axis planbar__axis--' + (over ? 'alarm' : (plan.daysLeft <= 7 ? 'warning' : 'normal')) }, [
+        D.el('span', { class: 'planbar__start t-num', text: 'Start ' + F.date(startIso, { year: 'always' }) }),
+        D.el('span', { class: 'planbar__end' }, [
+          marker('deadline', { level: over ? 'alarm' : 'normal', filled: over }),
+          D.el('span', { class: 't-num', text: 'Termin umowy ' + F.date(project.deadline, { year: 'always' }) + ' · ' + left })
+        ])
       ]);
-      note.setAttribute('data-tooltip', cur.name + ' — ' + Math.round(cur.from) + '–' + Math.round(cur.to) + '%');
-      if (typeof o.onStage === 'function') note.addEventListener('click', function () { o.onStage(cur.id); });
-      nodes.push(note);
     }
-    D.render(scale, nodes);
 
     return D.el('div', {
-      class: 'gauge gauge--hero' + (g.percent >= 100 ? ' gauge--complete' : ''),
-      attrs: { role: 'img', 'aria-label': gaugeLabel(g) },
+      class: 'planbar' + (g.percent >= 100 ? ' planbar--complete' : ''),
+      attrs: { role: 'group', 'aria-label': 'Postęp ' + g.percent + '%' + (g.expected !== null ? ', plan na dziś ' + g.expected + '% (' + lag.text.toLowerCase() + ')' : '') },
       dataset: { percent: String(g.percent) }
     }, [
-      D.el('div', { class: 'gauge__read' }, [
-        D.el('span', { class: 'gauge__value' }, [
-          D.el('span', { class: 'gauge__number', text: String(from), dataset: { count: String(g.percent) } }),
-          D.el('span', { class: 'gauge__unit', text: '%' })
+      D.el('div', { class: 'planbar__head' }, [
+        D.el('div', { class: 'planbar__read' }, [
+          D.el('span', { class: 'planbar__value' }, [
+            D.el('span', { class: 'planbar__number', text: String(from), dataset: { count: String(g.percent) } }),
+            D.el('span', { class: 'planbar__unit', text: '%' })
+          ]),
+          D.el('span', { class: 'planbar__caption', text: g.stages.length ? 'postępu prac' : 'brak etapów' })
         ]),
-        D.el('span', { class: 'gauge__caption', text: g.stages.length ? 'postępu prac' : 'brak etapów' }),
-        lag ? lagBlock(g, lag, o.onDetail) : null
+        o.stage || null,
+        lagNode
       ]),
-      scale
+      track,
+      axis
     ]);
   }
 
-  /** Po wstawieniu do DOM przesuwa znaczniki i liczbę ze starej wartości na nową. */
+  /** Po wstawieniu do DOM liczba postępu dojeżdża ze starej wartości do nowej. */
   function settle(container) {
-    var gauges = container.querySelectorAll('.gauge[data-percent]');
-    Array.prototype.forEach.call(gauges, function (el) {
+    var bars = container.querySelectorAll('.planbar[data-percent]');
+    Array.prototype.forEach.call(bars, function (el) {
       var to = Number(el.dataset.percent);
       var number = el.querySelector('[data-count]');
       var from = number ? Number(number.textContent) : to;
-      var movers = el.querySelectorAll('[data-to]');
-      function apply() {
-        Array.prototype.forEach.call(movers, function (m) { m.style.setProperty('--at', m.dataset.to); });
-      }
-      if (from === to || E.Motion.prefersReducedMotion()) {
-        apply();
+      if (!number || from === to || E.Motion.prefersReducedMotion()) {
         if (number) number.textContent = String(to);
         return;
       }
-      window.requestAnimationFrame(function () {
-        apply();
-        if (number) E.Motion.countTo(number, from, to);
-      });
+      window.requestAnimationFrame(function () { E.Motion.countTo(number, from, to); });
     });
   }
 
@@ -269,6 +221,20 @@
       ]);
     }
 
+    // Plan na dziś: znacznik na torze i pasek odległości od postępu (tylko w nagłówku).
+    var planNodes = [];
+    if (hero && o.plan) {
+      var lo = Math.min(o.plan.at, o.plan.percent);
+      var hi = Math.max(o.plan.at, o.plan.percent);
+      var lvl = o.plan.level || 'normal';
+      if (hi - lo >= 1) planNodes.push(D.el('span', { class: 'flow__gap flow__gap--' + lvl, style: { left: lo + '%', width: (hi - lo) + '%' }, attrs: { 'aria-hidden': 'true' } }));
+      planNodes.push(D.el('span', {
+        class: 'flow__plan flow__plan--' + lvl + (o.plan.at > 96 ? ' is-end' : ''),
+        style: { left: Math.min(100, o.plan.at) + '%' },
+        attrs: { 'data-tooltip': 'Plan na dziś: ' + o.plan.at + '% — tyle czasu umowy już minęło', 'aria-hidden': 'true' }
+      }, [marker('plan', { level: lvl === 'normal' ? undefined : lvl })]));
+    }
+
     var current = data.current ? Model.describeStage(data.current).name : '';
     var label = 'Przebieg: ' + data.done + ' z ' + data.total + ' etapów zakończonych, postęp ' + data.percent + '%'
       + (current ? ', bieżący etap: ' + current : '');
@@ -279,36 +245,7 @@
     }, [
       reading,
       marks.length ? D.el('div', { class: 'flow__marks' }, marks) : null,
-      D.el('div', { class: 'flow__track' }, segments)
-    ]);
-  }
-
-  /* ---------- Timeline (znaczniki na osi czasu umowy) ---------- */
-
-  function timeline(project, now) {
-    var plan = Insight.schedule(project, now);
-    if (!plan || project.status === 'done') return null;
-    var at = Math.min(1, plan.elapsed) * 100;
-    var over = plan.daysLeft < 0;
-    var lagging = plan.lag >= Insight.LAG_WARNING && !over;
-    var start = new Date(project.createdAt);
-    var startIso = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
-    var level = over ? 'alarm' : (lagging ? 'warning' : 'normal');
-
-    return D.el('div', {
-      class: 'timeline-axis timeline-axis--' + level,
-      style: { '--at': at },
-      attrs: { role: 'img', 'aria-label': 'Czas umowy: minęło ' + Math.round(plan.elapsed * 100) + '%, ' + (over ? 'termin minął' : 'do terminu ' + plan.daysLeft + ' dni') }
-    }, [
-      D.el('div', { class: 'timeline-axis__line' }, [
-        D.el('span', { class: 'timeline-axis__elapsed' }),
-        D.el('span', { class: 'timeline-axis__today' }, [marker('now', { level: level, tooltip: 'Dziś — ' + Math.round(plan.elapsed * 100) + '% czasu umowy' })]),
-        D.el('span', { class: 'timeline-axis__end' }, [marker('deadline', { level: over ? 'alarm' : 'normal', filled: over, tooltip: 'Termin umowy ' + F.date(project.deadline, { year: 'always' }) })])
-      ]),
-      D.el('div', { class: 'timeline-axis__labels' }, [
-        D.el('span', { text: F.date(startIso) }),
-        D.el('span', { class: 'timeline-axis__end-label', text: over ? 'Termin minął ' + F.date(project.deadline, { year: 'always' }) : 'Termin ' + F.date(project.deadline, { year: 'always' }) })
-      ])
+      D.el('div', { class: 'flow__track' }, segments.concat(planNodes))
     ]);
   }
 
@@ -323,8 +260,6 @@
     var o = options || {};
     var compact = o.size === 'compact';
     var l = Insight.ladder(project, o.now);
-    var lead = l.reasons[0];
-    var others = l.reasons.slice(1);
 
     if (compact) {
       var active = l.rungs.filter(function (r) { return r.active; })[0];
@@ -339,47 +274,44 @@
       ]);
     }
 
-    var rungs = l.closed
-      ? [D.el('li', { class: 'rung rung--closed is-active', attrs: { 'aria-current': 'true' } }, [
-          D.el('span', { class: 'rung__node' }, [Sig.datum('closed', { size: 16, label: false })]),
-          D.el('span', { class: 'rung__label', text: 'Zakończony' })
-        ])]
-      : l.rungs.map(function (rung) {
-          return D.el('li', {
-            class: 'rung rung--' + rung.level + (rung.active ? ' is-active' : ''),
-            attrs: { 'aria-current': rung.active ? 'true' : null }
-          }, [
-            D.el('span', { class: 'rung__node' }, [Sig.datum(rung.level, { size: 16, label: false })]),
-            D.el('span', { class: 'rung__label', text: rung.label }),
-            rung.active ? D.el('span', { class: 'rung__here', text: 'teraz', attrs: { 'aria-hidden': 'true' } }) : null
-          ]);
-        });
+    return null;
+  }
 
+  /**
+   * Werdykt projektu: jeden stan, jedno zdanie o powodzie i (opcjonalnie) następny krok.
+   * Zawsze kształt + nazwa + powód, nigdy sam kolor.
+   * @param {Object} project
+   * @param {{now?: Date, next?: Node, onReason?: Function}} [options]
+   */
+  function verdict(project, options) {
+    var o = options || {};
+    var l = Insight.ladder(project, o.now);
+    var lead = l.reasons[0];
+    var others = l.reasons.slice(1);
     var calm = l.closed ? 'Projekt zakończony i zamknięty.' : 'Brak zaległości — terminy i zadania w porządku.';
     var linkable = typeof o.onReason === 'function';
 
     function reasonNode(r, tag, cls) {
       if (!linkable) return D.el(tag, { class: cls, text: r.text });
       return D.el(tag, { class: cls }, [D.el('button', {
-        class: 'level__reason', text: r.text,
+        class: 'verdict__reason', text: r.text,
         attrs: { type: 'button', 'data-tooltip': 'Pokaż, gdzie to naprawić', 'data-fk': 'reason-' + r.rule },
         on: { click: function () { o.onReason(r); } }
       })]);
     }
 
-    return D.el('section', { class: 'level level--hero level--' + l.level, attrs: { 'aria-label': 'Stan projektu: ' + l.label } }, [
-      D.el('p', { class: 'level__kicker', text: 'Stan projektu' }),
-      D.el('ol', { class: 'level__ladder' }, rungs),
-      lead && !l.closed
-        ? reasonNode(lead, 'p', 'level__lead')
-        : D.el('p', { class: 'level__lead level__lead--calm', text: calm }),
-      others.length ? D.el('ul', { class: 'level__more' }, others.map(function (r) {
-        return reasonNode(r, 'li', 'reason--' + r.level);
-      })) : null
+    return D.el('section', { class: 'verdict verdict--' + l.level, attrs: { 'aria-label': 'Stan projektu: ' + l.label } }, [
+      D.el('div', { class: 'verdict__state' }, [
+        D.el('p', { class: 'verdict__kicker', text: 'Stan projektu' }),
+        D.el('p', { class: 'verdict__label' }, [Sig.datum(l.closed ? 'closed' : l.level, { size: 20, label: false }), D.el('span', { text: l.label })]),
+        lead && !l.closed ? reasonNode(lead, 'p', 'verdict__why') : D.el('p', { class: 'verdict__why verdict__why--calm', text: calm }),
+        others.length ? D.el('ul', { class: 'verdict__more' }, others.map(function (r) { return reasonNode(r, 'li', 'reason--' + r.level); })) : null
+      ]),
+      o.next ? D.el('div', { class: 'verdict__next' }, [o.next]) : null
     ]);
   }
 
   root.ETROM.Flow = {
-    marker: marker, gauge: gauge, flowTrack: flowTrack, timeline: timeline, level: level, settle: settle
+    marker: marker, planBar: planBar, flowTrack: flowTrack, level: level, verdict: verdict, settle: settle
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

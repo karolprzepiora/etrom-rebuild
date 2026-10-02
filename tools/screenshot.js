@@ -173,7 +173,7 @@ async function main() {
           's.update(st => Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.concat([p]) }) })); return p.id;'
         );
         await go('#/projekty/' + id);
-        await shoot('przypadek-' + name, { clip: '.workspace-head__grid' });
+        await shoot('przypadek-' + name, { clip: '.workspace-head__stack' });
       }
       await run('localStorage.clear(); location.reload(); return true;');
       await sleep(800);

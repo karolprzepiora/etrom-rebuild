@@ -322,7 +322,7 @@ async function main() {
     await sleep(200);
     check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const progressNow = () => evaluate('return document.querySelector(".gauge__number").dataset.count;');
+    const progressNow = () => evaluate('return document.querySelector(".planbar__number").dataset.count;');
     const before = await progressNow();
     await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
@@ -875,18 +875,18 @@ async function main() {
     check('kokpit wskazuje projekty wymagające uwagi',
       await evaluate('return !!document.querySelector(".cockpit") && /wymaga/.test(document.querySelector(".cockpit").textContent);'));
     await go('#/projekty/' + id2);
-    check('nagłówek projektu pokazuje profil z bieżącym etapem i stan alarmowy',
-      await evaluate('return !!document.querySelector(".flow--hero .flow__seg.is-current") && !!document.querySelector(".level--alarm");'));
-    check('miernik podaje postęp, plan i bieżący etap także czytnikowi ekranu',
-      await evaluate('const g = document.querySelector(".gauge"); const l = g.getAttribute("aria-label"); return g.getAttribute("role") === "img" && /Postęp \\d+%/.test(l) && /plan \\d+%/.test(l) && /bieżący etap/.test(l) && !!g.querySelector(".gauge__plan") && !!g.querySelector(".gauge__now");'));
-    check('stan projektu to drabinka progów z jednym aktywnym szczeblem i powodem słowami',
-      await evaluate('const r = document.querySelectorAll(".level--hero .rung"); return r.length === 3 && document.querySelectorAll(".level--hero .rung[aria-current=\\"true\\"]").length === 1 && document.querySelector(".level__lead").textContent.length > 8;'));
+    check('nagłówek projektu pokazuje tor z bieżącym etapem i werdykt alarmowy',
+      await evaluate('return !!document.querySelector(".flow--hero .flow__seg.is-current") && !!document.querySelector(".verdict--alarm");'));
+    check('pas planu podaje postęp i plan także czytnikowi ekranu oraz rysuje plan na torze',
+      await evaluate('const g = document.querySelector(".planbar"); const l = g.getAttribute("aria-label"); return g.getAttribute("role") === "group" && /Postęp \\d+%/.test(l) && /plan na dziś \\d+%/.test(l) && !!g.querySelector(".flow__plan") && !!g.querySelector(".planbar__axis");'));
+    check('werdykt ma jeden stan, powód słowami i klikalne powody; stan nie jest przyciskiem',
+      await evaluate('const v = document.querySelector(".verdict"); return !!v && v.querySelectorAll(".verdict__label").length === 1 && v.querySelector(".verdict__why").textContent.length > 8 && !!v.querySelector(".verdict__reason") && !v.querySelector(".verdict__label button");'));
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
-      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".level .rung button");'));
-    check('stan projektu pokazuje „Najbliższy próg” albo przyczynę, a powody są klikalne',
-      await evaluate('return !!document.querySelector(".level__reason") && (!!document.querySelector(".level__limit") || document.querySelector(".level--alarm"));'));
-    check('„Najbliższa akcja” wskazuje zadanie z krótkim powodem',
-      await evaluate('const n = document.querySelector(".naction--alarm, .naction--warning, .naction--normal"); return !!n && n.querySelector(".naction__title").textContent.length > 3 && !!n.querySelector(".naction__lead");'));
+      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".verdict button.detail__status");'));
+    check('termin umowy jest podany raz — pod torem, nie w kafelkach',
+      await evaluate('return document.querySelectorAll(".planbar__end").length === 1 && ![...document.querySelectorAll(".fact__label")].some(x => /Termin umowy/.test(x.textContent));'));
+    check('„Co teraz zrobić” w werdykcie ma tytuł i przycisk działania',
+      await evaluate('const n = document.querySelector(".verdict .naction"); return !!n && n.querySelector(".naction__title").textContent.length > 3 && !!n.querySelector(".naction__go");'));
     check('zespół w nagłówku nie powtarza tej samej osoby',
       await evaluate('const n = [...document.querySelectorAll(".signatures__list .signature__name")].map(x => x.textContent); return n.length === new Set(n).size;'));
     await click('[data-fk="gauge-detail"]');
@@ -901,10 +901,10 @@ async function main() {
       await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && !!i.querySelector(".history");'));
     await pressKey('escape');
     await sleep(250);
-    await click('.gauge__note');
+    await click('button.flow__seg.is-current');
     await sleep(500);
-    check('podpis etapu w mierniku prowadzi do bieżącego etapu na liście',
-      await evaluate('const row = document.querySelector(".srow-wrap.is-current, .srow-wrap[data-stage-id]"); return !!document.querySelector(".srow-wrap[data-stage-id]");'));
+    check('klik w bieżący etap na torze prowadzi do tego etapu na liście',
+      await evaluate('return !!document.querySelector(".srow-wrap[data-stage-id]");'));
     check('odcinek toru przebiegu jest przyciskiem z pełnym opisem etapu i stanu',
       await evaluate('const b = document.querySelector("button.flow__seg.is-current"); return !!b && /w toku/.test(b.getAttribute("aria-label")) && b.getAttribute("aria-current") === "step";'));
     await evaluate('document.querySelector(".trow__name").focus(); document.querySelector(".trow__name").click(); return true;');
@@ -934,7 +934,7 @@ async function main() {
     await go('#/projekty/' + overdueId);
     await sleep(300);
     check('projekt po terminie umowy ma w „Co teraz zrobić” działanie z przyciskiem zmiany terminu',
-      await evaluate('const n = document.querySelector(".naction--alarm"); return !!n && /Termin umowy minął/.test(n.textContent) && /Zmień termin umowy/.test(n.querySelector(".naction__go").textContent);'));
+      await evaluate('const n = document.querySelector(".naction--alarm"); return !!n && /Ustal nowy termin umowy/.test(n.textContent) && /Zmień termin umowy/.test(n.querySelector(".naction__go").textContent);'));
     await click('[data-fk="next-action"]');
     await sleep(450);
     check('„Zmień termin umowy” otwiera formularz edycji projektu',

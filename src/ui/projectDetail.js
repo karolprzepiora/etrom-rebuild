@@ -119,8 +119,6 @@
     var loggedMinutes = E.TimeLog.projectMinutes(entries || [], project.id);
     var tasks = Tasks.projectTaskStats(project, now);
     var v = Insight.variance(project, now, loggedMinutes);
-    var done = project.status === 'done';
-    var info = Progress.deadlineInfo(project.deadline, now);
     var openPlan = function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); };
 
     // Budżet godzin: wykonane z budżetu; podpis — zapis z zegara względem oczekiwań.
@@ -129,25 +127,19 @@
       : (loggedMinutes ? 'zapisano ' + String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') + ' h' : 'wg budżetu etapów');
     var hoursTone = v.hours.available && stats.hoursTotal && v.hours.variance > 0.1 * stats.hoursTotal ? 'warn' : '';
 
-    // Termin: data umowy; podpis — prognoza, a bez niej odliczanie.
-    var deadlineSub;
-    var deadlineTone = '';
-    if (done) deadlineSub = 'projekt zakończony';
-    else if (v.schedule.available) {
-      var dd = v.schedule.days;
-      deadlineSub = 'Prognoza ' + F.date(v.schedule.forecast) + (dd === 0 ? ' · zgodnie z terminem' : ' · ' + (dd > 0 ? '+' : '−') + Math.abs(dd) + ' ' + (Math.abs(dd) === 1 ? 'dzień' : 'dni'));
-      deadlineTone = dd >= 14 ? 'alarm' : (dd > 0 ? 'warn' : '');
-    } else if (project.deadline) {
-      deadlineSub = Progress.countdown(project.deadline, now).text;
-      deadlineTone = info.tone === 'overdue' ? 'alarm' : (info.tone === 'urgent' ? 'warn' : '');
-    } else deadlineSub = '';
+    // Korespondencja: ile pism czeka na odpowiedź; po terminie — alarm.
+    var waiting = E.Mail.pending((ctx.state && ctx.state.workspace.mail) || [], project.id, now);
+    var waitingLate = waiting.filter(function (x) { return x.reply.state === 'overdue'; }).length;
+    var mailAll = E.Mail.forProject((ctx.state && ctx.state.workspace.mail) || [], project.id).length;
 
     return D.el('dl', { class: 'facts' }, [
       fact('Budżet godzin', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], hoursSub, hoursTone, openPlan),
       fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
         tasks.overdue ? 'alarm' : '', function () { ctx.actions.openProject(project.id, 'zadania'); }),
-      fact('Termin umowy', project.deadline ? [D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) })] : 'Bez terminu', deadlineSub, deadlineTone, project.deadline ? openPlan : null)
+      fact('Korespondencja', [D.el('span', { class: 't-num', text: String(waiting.length) })],
+        waitingLate ? 'w tym ' + waitingLate + ' po terminie odpowiedzi' : (mailAll ? 'czeka na odpowiedź · ' + F.count(mailAll, 'pismo', 'pisma', 'pism') + ' w dzienniku' : 'dziennik pusty'),
+        waitingLate ? 'alarm' : '', function () { ctx.actions.openProject(project.id, 'korespondencja'); })
     ]);
   }
 
@@ -239,34 +231,31 @@
   }
 
   function header(project, ctx, now) {
-    var health = Insight.health(project, now);
     var from = ctx.motion && ctx.motion.progressFrom;
     var Flow = E.Flow;
     var reveal = function (stageId) { ctx.actions.revealStage(project.id, stageId); };
 
-    return D.el('header', { class: 'workspace-head level-' + health.level }, [
+    return D.el('header', { class: 'workspace-head' }, [
       D.el('div', { class: 'workspace-head__id' }, [
         D.el('span', { class: 'code workspace-head__code', text: project.code }),
         statusControl(project, ctx)
       ]),
       D.el('h1', { class: 'workspace-head__title t-display', text: project.name, attrs: { id: 'project-title' } }),
       D.el('p', { class: 'workspace-head__client', text: project.client || 'Bez zamawiającego' }),
-      D.el('div', { class: 'workspace-head__grid' }, [
+      D.el('div', { class: 'workspace-head__stack' }, [
+        Flow.verdict(project, {
+          now: now,
+          onReason: function (reason) { reasonTarget(project, reason, ctx); },
+          next: nextAction(project, now, ctx)
+        }),
         D.el('section', { class: 'course', attrs: { 'aria-label': 'Przebieg projektu' } }, [
-          D.el('div', { class: 'course__gauge' }, [
-            Flow.gauge(project, { now: now, from: typeof from === 'number' ? from : undefined, onStage: reveal, onDetail: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); } })
-          ]),
-          D.el('div', { class: 'course__body' }, [
-            stageNow(project, ctx),
-            Flow.flowTrack(project, { now: now, onSegment: reveal }),
-            Flow.timeline(project, now),
-            facts(project, now, ctx.state && ctx.state.workspace.entries, ctx),
-            signatures(project, ctx)
-          ])
-        ]),
-        D.el('aside', { class: 'workspace-head__side' }, [
-          Flow.level(project, { now: now, onReason: function (reason) { reasonTarget(project, reason, ctx); } }),
-          nextAction(project, now, ctx)
+          Flow.planBar(project, {
+            now: now, from: typeof from === 'number' ? from : undefined,
+            stage: stageNow(project, ctx), onStage: reveal,
+            onDetail: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); }
+          }),
+          facts(project, now, ctx.state && ctx.state.workspace.entries, ctx),
+          signatures(project, ctx)
         ])
       ])
     ]);

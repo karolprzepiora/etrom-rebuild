@@ -145,15 +145,14 @@ Zakończony) — to przycisk, bo użytkownik go zmienia. *Stan* mówi, czy proje
 (W normie, Stan ostrzegawczy, Stan alarmowy) — jest **liczony z danych**, nikt go nie ustawia.
 Oba wymiary są niezależne i nigdy nie dzielą jednego znacznika.
 
-### Gauge — miernik postępu (`Flow.gauge`)
+### Pas planu — postęp na torze (`Flow.planBar`)
 
-Pionowa łata 0–100%: liczby kontrolne co 25, krótkie progi na granicach etapów
-(odcinki ∝ godzinom, więc próg to realny udział etapu), pasek tuszu do rzeczywistego postępu,
-pasek nurtu na zakresie bieżącego etapu, grot ◂ w punkcie postępu i **pierścień planu**
-(tyle czasu umowy już minęło). Różnica to odchylenie: „Opóźnienie 43 pkt” / „Zapas 12 pkt”
-(bursztyn od 15, czerwień od 30 pkt). Podpis „Etap 10 · 57 → 69%” pokazuje próg poprzedni i następny
-i prowadzi do etapu. Etap po terminie lub z bliskim terminem ma znak na skali.
-Jeden miernik na ekran projektu (nagłówek); na wąskim ekranie zostaje odczyt bez skali.
+Jedna skala zamiast dwóch: **tor etapów** (odcinki ∝ godzinom) jest jednocześnie paskiem postępu.
+Na torze leży **znacznik planu na dziś** (tyle czasu umowy już minęło): cienka linia z kółkiem
+i pasek odległości od postępu (szary / bursztyn / czerwień wg odchylenia). Nad torem: duża liczba
+postępu, bieżący etap i odczyt „Plan na dziś 100% · Za planem o 39 pp” (przycisk → Plan i odchylenia).
+Pod torem **jedyne miejsce terminu umowy**: „Termin umowy 26 wrz 2026 · minął 6 dni temu” z rombem.
+Ten sam fakt nie występuje w kafelkach ani w werdykcie.
 
 ### Flow — tor przebiegu (`Flow.flowTrack`)
 
@@ -173,7 +172,12 @@ Rozmiary: **hero** (numery, znaczniki, odcinki jako przyciski), **compact** (kar
 z odczytem procentu i grotem), **mini** (wiersz listy: sam tor, 5 px).
 Odcinek węższy niż ~2% toru nie ma numeru (zostaje w podpowiedzi); bieżący numer zawsze widać.
 
-### Level — stan projektu (`Flow.level`)
+### Werdykt i Level — stan projektu (`Flow.verdict`, `Flow.level`)
+
+**Werdykt** (nagłówek projektu): pas z jednym stanem (kształt ▽ + nazwa), jednym zdaniem o powodzie
+(klikalnym) i po prawej „Co teraz zrobić” z przyciskiem działania. Alarm i ostrzeżenie barwią cały pas
+delikatnym tłem; w normie pas jest spokojny. Poniżej opis drabinki progów, której pełna wersja
+zostaje w inspektorze (`Flow.level` w rozmiarze compact).
 
 Drabinka progów: *Stan alarmowy* ▸ *Stan ostrzegawczy* ▸ *W normie*. Aktywny szczebel jest
 podświetlony i oznaczony „teraz”, niesie **powód słowami** („Termin umowy minął 6 dni temu”).
@@ -190,7 +194,7 @@ stanu portfela z cienką miarą udziału pod każdym szczeblem.
 Znacznik punktu na osi, kształt niesie znaczenie: **grot** ▽ — teraz / bieżące położenie,
 **pierścień** ○ — plan, **romb** ◇ — termin i kamień milowy (wypełniony, gdy minął),
 **kreska** — próg etapu. Kolor tylko ostrzega (bursztyn, czerwień). Używany na torze, w mierniku,
-na osi czasu umowy (`Flow.timeline`) i na osi najbliższych terminów w portfolio.
+pod torem pasa planu i na osi najbliższych terminów w portfolio.
 
 ### Semantyka koloru
 
@@ -225,8 +229,7 @@ nigdy sam kolor. Fokus: ring nurtu. Kontrast par pilnuje `tests/tokens.test.js`.
 
 ### Tokeny
 
-`--line-w`, `--tick-minor`, `--tick-major`, `--marker-size`, `--gauge-w`, `--gauge-axis`,
-`--gauge-scale-h`, `--gauge-bar`, `--flow-seg-h`, `--flow-gap`, `--level-rung-h`, `--motion-measure`
+`--line-w`, `--tick-minor`, `--tick-major`, `--marker-size`, `--flow-seg-h`, `--flow-gap`, `--level-rung-h`, `--motion-measure`
 (`styles/tokens.css`). Kolory wyłącznie semantyczne: `--flow`, `--done`, `--warn`, `--alarm`, `--track`, `--brand`.
 
 ## 2b. Etap: rodzaj pracy i ikona

@@ -364,7 +364,8 @@ test('nextAction: termin umowy minął → zawsze jest działanie; zadania zaleg
   const over = Insight.nextAction(project({ deadline: '2026-09-26', stages: calm }), NOW);
   assert.equal(over.rule, 'project-overdue');
   assert.equal(over.tone, 'alarm');
-  assert.match(over.parts[0], /Minęło 6 dni od terminu umowy/);
+  assert.equal(over.title, 'Ustal nowy termin umowy');
+  assert.match(over.parts[0], /Aneks/);
   assert.equal(Insight.nextAction(project({ deadline: '2026-09-26', status: 'paused', stages: calm }), NOW), null);
   const withLate = [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2026-09-28T12:00', assignees: ['p-1'] })])];
   assert.equal(Insight.nextAction(project({ deadline: '2026-09-26', stages: withLate }), NOW).rule, 'overdue');
