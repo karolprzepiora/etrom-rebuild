@@ -220,6 +220,8 @@
     }
     var go = function () {
       if (action.kind === 'mail') ctx.actions.openProject(project.id, 'korespondencja');
+      else if (action.kind === 'stage') ctx.actions.addTask(project.id, action.stageId);
+      else if (action.rule === 'project-overdue') ctx.actions.editProject(project.id);
       else if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
       else ctx.actions.inspect({ kind: 'plan', projectId: project.id });
     };
@@ -230,7 +232,7 @@
         return D.el('li', { class: i === 0 ? 'naction__lead' : '', text: part });
       })),
       D.el('button', { class: 'naction__go', attrs: { type: 'button', 'data-fk': 'next-action' }, on: { click: go } }, [
-        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : (action.kind === 'mail' ? 'Otwórz korespondencję' : 'Pokaż szczegóły') }),
+        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : (action.kind === 'mail' ? 'Otwórz korespondencję' : (action.kind === 'stage' ? 'Dodaj zadanie' : (action.rule === 'project-overdue' ? 'Zmień termin umowy' : 'Pokaż szczegóły'))) }),
         E.Icons.icon('chevronRight', 14)
       ])
     ]);

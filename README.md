@@ -154,8 +154,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 234 testy logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 169 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 236 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 171 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -306,3 +306,4 @@ w teście przeglądarkowym.
 - Zadania: data z rokiem i godziną oraz odliczanie (np. „5 paź 2026, 15:00 · 3 dni do końca”).
 - Szybkie kroki w zadaniu w toku: „Do zatwierdzenia” albo „Zakończ” (samodzielnie); w Mojej pracy tak samo.
 - Panel „Co teraz zrobić” zamiast „Najbliższa akcja” i „Najbliższy próg”: jedno zadanie, pełne zdania o powodzie; przy spokoju — następny termin.
+- Panel „Co teraz zrobić” zna też luki: termin umowy minął (przycisk „Zmień termin umowy”), etap w toku bez zadań („Dodaj zadanie”), pismo po terminie odpowiedzi. Projekt w stanie alarmowym nigdy nie pokazuje „nic do zrobienia”.

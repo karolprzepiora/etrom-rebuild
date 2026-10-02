@@ -358,3 +358,25 @@ test('nextAction: pismo po terminie wyprzedza zatwierdzenie, bliski termin odpow
   assert.equal(Insight.nextAction(proj, NOW, [{ entry: soon.entry, reply: { state: 'waiting', days: 20 } }]), null);
   assert.equal(Insight.nextAction(proj, NOW), null);
 });
+
+test('nextAction: termin umowy minął → zawsze jest działanie; zadania zaległe nadal ważniejsze', () => {
+  const calm = [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2027-01-10T12:00', assignees: ['p-1'] })])];
+  const over = Insight.nextAction(project({ deadline: '2026-09-26', stages: calm }), NOW);
+  assert.equal(over.rule, 'project-overdue');
+  assert.equal(over.tone, 'alarm');
+  assert.match(over.parts[0], /Minęło 6 dni od terminu umowy/);
+  assert.equal(Insight.nextAction(project({ deadline: '2026-09-26', status: 'paused', stages: calm }), NOW), null);
+  const withLate = [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2026-09-28T12:00', assignees: ['p-1'] })])];
+  assert.equal(Insight.nextAction(project({ deadline: '2026-09-26', stages: withLate }), NOW).rule, 'overdue');
+});
+
+test('nextAction: etap w toku bez zadań prosi o rozpisanie zadań', () => {
+  const p = project({ deadline: '2027-12-31', stages: [stage('preparation', 'done', 40), stage('concept', 'working', 80, '', [])] });
+  const a = Insight.nextAction(p, NOW);
+  assert.equal(a.rule, 'empty-stage');
+  assert.equal(a.kind, 'stage');
+  assert.equal(a.stageId, 'concept');
+  assert.match(a.title, /^Etap 2: /);
+  const filled = project({ deadline: '2027-12-31', stages: [stage('concept', 'working', 80, '', [task({ status: 'working', deadline: '2027-01-10T12:00', assignees: ['p-1'] })])] });
+  assert.equal(Insight.nextAction(filled, NOW), null);
+});

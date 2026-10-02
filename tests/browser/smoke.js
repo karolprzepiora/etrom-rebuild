@@ -925,6 +925,25 @@ async function main() {
     await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "[", bubbles: true })); return true;');
     await sleep(300);
 
+    /* 38. Projekt po terminie nie może mieć pustego „Co teraz zrobić” */
+    const overdueId = await evaluate(`const A = window.ETROM.app, M = window.ETROM.Model;
+      const st = M.createStage('preparation'); st.status = 'working';
+      let id = 0;
+      A.store.update((s) => { const p = M.createProject({ code: 'PO-TERMINIE', name: 'Projekt po terminie', client: 'K', status: 'active', deadline: '2026-01-15', stages: [st] }, s.workspace.projects); id = p.id; return Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.concat([p]) }) }); });
+      return id;`);
+    await go('#/projekty/' + overdueId);
+    await sleep(300);
+    check('projekt po terminie umowy ma w „Co teraz zrobić” działanie z przyciskiem zmiany terminu',
+      await evaluate('const n = document.querySelector(".naction--alarm"); return !!n && /Termin umowy minął/.test(n.textContent) && /Zmień termin umowy/.test(n.querySelector(".naction__go").textContent);'));
+    await click('[data-fk="next-action"]');
+    await sleep(450);
+    check('„Zmień termin umowy” otwiera formularz edycji projektu',
+      await evaluate('return !!document.querySelector("dialog.drawer[open], .drawer") && /PO-TERMINIE/.test(document.body.textContent);'));
+    await evaluate('window.ETROM.app.store.set({ form: null }); return true;');
+    await sleep(450);
+    await evaluate(`window.ETROM.app.store.update((s) => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.filter((p) => p.code !== 'PO-TERMINIE') }) })); return true;`);
+    await go('#/projekty/' + id2);
+
     /* 38a. Dziennik korespondencji */
     const mailPid = await state('s.workspace.projects.find(p => p.code === "DEMO-001").id');
     await go('#/projekty/' + mailPid + '/korespondencja');

@@ -561,12 +561,33 @@
     }
     if (mailLate) return mailPick(mailLate, 'alarm');
 
+    // Termin umowy minął: to nagłówek problemu, więc nigdy nie może być „nic do zrobienia”.
+    var overdueDays = project.status === 'active' ? -Progress.daysUntil(project.deadline, reference) : null;
+    if (overdueDays !== null && overdueDays > 0) {
+      return {
+        rule: 'project-overdue', kind: 'project', title: 'Termin umowy minął',
+        parts: ['Minęło ' + days(overdueDays) + ' od terminu umowy', 'Ustal nowy termin (aneks) albo zamknij projekt'],
+        tone: 'alarm', stageId: null, taskId: null
+      };
+    }
+
     var review = open.filter(function (e) { return e.task.status === 'review'; }).sort(byDeadline)[0];
     if (review) return pick(review, 'review', ['Czeka na zatwierdzenie'].concat(unassigned(review)), 'normal');
 
     var active = Progress.activeStage(project);
     var orphan = open.filter(function (e) { return !(e.task.assignees || []).length && (!active || e.stage.id === active.id); }).sort(byDeadline)[0];
     if (orphan) return pick(orphan, 'unassigned', ['Nikt nie jest przypisany'].concat(orphan.task.deadline ? ['Termin ' + when(Math.max(0, Progress.daysUntil(orphan.task.deadline.slice(0, 10), reference)))] : []), 'warning');
+
+    // Etap w toku bez żadnego zadania: nikt nie wie, co w nim zrobić ani do kiedy.
+    var current = project.status === 'active' ? Progress.activeStage(project) : null;
+    if (current && current.status === 'working' && !(current.tasks || []).length) {
+      return {
+        rule: 'empty-stage', kind: 'stage',
+        title: 'Etap ' + (project.stages.indexOf(current) + 1) + ': ' + Model.describeStage(current).name,
+        parts: ['Etap w toku bez zadań', 'Rozpisz zadania, przypisz osoby i ustaw terminy'],
+        tone: 'warning', stageId: current.id, taskId: null
+      };
+    }
 
     var mailSoon = (waitingMail || []).filter(function (x) { return x.reply.state === 'waiting' && x.reply.days <= 7; })[0];
     if (mailSoon) return mailPick(mailSoon, mailSoon.reply.days <= 3 ? 'warning' : 'normal');
