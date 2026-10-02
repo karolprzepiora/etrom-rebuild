@@ -15,8 +15,11 @@
   var TimeLog = (typeof module !== 'undefined' && module.exports)
     ? require('./timelog.js')
     : root.ETROM.TimeLog;
+  var Mail = (typeof module !== 'undefined' && module.exports)
+    ? require('./mail.js')
+    : root.ETROM.Mail;
 
-  var WORKSPACE_VERSION = 6;
+  var WORKSPACE_VERSION = 7;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -377,11 +380,12 @@
     });
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries };
+    var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [] };
   }
 
   var api = {

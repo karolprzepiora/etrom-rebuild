@@ -120,6 +120,7 @@ src/core/               logika, zero kodu dotykającego DOM
   storage.js            zapis lokalny i odczyt starej wersji
   store.js              pojemnik na stan
   format.js             daty, liczby i polska odmiana przez liczby
+  mail.js               dziennik korespondencji: numeracja, terminy odpowiedzi, wątki
   insight.js            stan projektu, profil, harmonogram, portfel, obciążenie osób
 src/ui/                 warstwa widoku
   dom.js                budowanie elementów, przerysowanie z zachowaniem fokusu
@@ -135,6 +136,7 @@ src/ui/                 warstwa widoku
   projectDetail.js      szczegóły projektu z zakładkami
   stageList.js          etapy
   taskList.js           zadania
+  mailTab.js            zakładka Korespondencja i formularz pisma
   teamScreen.js         ekran Zespołu
   myWork.js             ekran Moja praca
   timer.js              zegar, lista czasu i formularz wpisu
@@ -152,8 +154,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 225 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 161 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 234 testy logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 169 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

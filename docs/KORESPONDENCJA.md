@@ -52,7 +52,7 @@ Numer własny pism wychodzących: schemat konfigurowalny w biurze (np.
 
 ## Etapy wdrożenia
 
-1. **Dziennik ręczny** (bez AI): model danych, lista, formularz, załączniki,
+1. **Dziennik ręczny** (bez AI) — *zrobione w zakresie bez załączników* (`src/core/mail.js`, `src/ui/mailTab.js`): model danych, lista, formularz, załączniki,
    numeracja, terminy odpowiedzi → zadania. Działa lokalnie, ten sam model później
    przejmie serwer.
 2. **Ekstrakcja z potwierdzeniem** (po decyzji o serwerze): OCR + AI, podgląd,
@@ -66,3 +66,11 @@ Numer własny pism wychodzących: schemat konfigurowalny w biurze (np.
 - Jaki jest dziś format znaku pism wychodzących?
 - Czy dziennik ma obejmować tylko pisma „sprawy”, czy także wiadomości e-mail zespołu?
 - Kto może zatwierdzać wpisy (autor, lider, wszyscy z zespołu)?
+
+
+## Stan wdrożenia (faza 1)
+
+- Wpis: `id (m-N)`, `projectId`, `direction (in|out)`, `regNo`, `kind`, `subject`, `counterparty`, `number` (znak), `registeredDate`, `letterDate`, `replyDue`, `noReply`, `replyTo`, `summary`, `where`, `createdBy/At`, `updatedAt`.
+- Numer w dzienniku nadaje się sam, osobno dla projektu, kierunku i roku; nie zmienia się przy edycji (zmiana kierunku albo roku nadaje nowy; kierunku nie da się zmienić, gdy są już odpowiedzi).
+- Pismo oczekuje na odpowiedź, dopóki nie powstanie pismo w przeciwnym kierunku wskazujące je w `replyTo`; stany: czeka / po terminie / odpowiedziano / bez odpowiedzi.
+- AI wypełni ten sam formularz: propozycja pól → człowiek zatwierdza → ten sam `Mail.create`. `where` zastąpią załączniki po wdrożeniu serwera.

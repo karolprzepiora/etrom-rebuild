@@ -343,3 +343,18 @@ test('nextAction: projekt bez zespołu i bez zadań nie wywraca obliczeń', () =
   assert.equal(Insight.nextAction(bare, NOW), null);
   assert.equal(Insight.variance(bare, NOW, 0).progress.actual, 0);
 });
+
+test('nextAction: pismo po terminie wyprzedza zatwierdzenie, bliski termin odpowiedzi wyprzedza następny termin', () => {
+  const late = { entry: { id: 'm-1', regNo: 'P/2026/001', subject: 'Wezwanie', counterparty: 'RZGW', direction: 'in' }, reply: { state: 'overdue', days: -3 } };
+  const soon = { entry: { id: 'm-2', regNo: 'W/2026/001', subject: 'Wniosek', counterparty: 'Urząd', direction: 'out' }, reply: { state: 'waiting', days: 2 } };
+  const proj = project({ deadline: '2027-12-31', stages: [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2027-01-10T12:00', assignees: ['p-1'] })])] });
+  const a = Insight.nextAction(proj, NOW, [late]);
+  assert.equal(a.rule, 'mail');
+  assert.equal(a.mailId, 'm-1');
+  assert.match(a.parts[0], /Termin odpowiedzi minął 3 dni temu/);
+  const b = Insight.nextAction(proj, NOW, [soon]);
+  assert.equal(b.rule, 'mail');
+  assert.equal(b.tone, 'warning');
+  assert.equal(Insight.nextAction(proj, NOW, [{ entry: soon.entry, reply: { state: 'waiting', days: 20 } }]), null);
+  assert.equal(Insight.nextAction(proj, NOW), null);
+});

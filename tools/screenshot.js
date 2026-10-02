@@ -236,6 +236,13 @@ async function main() {
     await shoot('menu-status', { wait: 250 });
     await escape();
 
+    const idMail = await projectId('DEMO-001');
+    await go('#/projekty/' + idMail + '/korespondencja');
+    await shoot('projekt-korespondencja');
+    await run('window.ETROM.app.actions.addMail(' + idMail + ', "in"); return true;');
+    await shoot('korespondencja-formularz', { wait: 450 });
+    await escape();
+
     await go('#/projekty/' + id2 + '/zespol');
     await shoot('projekt-zespol');
 

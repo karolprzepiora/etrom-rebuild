@@ -925,6 +925,48 @@ async function main() {
     await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "[", bubbles: true })); return true;');
     await sleep(300);
 
+    /* 38a. Dziennik korespondencji */
+    const mailPid = await state('s.workspace.projects.find(p => p.code === "DEMO-001").id');
+    await go('#/projekty/' + mailPid + '/korespondencja');
+    await sleep(300);
+    check('zakładka Korespondencja pokazuje wpisy dziennika z numerami i licznik oczekujących',
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 3
+      && (await evaluate('return /P\\/\\d{4}\\/001/.test(document.querySelector(".mail-list").textContent);'))
+      && (await evaluate('return !!document.querySelector(".detail__tabs") && /Korespondencja/.test(document.querySelector(".detail__tabs").textContent);')));
+    check('pismo po terminie jest oznaczone, a dziennik ma termin odpowiedzi z rokiem',
+      await evaluate('return !!document.querySelector(".mrow2.is-overdue") && /20\\d\\d/.test(document.querySelector(".mrow2 .tdue").textContent);'));
+    await click('#mail-add-in');
+    await sleep(450);
+    check('„Pismo przychodzące” otwiera formularz w panelu bocznym',
+      await evaluate('return !!document.querySelector("#mail-form") && !!document.querySelector("#ml-subject");'));
+    await evaluate('document.querySelector("#mail-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('pusty formularz pisma pokazuje błędy i się nie zamyka',
+      (await evaluate('return !!document.querySelector("#mail-form") && !!document.querySelector("#ml-subject-error") && !!document.querySelector("#ml-party-error");')));
+    await evaluate('const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }; set("ml-subject", "Zawiadomienie o wszczęciu postępowania"); set("ml-party", "Starostwo Powiatowe"); set("ml-due", ""); document.querySelector("#mail-form").requestSubmit(); return true;');
+    await sleep(450);
+    check('zapisane pismo dostaje kolejny numer w dzienniku i trafia na listę',
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 4
+      && (await evaluate('return /Zawiadomienie o wszczęciu postępowania/.test(document.querySelector(".mail-list").textContent) && /P\\/\\d{4}\\/00[2-9]/.test(document.querySelector(".mail-list").textContent);'))
+      && !(await evaluate('return !!document.querySelector("#mail-form");')));
+    await evaluate('[...document.querySelectorAll(".mail-filters .segmented__btn")].find(b => /Czeka na odpowiedź/.test(b.textContent)).click(); return true;');
+    await sleep(300);
+    check('filtr „Czeka na odpowiedź” zostawia tylko pisma z oczekiwaną odpowiedzią',
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 2);
+    await evaluate('window.ETROM.app.actions.setMailView({ waiting: false, direction: "all", query: "" }); return true;');
+    await sleep(250);
+    await evaluate('window.ETROM.app.actions.replyMail(' + JSON.stringify(await state('s.workspace.mail.filter(m => m.projectId === ' + mailPid + ' && m.direction === "in" && m.replyDue)[0].id')) + '); return true;');
+    await sleep(450);
+    check('„Napisz odpowiedź” otwiera pismo wychodzące z adresatem i powiązaniem',
+      (await evaluate('return document.getElementById("ml-party").value.length > 2 && /^Odp\\./.test(document.getElementById("ml-subject").value) && document.getElementById("ml-replyto").value !== "";')));
+    await evaluate('document.querySelector("#mail-form").requestSubmit(); return true;');
+    await sleep(450);
+    check('odpowiedź załatwia oczekujące pismo (znika z oczekujących)',
+      (await evaluate('return [...document.querySelectorAll(".mrow2")].some(r => /odpowiedź na P\\//.test(r.textContent)) && document.querySelectorAll(".mrow2 .badge--info, .mrow2 .badge--danger").length < 2;')));
+    await click('.tabs a[href$="/zespol"], .detail__tabs a[href$="/zespol"]');
+    await sleep(200);
+    await go('#/projekty/' + mailPid);
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

@@ -38,6 +38,8 @@
     personForm: null,
     stageForm: null,
     timeForm: null,
+    mailForm: null,
+    mailView: { direction: 'all', waiting: false, query: '' },
     taskForm: null,
     expandedStages: {},
     showDone: {},
@@ -60,7 +62,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'zadania', 'zespol'];
+  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -635,6 +637,113 @@
     }
     pendingFlash = { projectId: projectId, taskId: taskId };
     mapTask(projectId, stageId, taskId, function () { return result.task; });
+  }
+
+
+  /* =========================================================
+     Dziennik korespondencji
+     ========================================================= */
+
+  var Mail = E.Mail;
+
+  function mailList() {
+    return store.getState().workspace.mail || [];
+  }
+
+  function setMail(producer) {
+    updateWorkspace(function (workspace) {
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: producer(workspace.mail || []) });
+    });
+  }
+
+  function openAddMail(projectId, direction, preset) {
+    var draft = Object.assign({ direction: direction || 'in', kind: direction === 'out' ? 'reply' : 'other', registeredDate: Mail.todayKey(new Date()) }, preset || {});
+    store.set({ mailForm: { mode: 'new', projectId: projectId, draft: draft, errors: {} } });
+  }
+
+  function openEditMail(id) {
+    var entry = mailList().filter(function (e) { return e.id === id; })[0];
+    if (!entry) return;
+    var locked = mailList().some(function (e) { return e.replyTo === id; });
+    store.set({ mailForm: { mode: 'edit', projectId: entry.projectId, locked: locked, draft: Object.assign({}, entry), errors: {} } });
+  }
+
+  /** Odpowiedź na pismo przychodzące: wychodzące z adresatem i tematem z oryginału. */
+  function replyToMail(id) {
+    var entry = mailList().filter(function (e) { return e.id === id; })[0];
+    if (!entry) return;
+    openAddMail(entry.projectId, 'out', {
+      kind: 'reply', counterparty: entry.counterparty,
+      subject: /^Odp\./i.test(entry.subject) ? entry.subject : 'Odp.: ' + entry.subject,
+      number: entry.number, replyTo: entry.id
+    });
+  }
+
+  function submitMail(values) {
+    var form = store.getState().mailForm;
+    if (!form) return;
+    var list = mailList();
+    var meta = { personId: currentMe() || '', now: new Date() };
+    var result = values.id
+      ? Mail.update(list, values.id, values, meta)
+      : Mail.create(list, form.projectId, values, meta);
+    if (!result.valid) {
+      store.set({ mailForm: Object.assign({}, form, { draft: values, errors: result.errors }) });
+      return;
+    }
+    setMail(function () { return result.entries; });
+    store.set({ mailForm: null });
+    var saved = result.entry;
+    Toast.show({ message: (values.id ? 'Zapisano ' : 'Wpisano do dziennika: ') + saved.regNo + '.', tone: 'success', timeout: 3500 });
+  }
+
+  function deleteMail(id) {
+    var list = mailList();
+    var index = list.findIndex(function (e) { return e.id === id; });
+    if (index < 0) return;
+    var removed = list[index];
+    var linked = list.filter(function (e) { return e.replyTo === id; }).map(function (e) { return e.id; });
+    setMail(function (current) { return Mail.remove(current, id); });
+    Toast.show({
+      message: 'Usunięto wpis ' + removed.regNo + '.',
+      actionLabel: 'Cofnij',
+      onAction: function () {
+        setMail(function (current) {
+          var copy = current.map(function (e) { return linked.indexOf(e.id) >= 0 ? Object.assign({}, e, { replyTo: id }) : e; });
+          copy.splice(Math.min(index, copy.length), 0, removed);
+          return copy;
+        });
+      }
+    });
+  }
+
+  /** Zadanie z terminem odpowiedzi: w pierwszym etapie w toku (albo pierwszym), przypisane do lidera. */
+  function mailToTask(id) {
+    var entry = mailList().filter(function (e) { return e.id === id; })[0];
+    var project = entry && findProject(entry.projectId);
+    if (!project || !project.stages.length || !entry.replyDue) return;
+    var stage = project.stages.filter(function (s) { return s.status === 'working'; })[0]
+      || project.stages.filter(function (s) { return s.status !== 'done'; })[0] || project.stages[0];
+    var allowed = projectRoster(project);
+    var assignees = project.team && project.team.leader && allowed.indexOf(project.team.leader) >= 0 ? [project.team.leader] : [];
+    var values = {
+      name: 'Odpowiedź na pismo ' + entry.regNo + ': ' + entry.subject,
+      deadline: entry.replyDue + 'T15:00', workload: 'medium', important: true,
+      description: 'Pismo od: ' + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.', assignees: assignees
+    };
+    var check = Tasks.validateTask(values, allowed);
+    if (!check.valid) { Toast.show({ message: 'Nie udało się utworzyć zadania — sprawdź termin odpowiedzi.', tone: 'danger', timeout: 4000 }); return; }
+    var created = Tasks.createTask(values, stage.tasks || [], allowed);
+    pendingFlash = { projectId: project.id, taskId: created.id };
+    mapStage(project.id, stage.id, function (current) { return Object.assign({}, current, { tasks: (current.tasks || []).concat([created]) }); });
+    Toast.show({ message: 'Dodano zadanie w etapie „' + Model.describeStage(stage).name + '”.', tone: 'success', timeout: 4000 });
+  }
+
+  function mailReplyOptions(projectId, direction, selfId) {
+    var other = direction === 'out' ? 'in' : 'out';
+    return mailList().filter(function (e) { return e.projectId === projectId && e.direction === other && e.id !== selfId; })
+      .sort(function (a, b) { return a.registeredDate < b.registeredDate ? 1 : -1; })
+      .map(function (e) { return { value: e.id, label: e.regNo + ' · ' + (e.subject.length > 48 ? e.subject.slice(0, 47) + '…' : e.subject) }; });
   }
 
   /* =========================================================
@@ -1237,6 +1346,35 @@
       });
       return result;
     });
+    // Przykładowa korespondencja: wpisy do projektów demonstracyjnych (po kodzie, bo id nadaje model).
+    var iso = function (offset) {
+      var d = new Date();
+      d.setDate(d.getDate() + offset);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+    var demoMail = {
+      'DEMO-001': [
+        { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), replyDue: iso(5) },
+        { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), noReply: true },
+        { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14), replyDue: iso(-2) }
+      ],
+      'DEMO-002': [
+        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30), noReply: true },
+        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), replyDue: iso(11) }
+      ]
+    };
+    updateWorkspace(function (workspace) {
+      var list = (workspace.mail || []).slice();
+      workspace.projects.forEach(function (project) {
+        var rows = demoMail[project.code];
+        if (!rows || list.some(function (e) { return e.projectId === project.id; })) return;
+        rows.forEach(function (row) {
+          var res = Mail.create(list, project.id, row, { now: new Date() });
+          if (res.valid) list = res.entries;
+        });
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
+    });
     Toast.show({
       message: added ? 'Dodano ' + F.count(added, 'projekt przykładowy', 'projekty przykładowe', 'projektów przykładowych') : 'Dane przykładowe są już w programie',
       tone: added ? 'success' : 'info',
@@ -1398,6 +1536,12 @@
     logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
     editEntry: function (id) { openTimeForm({ mode: 'edit', entryId: id }); },
     deleteEntry: deleteEntry,
+    addMail: openAddMail,
+    editMail: openEditMail,
+    replyMail: replyToMail,
+    deleteMail: deleteMail,
+    mailTask: mailToTask,
+    setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
     editPerson: openEditPerson,
@@ -1747,7 +1891,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -1777,6 +1921,18 @@
       settings.subtitle = (logged ? logged.code + ' · ' : '') + (loggedTask ? loggedTask.name : 'Zadanie');
       settings.content = E.Timer.timeForm({ mode: current.mode, draft: current.draft, errors: current.errors, hint: current.hint },
         { onSubmit: submitTime, onCancel: function () { store.set({ timeForm: null }); } });
+    } else if (current === state.mailForm) {
+      var mailProject = findProject(current.projectId);
+      settings.title = current.mode === 'edit' ? 'Edytuj wpis w dzienniku' : (current.draft.direction === 'out' ? 'Pismo wychodzące' : 'Pismo przychodzące');
+      settings.subtitle = mailProject ? mailProject.code + ' · ' + mailProject.name : '';
+      settings.content = E.MailTab.mailForm({
+        mode: current.mode, draft: current.draft, errors: current.errors, locked: current.locked,
+        replies: mailReplyOptions(current.projectId, current.draft.direction, current.draft.id)
+      }, {
+        onSubmit: submitMail,
+        onRedraft: function (draft) { store.set({ mailForm: Object.assign({}, current, { draft: draft, errors: {} }) }); },
+        onCancel: function () { store.set({ mailForm: null }); }
+      });
     } else if (current === state.stageForm) {
       var owner = findProject(current.projectId);
       var editingStage = !!current.stageId;
@@ -1801,8 +1957,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null });
         }
       }
     }));

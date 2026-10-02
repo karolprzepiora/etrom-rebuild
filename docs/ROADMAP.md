@@ -38,4 +38,4 @@ Każda część zasila następną: umowa daje terminy i budżet, plan rozdziela 
 
 ## Korespondencja projektu (AI)
 
-Dziennik poczty przychodzącej i wychodzącej z odczytem pism przez AI i zatwierdzaniem przez człowieka — projekt rozwiązania w [KORESPONDENCJA.md](KORESPONDENCJA.md). Pierwszy krok bez AI (dziennik ręczny) może powstać przed serwerem.
+Dziennik poczty przychodzącej i wychodzącej z odczytem pism przez AI i zatwierdzaniem przez człowieka — projekt rozwiązania w [KORESPONDENCJA.md](KORESPONDENCJA.md). **Faza 1 (dziennik ręczny) jest gotowa**: zakładka Korespondencja w projekcie — numer w dzienniku (P/rok/nr, W/rok/nr), rodzaj, nadawca/adresat, znak pisma, termin odpowiedzi, powiązanie odpowiedzi z pismem, filtry i szukanie, zadanie z terminem odpowiedzi; pismo po terminie trafia do panelu „Co teraz zrobić”. Dalej: załączniki i AI (wymagają serwera).

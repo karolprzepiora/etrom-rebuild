@@ -22,6 +22,7 @@
   var TABS = [
     { value: 'etapy', label: 'Przebieg' },
     { value: 'zadania', label: 'Zadania' },
+    { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' }
   ];
 
@@ -204,7 +205,7 @@
 
   /** Jedna, najpilniejsza rzecz do zrobienia; przy spokoju — następny termin w projekcie. */
   function nextAction(project, now, ctx) {
-    var action = Insight.nextAction(project, now);
+    var action = Insight.nextAction(project, now, E.Mail.pending(ctx.state.workspace.mail || [], project.id, now));
     if (!action) {
       var next = project.status === 'done' ? null : Insight.nextEvent(project, now);
       return D.el('div', { class: 'naction naction--calm' }, [
@@ -218,7 +219,8 @@
       ]);
     }
     var go = function () {
-      if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
+      if (action.kind === 'mail') ctx.actions.openProject(project.id, 'korespondencja');
+      else if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
       else ctx.actions.inspect({ kind: 'plan', projectId: project.id });
     };
     return D.el('div', { class: 'naction naction--' + action.tone }, [
@@ -228,7 +230,7 @@
         return D.el('li', { class: i === 0 ? 'naction__lead' : '', text: part });
       })),
       D.el('button', { class: 'naction__go', attrs: { type: 'button', 'data-fk': 'next-action' }, on: { click: go } }, [
-        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : 'Pokaż szczegóły' }),
+        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : (action.kind === 'mail' ? 'Otwórz korespondencję' : 'Pokaż szczegóły') }),
         E.Icons.icon('chevronRight', 14)
       ])
     ]);
@@ -406,10 +408,11 @@
     var tab = ctx.state.route.tab || 'etapy';
     var stats = Progress.projectProgress(project);
     var tasks = Tasks.projectTaskStats(project);
-    var counts = { etapy: stats.total, zadania: tasks.open, zespol: Team.projectPeople(project.team).length };
+    var counts = { etapy: stats.total, zadania: tasks.open, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zespol: Team.projectPeople(project.team).length };
 
     var body;
     if (tab === 'zadania') body = tasksTab(project, ctx);
+    else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else body = E.StageList.stageList(project, ctx);
 

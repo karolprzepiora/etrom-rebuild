@@ -528,7 +528,13 @@
    * zwrócone do poprawy → zaległe → czekające na zatwierdzenie → bez realizatora → najbliższy termin (≤ 14 dni).
    * @returns {null|{rule: string, kind: string, title: string, parts: string[], tone: string, stageId: (string|null), taskId: (string|null)}}
    */
-  function nextAction(project, now) {
+  /**
+   * @param {Object} project
+   * @param {Date} [now]
+   * @param {Array<{entry:Object, reply:{state:string, days:number}}>} [waitingMail] pisma czekające na odpowiedź
+   *   (Mail.pending), najpilniejsze pierwsze; opcjonalne — bez nich panel działa jak wcześniej
+   */
+  function nextAction(project, now, waitingMail) {
     var reference = now instanceof Date ? now : new Date();
     if (!project || project.status === 'done') return null;
     var open = allTasks(project).filter(function (e) { return e.task.status !== 'done'; });
@@ -547,12 +553,23 @@
       return pick(late, 'overdue', [d <= 0 ? 'Termin minął dziś' : 'Termin minął ' + days(d) + ' temu'].concat(unassigned(late)), 'alarm');
     }
 
+    var mailLate = (waitingMail || []).filter(function (x) { return x.reply.state === 'overdue'; })[0];
+    function mailPick(x, tone) {
+      var d = x.reply.days;
+      var phrase = d < 0 ? 'Termin odpowiedzi minął ' + days(-d) + ' temu' : 'Termin odpowiedzi ' + when(d);
+      return { rule: 'mail', kind: 'mail', title: x.entry.regNo + ' · ' + x.entry.subject, parts: [phrase, (x.entry.direction === 'in' ? 'Od: ' : 'Do: ') + x.entry.counterparty], tone: tone, mailId: x.entry.id, stageId: null, taskId: null };
+    }
+    if (mailLate) return mailPick(mailLate, 'alarm');
+
     var review = open.filter(function (e) { return e.task.status === 'review'; }).sort(byDeadline)[0];
     if (review) return pick(review, 'review', ['Czeka na zatwierdzenie'].concat(unassigned(review)), 'normal');
 
     var active = Progress.activeStage(project);
     var orphan = open.filter(function (e) { return !(e.task.assignees || []).length && (!active || e.stage.id === active.id); }).sort(byDeadline)[0];
     if (orphan) return pick(orphan, 'unassigned', ['Nikt nie jest przypisany'].concat(orphan.task.deadline ? ['Termin ' + when(Math.max(0, Progress.daysUntil(orphan.task.deadline.slice(0, 10), reference)))] : []), 'warning');
+
+    var mailSoon = (waitingMail || []).filter(function (x) { return x.reply.state === 'waiting' && x.reply.days <= 7; })[0];
+    if (mailSoon) return mailPick(mailSoon, mailSoon.reply.days <= 3 ? 'warning' : 'normal');
 
     var next = nextEvent(project, reference);
     if (next && next.days <= 14) {
