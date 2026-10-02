@@ -515,6 +515,13 @@ async function main() {
     check('klawisz E w projekcie otwiera jego edycję', await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form") && document.getElementById("pf-code").value === "DEMO-001";'));
     await pressKey('escape');
 
+    /* 21a. Termin projektu zawsze z rokiem i licznikiem dni do końca */
+    await go('#/projekty');
+    check('termin projektu na liście ma rok i licznik dni',
+      await evaluate('const cells = [...document.querySelectorAll(".deadline-cell")]; return cells.length > 0 && cells.every(c => /20\\d\\d/.test(c.querySelector(".stack__main").textContent) && !!c.querySelector(".countdown"));'));
+    check('licznik pokazuje liczbę dni do końca albo po terminie',
+      await evaluate('return [...document.querySelectorAll(".deadline-cell .countdown")].some(c => /\\d+\\s(dni|dzień)\\s(do końca|po terminie)|zamknięty|termin dzisiaj/.test(c.textContent));'));
+
     /* 22. Wybór etapów przy zakładaniu projektu */
     await go('#/projekty');
     await pressKey('n');

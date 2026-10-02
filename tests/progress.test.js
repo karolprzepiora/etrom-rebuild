@@ -149,3 +149,18 @@ test('activeStage zwraca null, gdy nie ma czego robić', () => {
   assert.equal(Progress.activeStage(null), null);
   assert.equal(Progress.activeStage({}), null);
 });
+
+test('countdown: liczba dni do końca, po terminie i dziś', () => {
+  const now = new Date(2026, 5, 15);
+  assert.deepEqual(Progress.countdown('2026-07-10', now), { days: 25, tone: 'warning', number: 25, rest: 'dni do końca', text: '25 dni do końca' });
+  assert.equal(Progress.countdown('2026-06-16', now).text, '1 dzień do końca');
+  assert.equal(Progress.countdown('2026-06-20', now).tone, 'urgent');
+  assert.equal(Progress.countdown('2026-12-01', now).tone, 'normal');
+  assert.equal(Progress.countdown('2026-06-15', now).text, 'termin dzisiaj');
+  assert.equal(Progress.countdown('2026-06-15', now).number, null);
+  assert.equal(Progress.countdown('2026-06-12', now).text, '3 dni po terminie');
+  assert.equal(Progress.countdown('2026-06-14', now).text, '1 dzień po terminie');
+  assert.equal(Progress.countdown('2026-06-12', now).tone, 'overdue');
+  assert.equal(Progress.countdown('', now).days, null);
+  assert.equal(Progress.countdown('', now).text, '');
+});

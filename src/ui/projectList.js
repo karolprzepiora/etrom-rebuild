@@ -106,8 +106,8 @@
       class: 'stack deadline-cell ' + tone,
       attrs: { 'data-tooltip': 'Termin umowy: ' + F.dateLong(project.deadline) }
     }, [
-      D.el('span', { class: 'stack__main t-num', text: F.date(project.deadline) }),
-      D.el('span', { class: 'stack__sub', text: done ? 'zamknięty' : info.text.toLowerCase().replace(/^pozostało /, 'za ') })
+      D.el('span', { class: 'stack__main t-num', text: F.date(project.deadline, { year: 'always' }) }),
+      D.el('span', { class: 'stack__sub' }, [UI.countdown(project.deadline, { done: done, now: now })])
     ]);
   }
 
@@ -304,7 +304,10 @@
       E.Flow.flowTrack(project, { size: 'compact', now: now }),
       D.el('div', { class: 'pcard__foot' }, [
         project.deadline
-          ? D.el('span', { class: 'pcard__due' + (project.status !== 'done' && info.tone === 'overdue' ? ' t-alarm' : '') }, [D.el('span', { class: 't-num', text: F.date(project.deadline) })])
+          ? D.el('span', { class: 'pcard__due' }, [
+            D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) }),
+            UI.countdown(project.deadline, { done: project.status === 'done', now: now })
+          ])
           : D.el('span', { class: 't-muted', text: 'Bez terminu' }),
         D.el('span', { class: 'pcard__spacer' }),
         team.length ? Avatar.avatarStack(team, { max: 4, size: 'sm' }) : null

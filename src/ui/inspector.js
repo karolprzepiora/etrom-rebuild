@@ -190,7 +190,7 @@
         E.Flow.level(project, { size: 'compact', now: now }),
         D.el('dl', { class: 'props' }, [
           prop('Bieżący etap', D.el('span', { text: stage ? Model.describeStage(stage).name : 'Brak' })),
-          prop('Termin umowy', project.deadline ? UI.due(project.deadline, Progress.deadlineInfo(project.deadline, now), { done: project.status === 'done' }) : D.el('span', { class: 't-muted', text: 'Bez terminu' })),
+          prop('Termin umowy', project.deadline ? D.el('span', { class: 'due-line' }, [UI.due(project.deadline, Progress.deadlineInfo(project.deadline, now), { done: project.status === 'done', year: 'always' }), UI.countdown(project.deadline, { done: project.status === 'done', now: now })]) : D.el('span', { class: 't-muted', text: 'Bez terminu' })),
           next ? prop('Najbliżej', D.el('span', { text: (next.days === 0 ? 'dziś' : 'za ' + next.days + ' d') + ', ' + next.label })) : null,
           prop('Zespół', people.length ? Avatar.avatarStack(people, { max: 6, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Nie przypisano' }))
         ])

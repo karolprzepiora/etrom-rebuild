@@ -122,7 +122,7 @@
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
         tasks.overdue ? 'alarm' : ''),
       fact('Termin umowy', project.deadline ? [D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) })] : 'Bez terminu',
-        project.deadline && !done ? info.text.toLowerCase() : (done ? 'projekt zakończony' : ''),
+        project.deadline && !done ? Progress.countdown(project.deadline, now).text : (done ? 'projekt zakończony' : ''),
         !done && info.tone === 'overdue' ? 'alarm' : (!done && info.tone === 'urgent' ? 'warn' : ''))
     ]);
   }

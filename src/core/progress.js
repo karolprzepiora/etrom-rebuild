@@ -33,6 +33,22 @@
    * Opis terminu gotowy do pokazania w interfejsie.
    * @returns {{tone: string, text: string, days: (number|null)}}
    */
+  /**
+   * Licznik dni do końca terminu — do pokazania obok daty.
+   * @returns {{days: (number|null), tone: string, number: (number|null), rest: string, text: string}}
+   *   `number` to wartość do wyróżnienia, `rest` reszta zdania („dni do końca”).
+   */
+  function countdown(deadline, now) {
+    var days = daysUntil(deadline, now);
+    if (days === null) return { days: null, tone: 'none', number: null, rest: '', text: '' };
+    var n = Math.abs(days);
+    var word = n === 1 ? 'dzień' : 'dni';
+    var tone = days < 0 ? 'overdue' : (days <= 7 ? 'urgent' : (days <= 30 ? 'warning' : 'normal'));
+    if (days === 0) return { days: 0, tone: 'urgent', number: null, rest: 'termin dzisiaj', text: 'termin dzisiaj' };
+    var rest = word + (days < 0 ? ' po terminie' : ' do końca');
+    return { days: days, tone: tone, number: n, rest: rest, text: n + ' ' + rest };
+  }
+
   function deadlineInfo(deadline, now) {
     var days = daysUntil(deadline, now);
     if (days === null) return { tone: 'none', text: 'Bez terminu', days: null };
@@ -98,6 +114,7 @@
   var api = {
     daysUntil: daysUntil,
     deadlineInfo: deadlineInfo,
+    countdown: countdown,
     projectProgress: projectProgress,
     isOverdue: isOverdue,
     activeStage: activeStage

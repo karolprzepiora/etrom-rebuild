@@ -190,6 +190,28 @@
     }, [settings.icon ? Icons.icon(settings.icon, 12) : null, D.el('span', { text: text })]);
   }
 
+  /**
+   * Licznik do końca terminu: wyróżniona liczba dni i dopisek.
+   * „26 dni do końca”, „6 dni po terminie”, „termin dzisiaj”. Dla projektu
+   * zamkniętego pokazuje „zamknięty”, bez terminu nie pokazuje nic.
+   * @param {string} deadline data YYYY-MM-DD
+   * @param {{done?: boolean, now?: Date}} [options]
+   */
+  function countdown(deadline, options) {
+    var settings = options || {};
+    if (!deadline) return null;
+    if (settings.done) return D.el('span', { class: 'countdown countdown--done', text: 'zamknięty' });
+    var c = E.Progress.countdown(deadline, settings.now);
+    if (c.days === null) return null;
+    return D.el('span', {
+      class: 'countdown countdown--' + c.tone,
+      attrs: { 'aria-label': c.text }
+    }, [
+      c.number !== null ? D.el('b', { class: 'countdown__n t-num', text: String(c.number) }) : null,
+      D.el('span', { text: (c.number !== null ? ' ' : '') + c.rest })
+    ]);
+  }
+
   var DUE_ICON = { overdue: 'alertCircle', urgent: 'clock' };
 
   /**
@@ -203,7 +225,8 @@
     var F = E.Format;
     if (!value) return D.el('span', { class: 'due due--none', text: 'Bez terminu' });
 
-    var formatted = value.indexOf('T') > 0 ? F.dateTime(value) : F.date(value);
+    var yearOption = settings.year ? { year: settings.year } : undefined;
+    var formatted = value.indexOf('T') > 0 ? F.dateTime(value, yearOption) : F.date(value, yearOption);
     var tone = settings.done ? 'normal' : info.tone;
     var alarming = tone === 'overdue' || tone === 'urgent';
     var children = [];
@@ -557,6 +580,7 @@
     statusSpec: statusSpec,
     badge: badge,
     due: due,
+    countdown: countdown,
     progress: progress,
     swatch: swatch,
     field: field,

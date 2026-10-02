@@ -287,7 +287,7 @@
       ]),
       D.el('div', { class: 'timeline-axis__labels' }, [
         D.el('span', { text: F.date(startIso) }),
-        D.el('span', { class: 'timeline-axis__end-label', text: over ? 'Termin minął ' + F.date(project.deadline) : 'Termin ' + F.date(project.deadline) })
+        D.el('span', { class: 'timeline-axis__end-label', text: over ? 'Termin minął ' + F.date(project.deadline, { year: 'always' }) : 'Termin ' + F.date(project.deadline, { year: 'always' }) })
       ])
     ]);
   }
