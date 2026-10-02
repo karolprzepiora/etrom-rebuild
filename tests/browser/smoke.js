@@ -761,6 +761,10 @@ async function main() {
     await go('#/projekty/' + id2);
     check('wiersz etapu pokazuje licznik otwartych zadań',
       await evaluate('return [...document.querySelectorAll(".srow__tasks")].some(c => /^\\d+\\/\\d+$/.test(c.textContent));'));
+    check('etap pokazuje pasek rozkładu statusów zadań',
+      await evaluate('return document.querySelectorAll(".sbar .sbar__seg").length >= 1;'));
+    check('zadanie w toku ma szybki krok „Zgłoś do zatwierdzenia”',
+      await evaluate('return [...document.querySelectorAll(".trow--working .trow__step")].some(b => b.textContent === "Zgłoś do zatwierdzenia");'));
     check('bieżący etap jest od razu rozwinięty z zadaniami',
       await evaluate('const w = document.querySelector(".srow--working"); return !!w && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "true";')
       && (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);

@@ -17,6 +17,25 @@
   var PART_SHAPE = { todo: 'empty', working: 'half', done: 'done' };
   var PART_TONE = { todo: 'neutral', working: 'flow', done: 'done' };
 
+  // Jedno kliknięcie do kolejnego sensownego kroku (pełne menu zostaje pod statusem).
+  var NEXT_STEP = {
+    working: { to: 'review', label: 'Zgłoś do zatwierdzenia' },
+    changes: { to: 'working', label: 'Wróć do pracy' }
+  };
+
+  /** Pasek rozkładu statusów zadań etapu: gotowe → w toku → reszta. */
+  function statusBar(tasks) {
+    var order = ['done', 'review', 'working', 'changes', 'todo'];
+    var counts = {};
+    tasks.forEach(function (t) { counts[t.status] = (counts[t.status] || 0) + 1; });
+    var label = order.filter(function (k) { return counts[k]; })
+      .map(function (k) { return Tasks.TASK_STATUS[k] + ': ' + counts[k]; }).join(', ');
+    return D.el('span', { class: 'sbar', attrs: { role: 'img', 'aria-label': 'Rozkład statusów — ' + label, 'data-tooltip': label } },
+      order.filter(function (k) { return counts[k]; }).map(function (k) {
+        return D.el('span', { class: 'sbar__seg sbar__seg--' + k, style: { '--n': String(counts[k]) } });
+      }));
+  }
+
   function statusControl(project, stage, task, actions) {
     var btn = UI.statusButton('task', task.status, {
       subject: task.name,
@@ -104,6 +123,20 @@
       ]));
     }
 
+    var meta = [];
+    var logged = actions.taskMinutes ? actions.taskMinutes(task.id) : 0;
+    if (logged > 0) meta.push(D.el('span', { class: 't-num', text: 'zapisano ' + E.TimeLog.duration(logged) }));
+    var step = NEXT_STEP[task.status];
+    if (step) {
+      meta.push(D.el('button', {
+        class: 'trow__step',
+        text: step.label,
+        attrs: { type: 'button', 'data-fk': 'task-step-' + task.id, 'data-tooltip': 'Przenieś do: ' + Tasks.TASK_STATUS[step.to] },
+        on: { click: function () { actions.moveTask(project.id, stage.id, task.id, step.to); } }
+      }));
+    }
+    if (meta.length) body.push(D.el('p', { class: 'trow__meta t-meta' }, meta));
+
     return D.el('li', {
       class: 'trow row trow--' + task.status + (motion && motion.flashTask === task.id ? ' is-flash' : '') + (actions.isInspected && actions.isInspected('task', task.id) ? ' is-inspected' : ''),
       dataset: { taskId: task.id }
@@ -142,7 +175,7 @@
       : 'Brak zadań';
 
     var head = settings.hideHead ? null : D.el('div', { class: 'tasks__head' }, [
-      D.el('span', { class: 'tasks__summary', text: summary }),
+      D.el('span', { class: 'tasks__summary' }, [D.el('span', { text: summary }), stats.total ? statusBar(stage.tasks) : null]),
       UI.button({
         label: 'Dodaj zadanie', icon: 'plus', variant: 'ghost', size: 'sm',
         attrs: { 'data-fk': 'add-task-' + stage.id },

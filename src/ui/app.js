@@ -1364,6 +1364,7 @@
     deleteTask: deleteTask,
     moveTask: moveTaskStatus,
     toggleTimer: toggleTimer,
+    taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
     isTiming: isTiming,
     logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
