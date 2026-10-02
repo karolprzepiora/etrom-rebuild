@@ -16,7 +16,10 @@ Docelowo ETROM działa jako strona internetowa: każdy ma własne konto (login i
 - Uprawnienia (kto może zatwierdzać, edytować projekt, widzieć czas innych) przejdą z założeń interfejsu do reguł serwera. Dziś zatwierdzają lider i koordynator projektu.
 - Dane z `localStorage` zostaną przeniesione do bazy; zapis lokalny zostanie jako podręczny bufor.
 
+## Uprawnienia do czasu pracy (decyzja z 2 października 2026)
+
+Czas pracy innych osób widzą tylko **lider projektu** i **dyrekcja**. Pozostali widzą własne wpisy oraz sumę czasu na zadaniu, bez rozbicia na osoby. W obecnej wersji bez logowania rozbicie na osoby jest jeszcze widoczne w inspektorze zadania; ograniczenie wejdzie razem z kontami, bo jego egzekwowanie musi leżeć po stronie serwera.
+
 ## Nierozstrzygnięte
 
-- Gdzie działa serwer (własny serwer biura, NAS, chmura) — od tego zależy wybór bazy i sposobu synchronizacji.
-- Czy czas innych osób jest jawny dla wszystkich, czy tylko dla lidera projektu i dyrekcji.
+- Gdzie działa serwer: wchodzi w grę chmura, ale decyzja jeszcze nie zapadła. Od niej zależy wybór bazy i sposobu synchronizacji.

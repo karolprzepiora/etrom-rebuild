@@ -279,9 +279,9 @@ async function main() {
     await shoot('paleta', { wait: 250 });
     await escape();
 
-    await run('document.documentElement.setAttribute("data-accent", "raspberry"); return true;');
+    await run('document.documentElement.setAttribute("data-accent", "graphite"); return true;');
     await go('#/projekty/' + id2);
-    await shoot('akcent-malina');
+    await shoot('akcent-grafit');
     await run('document.documentElement.removeAttribute("data-accent"); return true;');
 
     await run('window.ETROM.app.store.set({ prefs: Object.assign({}, window.ETROM.app.store.getState().prefs, { sidebarCollapsed: true }) }); return true;');

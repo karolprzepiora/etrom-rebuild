@@ -7,12 +7,12 @@
   var KEY = 'etrom.prefs.v1';
   var THEMES = ['system', 'light', 'dark'];
   var VIEWS = ['list', 'cards'];
-  var ACCENTS = ['standard', 'graphite', 'raspberry'];
+  var ACCENTS = ['standard', 'graphite'];
   var GROUPS = ['health', 'status', 'none'];
   // Elementy wiersza projektu, które można ukryć w opcjach widoku.
   var COLUMNS = ['client', 'progress', 'stages', 'tasks', 'deadline', 'team'];
   // Nazwy z wcześniejszych wersji przeniesione na obecne.
-  var LEGACY_ACCENTS = { hydro: 'standard', topo: 'graphite' };
+  var LEGACY_ACCENTS = { hydro: 'standard', topo: 'graphite', raspberry: 'standard' };
   var MAX_PINNED = 8;
   var MAX_RECENT = 5;
 

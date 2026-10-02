@@ -496,11 +496,11 @@ async function main() {
       (await evaluate('return !document.querySelector("dialog.palette[open]");')) && (await evaluate('return location.hash;')) === '#/projekty/' + id1);
 
     await pressKey('k', CTRL);
-    await evaluate('const input = document.querySelector(".palette__input"); input.value = "kolor malina"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    await evaluate('const input = document.querySelector(".palette__input"); input.value = "kolor grafit"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     await sleep(200);
     await pressKey('enter');
     await sleep(300);
-    check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'raspberry');
+    check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'graphite');
 
     await pressKey('k', CTRL);
     await pressKey('escape');

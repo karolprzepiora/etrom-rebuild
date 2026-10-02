@@ -60,7 +60,7 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - obsługa klawiatury: `N` nowy projekt lub osoba, `E` edycja projektu, `/` wyszukiwarka,
   `Esc` zamyka menu i panel, `Ctrl+Enter` zapisuje formularz, strzałki w menu,
 - usuwanie działa od razu i przez kilka sekund da się je cofnąć,
-- trzy warianty koloru pracy w toku (nurt, grafit, malina) obok motywu jasnego i ciemnego,
+- dwa warianty koloru pracy w toku (nurt, grafit) obok motywu jasnego i ciemnego,
 - **ekran Zespołu**: katalog osób, role w organizacji, forma współpracy,
   wyłączanie z obiegu z zachowaniem historii,
 - **funkcje w projekcie**: Lider, Koordynator, Pełnomocnik wiodący i dodatkowy

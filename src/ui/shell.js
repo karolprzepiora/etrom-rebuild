@@ -18,8 +18,7 @@
 
   var ACCENTS = [
     { value: 'standard', label: 'Stal', color: '#2C7CA0' },
-    { value: 'graphite', label: 'Grafit', color: '#3E4B49' },
-    { value: 'raspberry', label: 'Malina', color: '#B4245F' }
+    { value: 'graphite', label: 'Grafit', color: '#3E4B49' }
   ];
 
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */

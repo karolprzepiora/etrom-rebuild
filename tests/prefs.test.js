@@ -21,7 +21,7 @@ test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista',
 });
 
 test('wariant nurtu przyjmuje tylko znane nazwy, dawne nazwy przechodzą na obecne', () => {
-  assert.equal(Prefs.normalize({ accent: 'raspberry' }).accent, 'raspberry');
+  assert.equal(Prefs.normalize({ accent: 'raspberry' }).accent, 'standard', 'usunięta malina wraca do stali');
   assert.equal(Prefs.normalize({ accent: 'graphite' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'standard');

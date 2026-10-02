@@ -58,7 +58,7 @@ Logo: `docs/brand/etrom-logo.png` → `tools/build-logo.py` → `styles/logo.css
 | Stan alarmowy | `--alarm` | `--alarm-ink` | `--alarm-wash` |
 | Do zatwierdzenia | `--review` | `--review` | `--review-wash` |
 
-Warianty barwy „teraz” (`data-accent`): **standard** (nurt), **graphite**, **raspberry**.
+Warianty barwy „teraz” (`data-accent`): **standard** (nurt) i **graphite**. Wariant malinowy usunięto: był zbyt blisko magenty z logo, która jest kolorem marki, a nie stanu.
 Zmieniają tylko nurt — tusz i stany ryzyka zostają.
 
 Kontrast sprawdza `tests/tokens.test.js` w obu motywach i każdym wariancie.

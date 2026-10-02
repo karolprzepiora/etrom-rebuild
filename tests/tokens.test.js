@@ -77,7 +77,7 @@ test('znaczniki graficzne (nurt, alarm, ostrzeżenie, gotowe) ≥ 3:1 wobec tła
 });
 
 test('każdy wariant nurtu: tekst i znacznik czytelne', () => {
-  ['', 'graphite', 'raspberry'].forEach((variant) => {
+  ['', 'graphite'].forEach((variant) => {
     const map = variant ? tokens(block(':root[data-accent="' + variant + '"]')) : {};
     expectPair(map, 'flow-ink', 'sheet', 4.5);
     expectPair(map, 'flow-ink', 'flow-wash', 4.5);

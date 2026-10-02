@@ -198,13 +198,6 @@
   --flow-ring:   light-dark(rgb(42 50 53 / 0.3), rgb(213 220 219 / 0.4));
 }
 
-:root[data-accent="raspberry"] {
-  --flow:        light-dark(#c8306f, #ec72a8);
-  --flow-ink:    light-dark(#a3245a, #f08dba);
-  --flow-wash:   light-dark(#fbedf3, #2e1621);
-  --flow-ring:   light-dark(rgb(200 48 111 / 0.3), rgb(236 114 168 / 0.42));
-}
-
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-instant: 0ms;

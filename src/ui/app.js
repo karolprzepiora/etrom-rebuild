@@ -1289,7 +1289,6 @@
       { label: 'Motyw jak w systemie', icon: 'monitor', meta: now(prefs.theme === 'system'), run: function () { setPref({ theme: 'system' }); } },
       { label: 'Kolor pracy w toku: nurt', icon: 'water', meta: now(prefs.accent === 'standard'), keywords: 'akcent barwy kolor standard morski hydro turkus', run: function () { setPref({ accent: 'standard' }); } },
       { label: 'Kolor pracy w toku: grafit', icon: 'datum', meta: now(prefs.accent === 'graphite'), keywords: 'akcent barwy kolor szary topo', run: function () { setPref({ accent: 'graphite' }); } },
-      { label: 'Kolor pracy w toku: malina', icon: 'datum', meta: now(prefs.accent === 'raspberry'), keywords: 'akcent barwy kolor malinowy etrom', run: function () { setPref({ accent: 'raspberry' }); } },
       { label: 'Skróty klawiszowe', icon: 'keyboard', meta: '?', keywords: 'pomoc klawiatura', run: showShortcuts },
       { label: (prefs.sidebarCollapsed ? 'Rozwiń' : 'Zwiń') + ' panel boczny', icon: 'sidebar', meta: '[', keywords: 'nawigacja menu', run: toggleSidebar },
       { label: 'Dodaj dane przykładowe', icon: 'sparkle', keywords: 'demo testowe przykład', run: loadDemo },
