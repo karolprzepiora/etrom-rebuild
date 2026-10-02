@@ -34,8 +34,8 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - **profil przebiegu**: etapy jako odcinki proporcjonalne do budżetu godzin — długość wykreślonej
   linii jest postępem rzeczowym; linijka czasu umowy pod nim pokazuje opóźnienie bez liczb,
 - lista projektów w tabeli (domyślnie, pogrupowana według stanu) albo w kartach,
-- **przestrzeń projektu pod własnym adresem** (`#/projekty/12`) z zakładkami Przebieg, Zadania,
-  Zespół — działa przycisk Wstecz i link do konkretnego projektu,
+- **przestrzeń projektu pod własnym adresem** (`#/projekty/12`) z zakładkami Plan, Zadania,
+  Korespondencja, Zespół, Czas, Aktywność — działa przycisk Wstecz i link do konkretnego projektu,
 - **inspektor**: podgląd zadania (z historią zmian statusu), osoby (obciążenie, funkcje, zadania)
   i projektu (Spacja na wierszu) bez opuszczania bieżącego widoku,
 - **zespół z obciążeniem**: otwarte zadania każdej osoby i jej funkcje w projektach,
@@ -154,8 +154,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 240 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 173 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 243 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 170 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -286,11 +286,11 @@ w teście przeglądarkowym.
 
 ## Project Workspace — Project Intelligence Pass
 
-- **Pas planu:** tor etapów jest paskiem postępu; na nim znacznik planu na dziś, odległość od postępu i odczyt „Za planem o N pp” (klik → „Plan i odchylenia”). Termin umowy podany raz, pod torem.
+- **Nagłówek projektu:** jeden rząd właściwości (Stan, Postęp z kreską planu, Termin umowy edytowany w miejscu, Godziny, Lider) i lista „Wymaga uwagi” z przyciskami działań; klik w postęp → „Plan i odchylenia”.
 - **Plan i odchylenia** (`Insight.variance`): postęp (pp), godziny zapisane vs oczekiwane na dziś (h), termin umowny vs prognoza liniowa (dni). Brak danych = brak liczby i jawny powód (nic nie jest zgadywane); prognoza dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu.
-- **Werdykt:** stan osobny od postępu — jeden stan, powód słowami (klikalny) i „Co teraz zrobić” w jednym pasie nad torem.
+- **Wymaga uwagi** (`Insight.attentionItems`): powody stanu, zaległe pisma, etap bez zadań, zadania bez osoby i czekające na zatwierdzenie — każde z działaniem.
 - **Najbliższa akcja** (`Insight.nextAction`): zwrócone → zaległe → do zatwierdzenia → bez realizatora → termin ≤ 14 dni; inaczej „Brak działań wymagających uwagi”.
-- **Hero:** Budżet godzin (z odchyleniem), Zadania otwarte, Termin (z prognozą); zespół bez powtórzeń osób („Lider · Koordynator”).
+- **Panel szczegółów** (zwijany): dane projektu, zespół z funkcjami, godziny wg rodzaju, ostatnia aktywność.
 - **Aktywny etap:** delikatny tint i cienka szyna zamiast pełnego wypełnienia.
 
 ## Pasek dnia i panel „Dzisiaj”

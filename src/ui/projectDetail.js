@@ -20,13 +20,13 @@
   var F = E.Format;
 
   var TABS = [
-    { value: 'etapy', label: 'Przebieg' },
+    { value: 'etapy', label: 'Plan' },
     { value: 'zadania', label: 'Zadania' },
     { value: 'korespondencja', label: 'Korespondencja' },
-    { value: 'zespol', label: 'Zespół' }
+    { value: 'zespol', label: 'Zespół' },
+    { value: 'czas', label: 'Czas' },
+    { value: 'aktywnosc', label: 'Aktywność' }
   ];
-
-  var EVENT_KIND = { project: 'Termin umowy', stage: 'Termin zadania', task: 'Termin zadania' };
 
   function statusControl(project, ctx) {
     var btn = UI.statusButton('project', project.status, {
@@ -76,188 +76,152 @@
     ];
   }
 
-  function fact(label, value, sub, tone, onClick) {
-    var nodes = typeof value === 'string' ? [D.el('span', { text: value })] : value;
-    return D.el('div', { class: 'fact' + (tone ? ' fact--' + tone : '') + (onClick ? ' fact--link' : '') }, [
-      D.el('dt', { class: 'fact__label', text: label }),
-      D.el('dd', { class: 'fact__value' }, onClick
-        ? [D.el('button', { class: 'fact__hit', attrs: { type: 'button', 'aria-label': label + ': ' + (typeof value === 'string' ? value : nodes.map(function (n) { return n.textContent; }).join('')) + '. Pokaż szczegóły.', 'data-fk': 'fact-' + label }, on: { click: onClick } }, nodes)]
-        : nodes),
-      sub ? D.el('dd', { class: 'fact__sub', text: sub }) : null
+  var PL = E.ProjectList;
+
+  /* ---------- nagłówek: tożsamość + jeden rząd właściwości ---------- */
+
+  function prop(label, body, options) {
+    var o = options || {};
+    return D.el('div', { class: 'pd-prop' + (o.tone ? ' pd-prop--' + o.tone : '') }, [
+      D.el('dt', { class: 'pd-prop__label', text: label }),
+      D.el('dd', { class: 'pd-prop__value' }, body)
     ]);
   }
 
-  /** Bieżący etap: nazwa jest głównym zdaniem środka cockpitu, bo odpowiada na „gdzie jesteśmy”. */
-  function stageNow(project, ctx) {
-    var active = Progress.activeStage(project);
-    var total = project.stages.length;
-    var kicker;
-    var name;
-    if (active) {
-      var info = Model.describeStage(active);
-      name = info.name;
-      kicker = 'Bieżący etap · ' + (project.stages.indexOf(active) + 1) + ' z ' + total
-        + (project.status === 'paused' ? ' · wstrzymany' : (active.status === 'working' ? ' · w toku' : ' · do rozpoczęcia'));
-    } else {
-      name = total ? 'Wszystkie etapy zakończone' : 'Brak etapów';
-      kicker = total ? 'Przebieg' : 'Etapy';
-    }
-    var body = [
-      D.el('span', { class: 'stagenow__kicker', text: kicker }),
-      D.el('span', { class: 'stagenow__name', text: name })
-    ];
-    if (!active) return D.el('div', { class: 'stagenow' }, body);
-    return D.el('button', {
-      class: 'stagenow stagenow--link',
-      attrs: { type: 'button', 'aria-label': 'Przejdź do etapu: ' + name },
-      on: { click: function () { ctx.actions.revealStage(project.id, active.id); } }
-    }, body);
+  /** Termin umowy: klik otwiera natywny wybór daty; zmiana zapisuje się od razu. */
+  function deadlineProp(project, ctx, now) {
+    var done = project.status === 'done';
+    var days = project.deadline ? Progress.daysUntil(project.deadline, now) : null;
+    var overdue = !done && days !== null && days < 0;
+    var input = D.el('input', { class: 'pd-date', attrs: { type: 'date', tabindex: '-1', 'aria-hidden': 'true', value: project.deadline || '' } });
+    input.addEventListener('change', function () { if (input.value) ctx.actions.setProjectDeadline(project.id, input.value); });
+    var btn = D.el('button', {
+      class: 'pd-edit' + (overdue ? ' is-overdue' : ''),
+      attrs: { type: 'button', 'data-fk': 'project-deadline', 'aria-label': 'Termin umowy: ' + (project.deadline ? F.dateLong(project.deadline) : 'brak') + '. Zmień datę' },
+      on: { click: function () { if (input.showPicker) { try { input.showPicker(); return; } catch (e) { /* wpadamy do formularza */ } } ctx.actions.editProject(project.id); } }
+    }, [
+      D.el('span', { class: 't-num', text: project.deadline ? F.date(project.deadline, { year: 'always' }) : 'Ustaw termin' }),
+      !done && days !== null ? D.el('span', { class: 'pd-prop__sub', text: PL.relDays(days).replace('po terminie', 'po terminie') }) : null
+    ]);
+    return [btn, input];
   }
 
-  function facts(project, now, entries, ctx) {
+  function propertyRow(project, ctx, now, health) {
+    var gauge = Insight.gauge(project, now);
+    var level = PL.lagLevel(gauge);
+    var done = project.status === 'done';
     var stats = Progress.projectProgress(project);
-    var loggedMinutes = E.TimeLog.projectMinutes(entries || [], project.id);
-    var tasks = Tasks.projectTaskStats(project, now);
-    var v = Insight.variance(project, now, loggedMinutes);
-    var openPlan = function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); };
+    var logged = E.TimeLog.projectMinutes((ctx.state && ctx.state.workspace.entries) || [], project.id);
+    var attention = health.level === 'alarm' || health.level === 'warning';
+    var stateLabel = health.level === 'closed' ? 'Zakończony' : (attention ? 'Wymaga uwagi' : 'W normie');
 
-    // Budżet godzin: wykonane z budżetu; podpis — zapis z zegara względem oczekiwań.
-    var hoursSub = v.hours.available
-      ? String(v.hours.used).replace('.', ',') + ' h zapisano · ' + (v.hours.variance > 0 ? '+' : (v.hours.variance < 0 ? '−' : '±')) + String(Math.abs(v.hours.variance)).replace('.', ',') + ' h wobec planu'
-      : (loggedMinutes ? 'zapisano ' + String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') + ' h' : 'wg budżetu etapów');
-    var hoursTone = v.hours.available && stats.hoursTotal && v.hours.variance > 0.1 * stats.hoursTotal ? 'warn' : '';
-
-    // Korespondencja: ile pism czeka na odpowiedź; po terminie — alarm.
-    var waiting = E.Mail.pending((ctx.state && ctx.state.workspace.mail) || [], project.id, now);
-    var waitingLate = waiting.filter(function (x) { return x.reply.state === 'overdue'; }).length;
-    var mailAll = E.Mail.forProject((ctx.state && ctx.state.workspace.mail) || [], project.id).length;
-
-    return D.el('dl', { class: 'facts' }, [
-      fact('Budżet godzin', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], hoursSub, hoursTone, openPlan),
-      fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
-        tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
-        tasks.overdue ? 'alarm' : '', function () { ctx.actions.openProject(project.id, 'zadania'); }),
-      fact('Korespondencja', [D.el('span', { class: 't-num', text: String(waiting.length) })],
-        waitingLate ? 'w tym ' + waitingLate + ' po terminie odpowiedzi' : (mailAll ? 'czeka na odpowiedź · ' + F.count(mailAll, 'pismo', 'pisma', 'pism') + ' w dzienniku' : 'dziennik pusty'),
-        waitingLate ? 'alarm' : '', function () { ctx.actions.openProject(project.id, 'korespondencja'); })
-    ]);
-  }
-
-  function signatures(project, ctx) {
-    var team = project.team || Team.emptyTeam();
-    // Jedna osoba w kilku rolach pojawia się raz: „Lider · Koordynator”.
-    var order = [];
-    var roles = {};
-    Team.FUNCTIONS.forEach(function (fn) {
-      var person = Team.findPerson(ctx.people, team[fn.key]);
-      if (!person) return;
-      if (!roles[person.id]) { roles[person.id] = { person: person, labels: [] }; order.push(person.id); }
-      roles[person.id].labels.push(fn.label);
-    });
-    var rows = order.map(function (id) {
-      var person = roles[id].person;
-      var label = roles[id].labels.join(' · ');
-      return D.el('li', null, [D.el('button', {
-        class: 'signature',
-        attrs: { type: 'button', 'aria-label': label + ': ' + Team.fullName(person) + '. Pokaż szczegóły osoby.', 'data-tooltip': label },
-        on: { click: function () { ctx.actions.inspect({ kind: 'person', personId: person.id }); } }
+    return D.el('dl', { class: 'pd-props' }, [
+      prop('Stan', [D.el('span', { class: 'pd-state', attrs: { 'data-tooltip': health.reasons.map(function (r) { return r.text; }).join('; ') || null } }, [Sig.datum(attention ? health.level : health.level, { label: false }), D.el('span', { text: stateLabel })])]),
+      prop('Postęp', [D.el('button', {
+        class: 'pd-edit pd-progress', attrs: { type: 'button', 'data-tooltip': done ? null : PL.lagTip(gauge), 'aria-label': 'Postęp ' + gauge.percent + '%. Pokaż plan.' },
+        on: { click: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); } }
       }, [
-        Avatar.avatar(person, { size: 'sm', tooltip: false }),
-        D.el('span', { class: 'signature__text' }, [
-          D.el('span', { class: 'signature__role', text: label }),
-          D.el('span', { class: 'signature__name truncate', text: Team.fullName(person) })
+        PL.planMeter(gauge, done ? '' : level),
+        D.el('span', { class: 'pd-progress__num t-num' }, [
+          D.el('b', { text: gauge.percent + '%' }),
+          !done && gauge.expected !== null ? D.el('span', { class: 'pd-prop__sub' + (level ? ' is-' + level : ''), text: level ? 'zaległość ' + Math.round(gauge.lag) + ' p.p.' : 'plan ' + Math.round(gauge.expected) + '%' }) : null
         ])
-      ])]);
-    });
-    var members = (team.members || []).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
-    if (!rows.length && !members.length) {
-      return D.el('div', { class: 'signatures signatures--empty' }, [
-        D.el('p', { class: 't-meta', text: 'Zespół nie jest przypisany.' }),
-        UI.button({ label: 'Przypisz zespół', variant: 'tertiary', size: 'sm', onClick: function () { ctx.actions.editProject(project.id); } })
-      ]);
-    }
-    return D.el('div', { class: 'signatures' }, [
-      D.el('ul', { class: 'signatures__list' }, rows.concat(members.length ? [D.el('li', { class: 'signatures__members' }, [
-        Avatar.avatarStack(members, { max: 5, size: 'sm' }),
-        D.el('span', { class: 't-meta', text: '+ ' + F.count(members.length, 'osoba', 'osoby', 'osób') })
-      ])] : []))
+      ])], { tone: level }),
+      prop('Termin umowy', deadlineProp(project, ctx, now)),
+      prop('Godziny', [D.el('span', { class: 'pd-hours t-num' }, [
+        D.el('b', { text: F.number(stats.hoursDone) }), D.el('span', { class: 't-muted', text: ' / ' + F.number(stats.hoursTotal) + ' h' }),
+        logged ? D.el('span', { class: 'pd-prop__sub', text: 'zapisano ' + String(E.TimeLog.hoursOf(logged)).replace('.', ',') + ' h' }) : null
+      ])]),
+      prop('Lider', [PL.leaderCell(project, ctx)])
     ]);
   }
 
-  /** Powód stanu prowadzi tam, gdzie można go usunąć. */
-  function reasonTarget(project, reason, ctx) {
-    var open = function (tab) { ctx.actions.openProject(project.id, tab); };
-    if (reason.rule === 'tasks-late' || reason.rule === 'tasks-returned') { open('zadania'); return; }
-    if (reason.rule === 'stages-late') {
-      var late = (project.stages || []).filter(function (st) { return st.status !== 'done' && Progress.daysUntil(st.deadline, new Date()) < 0; })[0];
-      if (late) { ctx.actions.revealStage(project.id, late.id); return; }
-    }
-    ctx.actions.inspect({ kind: 'plan', projectId: project.id });
-  }
+  /* ---------- „Wymaga uwagi”: lista z działaniami ---------- */
 
-  /** Jedna, najpilniejsza rzecz do zrobienia; przy spokoju — następny termin w projekcie. */
-  function nextAction(project, now, ctx) {
-    var action = Insight.nextAction(project, now, E.Mail.pending(ctx.state.workspace.mail || [], project.id, now));
-    if (!action) {
-      var next = project.status === 'done' ? null : Insight.nextEvent(project, now);
-      return D.el('div', { class: 'naction naction--calm' }, [
-        D.el('span', { class: 'naction__label', text: 'Co teraz zrobić' }),
-        D.el('p', { class: 'naction__title', text: project.status === 'done' ? 'Projekt zakończony.' : 'Nic nie wymaga teraz uwagi.' }),
-        next ? D.el('p', { class: 'naction__line' }, [
-          D.el('span', { class: 'naction__muted', text: 'Następny termin: ' }),
-          D.el('span', { text: next.kind === 'project' ? 'termin umowy' : next.label }),
-          D.el('span', { class: 'naction__muted t-num', text: ' — ' + F.date(next.date, { year: 'always' }) + ', ' + (next.days === 0 ? 'dziś' : (next.days === 1 ? 'jutro' : 'za ' + next.days + ' dni')) })
-        ]) : null
-      ]);
-    }
-    var go = function () {
-      if (action.kind === 'mail') ctx.actions.openProject(project.id, 'korespondencja');
-      else if (action.kind === 'stage') ctx.actions.addTask(project.id, action.stageId);
-      else if (action.rule === 'project-overdue') ctx.actions.editProject(project.id);
-      else if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
-      else ctx.actions.inspect({ kind: 'plan', projectId: project.id });
+  function attentionBlock(project, ctx, now) {
+    var waiting = E.Mail.pending((ctx.state && ctx.state.workspace.mail) || [], project.id, now);
+    var items = Insight.attentionItems(project, now, waiting);
+    if (!items.length) return null;
+    var act = ctx.actions;
+    var run = {
+      deadline: function () { var el = document.querySelector('[data-fk="project-deadline"]'); if (el) el.click(); else act.editProject(project.id); },
+      close: function () { act.setProjectStatus([project.id], 'done'); },
+      resume: function () { act.setProjectStatus([project.id], 'active'); },
+      plan: function () { act.inspect({ kind: 'plan', projectId: project.id }); },
+      tasks: function () { act.openProject(project.id, 'zadania'); },
+      mail: function () { act.openProject(project.id, 'korespondencja'); }
     };
-    return D.el('div', { class: 'naction naction--' + action.tone }, [
-      D.el('span', { class: 'naction__label', text: 'Co teraz zrobić' }),
-      D.el('p', { class: 'naction__title', text: action.title }),
-      D.el('ul', { class: 'naction__lines' }, action.parts.map(function (part, i) {
-        return D.el('li', { class: i === 0 ? 'naction__lead' : '', text: part });
-      })),
-      D.el('button', { class: 'naction__go', attrs: { type: 'button', 'data-fk': 'next-action' }, on: { click: go } }, [
-        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : (action.kind === 'mail' ? 'Otwórz korespondencję' : (action.kind === 'stage' ? 'Dodaj zadanie' : (action.rule === 'project-overdue' ? 'Zmień termin umowy' : 'Pokaż szczegóły'))) }),
-        E.Icons.icon('chevronRight', 14)
-      ])
+    return D.el('section', { class: 'pd-attention', attrs: { 'aria-label': 'Wymaga uwagi' } }, [
+      D.el('h2', { class: 'pd-attention__title' }, [D.el('span', { text: 'Wymaga uwagi' }), D.el('span', { class: 'pd-attention__n t-num', text: String(items.length) })]),
+      D.el('ul', { class: 'pd-attention__list' }, items.map(function (item) {
+        return D.el('li', { class: 'pd-attention__item pd-attention__item--' + item.level }, [
+          D.el('span', { class: 'pd-attention__mark', attrs: { 'aria-hidden': 'true' } }),
+          D.el('span', { class: 'pd-attention__text', text: item.text }),
+          D.el('span', { class: 'pd-attention__actions' }, item.actions.map(function (a, index) {
+            return UI.button({
+              label: a.label, variant: index === 0 ? 'secondary' : 'ghost', size: 'sm',
+              attrs: { 'data-fk': 'attn-' + item.rule + '-' + a.id },
+              onClick: function () {
+                if (a.id === 'addTasks') act.addTask(project.id, item.stageId);
+                else run[a.id]();
+              }
+            });
+          }))
+        ]);
+      }))
     ]);
   }
 
   function header(project, ctx, now) {
-    var from = ctx.motion && ctx.motion.progressFrom;
-    var Flow = E.Flow;
-    var reveal = function (stageId) { ctx.actions.revealStage(project.id, stageId); };
-
-    return D.el('header', { class: 'workspace-head' }, [
-      D.el('div', { class: 'workspace-head__id' }, [
-        D.el('span', { class: 'code workspace-head__code', text: project.code }),
+    var health = Insight.health(project, now);
+    return D.el('header', { class: 'pd-head' }, [
+      D.el('div', { class: 'pd-head__id' }, [
+        D.el('span', { class: 'code', text: project.code }),
         statusControl(project, ctx)
       ]),
-      D.el('h1', { class: 'workspace-head__title t-display', text: project.name, attrs: { id: 'project-title' } }),
-      D.el('p', { class: 'workspace-head__client', text: project.client || 'Bez zamawiającego' }),
-      D.el('div', { class: 'workspace-head__stack' }, [
-        Flow.verdict(project, {
-          now: now,
-          onReason: function (reason) { reasonTarget(project, reason, ctx); },
-          next: nextAction(project, now, ctx)
-        }),
-        D.el('section', { class: 'course', attrs: { 'aria-label': 'Przebieg projektu' } }, [
-          Flow.planBar(project, {
-            now: now, from: typeof from === 'number' ? from : undefined,
-            stage: stageNow(project, ctx), onStage: reveal,
-            onDetail: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); }
-          }),
-          facts(project, now, ctx.state && ctx.state.workspace.entries, ctx),
-          signatures(project, ctx)
-        ])
-      ])
+      D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),
+      D.el('p', { class: 'pd-head__client', text: project.client || 'Bez zamawiającego' }),
+      propertyRow(project, ctx, now, health)
+    ]);
+  }
+
+  /* ---------- panel szczegółów (po prawej, zwijany) ---------- */
+
+  function detailsPanel(project, ctx, now) {
+    var team = project.team || Team.emptyTeam();
+    var entries = (ctx.state.workspace.entries) || [];
+    var budget = Insight.budgetByKind(project);
+    var recent = Insight.activity(project, ctx.state.workspace.mail || [], 4);
+    var roles = Team.FUNCTIONS.map(function (fn) {
+      var person = Team.findPerson(ctx.people, team[fn.key]);
+      return person ? D.el('li', { class: 'pd-kv' }, [
+        D.el('span', { class: 'pd-kv__k', text: fn.label }),
+        D.el('button', { class: 'pd-kv__v pd-link', attrs: { type: 'button' }, text: Team.fullName(person), on: { click: function () { ctx.actions.inspect({ kind: 'person', personId: person.id }); } } })
+      ]) : null;
+    }).filter(Boolean);
+    var members = (team.members || []).length;
+
+    function section(title, children) {
+      return D.el('section', { class: 'pd-side__sec' }, [D.el('h3', { class: 'pd-side__h', text: title })].concat(children));
+    }
+    return D.el('aside', { class: 'pd-side', attrs: { 'aria-label': 'Szczegóły projektu' } }, [
+      section('Szczegóły', [D.el('ul', { class: 'pd-side__list' }, [
+        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Kod' }), D.el('span', { class: 'pd-kv__v code', text: project.code })]),
+        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Zamawiający' }), D.el('span', { class: 'pd-kv__v', text: project.client || '—' })]),
+        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Utworzono' }), D.el('span', { class: 'pd-kv__v t-num', text: project.createdAt ? F.date(project.createdAt.slice(0, 10), { year: 'always' }) : '—' })]),
+        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Etapy' }), D.el('span', { class: 'pd-kv__v t-num', text: String(project.stages.length) })])
+      ])]),
+      section('Zespół', roles.length || members
+        ? [D.el('ul', { class: 'pd-side__list' }, roles.concat(members ? [D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Członkowie' }), D.el('span', { class: 'pd-kv__v t-num', text: String(members) })])] : []))]
+        : [D.el('p', { class: 'pd-side__empty', text: 'Zespół nie jest przypisany.' })]),
+      section('Godziny według rodzaju', [D.el('ul', { class: 'pd-side__list' }, budget.map(function (b) {
+        return D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: b.label }), D.el('span', { class: 'pd-kv__v t-num', text: F.hours(b.hours) + ' · ' + Math.round(b.share * 100) + '%' })]);
+      }))]),
+      section('Ostatnia aktywność', recent.length
+        ? [D.el('ul', { class: 'pd-side__list pd-side__list--act' }, recent.map(function (a) {
+            return D.el('li', { class: 'pd-act' }, [D.el('span', { class: 'pd-act__text', text: a.text }), D.el('span', { class: 'pd-act__at t-num', text: F.dateTime(String(a.at).slice(0, 16)) })]);
+          }))]
+        : [D.el('p', { class: 'pd-side__empty', text: 'Jeszcze nic się nie wydarzyło.' })])
     ]);
   }
 
@@ -393,6 +357,60 @@
     })]);
   }
 
+  /* ---------- zakładki Czas i Aktywność ---------- */
+
+  function timeTab(project, ctx) {
+    var entries = (ctx.state.workspace.entries || []).filter(function (e) { return e.projectId === project.id; });
+    var byStage = E.TimeLog.byStage(entries, project.id);
+    var total = E.TimeLog.projectMinutes(entries, project.id);
+    var rows = project.stages.map(function (stage, index) {
+      var minutes = byStage[stage.id] || 0;
+      return { stage: stage, index: index, minutes: minutes, budget: Number(stage.hours) || 0 };
+    }).filter(function (r) { return r.minutes || r.budget; });
+
+    if (!total && !rows.length) {
+      return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
+        icon: 'clock', title: 'Brak zapisanego czasu', text: 'Czas zapisuje się zegarem przy zadaniu (▶) albo ręcznie. Tu zobaczysz go w podziale na etapy.'
+      })])]);
+    }
+    return D.el('section', { class: 'section' }, [
+      D.el('div', { class: 'section__head' }, [D.el('div', { class: 'section__titles' }, [
+        D.el('h2', { class: 'section__title', text: 'Czas pracy' }),
+        D.el('span', { class: 'section__meta t-num', text: total ? 'zapisano ' + E.TimeLog.duration(total) : 'nic jeszcze nie zapisano' })
+      ])]),
+      D.el('table', { class: 'table pd-time', attrs: { 'aria-label': 'Czas pracy według etapów' } }, [
+        D.el('thead', null, [D.el('tr', null, [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zapisano' }), D.el('th', { class: 'cell--num', text: 'Budżet etapu' })])]),
+        D.el('tbody', null, rows.map(function (r) {
+          var over = r.budget && E.TimeLog.hoursOf(r.minutes) > r.budget;
+          return D.el('tr', null, [
+            D.el('td', null, [D.el('span', { class: 't-num t-muted', text: (r.index + 1) + '  ' }), D.el('span', { text: Model.describeStage(r.stage).name })]),
+            D.el('td', { class: 'cell--num t-num' + (over ? ' t-alarm' : '') }, [D.el('span', { text: r.minutes ? E.TimeLog.duration(r.minutes) : '—' })]),
+            D.el('td', { class: 'cell--num t-num t-muted', text: r.budget ? F.hours(r.budget) : '—' })
+          ]);
+        }))
+      ])
+    ]);
+  }
+
+  function activityTab(project, ctx) {
+    var list = Insight.activity(project, ctx.state.workspace.mail || [], 60);
+    if (!list.length) {
+      return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
+        icon: 'history', title: 'Jeszcze nic się nie wydarzyło', text: 'Zmiany statusów zadań i pisma w dzienniku pojawią się tu w kolejności od najnowszych.'
+      })])]);
+    }
+    return D.el('section', { class: 'section' }, [
+      D.el('div', { class: 'section__head' }, [D.el('div', { class: 'section__titles' }, [D.el('h2', { class: 'section__title', text: 'Aktywność' }), D.el('span', { class: 'section__meta t-num', text: String(list.length) })])]),
+      D.el('ol', { class: 'pd-feed' }, list.map(function (a) {
+        return D.el('li', { class: 'pd-feed__item' }, [
+          D.el('span', { class: 'pd-feed__icon', attrs: { 'aria-hidden': 'true' } }, [Icons.icon(a.kind === 'mail' ? 'mail' : 'checklist', 14)]),
+          D.el('span', { class: 'pd-feed__text', text: a.text }),
+          D.el('span', { class: 'pd-feed__at t-num', text: F.dateTime(String(a.at).slice(0, 16)) })
+        ]);
+      }))
+    ]);
+  }
+
   function projectDetail(project, ctx) {
     if (!project) return [notFound(ctx)];
     var now = new Date();
@@ -405,6 +423,8 @@
     if (tab === 'zadania') body = tasksTab(project, ctx);
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
+    else if (tab === 'czas') body = timeTab(project, ctx);
+    else if (tab === 'aktywnosc') body = activityTab(project, ctx);
     else body = E.StageList.stageList(project, ctx);
 
     var tabs = UI.tabs({
@@ -415,10 +435,23 @@
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });
+    var open = ctx.state.prefs.detailsOpen !== false;
+    var toggle = UI.iconButton({
+      icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm',
+      attrs: { 'aria-pressed': String(open), 'data-fk': 'details-toggle' },
+      onClick: function () { ctx.actions.setPref({ detailsOpen: !open }); }
+    });
 
     return [
       header(project, ctx, now),
-      D.el('div', { class: 'detail__work' }, [tabs, D.el('div', { class: 'detail__body', attrs: { 'data-tab': tab } }, [body])])
+      attentionBlock(project, ctx, now),
+      D.el('div', { class: 'pd-layout' + (open ? '' : ' is-wide') }, [
+        D.el('div', { class: 'detail__work' }, [
+          D.el('div', { class: 'pd-tabsrow' }, [tabs, toggle]),
+          D.el('div', { class: 'detail__body', attrs: { 'data-tab': tab } }, [body])
+        ]),
+        open ? detailsPanel(project, ctx, now) : null
+      ])
     ];
   }
 

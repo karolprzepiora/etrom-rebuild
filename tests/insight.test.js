@@ -406,3 +406,39 @@ test('hasOverdue: termin umowy, zadanie albo pismo po terminie', () => {
   assert.equal(Insight.hasOverdue(project(), NOW, mail), true);
   assert.equal(Insight.hasOverdue(project({ status: 'done', deadline: '2026-09-26' }), NOW, mail), false);
 });
+
+test('attentionItems: powody stanu z działaniami, zaległe pisma, etap bez zadań, zadania bez osoby', () => {
+  const calm = project({ deadline: '2027-12-31', stages: [stage('concept', 'working', 80, '', [task({ deadline: '2027-01-10T12:00', assignees: ['p-1'] })])] });
+  assert.deepEqual(Insight.attentionItems(calm, NOW, []), []);
+  assert.deepEqual(Insight.attentionItems(project({ status: 'done' }), NOW, []), []);
+
+  const over = Insight.attentionItems(project({ deadline: '2026-09-26' }), NOW, []);
+  assert.equal(over[0].rule, 'deadline-passed');
+  assert.deepEqual(over[0].actions.map((a) => a.id), ['deadline', 'close']);
+
+  const empty = Insight.attentionItems(project({ deadline: '2027-12-31', stages: [stage('concept', 'working', 80, '', [])] }), NOW, []);
+  assert.equal(empty[0].rule, 'empty-stage');
+  assert.equal(empty[0].actions[0].id, 'addTasks');
+
+  const orphan = Insight.attentionItems(project({ deadline: '2027-12-31', stages: [stage('concept', 'working', 80, '', [task({ deadline: '2027-01-10T12:00' })])] }), NOW, []);
+  assert.deepEqual(orphan.map((x) => x.rule), ['unassigned']);
+
+  const waiting = [{ entry: { id: 'm1' }, reply: { state: 'overdue', days: -3 } }];
+  const withMail = Insight.attentionItems(calm, NOW, waiting);
+  assert.equal(withMail[0].rule, 'mail-late');
+  assert.equal(withMail[0].level, 'alarm');
+});
+
+test('activity: zmiany statusów zadań i pisma, najnowsze pierwsze', () => {
+  const t = task({ id: 't1', name: 'Rysunki', status: 'review', history: [
+    { from: 'todo', to: 'working', reason: '', at: '2026-09-30T08:00:00.000Z' },
+    { from: 'working', to: 'review', reason: '', at: '2026-10-01T09:00:00.000Z' }
+  ] });
+  const p = project({ stages: [stage('concept', 'working', 80, '', [t])] });
+  const mail = [{ id: 'm1', projectId: 1, direction: 'in', regNo: 'P/2026/1', subject: 'Zapytanie', createdAt: '2026-09-30T12:00:00.000Z' }, { id: 'm2', projectId: 2, direction: 'in', regNo: 'P/2026/2', subject: 'Inny', createdAt: '2026-10-02T12:00:00.000Z' }];
+  const list = Insight.activity(p, mail, 10);
+  assert.equal(list.length, 3);
+  assert.match(list[0].text, /W toku → Do zatwierdzenia/);
+  assert.equal(list[1].kind, 'mail');
+  assert.equal(Insight.activity(p, mail, 2).length, 2);
+});

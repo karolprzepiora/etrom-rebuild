@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -119,4 +119,9 @@ test('widoki listy: wbudowane i własne, z czyszczeniem złych wartości', () =>
   });
   assert.equal(prefs.projectView, 'c-2');
   assert.deepEqual(prefs.customViews, [{ id: 'c-2', name: 'Mój wodociąg', filters: { health: 'overdue', status: 'all', person: 'p-3', query: 'woda' } }]);
+});
+
+test('panel szczegółów projektu jest domyślnie otwarty', () => {
+  assert.equal(Prefs.normalize({}).detailsOpen, true);
+  assert.equal(Prefs.normalize({ detailsOpen: false }).detailsOpen, false);
 });

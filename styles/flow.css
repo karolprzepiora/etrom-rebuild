@@ -42,7 +42,6 @@ button.flow__seg:focus-visible { outline: 2px solid var(--flow); outline-offset:
   background-size: 40px 100%;
 }
 /* Nurt płynie tylko w nagłówku projektu i tylko chwilę po wejściu — ruch zwraca uwagę, nie męczy. */
-.flow--hero .flow__seg--working { animation: flow-move 2.4s linear 3; }
 .flow__seg--todo.is-current { background: var(--flow-wash); box-shadow: inset 0 0 0 var(--line-w) var(--flow); }
 /* Po terminie: kreskowanie jak w przekroju. */
 .flow__seg--delayed:not(.flow__seg--working) {
@@ -57,18 +56,6 @@ button.flow__seg:focus-visible { outline: 2px solid var(--flow); outline-offset:
   background-image: repeating-linear-gradient(135deg, var(--ink-3) 0 1.2px, transparent 1.2px 4px);
   box-shadow: inset 0 0 0 var(--line-w) var(--ink-3);
 }
-.flow__no {
-  position: absolute; left: 0; right: 0; top: calc(100% + 7px); text-align: center; overflow: hidden;
-  font-size: var(--fs-xs); line-height: 1; color: var(--ink-3); font-variant-numeric: tabular-nums;
-}
-.flow__seg.is-tiny .flow__no { display: none; }
-.flow__seg.is-sliver { min-width: 6px; }
-.flow__seg.is-sliver .flow__no { left: auto; right: 0; width: max-content; overflow: visible; }
-.flow__seg.is-current .flow__no { color: var(--flow-ink); font-weight: 600; }
-.flow--hero .flow__seg.is-current::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: var(--line-w); border-radius: 1px; background: var(--flow); }
-.flow:has(.flow__no) { padding-bottom: 1.375rem; }
-.flow__marks { position: relative; height: 12px; margin-bottom: 3px; }
-.flow__mark { position: absolute; bottom: 0; translate: -50% 0; width: 9px; height: 9px; }
 .flow--empty .flow__track { background: repeating-linear-gradient(90deg, var(--track) 0 6px, transparent 6px 10px); border-radius: 2px; }
 .flow__empty { display: block; margin-top: var(--space-2); font-size: var(--fs-sm); color: var(--ink-3); }
 
@@ -120,86 +107,8 @@ button.flow__seg:focus-visible { outline: 2px solid var(--flow); outline-offset:
 .level__more li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.6; }
 
 /* Etap z zadaniami po terminie: kropka alarmu w rogu odcinka */
-.flow--hero .flow__seg.has-late { position: relative; }
-.flow--hero .flow__seg.has-late::after { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--alarm); box-shadow: 0 0 0 2px var(--sheet, canvas); }
 
 /* Gauge: linia odchylenia między rzeczywistym a planowanym postępem */
 
 
 /* Stan projektu: wspólna oś pionowa tekstu, dzielniki między sekcjami */
-
-/* =========================================================
-   Pas planu — postęp na torze etapów i plan na dziś
-   ========================================================= */
-.planbar { display: grid; gap: var(--space-4); min-width: 0; }
-.planbar__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; column-gap: var(--space-8, 2rem); }
-.planbar__read { display: grid; gap: 2px; }
-.planbar__value {
-  display: flex; align-items: baseline;
-  font-family: var(--font-display); font-size: var(--fs-5xl); font-weight: 600; line-height: 0.95;
-  letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums;
-}
-.planbar__unit { font-size: 0.5em; margin-left: 2px; color: var(--ink-3); font-weight: 500; }
-.planbar__caption { font-size: var(--fs-sm); color: var(--ink-3); }
-.planbar__lag { all: unset; display: grid; gap: 1px; justify-items: end; text-align: right; font-size: var(--fs-sm); padding: 3px 6px; border-radius: var(--radius-sm); }
-button.planbar__lag { cursor: pointer; }
-button.planbar__lag:hover { background: var(--hover); }
-button.planbar__lag:focus-visible { box-shadow: var(--focus-ring); }
-.planbar__plan { color: var(--ink-2); font-weight: 500; }
-.planbar__lag-text { color: var(--ink-3); }
-.planbar__lag--warning .planbar__lag-text { color: var(--warn-ink); font-weight: 600; }
-.planbar__lag--alarm .planbar__lag-text { color: var(--alarm-ink); font-weight: 600; }
-.planbar__axis { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-sm); color: var(--ink-3); margin-top: calc(var(--space-2) * -1); }
-.planbar__end { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink-2); }
-.planbar__axis--warning .planbar__end { color: var(--warn-ink); }
-.planbar__axis--alarm .planbar__end { color: var(--alarm-ink); font-weight: 600; }
-
-/* Plan na torze: znacznik z cienką linią i pasek odległości od postępu */
-.flow__track { position: relative; }
-.flow__plan {
-  position: absolute; top: -9px; bottom: -5px; width: 0; translate: -50% 0; pointer-events: auto;
-  border-left: 2px solid var(--ink-2); z-index: 2;
-}
-.flow__plan .marker { position: absolute; top: -3px; left: 50%; translate: -50% -50%; width: 11px; height: 11px; background: var(--sheet); border-radius: 50%; }
-.flow__plan.is-end { translate: -100% 0; }
-.flow__plan.is-end .marker { left: auto; right: -6px; translate: 0 -50%; }
-.flow__plan--warning { border-left-color: var(--warn); }
-.flow__plan--alarm { border-left-color: var(--alarm); }
-.flow__gap { position: absolute; top: -9px; height: 3px; border-radius: 2px; background: var(--ink-3); opacity: 0.55; }
-.flow__gap--warning { background: var(--warn); opacity: 0.8; }
-.flow__gap--alarm { background: var(--alarm); opacity: 0.85; }
-.flow--hero { padding-top: 12px; }
-
-/* =========================================================
-   Werdykt — stan projektu i następny krok
-   ========================================================= */
-.verdict {
-  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--space-6);
-  padding: var(--space-5) var(--space-6); border-radius: var(--radius-md); min-width: 0;
-  background: var(--sheet); box-shadow: var(--elev-lift);
-  transition: background-color var(--duration-base) var(--ease-out);
-}
-.verdict--alarm { background: var(--alarm-wash); box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--alarm) 35%, transparent); }
-.verdict--warning { background: var(--warn-wash); box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--warn) 35%, transparent); }
-.verdict__state { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
-.verdict__kicker { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); }
-.verdict__label { margin: 0; display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 600; letter-spacing: var(--tracking-title); line-height: 1.15; }
-.verdict--alarm .verdict__label { color: var(--alarm-ink); }
-.verdict--warning .verdict__label { color: var(--warn-ink); }
-.verdict__why { margin: 0; font-size: var(--fs-md); line-height: 1.4; color: var(--ink); }
-.verdict__why--calm { color: var(--ink-2); }
-.verdict__more { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--ink-2); }
-.verdict__more li { position: relative; padding-left: var(--space-3); }
-.verdict__more li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.6; }
-.verdict__reason { all: unset; cursor: pointer; border-radius: var(--radius-sm); }
-.verdict__reason:hover { text-decoration: underline; text-underline-offset: 3px; }
-.verdict__reason:focus-visible { box-shadow: var(--focus-ring); }
-.verdict__next { min-width: 0; padding-left: var(--space-6); box-shadow: inset 1px 0 0 color-mix(in srgb, var(--ink) 12%, transparent); }
-.verdict__next .naction { height: 100%; align-content: start; gap: var(--space-2); }
-.verdict__next .naction__title { font-size: var(--fs-lg); }
-.verdict__next .naction__go {
-  margin-top: var(--space-2); padding: 0.5rem 0.875rem; border-radius: var(--radius-sm); background: var(--ink); color: var(--sheet);
-  font-size: var(--fs-sm); transition: transform var(--duration-fast) var(--ease-out);
-}
-.verdict__next .naction__go:hover { text-decoration: none; transform: translateY(-1px); }
-.verdict--normal .verdict__next .naction__go { background: transparent; color: var(--flow-ink); padding-left: 0; }

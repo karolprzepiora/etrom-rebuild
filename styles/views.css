@@ -98,72 +98,11 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
    Przestrzeń robocza projektu
    ========================================================= */
 .detail { display: grid; gap: var(--space-10); min-width: 0; }
-.workspace-head { display: grid; gap: var(--space-2); min-width: 0; }
-.workspace-head__id { display: flex; align-items: center; gap: var(--space-3); }
-.workspace-head__code { font-size: var(--fs-sm); }
-.workspace-head__title {
-  font-size: var(--fs-4xl);
-  max-width: 28ch;
-  view-transition-name: project-title;
-}
-.workspace-head__title:focus { outline: none; }
-.workspace-head__client { font-size: var(--fs-lg); color: var(--ink-2); }
-.course { display: grid; gap: var(--space-5); padding: var(--space-5) var(--space-6); border-radius: var(--radius-md); background: var(--sheet); box-shadow: var(--elev-lift); min-width: 0; }
-.stagenow { display: grid; gap: 2px; min-width: 0; text-align: left; }
-.stagenow__kicker { font-size: var(--fs-sm); color: var(--ink-3); }
-.stagenow__name { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 600; letter-spacing: var(--tracking-title); line-height: 1.2; text-wrap: balance; }
-.stagenow--link { margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); transition: background-color var(--duration-fast); }
-.stagenow--link:hover { background: var(--hover); }
-.stagenow--link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-
-.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); padding-top: var(--space-4); box-shadow: inset 0 1px 0 var(--line); }
-.fact { display: grid; align-content: start; gap: 3px; min-width: 0; }
-.fact__label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 500; }
-.fact__value { margin: 0; font-size: var(--fs-xl); font-weight: 600; letter-spacing: var(--tracking-title); line-height: 1.3; font-variant-numeric: tabular-nums; }
-.fact__of { font-size: var(--fs-md); font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
-.fact__text { font-size: var(--fs-md); font-weight: 600; letter-spacing: 0; line-height: 1.35; }
-.fact__sub { margin: 0; font-size: var(--fs-xs); color: var(--ink-3); }
-.fact--alarm .fact__value, .fact--alarm .fact__sub { color: var(--alarm-ink); }
-.fact--warn .fact__sub { color: var(--warn-ink); }
-
-.next { display: grid; gap: 2px; padding: var(--space-2-5) var(--space-2); box-shadow: inset 0 1px 0 var(--line); }
-.next__label { font-size: var(--fs-xs); color: var(--ink-3); }
-.next__what { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); min-width: 0; }
-.next__when { font-weight: 600; white-space: nowrap; }
-
-.signatures { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding-top: var(--space-3); box-shadow: inset 0 1px 0 var(--line); }
-.signatures__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); margin: 0 calc(var(--space-2) * -1); width: calc(100% + var(--space-4)); }
-.signatures__list .signature { width: 100%; padding-right: 0; }
-.signature__role { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.signature { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-2-5); width: 100%; padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); text-align: left; transition: background-color var(--duration-fast); }
-.signature:hover { background: var(--hover); }
-.signature:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.signature__text { display: grid; min-width: 0; line-height: 1.25; }
-.signature__role { font-size: var(--fs-xs); color: var(--ink-3); }
-.signature__name { font-size: var(--fs-sm); font-weight: 600; }
-.signatures__members { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); --avatar-ring: var(--sheet); }
-.signatures--empty { justify-items: start; }
 
 .detail__work { display: grid; gap: var(--space-5); min-width: 0; }
 .detail__tabs { box-shadow: inset 0 -1px 0 var(--line); }
 .detail__body { display: grid; gap: var(--space-6); min-width: 0; }
 .section__actions { display: flex; align-items: center; gap: var(--space-1); }
-
-@container page (max-width: 62rem) {
-  .verdict { grid-template-columns: minmax(0, 1fr); }
-  .verdict__next { padding-left: 0; padding-top: var(--space-4); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 12%, transparent); }
-  .planbar__head { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-3); }
-  .planbar__lag { grid-column: 1 / -1; justify-self: start; justify-items: start; text-align: left; }
-}
-@container page (max-width: 40rem) {
-  .workspace-head__title { font-size: var(--fs-3xl); }
-  .course { padding: var(--space-4); }
-  .planbar__head { grid-template-columns: minmax(0, 1fr); }
-  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .signatures__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .flow__no { font-size: 0.6875rem; }
-  .planbar__axis { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
-}
 
 
 /* ---------- Rail etapów ---------- */
@@ -603,24 +542,7 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .vrow--alarm .vrow__cell--strong dd { color: var(--alarm-ink); }
 .vrow__note { margin: 0; }
 
-.fact__hit { all: unset; cursor: pointer; display: inline; border-radius: var(--radius-sm); }
-.fact__hit:hover { text-decoration: underline; text-decoration-color: var(--ink-4); text-underline-offset: 3px; }
-.fact__hit:focus-visible { box-shadow: var(--focus-ring); }
-
 /* Co teraz zrobić */
-.naction { display: grid; gap: var(--space-1); font-family: var(--font-text); }
-.naction__label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
-.naction__title { margin: 0; font-size: var(--fs-md); font-weight: 600; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.naction__lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.4; }
-.naction__line { margin: 0; font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; }
-.naction__muted { color: var(--ink-3); }
-.naction--alarm .naction__lead { color: var(--alarm-ink); font-weight: 600; }
-.naction--warning .naction__lead { color: var(--warn-ink); font-weight: 600; }
-.naction--normal .naction__lead { color: var(--ink); font-weight: 600; }
-.naction__calm { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
-.naction__go { all: unset; display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); font-size: var(--fs-sm); font-weight: 600; color: var(--flow-ink); cursor: pointer; border-radius: var(--radius-sm); width: fit-content; }
-.naction__go:hover { text-decoration: underline; text-underline-offset: 3px; }
-.naction__go:focus-visible { box-shadow: var(--focus-ring); }
 
 /* Pasek dnia: segmenty w barwach projektów */
 .topbar__timer { display: flex; align-items: center; }
@@ -700,5 +622,3 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
   .mrow2__date, .mrow2 > .badge:not(:nth-last-child(2)) { display: none; }
 }
 
-
-.workspace-head__stack { display: grid; gap: var(--space-3); margin-top: var(--space-4); min-width: 0; }

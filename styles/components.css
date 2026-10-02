@@ -439,7 +439,7 @@ a.badge:hover, button.badge:hover { background: var(--sheet); box-shadow: var(--
 .segmented__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .segmented--icons .segmented__btn { padding: 0 var(--space-2); }
 
-.tabs { position: relative; display: flex; gap: var(--space-6); overflow-x: auto; scrollbar-width: none; }
+.tabs { position: relative; display: flex; gap: var(--space-5); overflow-x: auto; scrollbar-width: none; }
 .tabs__tab {
   position: relative;
   display: inline-flex;
@@ -447,7 +447,7 @@ a.badge:hover, button.badge:hover { background: var(--sheet); box-shadow: var(--
   gap: var(--space-2);
   height: 2.5rem;
   color: var(--ink-3);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 500;
   white-space: nowrap;
   transition: color var(--duration-fast);

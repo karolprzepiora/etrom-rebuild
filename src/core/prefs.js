@@ -47,7 +47,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', density: 'comfortable', projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null
+      groupBy: 'health', density: 'comfortable', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null
     };
   }
 
@@ -78,6 +78,7 @@
       hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
       groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
       density: DENSITIES.indexOf(source.density) >= 0 ? source.density : 'comfortable',
+      detailsOpen: source.detailsOpen !== false,
       customViews: customViews(source.customViews),
       projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,

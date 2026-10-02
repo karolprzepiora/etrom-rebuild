@@ -346,7 +346,7 @@ async function main() {
     await sleep(200);
     check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const progressNow = () => evaluate('return document.querySelector(".planbar__number").dataset.count;');
+    const progressNow = () => evaluate('return parseInt(document.querySelector(".pd-progress__num b").textContent, 10);');
     const before = await progressNow();
     await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
@@ -897,38 +897,32 @@ async function main() {
     check('pasek stanu portfela wskazuje projekty wymagające uwagi',
       await evaluate('return !!document.querySelector(".pf-strip") && /Wymaga uwagi/.test(document.querySelector(".pf-strip").textContent);'));
     await go('#/projekty/' + id2);
-    check('nagłówek projektu pokazuje tor z bieżącym etapem i werdykt alarmowy',
-      await evaluate('return !!document.querySelector(".flow--hero .flow__seg.is-current") && !!document.querySelector(".verdict--alarm");'));
-    check('pas planu podaje postęp i plan także czytnikowi ekranu oraz rysuje plan na torze',
-      await evaluate('const g = document.querySelector(".planbar"); const l = g.getAttribute("aria-label"); return g.getAttribute("role") === "group" && /Postęp \\d+%/.test(l) && /plan na dziś \\d+%/.test(l) && !!g.querySelector(".flow__plan") && !!g.querySelector(".planbar__axis");'));
-    check('werdykt ma jeden stan, powód słowami i klikalne powody; stan nie jest przyciskiem',
-      await evaluate('const v = document.querySelector(".verdict"); return !!v && v.querySelectorAll(".verdict__label").length === 1 && v.querySelector(".verdict__why").textContent.length > 8 && !!v.querySelector(".verdict__reason") && !v.querySelector(".verdict__label button");'));
+    check('nagłówek projektu ma jeden rząd właściwości: stan, postęp, termin umowy, godziny, lider',
+      await evaluate('const l = [...document.querySelectorAll(".pd-props .pd-prop__label")].map(x => x.textContent).join(","); return l === "Stan,Postęp,Termin umowy,Godziny,Lider" && /Wymaga uwagi/.test(document.querySelector(".pd-state").textContent);'));
+    check('postęp podaje wynik i plan także czytnikowi ekranu oraz rysuje kreskę planu',
+      await evaluate('const g = document.querySelector(".pd-progress"); return !!g && /Postęp \\d+%/.test(g.getAttribute("aria-label")) && !!g.querySelector(".pf-meter__plan") && /zaległość \\d+ p\\.p\\./.test(g.textContent);'));
+    check('„Wymaga uwagi” w projekcie wylicza powody z działaniami',
+      await evaluate('const a = document.querySelector(".pd-attention"); return !!a && a.querySelectorAll(".pd-attention__item").length >= 1 && !!a.querySelector(".pd-attention__actions button") && /Wymaga uwagi/.test(a.querySelector(".pd-attention__title").textContent);'));
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
-      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".verdict button.detail__status");'));
-    check('termin umowy jest podany raz — pod torem, nie w kafelkach',
-      await evaluate('return document.querySelectorAll(".planbar__end").length === 1 && ![...document.querySelectorAll(".fact__label")].some(x => /Termin umowy/.test(x.textContent));'));
-    check('„Co teraz zrobić” w werdykcie ma tytuł i przycisk działania',
-      await evaluate('const n = document.querySelector(".verdict .naction"); return !!n && n.querySelector(".naction__title").textContent.length > 3 && !!n.querySelector(".naction__go");'));
-    check('zespół w nagłówku nie powtarza tej samej osoby',
-      await evaluate('const n = [...document.querySelectorAll(".signatures__list .signature__name")].map(x => x.textContent); return n.length === new Set(n).size;'));
-    await click('[data-fk="gauge-detail"]');
+      await evaluate('return !!document.querySelector(".pd-head__id .detail__status") && !document.querySelector(".pd-state button");'));
+    check('termin umowy i lider da się zmienić w miejscu',
+      await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader") && !!document.querySelector(".pd-date");'));
+    check('zakładki projektu: Plan, Zadania, Korespondencja, Zespół, Czas, Aktywność',
+      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,zadania,korespondencja,zespol,czas,aktywnosc";'));
+    await click('.pd-progress');
     await sleep(400);
-    check('klik w odczyt miernika otwiera plan i odchylenia z trzema sekcjami',
+    check('klik w postęp otwiera plan i odchylenia z trzema sekcjami',
       await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && i.querySelectorAll(".vrow").length === 3;'));
     await pressKey('escape');
     await sleep(250);
-    await click('[data-fk="next-action"]');
+    await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
-    check('„Przejdź do zadania” otwiera inspektor tego zadania',
-      await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && !!i.querySelector(".history");'));
-    await pressKey('escape');
-    await sleep(250);
-    await click('button.flow__seg.is-current');
-    await sleep(500);
-    check('klik w bieżący etap na torze prowadzi do tego etapu na liście',
-      await evaluate('return !!document.querySelector(".srow-wrap[data-stage-id]");'));
-    check('odcinek toru przebiegu jest przyciskiem z pełnym opisem etapu i stanu',
-      await evaluate('const b = document.querySelector("button.flow__seg.is-current"); return !!b && /w toku/.test(b.getAttribute("aria-label")) && b.getAttribute("aria-current") === "step";'));
+    check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',
+      (await evaluate('return location.hash;')) === '#/projekty/' + id2 + '/zadania');
+    await go('#/projekty/' + id2);
+    await sleep(300);
+    await click('#show-done');
+    await sleep(200);
     await evaluate('document.querySelector(".trow__name").focus(); document.querySelector(".trow__name").click(); return true;');
     await sleep(400);
     check('nazwa zadania otwiera inspektor z historią zmian',
@@ -955,11 +949,11 @@ async function main() {
       return id;`);
     await go('#/projekty/' + overdueId);
     await sleep(300);
-    check('projekt po terminie umowy ma w „Co teraz zrobić” działanie z przyciskiem zmiany terminu',
-      await evaluate('const n = document.querySelector(".naction--alarm"); return !!n && /Ustal nowy termin umowy/.test(n.textContent) && /Zmień termin umowy/.test(n.querySelector(".naction__go").textContent);'));
-    await click('[data-fk="next-action"]');
+    check('projekt po terminie umowy ma na liście uwagi działanie z przyciskiem zmiany terminu',
+      await evaluate('const n = document.querySelector(".pd-attention__item--alarm"); return !!n && /Termin umowy minął/.test(n.textContent) && /Zmień termin/.test(n.textContent);'));
+    await click('[data-fk="attn-deadline-passed-deadline"]');
     await sleep(450);
-    check('„Zmień termin umowy” otwiera formularz edycji projektu',
+    check('„Zmień termin” otwiera wybór daty albo formularz edycji projektu',
       await evaluate('return !!document.querySelector("dialog.drawer[open], .drawer") && /PO-TERMINIE/.test(document.body.textContent);'));
     await evaluate('window.ETROM.app.store.set({ form: null }); return true;');
     await sleep(450);

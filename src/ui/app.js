@@ -62,7 +62,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol'];
+  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol', 'czas', 'aktywnosc'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -1191,6 +1191,24 @@
     if (wasActive) applyViewFilters(findView('all'), true);
   }
 
+  function setProjectDeadline(projectId, value) {
+    var project = store.getState().workspace.projects.filter(function (p) { return p.id === projectId; })[0];
+    if (!project || !Model.isDate(value) || project.deadline === value) return;
+    var before = project.deadline;
+    setWorkspace(function (list) {
+      return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { deadline: value }) : p; });
+    });
+    Toast.show({
+      message: 'Termin umowy ' + project.code + ': ' + F.date(value, { year: 'always' }),
+      actionLabel: 'Cofnij', timeout: 6000,
+      onAction: function () {
+        setWorkspace(function (list) {
+          return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { deadline: before }) : p; });
+        });
+      }
+    });
+  }
+
   function setLeader(projectId, personId) {
     var project = store.getState().workspace.projects.filter(function (p) { return p.id === projectId; })[0];
     if (!project) return;
@@ -1642,7 +1660,8 @@
     applyView: applyView,
     saveView: saveView,
     removeView: removeView,
-    setLeader: setLeader
+    setLeader: setLeader,
+    setProjectDeadline: setProjectDeadline
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */
@@ -1934,7 +1953,6 @@
     var motion = buildMotion(state, project);
     var ctx = { state: state, people: people(), actions: actions, motion: motion };
     D.patch(nodes.projectView, E.ProjectDetail.projectDetail(project, ctx));
-    E.Flow.settle(nodes.projectView);
     D.patch(nodes.topbarActions, E.ProjectDetail.topbarActions(project, ctx));
     commitMotion(project);
   }

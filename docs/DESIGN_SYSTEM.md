@@ -143,14 +143,19 @@ Zakończony) — to przycisk, bo użytkownik go zmienia. *Stan* mówi, czy proje
 (W normie, Stan ostrzegawczy, Stan alarmowy) — jest **liczony z danych**, nikt go nie ustawia.
 Oba wymiary są niezależne i nigdy nie dzielą jednego znacznika.
 
-### Pas planu — postęp na torze (`Flow.planBar`)
+### Nagłówek projektu — jeden rząd właściwości
 
-Jedna skala zamiast dwóch: **tor etapów** (odcinki ∝ godzinom) jest jednocześnie paskiem postępu.
-Na torze leży **znacznik planu na dziś** (tyle czasu umowy już minęło): cienka linia z kółkiem
-i pasek odległości od postępu (szary / bursztyn / czerwień wg odchylenia). Nad torem: duża liczba
-postępu, bieżący etap i odczyt „Plan na dziś 100% · Za planem o 39 pp” (przycisk → Plan i odchylenia).
-Pod torem **jedyne miejsce terminu umowy**: „Termin umowy 26 wrz 2026 · minął 6 dni temu” z rombem.
-Ten sam fakt nie występuje w kafelkach ani w werdykcie.
+Kod, status (przycisk, edytowalny), tytuł 28 px, zamawiający. Pod spodem **jeden rząd właściwości**:
+Stan (kształt + słowa: Wymaga uwagi / W normie / Zakończony), Postęp (pasek 6 px z kreską planu,
+„zaległość 39 p.p.” tylko przy zaległości), Termin umowy (klik otwiera wybór daty, zmiana od razu
+z „Cofnij”), Godziny, Lider (klik zmienia osobę). Każdy fakt występuje raz.
+
+**Wymaga uwagi · N** (`Insight.attentionItems`): ramka w kolorze wyjątku (czerwona przy alarmie,
+bursztynowa przy ostrzeżeniu) z listą powodów i przyciskami działań („Zmień termin”, „Zamknij projekt”,
+„Pokaż zadania”, „Dodaj zadania”, „Otwórz korespondencję”). Gdy nic nie wymaga reakcji — bloku nie ma.
+
+Zakładki: Plan (etapy), Zadania, Korespondencja, Zespół, Czas (zapisany czas wg etapów), Aktywność
+(`Insight.activity`). Po prawej zwijany panel Szczegóły (`prefs.detailsOpen`).
 
 ### Flow — tor przebiegu (`Flow.flowTrack`)
 
@@ -166,16 +171,13 @@ Odcinek na etap, długość ∝ godzinom. Stany (`state` z `Insight.profile`):
 | wstrzymany | kreskowanie tuszem, bez ruchu |
 | zablokowany | zarezerwowany (gdy model dostanie blokadę etapu; dziś mapowany z projektu wstrzymanego) |
 
-Rozmiary: **hero** (numery, znaczniki, odcinki jako przyciski), **compact** (karta, inspektor: tor
-z odczytem procentu i grotem), **mini** (wiersz listy: sam tor, 5 px).
-Odcinek węższy niż ~2% toru nie ma numeru (zostaje w podpowiedzi); bieżący numer zawsze widać.
+Rozmiary: **compact** (inspektor: tor z odczytem procentu i grotem), **mini** (sam tor, 5 px).
+Tor nie jest już w nagłówku projektu — etapy pokazuje zakładka Plan.
 
-### Werdykt i Level — stan projektu (`Flow.verdict`, `Flow.level`)
+### Level — stan projektu (`Flow.level`)
 
-**Werdykt** (nagłówek projektu): pas z jednym stanem (kształt ▽ + nazwa), jednym zdaniem o powodzie
-(klikalnym) i po prawej „Co teraz zrobić” z przyciskiem działania. Alarm i ostrzeżenie barwią cały pas
-delikatnym tłem; w normie pas jest spokojny. Poniżej opis drabinki progów, której pełna wersja
-zostaje w inspektorze (`Flow.level` w rozmiarze compact).
+W inspektorze: jeden szczebel drabinki z powodami słowami. W widoku projektu stan niesie rząd właściwości
+i lista „Wymaga uwagi”.
 
 Drabinka progów: *Stan alarmowy* ▸ *Stan ostrzegawczy* ▸ *W normie*. Aktywny szczebel jest
 podświetlony i oznaczony „teraz”, niesie **powód słowami** („Termin umowy minął 6 dni temu”).

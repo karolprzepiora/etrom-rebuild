@@ -470,6 +470,84 @@
     return Mail.pending(mail || [], project.id, reference).some(function (x) { return x.reply.state === 'overdue'; });
   }
 
+
+  /**
+   * Co w projekcie wymaga reakcji: powody stanu, zaległe odpowiedzi na pisma,
+   * etap bez zadań, zadania bez realizatora i czekające na zatwierdzenie.
+   * Każda pozycja ma proponowane działania (`actions[].id` mapuje interfejs na funkcję).
+   * @returns {Array<{rule:string, level:string, text:string, stageId?:string, actions:Array<{id:string,label:string}>}>}
+   */
+  function attentionItems(project, now, waitingMail) {
+    var reference = now instanceof Date ? now : new Date();
+    var out = [];
+    if (!project || project.status === 'done') return out;
+    var ACTIONS = {
+      'deadline-passed': [{ id: 'deadline', label: 'Zmień termin' }, { id: 'close', label: 'Zamknij projekt' }],
+      'deadline-near': [{ id: 'plan', label: 'Pokaż plan' }],
+      'schedule-lag': [{ id: 'plan', label: 'Pokaż plan' }],
+      'tasks-late': [{ id: 'tasks', label: 'Pokaż zadania' }],
+      'tasks-returned': [{ id: 'tasks', label: 'Pokaż zadania' }],
+      'project-paused': [{ id: 'resume', label: 'Wznów projekt' }]
+    };
+    health(project, reference).reasons.forEach(function (r) {
+      out.push({ rule: r.rule, level: r.level, text: r.text, actions: ACTIONS[r.rule] || [] });
+    });
+    var lateMail = (waitingMail || []).filter(function (x) { return x.reply.state === 'overdue'; });
+    if (lateMail.length) {
+      out.push({
+        rule: 'mail-late', level: 'alarm',
+        text: lateMail.length + ' ' + plural(lateMail.length, 'pismo', 'pisma', 'pism') + ' czeka na odpowiedź po terminie',
+        actions: [{ id: 'mail', label: 'Otwórz korespondencję' }]
+      });
+    }
+    var current = project.status === 'active' ? Progress.activeStage(project) : null;
+    if (current && current.status === 'working' && !(current.tasks || []).length) {
+      out.push({
+        rule: 'empty-stage', level: 'warning', stageId: current.id,
+        text: 'Etap ' + (project.stages.indexOf(current) + 1) + ': ' + Model.describeStage(current).name + ' — w toku, ale bez zadań',
+        actions: [{ id: 'addTasks', label: 'Dodaj zadania' }]
+      });
+    }
+    var open = allTasks(project).filter(function (e) { return e.task.status !== 'done'; });
+    var orphans = open.filter(function (e) { return !(e.task.assignees || []).length && (!current || e.stage.id === current.id); });
+    if (orphans.length) {
+      out.push({
+        rule: 'unassigned', level: 'warning',
+        text: orphans.length + ' ' + plural(orphans.length, 'zadanie', 'zadania', 'zadań') + ' bez przypisanej osoby',
+        actions: [{ id: 'tasks', label: 'Pokaż zadania' }]
+      });
+    }
+    var review = open.filter(function (e) { return e.task.status === 'review'; });
+    if (review.length) {
+      out.push({
+        rule: 'review', level: 'normal',
+        text: review.length + ' ' + plural(review.length, 'zadanie czeka', 'zadania czekają', 'zadań czeka') + ' na zatwierdzenie',
+        actions: [{ id: 'tasks', label: 'Pokaż zadania' }]
+      });
+    }
+    out.sort(function (a, b) { return LEVELS[a.level].rank - LEVELS[b.level].rank; });
+    return out;
+  }
+
+  /**
+   * Ostatnia aktywność w projekcie: zmiany statusów zadań i wpisy w dzienniku pism, najnowsze pierwsze.
+   * @returns {Array<{at:string, kind:'task'|'mail', text:string}>}
+   */
+  function activity(project, mail, limit) {
+    var out = [];
+    allTasks(project || {}).forEach(function (e) {
+      (e.task.history || []).forEach(function (h) {
+        out.push({ at: h.at, kind: 'task', text: '„' + e.task.name + '”: ' + (Tasks.TASK_STATUS[h.from] || h.from) + ' → ' + (Tasks.TASK_STATUS[h.to] || h.to) + (h.reason ? ' — ' + h.reason : '') });
+      });
+    });
+    (mail || []).filter(function (m) { return project && m.projectId === project.id; }).forEach(function (m) {
+      out.push({ at: m.createdAt || m.registeredDate, kind: 'mail', text: (m.direction === 'in' ? 'Pismo przychodzące ' : 'Pismo wychodzące ') + m.regNo + ': ' + m.subject });
+    });
+    out = out.filter(function (x) { return x.at; });
+    out.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    return out.slice(0, limit || 50);
+  }
+
   /**
    * Obciążenie osoby: otwarte zadania (jej udział niedomknięty), zadania po terminie,
    * czynne projekty i pełnione funkcje.
@@ -661,6 +739,8 @@
     budgetByKind: budgetByKind,
     portfolio: portfolio,
     dueItems: dueItems,
+    attentionItems: attentionItems,
+    activity: activity,
     hasOverdue: hasOverdue,
     workload: workload,
     myWork: myWork
