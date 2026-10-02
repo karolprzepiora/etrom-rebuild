@@ -80,6 +80,84 @@
   }
 
   /**
+   * Pytanie z polem tekstowym. Zwraca wpisany tekst albo null przy anulowaniu.
+   * @param {{title: string, message?: string, label: string, placeholder?: string,
+   *          confirm?: string, required?: boolean}} options
+   * @returns {Promise<string|null>}
+   */
+  function prompt(options) {
+    var settings = options || {};
+    return new Promise(function (resolve) {
+      var dialog = D.el('dialog', { class: 'dialog', attrs: { 'aria-labelledby': 'dialog-title' } });
+      var error = D.el('p', { class: 'field__error', attrs: { role: 'alert' } });
+      var input = D.el('textarea', {
+        class: 'input',
+        attrs: {
+          id: 'dialog-input', rows: '3',
+          placeholder: settings.placeholder || '',
+          'data-dialog-input': ''
+        }
+      });
+
+      function accept() {
+        var value = input.value.trim();
+        if (settings.required !== false && !value) {
+          error.textContent = 'To pole nie może zostać puste.';
+          input.setAttribute('aria-invalid', 'true');
+          input.focus();
+          return;
+        }
+        dialog.returnValue = 'ok';
+        dialog.dataset.value = value;
+        dialog.close('ok');
+      }
+
+      var body = [
+        D.el('h2', { class: 'dialog__title', text: settings.title || 'Podaj szczegóły', attrs: { id: 'dialog-title' } })
+      ];
+      if (settings.message) body.push(D.el('p', { class: 'dialog__text', text: settings.message }));
+      body.push(
+        D.el('div', { class: 'field', style: { 'margin-top': 'var(--space-4)' } }, [
+          D.el('label', { class: 'field__label', text: settings.label || 'Treść', attrs: { for: 'dialog-input' } }),
+          input,
+          error
+        ]),
+        D.el('div', { class: 'dialog__actions' }, [
+          D.el('button', {
+            class: 'btn', text: 'Anuluj',
+            attrs: { type: 'button', 'data-dialog-cancel': '' },
+            on: { click: function () { dialog.close('cancel'); } }
+          }),
+          D.el('button', {
+            class: 'btn btn--primary', text: settings.confirm || 'Zapisz',
+            attrs: { type: 'button', 'data-dialog-confirm': '' },
+            on: { click: accept }
+          })
+        ])
+      );
+
+      D.append(dialog, [D.el('div', { class: 'dialog__card' }, body)]);
+
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          accept();
+        }
+      });
+
+      dialog.addEventListener('close', function () {
+        var accepted = dialog.returnValue === 'ok';
+        var value = dialog.dataset.value || '';
+        dialog.remove();
+        resolve(accepted ? value : null);
+      });
+
+      mount(dialog);
+      input.focus();
+    });
+  }
+
+  /**
    * Panel wysuwany z prawej krawędzi. Zwraca uchwyt z metodą close().
    * @param {{title: string, content: Node, onClose?: Function}} options
    */
@@ -138,6 +216,7 @@
 
   root.ETROM.Dialog = {
     confirm: confirm,
+    prompt: prompt,
     openDrawer: openDrawer,
     closeDrawer: closeDrawer,
     isDrawerOpen: isDrawerOpen,

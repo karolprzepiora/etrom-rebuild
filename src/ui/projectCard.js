@@ -9,6 +9,7 @@
   var Icons = root.ETROM.Icons;
   var StageList = root.ETROM.StageList;
   var Team = root.ETROM.Team;
+  var Tasks = root.ETROM.Tasks;
   var Avatar = root.ETROM.Avatar;
 
   function tile(value, label, extraClass) {
@@ -145,6 +146,7 @@
    */
   function projectCard(project, view, handlers, motion) {
     var stats = Progress.projectProgress(project);
+    var tasks = Tasks.projectTaskStats(project);
     var expanded = !!(view && view.expanded);
     var panelId = 'stages-' + project.id;
 
@@ -158,7 +160,14 @@
         stageStrip(project),
         D.el('div', { class: 'tiles' }, [
           tile(stats.done + ' / ' + stats.total, 'etapów zakończonych'),
-          tile(stats.hoursDone + '/' + stats.hoursTotal + ' h', 'budżet godzin')
+          tile(stats.hoursDone + '/' + stats.hoursTotal + ' h', 'budżet godzin'),
+          tasks.total
+            ? tile(
+                tasks.open + ' / ' + tasks.total,
+                tasks.overdue ? 'zadania otwarte, w tym ' + tasks.overdue + ' po terminie' : 'zadania otwarte',
+                tasks.overdue ? 'tile--alert' : ''
+              )
+            : tile('—', 'brak zadań')
         ]),
         D.el('div', { class: 'project__actions' }, [
           D.el('button', {
@@ -186,7 +195,11 @@
       children.push(D.el('div', {
         class: motion && motion.justExpanded ? 'stages-enter' : '',
         attrs: { id: panelId }
-      }, [StageList.stageList(project, handlers, motion, view && view.stageForm)]));
+      }, [StageList.stageList(project, handlers, motion, {
+        stageForm: view && view.stageForm,
+        expandedStages: (view && view.expandedStages) || {},
+        people: (view && view.people) || []
+      })]));
     }
 
     return D.el('article', {

@@ -162,7 +162,7 @@ test('createCustomStage tworzy etap z własną nazwą i dziedziną', () => {
   assert.equal(made.valid, true);
   assert.deepEqual(made.stage, {
     id: 'custom-1', source: 'custom', name: 'Uzgodnienie z PKP',
-    domain: 'location', status: 'todo', hours: 12, deadline: '2026-07-01'
+    domain: 'location', status: 'todo', hours: 12, deadline: '2026-07-01', tasks: []
   });
 });
 
@@ -270,4 +270,30 @@ test('etap spoza katalogu i bez nazwy nadal jest odrzucany', () => {
     }]
   });
   assert.equal(result.projects[0].stages.length, 0);
+});
+
+test('nowy etap zaczyna bez zadań', () => {
+  assert.deepEqual(Model.createStage('concept').tasks, []);
+});
+
+test('normalizeWorkspace ogranicza realizatorów zadań do zespołu projektu', () => {
+  const result = Model.normalizeWorkspace({
+    people: [
+      { id: 'p-1', firstName: 'Anna', lastName: 'T' },
+      { id: 'p-2', firstName: 'Jan', lastName: 'T' }
+    ],
+    projects: [{
+      id: 1, code: 'W-1', name: 'A', client: 'K',
+      team: { leader: 'p-1' },
+      stages: [{
+        id: 'concept', hours: 80,
+        tasks: [{ id: 't-1', name: 'Zadanie', assignees: ['p-1', 'p-2'] }]
+      }]
+    }]
+  });
+  assert.deepEqual(
+    result.projects[0].stages[0].tasks[0].assignees,
+    ['p-1'],
+    'p-2 nie należy do zespołu projektu, więc nie może być realizatorem'
+  );
 });

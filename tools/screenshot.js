@@ -146,6 +146,27 @@ async function main() {
     await shoot('hydro');
     await run('document.documentElement.removeAttribute("data-accent"); return true;');
 
+    // Zadania w etapie
+    await run('window.ETROM.app.goTo("projects"); return true;');
+    await sleep(300);
+    // Najpierw rozwinięcie etapów karty, inaczej nie ma czego rozwijać.
+    await run(
+      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+      'if (!card.querySelector(".srow-wrap")) card.querySelectorAll(".btn--small")[0].click();' +
+      'return true;'
+    );
+    await sleep(350);
+    await run(
+      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+      'const wrap = [...card.querySelectorAll(".srow-wrap")].find(w => {' +
+      '  const c = w.querySelector(".srow__tasks");' +
+      '  return c && c.textContent !== "—";' +
+      '});' +
+      'wrap.querySelector(".srow__expand").click(); return true;'
+    );
+    await sleep(400);
+    await shoot('zadania');
+
     // Ekran Zespołu
     await run('window.ETROM.app.goTo("team"); return true;');
     await sleep(500);

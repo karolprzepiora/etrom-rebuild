@@ -139,10 +139,10 @@
     ]);
   }
 
-  function detailRow(project, handlers, motion, stageForm) {
+  function detailRow(project, handlers, motion, ctx) {
     return D.el('tr', { class: 'table__detail' }, [
       D.el('td', { attrs: { colspan: String(COLUMNS.length) } }, [
-        StageList.stageList(project, handlers, motion, stageForm)
+        StageList.stageList(project, handlers, motion, ctx)
       ])
     ]);
   }
@@ -159,8 +159,11 @@
       var expanded = !!state.expanded[project.id];
       body.push(row(project, expanded, handlers, state.people || []));
       if (expanded) {
-        body.push(detailRow(project, handlers, motionFor(project),
-          stageFormFor ? stageFormFor(project) : null));
+        body.push(detailRow(project, handlers, motionFor(project), {
+          stageForm: stageFormFor ? stageFormFor(project) : null,
+          expandedStages: state.expandedStages || {},
+          people: state.people || []
+        }));
       }
     });
 

@@ -10,6 +10,7 @@
   var Model = root.ETROM.Model;
   var Progress = root.ETROM.Progress;
   var Icons = root.ETROM.Icons;
+  var Tasks = root.ETROM.Tasks;
 
   var STATUS_TONE = { todo: '', working: 'srow__status--working', done: 'srow__status--done' };
   // Kolor tylko dla terminów, na które trzeba zareagować. Reszta zwykłym
@@ -29,14 +30,32 @@
       : D.el('span', { class: 'srow__quiet', text: info.text });
   }
 
-  function stageRow(project, stage, position, handlers, motion, count) {
+  function taskCell(stage) {
+    var stats = Tasks.taskStats(stage.tasks || []);
+    if (!stats.total) {
+      return D.el('span', { class: 'srow__tasks srow__quiet', text: '—', attrs: { title: 'Brak zadań' } });
+    }
+    return D.el('span', {
+      class: 'srow__tasks' + (stats.overdue ? ' srow__tasks--alert' : ''),
+      text: stats.open + '/' + stats.total,
+      attrs: {
+        title: 'Zadania otwarte: ' + stats.open + ' z ' + stats.total
+          + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
+      }
+    });
+  }
+
+  function stageRow(project, stage, position, handlers, motion, count, ctx) {
     var info = Model.describeStage(stage);
     var flash = motion && motion.flashStage === stage.id;
+    var key = project.id + ':' + stage.id;
+    var open = !!(ctx && ctx.expandedStages && ctx.expandedStages[key]);
+    var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
 
     var meta = info.domainLabel + (info.isCustom ? ' · własny' : ' · standard ' + info.catalogNumber);
 
-    return D.el('li', {
-      class: 'srow srow--' + stage.status + (flash ? ' srow--flash' : ''),
+    var row = D.el('div', {
+      class: 'srow srow--' + stage.status + (flash ? ' srow--flash' : '') + (open ? ' srow--open' : ''),
       style: { '--stage-color': info.color }
     }, [
       D.el('span', { class: 'srow__no', text: String(position + 1) }),
@@ -46,6 +65,7 @@
         D.el('p', { class: 'srow__meta', text: meta })
       ]),
       D.el('span', { class: 'srow__hours', text: stage.hours + ' h' }),
+      taskCell(stage),
       D.el('span', { class: 'srow__deadline' }, [deadlineCell(stage)]),
       D.el('button', {
         class: 'srow__status ' + (STATUS_TONE[stage.status] || ''),
@@ -59,7 +79,17 @@
       }),
       D.el('div', { class: 'srow__tools' }, [
         D.el('button', {
-          class: 'btn btn--icon btn--quiet',
+          class: 'btn btn--icon btn--quiet srow__expand' + (open ? ' srow__expand--open' : ''),
+          attrs: {
+            type: 'button',
+            title: open ? 'Ukryj zadania' : 'Pokaż zadania',
+            'aria-expanded': open ? 'true' : 'false',
+            'aria-controls': panelId
+          },
+          on: { click: function () { handlers.onToggleStage(project.id, stage.id); } }
+        }, [Icons.icon('chevron', 14)]),
+        D.el('button', {
+          class: 'btn btn--icon btn--quiet srow__up',
           attrs: {
             type: 'button', title: 'Przesuń wyżej',
             'aria-label': 'Przesuń etap ' + info.name + ' wyżej',
@@ -83,6 +113,15 @@
         }, [Icons.icon('close', 14)])
       ])
     ]);
+
+    var children = [row];
+    if (open) {
+      children.push(D.el('div', { class: 'srow__panel', attrs: { id: panelId } }, [
+        root.ETROM.TaskList.taskList(project, stage, handlers, (ctx && ctx.people) || [], motion)
+      ]));
+    }
+
+    return D.el('li', { class: 'srow-wrap', dataset: { stageId: stage.id } }, children);
   }
 
   function field(id, label, control, error) {
@@ -201,13 +240,14 @@
    * @param {Object} [motion]
    * @param {{values: Object, errors: Object}} [ui] otwarty formularz etapu własnego
    */
-  function stageList(project, handlers, motion, ui) {
+  function stageList(project, handlers, motion, ctx) {
     var stats = Progress.projectProgress(project);
     var count = project.stages.length;
+    var ui = ctx && ctx.stageForm;
 
     var body = count
       ? D.el('ul', { class: 'srows' }, project.stages.map(function (stage, index) {
-          return stageRow(project, stage, index, handlers, motion, count);
+          return stageRow(project, stage, index, handlers, motion, count, ctx);
         }))
       : D.el('p', {
           class: 'stages__note',

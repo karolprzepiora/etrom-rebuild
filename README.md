@@ -45,13 +45,29 @@ przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postę
 - **funkcje w projekcie**: Lider, Koordynator, Pełnomocnik wiodący i dodatkowy
   oraz pozostali członkowie zespołu — relacje oparte o stabilny identyfikator osoby,
 - awatary zespołu na kartach i w liście projektów, filtr projektów po osobie,
+- **zadania w etapach**: nazwa, termin z godziną, nakład pracy, opis, znacznik ważności,
+- przepływ statusów zadania: *Do wykonania → W toku → Do zatwierdzenia → Zakończone*,
+  ze zwrotem **Do poprawy**, który wymaga podania powodu,
+- **realizatorzy zadania** to jawny podzbiór zespołu projektu; każdy ma własny stan udziału
+  (*Do wykonania / W toku / Gotowe*) przestawiany jednym kliknięciem,
+- liczniki zadań otwartych i po terminie w wierszu etapu oraz na karcie projektu,
 - formularz w panelu wysuwanym, potwierdzenia we własnych oknach aplikacji.
+
+## Świadome uproszczenia wobec poprzedniej wersji
+
+Poprzedni ETROM miał w przepływie zadania osobny status **Zatwierdzone**
+obok **Zakończone**. W jego własnej mapie przejść oba prowadziły w to samo
+miejsce, więc tutaj jest jeden stan końcowy. Jeśli rozróżnienie okaże się
+potrzebne w pracy biura, wraca jako jeden wpis w mapie przejść.
+
+Nie ma jeszcze **Kroków** — wydzielonych czynności jednej osoby wewnątrz
+zadania. Ich rolę częściowo pełni stan udziału każdego realizatora.
 
 ## Czego jeszcze nie ma
 
-Zadania wewnątrz etapów, Kroki, zespół i role, ewidencja czasu pracy, Nadzór,
-Plan pracy, Kanban i Gantt. To kolejne kroki przebudowy — poprzednia wersja
-aplikacji ma je i zostaje nienaruszona do czasu, aż nowa je dogoni.
+Kroki wewnątrz zadań, ewidencja czasu pracy, Nadzór, Plan pracy, moduł Moje,
+Kanban i Gantt. To kolejne kroki przebudowy — poprzednia wersja aplikacji
+ma je i zostaje nienaruszona do czasu, aż nowa je dogoni.
 
 ## Układ plików
 
@@ -63,6 +79,7 @@ styles/
 src/core/               logika, zero kodu dotykającego DOM
   catalog.js            14 etapów i dziedziny
   team.js               katalog osób i funkcje w projektach
+  tasks.js              zadania, przepływ statusów i udziały realizatorów
   model.js              fabryki i walidacja
   progress.js           postęp i terminy
   query.js              szukanie, filtrowanie, sortowanie
@@ -85,8 +102,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 131 testów logiki, bez przeglądarki
-node tests/browser/smoke.js     # 54 sprawdzenia w Chromium, na adresie file://
+node --test tests/*.test.js     # 161 testów logiki, bez przeglądarki
+node tests/browser/smoke.js     # 66 sprawdzeń w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
@@ -136,6 +153,12 @@ wszystko naraz: przy czyszczeniu danych programu.
 stronę. Przy zmianie układu, gdzie ten sam projekt wędruje z kafla do
 wiersza, to się opłaca. Przy rozwijaniu etapów nie — tam wystarcza tania
 animacja wejścia, a przejście tylko opóźniałoby reakcję.
+
+**Dlaczego status zadania zmienia się z listy, a nie dowolnie?**
+Dozwolone przejścia są w modelu (`src/core/tasks.js`), a lista pokazuje
+tylko te, które wolno wykonać z bieżącego stanu. Interfejs nie zna reguł
+przepływu — pyta o nie model, więc nie da się obejść ich klikaniem.
+Zwrot do poprawy bez powodu jest odrzucany przez model, nie przez formularz.
 
 **Dlaczego funkcje w projekcie wskazują na identyfikator, a nie na imię?**
 Wpisane imię i nazwisko rozjeżdża się przy pierwszej literówce i przy zmianie

@@ -14,6 +14,7 @@
   var Toast = E.Toast;
   var Motion = E.Motion;
   var Team = E.Team;
+  var Tasks = E.Tasks;
 
   var storage = E.Storage.createStorage();
   var prefsStore = E.Prefs.createPrefs();
@@ -27,7 +28,9 @@
     form: null,
     personForm: null,
     stageForm: null,
+    taskForm: null,
     expanded: {},
+    expandedStages: {},
     notice: ''
   });
 
@@ -414,6 +417,176 @@
     store.set({ stageForm: null });
   }
 
+  /* ---------- zadania ---------- */
+
+  function stageOf(projectId, stageId) {
+    var project = findProject(projectId);
+    if (!project) return null;
+    return project.stages.filter(function (stage) { return stage.id === stageId; })[0] || null;
+  }
+
+  function taskOf(projectId, stageId, taskId) {
+    var stage = stageOf(projectId, stageId);
+    if (!stage) return null;
+    return (stage.tasks || []).filter(function (task) { return task.id === taskId; })[0] || null;
+  }
+
+  function mapStage(projectId, stageId, change) {
+    mapProject(projectId, function (project) {
+      return Object.assign({}, project, {
+        stages: project.stages.map(function (stage) {
+          return stage.id === stageId ? change(stage) : stage;
+        })
+      });
+    });
+  }
+
+  function mapTask(projectId, stageId, taskId, change) {
+    mapStage(projectId, stageId, function (stage) {
+      return Object.assign({}, stage, {
+        tasks: (stage.tasks || []).map(function (task) {
+          return task.id === taskId ? change(task) : task;
+        })
+      });
+    });
+  }
+
+  function projectRoster(project) {
+    return Team.projectPeople(project.team);
+  }
+
+  function toggleStage(projectId, stageId) {
+    var key = projectId + ':' + stageId;
+    store.update(function (state) {
+      var expandedStages = Object.assign({}, state.expandedStages);
+      if (expandedStages[key]) delete expandedStages[key];
+      else expandedStages[key] = true;
+      return Object.assign({}, state, { expandedStages: expandedStages });
+    });
+  }
+
+  function openAddTask(projectId, stageId) {
+    store.set({
+      taskForm: {
+        projectId: projectId, stageId: stageId,
+        draft: { workload: 'medium', assignees: [] }, errors: {}
+      }
+    });
+  }
+
+  function openEditTask(projectId, stageId, taskId) {
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    store.set({
+      taskForm: {
+        projectId: projectId, stageId: stageId,
+        draft: {
+          id: task.id, name: task.name, deadline: task.deadline,
+          workload: task.workload, important: task.important,
+          description: task.description, assignees: (task.assignees || []).slice()
+        },
+        errors: {}
+      }
+    });
+  }
+
+  function closeTaskForm() {
+    store.set({ taskForm: null });
+  }
+
+  function submitTask(values) {
+    var form = store.getState().taskForm;
+    if (!form) return;
+    var project = findProject(form.projectId);
+    var stage = stageOf(form.projectId, form.stageId);
+    if (!project || !stage) return;
+
+    var allowed = projectRoster(project);
+    var check = Tasks.validateTask(values, allowed);
+    if (!check.valid) {
+      store.set({ taskForm: Object.assign({}, form, { draft: values, errors: check.errors }) });
+      return;
+    }
+
+    if (values.id != null) {
+      pendingFlash = { projectId: form.projectId, taskId: values.id };
+      mapTask(form.projectId, form.stageId, values.id, function (task) {
+        return Tasks.updateTask(task, values, allowed);
+      });
+    } else {
+      var created = Tasks.createTask(values, stage.tasks || [], allowed);
+      pendingFlash = { projectId: form.projectId, taskId: created.id };
+      mapStage(form.projectId, form.stageId, function (current) {
+        return Object.assign({}, current, { tasks: (current.tasks || []).concat([created]) });
+      });
+    }
+    closeTaskForm();
+  }
+
+  function applyTaskMove(projectId, stageId, taskId, next, reason) {
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    var result = Tasks.moveTask(task, next, reason);
+    if (!result.ok) {
+      Toast.show({ message: result.error });
+      return;
+    }
+    pendingFlash = { projectId: projectId, taskId: taskId };
+    mapTask(projectId, stageId, taskId, function () { return result.task; });
+  }
+
+  function moveTaskStatus(projectId, stageId, taskId, next) {
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+
+    if (next === 'changes') {
+      Dialog.prompt({
+        title: 'Zwrot do poprawy',
+        message: 'Zadanie: ' + task.name,
+        label: 'Co wymaga poprawy?',
+        placeholder: 'np. Brakuje przekroju A-A i zestawienia materiałów.',
+        confirm: 'Zwróć do poprawy'
+      }).then(function (reason) {
+        if (reason !== null) applyTaskMove(projectId, stageId, taskId, next, reason);
+      });
+      return;
+    }
+    applyTaskMove(projectId, stageId, taskId, next, '');
+  }
+
+  function cycleTaskPart(projectId, stageId, taskId, personId) {
+    mapTask(projectId, stageId, taskId, function (task) {
+      return Tasks.cyclePart(task, personId);
+    });
+  }
+
+  function deleteTask(projectId, stageId, taskId) {
+    var stage = stageOf(projectId, stageId);
+    if (!stage) return;
+    var list = stage.tasks || [];
+    var index = list.findIndex(function (task) { return task.id === taskId; });
+    if (index < 0) return;
+    var task = list[index];
+
+    mapStage(projectId, stageId, function (current) {
+      return Object.assign({}, current, {
+        tasks: (current.tasks || []).filter(function (item) { return item.id !== taskId; })
+      });
+    });
+
+    Toast.show({
+      message: 'Usunięto zadanie „' + task.name + '”',
+      actionLabel: 'Cofnij',
+      onAction: function () {
+        mapStage(projectId, stageId, function (current) {
+          var copy = (current.tasks || []).slice();
+          copy.splice(Math.min(index, copy.length), 0, task);
+          return Object.assign({}, current, { tasks: copy });
+        });
+      }
+    });
+  }
+
   function setSort(key) {
     store.update(function (state) {
       return Object.assign({}, state, {
@@ -472,6 +645,33 @@
     'DEMO-005': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] }
   };
 
+  // Indeksy etapów odnoszą się do katalogu, indeksy osób do DEMO_PEOPLE.
+  var DEMO_TASKS = {
+    'DEMO-002': [
+      { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', workload: 'large', hours: 72, people: [1, 3] },
+      { stage: 9, name: 'Uzgodnić kolizję z siecią gazową', status: 'review', workload: 'medium', hours: -36, people: [2] },
+      { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', workload: 'veryLarge', hours: 240, people: [3, 4], important: true }
+    ],
+    'DEMO-001': [
+      { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', workload: 'medium', hours: 48, people: [0, 2] },
+      { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', workload: 'small', hours: 120, people: [4] }
+    ],
+    'DEMO-004': [
+      {
+        stage: 3, name: 'Przygotować kartę informacyjną przedsięwzięcia',
+        status: 'changes', workload: 'medium', hours: -12, people: [1],
+        reason: 'Uzupełnić opis oddziaływania na wody powierzchniowe.'
+      }
+    ]
+  };
+
+  // Krótkie ścieżki przejść — dane testowe przechodzą przez model,
+  // a nie podstawiają statusu wprost.
+  var DEMO_PATHS = {
+    todo: [], working: ['working'], review: ['review'],
+    changes: ['review', 'changes'], done: ['done']
+  };
+
   var DEMO = [
     { code: 'DEMO-001', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 5, working: 2 },
     { code: 'DEMO-002', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 9, working: 1 },
@@ -500,6 +700,43 @@
       return found ? found.id : '';
     }
 
+    function demoTaskDeadline(hoursFromNow) {
+      var d = new Date();
+      d.setHours(d.getHours() + hoursFromNow, 0, 0, 0);
+      var pad = function (n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+        + 'T' + pad(d.getHours()) + ':00';
+    }
+
+    function demoTasksFor(code, stages, team) {
+      var specs = DEMO_TASKS[code] || [];
+      var allowed = Team.projectPeople(team);
+
+      specs.forEach(function (spec) {
+        var entry = Catalog.all[spec.stage];
+        var stage = entry && stages.filter(function (s) { return s.id === entry.id; })[0];
+        if (!stage) return;
+
+        var assignees = (spec.people || []).map(demoPersonId)
+          .filter(function (id) { return id && allowed.indexOf(id) >= 0; });
+
+        var task = Tasks.createTask({
+          name: spec.name,
+          deadline: demoTaskDeadline(spec.hours),
+          workload: spec.workload,
+          important: spec.important === true,
+          assignees: assignees
+        }, stage.tasks || [], allowed);
+
+        (DEMO_PATHS[spec.status] || []).forEach(function (step) {
+          var moved = Tasks.moveTask(task, step, spec.reason || 'Uzupełnienie');
+          if (moved.ok) task = moved.task;
+        });
+
+        stage.tasks = (stage.tasks || []).concat([task]);
+      });
+    }
+
     function demoTeam(code) {
       var spec = DEMO_TEAMS[code];
       if (!spec) return Team.emptyTeam();
@@ -523,10 +760,12 @@
           else if (index < row.done + row.working) stage.status = 'working';
           return stage;
         });
+        var team = demoTeam(row.code);
+        demoTasksFor(row.code, stages, team);
         result = result.concat([Model.createProject({
           code: row.code, name: row.name, client: row.client,
           status: row.status, deadline: row.deadline, stages: stages,
-          team: demoTeam(row.code)
+          team: team
         }, result)]);
       });
       return result;
@@ -656,7 +895,10 @@
         motion.progressFrom = lastPercent[project.id];
       }
       if (state.expanded[project.id] && !lastExpanded[project.id]) motion.justExpanded = true;
-      if (pendingFlash && pendingFlash.projectId === project.id) motion.flashStage = pendingFlash.stageId;
+      if (pendingFlash && pendingFlash.projectId === project.id) {
+        motion.flashStage = pendingFlash.stageId;
+        motion.flashTask = pendingFlash.taskId;
+      }
       map[project.id] = motion;
     });
     return map;
@@ -683,6 +925,12 @@
     onOpenCustomStage: openCustomStage,
     onCancelCustomStage: cancelCustomStage,
     onSubmitCustomStage: submitCustomStage,
+    onToggleStage: toggleStage,
+    onAddTask: openAddTask,
+    onEditTask: openEditTask,
+    onDeleteTask: deleteTask,
+    onMoveTask: moveTaskStatus,
+    onCyclePart: cycleTaskPart,
     onSort: setSort
   };
 
@@ -1033,7 +1281,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || null;
+    var current = state.form || state.personForm || state.taskForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -1042,20 +1290,37 @@
       return;
     }
 
-    var isPerson = current === state.personForm;
-    var content = isPerson
-      ? E.PersonForm.personForm(current.draft, current.errors, {
-          onSubmit: submitPerson,
-          onCancel: closePersonForm
-        })
-      : E.ProjectForm.projectForm(current.draft, current.errors, {
-          onSubmit: submitForm,
-          onCancel: closeForm
-        }, state.workspace.people || []);
+    var kind = current === state.personForm ? 'person'
+      : (current === state.taskForm ? 'task' : 'project');
+    var content;
+    var title;
 
-    var title = isPerson
-      ? (current.draft.id != null ? 'Edytuj osobę' : 'Nowa osoba')
-      : (current.draft.id != null ? 'Edytuj projekt' : 'Nowy projekt');
+    if (kind === 'person') {
+      content = E.PersonForm.personForm(current.draft, current.errors, {
+        onSubmit: submitPerson,
+        onCancel: closePersonForm
+      });
+      title = current.draft.id != null ? 'Edytuj osobę' : 'Nowa osoba';
+    } else if (kind === 'task') {
+      var project = findProject(current.projectId);
+      var roster = project
+        ? projectRoster(project).map(function (id) { return Team.findPerson(state.workspace.people, id); }).filter(Boolean)
+        : [];
+      content = E.TaskForm.taskForm(current.draft, current.errors, {
+        onSubmit: submitTask,
+        onCancel: closeTaskForm
+      }, roster);
+      var stage = stageOf(current.projectId, current.stageId);
+      var stageName = stage ? Model.describeStage(stage).name : '';
+      title = (current.draft.id != null ? 'Edytuj zadanie' : 'Nowe zadanie')
+        + (stageName ? ' · ' + stageName : '');
+    } else {
+      content = E.ProjectForm.projectForm(current.draft, current.errors, {
+        onSubmit: submitForm,
+        onCancel: closeForm
+      }, state.workspace.people || []);
+      title = current.draft.id != null ? 'Edytuj projekt' : 'Nowy projekt';
+    }
 
     if (drawerEl) {
       drawerEl.querySelector('.drawer__title').textContent = title;
@@ -1070,7 +1335,9 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm) store.set({ form: null, personForm: null });
+        if (live.form || live.personForm || live.taskForm) {
+          store.set({ form: null, personForm: null, taskForm: null });
+        }
       }
     });
   }
@@ -1127,7 +1394,10 @@
       D.render(nodes.list, [
         E.ProjectTable.projectTable(
           visible,
-          Object.assign({}, state, { people: state.workspace.people || [] }),
+          Object.assign({}, state, {
+            people: state.workspace.people || [],
+            expandedStages: state.expandedStages
+          }),
           handlers,
           function (project) { return motionMap[project.id] || {}; },
           stageFormFor
@@ -1141,6 +1411,7 @@
             {
               expanded: !!state.expanded[project.id],
               stageForm: stageFormFor(project),
+              expandedStages: state.expandedStages,
               people: state.workspace.people || []
             },
             handlers,

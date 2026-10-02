@@ -8,6 +8,9 @@
   var Team = (typeof module !== 'undefined' && module.exports)
     ? require('./team.js')
     : root.ETROM.Team;
+  var Tasks = (typeof module !== 'undefined' && module.exports)
+    ? require('./tasks.js')
+    : root.ETROM.Tasks;
 
   var WORKSPACE_VERSION = 4;
 
@@ -100,7 +103,8 @@
       source: 'catalog',
       status: 'todo',
       hours: hours,
-      deadline: isDate(options.deadline) ? options.deadline : ''
+      deadline: isDate(options.deadline) ? options.deadline : '',
+      tasks: []
     };
   }
 
@@ -143,7 +147,8 @@
         domain: domain,
         status: 'todo',
         hours: hours,
-        deadline: isDate(data.deadline) ? data.deadline : ''
+        deadline: isDate(data.deadline) ? data.deadline : '',
+        tasks: []
       }
     };
   }
@@ -257,6 +262,9 @@
       var status = Object.prototype.hasOwnProperty.call(PROJECT_STATUS, item.status)
         ? item.status : 'planned';
 
+      var team = Team.normalizeTeam(item.team, people);
+      var roster = Team.projectPeople(team);
+
       // Kolejność tablicy jest kolejnością etapów w projekcie.
       var stages = (Array.isArray(item.stages) ? item.stages : []).reduce(function (acc, stage) {
         if (!stage || !stage.id) return acc;
@@ -271,7 +279,9 @@
         var common = {
           status: Object.prototype.hasOwnProperty.call(STAGE_STATUS, stage.status) ? stage.status : 'todo',
           hours: Number.isFinite(hours) && hours > 0 ? hours : fallbackHours,
-          deadline: isDate(stage.deadline) ? stage.deadline : ''
+          deadline: isDate(stage.deadline) ? stage.deadline : '',
+          // Realizatorem może być tylko ktoś z zespołu projektu.
+          tasks: Tasks.normalizeTasks(stage.tasks, roster)
         };
 
         if (custom) {
@@ -296,7 +306,7 @@
         status: status,
         deadline: isDate(item.deadline) ? item.deadline : '',
         stages: stages,
-        team: Team.normalizeTeam(item.team, people),
+        team: team,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

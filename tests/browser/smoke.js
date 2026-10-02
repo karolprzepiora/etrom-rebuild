@@ -565,7 +565,7 @@ async function main() {
     await evaluate(
       'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
       'const rows = card.querySelectorAll(".srow");' +
-      'rows[rows.length - 1].querySelector(".srow__tools > button").click(); return true;'
+      'rows[rows.length - 1].querySelector(".srow__up").click(); return true;'
     );
     await sleep(250);
     const stageOrder = await evaluate(
@@ -723,7 +723,159 @@ async function main() {
     await pressKey('escape');
     await sleep(200);
 
-    /* 28. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 28. Zadania w etapach */
+    check('dane testowe zawierają zadania w etapach',
+      (await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
+      )) >= 6);
+
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+      'card.querySelectorAll(".btn--small")[0].click(); return true;'
+    );
+    await sleep(300);
+
+    check('wiersz etapu pokazuje licznik otwartych zadań',
+      await evaluate(
+        'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+        'const cells = [...card.querySelectorAll(".srow__tasks")].map(c => c.textContent);' +
+        'return cells.some(t => /^\\d+\\/\\d+$/.test(t));'
+      ));
+
+    await evaluate(
+      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
+      'const wrap = [...card.querySelectorAll(".srow-wrap")].find(w => {' +
+      '  const c = w.querySelector(".srow__tasks");' +
+      '  return c && c.textContent !== "—";' +
+      '});' +
+      'wrap.querySelector(".srow__expand").click(); return true;'
+    );
+    await sleep(350);
+    check('rozwinięcie etapu pokazuje jego zadania',
+      (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
+
+    /* 29. Nowe zadanie */
+    await evaluate(
+      'const panel = document.querySelector(".srow__panel");' +
+      'const btn = [...panel.querySelectorAll("button")].find(b => b.textContent === "Nowe zadanie");' +
+      'btn.click(); return true;'
+    );
+    await sleep(300);
+    check('formularz zadania proponuje wyłącznie osoby z zespołu projektu',
+      await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'const project = ws.projects.find(p => p.code === "DEMO-002");' +
+        'const allowed = window.ETROM.Team.projectPeople(project.team);' +
+        'const boxes = [...document.querySelectorAll("#tk-assignees input")].map(b => b.value);' +
+        'return boxes.length === allowed.length && boxes.every(id => allowed.indexOf(id) >= 0);'
+      ));
+
+    const beforeTasks = await evaluate(
+      'const ws = window.ETROM.app.store.getState().workspace;' +
+      'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
+    );
+    await evaluate(
+      'document.getElementById("tk-name").value = "Sprawdzić zestawienie stali";' +
+      'document.querySelectorAll("#tk-assignees input")[0].checked = true;' +
+      'document.getElementById("task-form").requestSubmit(); return true;'
+    );
+    await sleep(350);
+    check('nowe zadanie trafia do etapu',
+      (await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
+      )) === beforeTasks + 1);
+
+    /* 30. Przepływ statusów */
+    check('lista statusów zawiera tylko dozwolone przejścia',
+      await evaluate(
+        'const row = [...document.querySelectorAll(".trow")]' +
+        '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
+        'const values = [...row.querySelector(".trow__status").options].map(o => o.value);' +
+        'return values.join(",") === "todo,working,review,done";'
+      ));
+
+    await evaluate(
+      'const row = [...document.querySelectorAll(".trow")]' +
+      '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
+      'const select = row.querySelector(".trow__status");' +
+      'select.value = "working";' +
+      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
+    );
+    await sleep(300);
+    check('zmiana statusu zapisuje się razem z wpisem w historii',
+      await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'const t = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || [])' +
+        '  .find(x => x.name === "Sprawdzić zestawienie stali");' +
+        'return t.status === "working" && t.history.length === 1 && t.history[0].to === "working";'
+      ));
+
+    /* 31. Zwrot do poprawy wymaga powodu */
+    await evaluate(
+      'const row = [...document.querySelectorAll(".trow")]' +
+      '  .find(r => r.textContent.indexOf("Uzgodnić kolizję") >= 0);' +
+      'const select = row.querySelector(".trow__status");' +
+      'select.value = "changes";' +
+      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
+    );
+    await sleep(300);
+    check('zwrot do poprawy pyta o powód',
+      await evaluate('return !!document.querySelector("dialog.dialog[open] [data-dialog-input]");'));
+
+    await evaluate('document.querySelector("[data-dialog-confirm]").click(); return true;');
+    await sleep(200);
+    check('pusty powód nie przechodzi',
+      await evaluate('return !!document.querySelector("dialog.dialog[open] .field__error");'));
+
+    await evaluate(
+      'document.querySelector("[data-dialog-input]").value = "Brakuje przekroju A-A.";' +
+      'document.querySelector("[data-dialog-confirm]").click(); return true;'
+    );
+    await sleep(350);
+    check('po podaniu powodu zadanie wraca do poprawy z notatką',
+      await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'const t = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || [])' +
+        '  .find(x => x.name.indexOf("Uzgodnić kolizję") >= 0);' +
+        'return t.status === "changes" && t.feedback === "Brakuje przekroju A-A.";'
+      ));
+
+    /* 32. Udział pojedynczego realizatora */
+    await evaluate(
+      'const row = [...document.querySelectorAll(".trow")]' +
+      '  .find(r => r.querySelector(".part"));' +
+      'row.querySelector(".part").click(); return true;'
+    );
+    await sleep(300);
+    check('kliknięcie realizatora przestawia jego udział',
+      await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'const tasks = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []);' +
+        'return tasks.some(t => Object.keys(t.parts || {}).some(k => t.parts[k] === "working" || t.parts[k] === "done"));'
+      ));
+
+    /* 33. Usuwanie zadania z cofnięciem */
+    const tasksBeforeDelete = await evaluate(
+      'const ws = window.ETROM.app.store.getState().workspace;' +
+      'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
+    );
+    await evaluate(
+      'const row = [...document.querySelectorAll(".trow")]' +
+      '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
+      'row.querySelector(".btn--icon").click(); return true;'
+    );
+    await sleep(300);
+    await evaluate('document.querySelector("[data-toast-action]").click(); return true;');
+    await sleep(300);
+    check('usunięte zadanie wraca po cofnięciu',
+      (await evaluate(
+        'const ws = window.ETROM.app.store.getState().workspace;' +
+        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
+      )) === tasksBeforeDelete);
+
+    /* 34. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu',
       pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
