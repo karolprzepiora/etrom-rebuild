@@ -194,6 +194,7 @@ async function main() {
       j: { key: 'j', code: 'KeyJ', vk: 74, text: 'j' },
       v: { key: 'v', code: 'KeyV', vk: 86, text: 'v' },
       s: { key: 's', code: 'KeyS', vk: 83, text: 's' },
+      rbracket: { key: ']', code: 'BracketRight', vk: 221, text: ']' },
       enter: { key: 'Enter', code: 'Enter', vk: 13, text: '\r' },
       escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' },
       down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' },
@@ -270,10 +271,21 @@ async function main() {
     await openMenu('#tb-status', 'all');
     check('powrót do wszystkich statusów', (await cardCount()) === 5);
 
-    /* 7. Sortowanie po terminie — projekt po terminie na początku */
+    /* 7. Sortowanie: domyślnie po numerze projektu, bez grup; kierunek można odwrócić */
     const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
+    check('lista jest posortowana po numerze projektu (rosnąco) i nie ma grup',
+      order === '2601,2602,2603,2604,2605' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
+    await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
+    await sleep(150);
+    check('drugi klik w „Nr” odwraca kolejność, nagłówek ogłasza kierunek',
+      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2605,2604,2603,2602,2601'
+      && (await evaluate('return document.querySelector(\'th[aria-sort]\').getAttribute("aria-sort");')) === 'descending');
+    await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
+    await sleep(100);
+    await openMenu('#tb-sort', 'deadline');
+    const byDeadline = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
     check('sortowanie po terminie: czynny projekt po terminie na czele, zakończony na końcu',
-      order.split(',')[0] === 'DEMO-002' && order.split(',').pop() === 'DEMO-005', 'kolejność: ' + order);
+      byDeadline.split(',')[0] === '2602' && byDeadline.split(',').pop() === '2605', 'kolejność: ' + byDeadline);
 
     check('sortowanie z nagłówka kolumny',
       await evaluate('document.querySelector(\'.table__sort[data-sort="name"]\').click(); return true;')
@@ -281,6 +293,7 @@ async function main() {
       && (await evaluate('return document.querySelector(\'th[aria-sort] .table__sort\').dataset.sort;')) === 'name');
     await openMenu('#tb-sort', 'deadline');
     check('menu sortowania wraca do terminu', (await state('s.filters.sort')) === 'deadline');
+    await openMenu('#tb-sort', 'code');
 
     /* 7-. Klawiatura na liście: J/K przechodzą po projektach, V zmienia widok */
     await evaluate('document.activeElement && document.activeElement.blur(); return true;');
@@ -320,7 +333,7 @@ async function main() {
     check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 5 && (await state('s.filters.health')) === 'all');
 
     /* 7b. Edycja w komórce: lider zmieniany bez wchodzenia w projekt */
-    const idLead = await projectId('DEMO-003');
+    const idLead = await projectId('2603');
     const leaderBefore = await state('s.workspace.projects.find(p => p.id === ' + idLead + ').team.leader');
     const otherPerson = await state('s.workspace.people.find(p => p.id !== ' + JSON.stringify(leaderBefore) + ' && p.active !== false).id');
     await click('[data-fk="leader-' + idLead + '"]');
@@ -347,9 +360,9 @@ async function main() {
     await go('#/projekty');
 
     /* 8. Szczegóły projektu pod własnym adresem */
-    await evaluate('document.querySelector(\'[data-project-code="DEMO-002"] .project-link\').click(); return true;');
+    await evaluate('document.querySelector(\'[data-project-code="2602"] .project-link\').click(); return true;');
     await sleep(500);
-    const id2 = await projectId('DEMO-002');
+    const id2 = await projectId('2602');
     check('klik w projekt otwiera jego szczegóły pod własnym adresem',
       (await evaluate('return location.hash;')) === '#/projekty/' + id2 && !(await evaluate('return document.getElementById("view-project").hidden;')));
     check('ścieżka w pasku górnym prowadzi z powrotem do listy',
@@ -361,23 +374,23 @@ async function main() {
       await evaluate('const b = document.getElementById("show-done"); return !!b && /11\\u00a0etapów zakończonych/.test(b.textContent);'));
     await click('#show-done');
     await sleep(200);
-    check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
+    check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".plan-item[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const progressNow = () => evaluate('return parseInt(document.querySelector(".pd-progress__num b").textContent, 10);');
+    const progressNow = () => state('window.ETROM.Progress.projectProgress(s.workspace.projects.find(x => x.code === "2602")).percent');
     const before = await progressNow();
-    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
-    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[15].status')) === 'working');
-    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "2602").stages[15].status')) === 'working');
+    await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
     const after = await progressNow();
     check('oznaczenie etapu jako zakończony podnosi postęp', Number(after) > Number(before), 'przed ' + before + '%, po ' + after + '%');
     // Enter z klawiatury na przycisku statusu: po przerysowaniu fokus musi zostać w tym samym miejscu.
-    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").focus(); return true;');
+    await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); rows[rows.length - 1].querySelector(".srow__status").focus(); return true;');
     await pressKey('enter');
     check('fokus klawiatury zostaje na przycisku statusu po przerysowaniu',
-      await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
-      && (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[15].status')) === 'todo');
+      await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
+      && (await state('s.workspace.projects.find(x => x.code === "2602").stages[15].status')) === 'todo');
 
     /* 10. Wstecz w przeglądarce */
     await evaluate('history.back(); return true;');
@@ -389,7 +402,7 @@ async function main() {
     await click('#action-new');
     await sleep(200);
     await evaluate(
-      'document.getElementById("pf-code").value = "DEMO-001";' +
+      'document.getElementById("pf-code").value = "2601";' +
       'document.getElementById("pf-name").value = "Próba duplikatu";' +
       'document.getElementById("pf-client").value = "Klient";' +
       'document.getElementById("project-form").requestSubmit(); return true;'
@@ -451,7 +464,7 @@ async function main() {
 
     /* 15. Zaznaczanie i akcje zbiorcze */
     const nid = await projectId('NOWY-9');
-    const did = await projectId('DEMO-003');
+    const did = await projectId('2603');
     await click('#select-' + nid);
     await sleep(100);
     await click('#select-' + did);
@@ -473,7 +486,7 @@ async function main() {
     await pickMenu('team');
     await pressKey('escape');
     check('ukrycie kolumny „Zespół” usuwa ją z tabeli',
-      await evaluate('return !document.querySelector("#project-list th.col-team") && !!document.querySelector("#project-list th.col-hours");')
+      await evaluate('return !document.querySelector("#project-list th.col-team") && !!document.querySelector("#project-list th.col-deadline");')
       && (await state('s.prefs.hiddenColumns.join(",")')) === 'team');
     check('Escape zamyka menu i oddaje fokus przyciskowi', await evaluate('return !document.querySelector(".popover") && document.activeElement.id === "tb-columns";'));
 
@@ -507,8 +520,8 @@ async function main() {
     await click('.segmented__btn[aria-label="Widok kart"]');
     await sleep(450);
     const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .pf-meter").length };');
-    check('widok kart: karta i profil przebiegu na każdy projekt',
-      cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === cardsCheck.cards, JSON.stringify(cardsCheck));
+    check('widok kart: jedna karta na projekt, bez paska postępu',
+      cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === 0, JSON.stringify(cardsCheck));
 
     await click('#action-settings');
     await sleep(150);
@@ -534,7 +547,7 @@ async function main() {
     check('wpisanie fragmentu nazwy podnosi właściwy projekt na pierwsze miejsce', firstRow.indexOf('Lipnic') >= 0, 'pierwszy wynik: "' + firstRow + '"');
     await pressKey('enter');
     await sleep(500);
-    const id1 = await projectId('DEMO-001');
+    const id1 = await projectId('2601');
     check('Enter zamyka paletę i otwiera wybrany projekt',
       (await evaluate('return !document.querySelector("dialog.palette[open]");')) && (await evaluate('return location.hash;')) === '#/projekty/' + id1);
 
@@ -557,7 +570,7 @@ async function main() {
       await evaluate('const t = document.querySelector(\'.tabs__tab[aria-current="page"]\'); return !!t && t.dataset.tab === "zespol";'));
     await evaluate('document.activeElement && document.activeElement.blur(); return true;');
     await pressKey('e');
-    check('klawisz E w projekcie otwiera jego edycję', await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form") && document.getElementById("pf-code").value === "DEMO-001";'));
+    check('klawisz E w projekcie otwiera jego edycję', await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form") && document.getElementById("pf-code").value === "2601";'));
     await pressKey('escape');
 
     /* 21a. Termin projektu zawsze z rokiem i licznikiem dni do końca */
@@ -725,28 +738,16 @@ async function main() {
     const custom = await state('(() => { const p = s.workspace.projects.find(x => x.code === "PICK-1"); const l = p.stages[p.stages.length - 1]; return { count: p.stages.length, source: l.source, name: l.name, domain: l.domain }; })()');
     check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
       custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location', JSON.stringify(custom));
-    check('wiersz etapu własnego jest oznaczony w podpisie',
-      await evaluate('const metas = [...document.querySelectorAll(".srow__expand .stageicon")].map(n => n.getAttribute("data-tooltip") || ""); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m)) && ![...document.querySelectorAll(".srow__meta")].some(n => /standard \\d\\d$/.test(n.textContent));'));
+    check('wiersz etapu własnego jest oznaczony w podpowiedzi (własny / standard)',
+      await evaluate('const metas = [...document.querySelectorAll(".plan-row__main")].map(n => n.getAttribute("data-tooltip") || ""); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m));'));
 
-    /* 23b. Rodzaj pracy: ikony, plakietka decyzji, pasek budżetu, grupowanie */
-    check('projekt pokazuje budżet godzin według trzech rodzajów pracy',
-      await evaluate('return document.querySelectorAll(".kindbar__item").length === 3 && !!document.querySelector(".kindbar__track");'));
-    const decisionIds = await state('s.workspace.projects.find(x => x.code === "PICK-1").stages.filter(st => window.ETROM.Model.describeStage(st).decision).map(st => st.id)');
-    const badgedIds = await evaluate('return [...document.querySelectorAll(".srow-wrap[data-stage-id]")].filter(li => li.querySelector(".stageicon--decision")).map(li => li.dataset.stageId);');
-    check('plakietka decyzji pokrywa się z etapami o rodzaju „Decyzje”', JSON.stringify(decisionIds) === JSON.stringify(badgedIds), JSON.stringify(decisionIds) + ' vs ' + JSON.stringify(badgedIds));
-    const kindCount = await state('new Set(s.workspace.projects.find(x => x.code === "PICK-1").stages.map(st => window.ETROM.Model.describeStage(st).kind)).size');
-    await click('[data-fk="stage-group"]');
-    await sleep(200);
-    check('„Grupuj wg rodzaju” dodaje nagłówki rodzajów, a numeracja zostaje chronologiczna',
-      (await evaluate('return document.querySelectorAll(".srow-group").length;')) === kindCount
-      && (await evaluate('return document.querySelector("[data-fk=stage-group]").getAttribute("aria-pressed");')) === 'true');
-    await click('[data-fk="stage-group"]');
-    await sleep(200);
-    check('ponowny klik wraca do kolejności chronologicznej', (await evaluate('return document.querySelectorAll(".srow-group").length;')) === 0);
+    /* 23b. Plan to tabela etapów: bez paska rodzajów, osi i grupowania */
+    check('plan nie pokazuje paska rodzajów pracy ani przełącznika grupowania',
+      await evaluate('return !document.querySelector(".kindbar") && !document.querySelector("[data-fk=stage-group]") && document.querySelectorAll(".plan-row .plan-budget").length > 0;'));
 
     /* 23a. Edycja istniejącego etapu: godziny i termin */
     const pctBefore = await state('window.ETROM.Progress.projectProgress(s.workspace.projects.find(x => x.code === "PICK-1")).hoursTotal');
-    await openMenu('.srow-wrap:first-child .srow__more', 'Edytuj etap');
+    await openMenu('.plan-item:first-child .srow__more', 'Edytuj etap');
     await sleep(300);
     check('edycja etapu standardowego blokuje nazwę i dziedzinę, godziny są do zmiany',
       await evaluate('const n = document.getElementById("cs-name"); const d = document.getElementById("cs-domain"); return n.readOnly && d.disabled && !document.getElementById("cs-hours").disabled && document.querySelector(".drawer, dialog[open]") !== null;'));
@@ -759,14 +760,14 @@ async function main() {
     check('zapis etapu zmienia godziny, a budżet projektu się przelicza',
       edited.hours === 100 && edited.total !== pctBefore, JSON.stringify(edited) + ' przed ' + pctBefore);
     check('po zapisie panel się zamyka, a etap bez zadań nie ma własnego terminu',
-      await evaluate('return !document.getElementById("custom-stage-form") && /—/.test(document.querySelector(".srow-wrap:first-child .srow__deadline").textContent);'));
+      await evaluate('return !document.getElementById("custom-stage-form") && /—/.test(document.querySelector(".plan-item:first-child .plan-row__due").textContent);'));
 
     /* 24. Przesuwanie etapu z menu wiersza */
-    await openMenu('.srow-wrap:last-child .srow__more', 'Przesuń wyżej');
+    await openMenu('.plan-item:last-child .srow__more', 'Przesuń wyżej');
     check('etap własny daje się przesunąć pomiędzy standardowe',
       (await state('s.workspace.projects.find(x => x.code === "PICK-1").stages.map(st => st.id).join(",")')) === 'preparation,water-docs,custom-1,handover');
     check('pozycja „Przesuń wyżej” jest nieaktywna dla pierwszego etapu',
-      await evaluate('document.querySelector(".srow-wrap:first-child .srow__more").click(); return true;')
+      await evaluate('document.querySelector(".plan-item:first-child .srow__more").click(); return true;')
       && (await evaluate('const i = [...document.querySelectorAll(".popover [role=menuitem]")].find(n => /Przesuń wyżej/.test(n.textContent)); return !!i && i.getAttribute("aria-disabled") === "true";')));
     await pressKey('escape');
     check('Escape zamyka menu wiersza bez skutków ubocznych', await evaluate('return !document.querySelector(".popover") && !document.querySelector("dialog[open]");'));
@@ -779,7 +780,7 @@ async function main() {
     await pickMenu('team');
     await pressKey('escape');
     check('przywrócona kolumna „Zespół” pokazuje awatary osób projektu',
-      await evaluate('return !!document.querySelector(\'[data-project-code="DEMO-001"] .col-team .avatar\');')
+      await evaluate('return !!document.querySelector(\'[data-project-code="2601"] .col-team .avatar\');')
       && (await state('s.prefs.hiddenColumns.length')) === 0);
 
     await click('.nav__item[data-screen="team"]');
@@ -789,7 +790,7 @@ async function main() {
     check('aktywna pozycja nawigacji ma aria-current',
       (await evaluate('return document.querySelector(\'.nav__item[data-screen="team"]\').getAttribute("aria-current");')) === 'page');
     check('wiersz osoby pokazuje funkcje pełnione w projektach jako odnośniki',
-      await evaluate('const links = [...document.querySelectorAll(".prow .role-link")]; return links.some(l => l.textContent.indexOf("DEMO-") === 0 && /Lider/.test(l.textContent) && /^#\\/projekty\\/\\d+\\/zespol$/.test(l.getAttribute("href")));'));
+      await evaluate('const links = [...document.querySelectorAll(".prow .role-link")]; return links.some(l => /^\\d{4}/.test(l.textContent) && /Lider/.test(l.textContent) && /^#\\/projekty\\/\\d+\\/zespol$/.test(l.getAttribute("href")));'));
 
     /* 26. Dodawanie i walidacja osoby */
     await evaluate('document.activeElement && document.activeElement.blur(); return true;');
@@ -852,29 +853,29 @@ async function main() {
     /* 30. Zadania w etapach */
     check('dane przykładowe zawierają zadania w etapach', (await state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).length')) >= 6);
     await go('#/projekty/' + id2);
-    check('wiersz etapu pokazuje licznik otwartych zadań',
-      await evaluate('return [...document.querySelectorAll(".srow__tasks")].some(c => /^\\d+\\/\\d+$/.test(c.textContent));'));
+    check('wiersz etapu pokazuje pod nazwą, ile zadań jest otwartych',
+      await evaluate('return [...document.querySelectorAll(".plan-row__sub")].some(c => /Otwarte \\d+ z \\d+/.test(c.textContent));'));
     check('etap pokazuje pasek rozkładu statusów zadań',
       await evaluate('return document.querySelectorAll(".sbar .sbar__seg").length >= 1;'));
     check('zadanie w toku ma szybkie kroki „Do zatwierdzenia” i „Zakończ”',
       await evaluate('const t = [...document.querySelectorAll(".trow--working .trow__step")].map(b => b.textContent); return t.includes("Do zatwierdzenia") && t.includes("Zakończ");'));
     check('termin zadania ma rok i odliczanie, a etap pokazuje termin najbliższego zadania',
-      await evaluate('const t = document.querySelector(".trow .tdue"); const e = document.querySelector(".srow__due"); return !!t && /20\\d\\d/.test(t.querySelector(".tdue__date").textContent) && !!t.querySelector(".countdown") && !!e && /20\\d\\d/.test(e.textContent) && !!e.querySelector(".countdown");'));
-    check('wiersz etapu nie powtarza rodzaju, tematu i numeru standardu w podpisie',
-      await evaluate('return ![...document.querySelectorAll(".srow__expand .srow__meta")].some(n => /standard \\d/.test(n.textContent));'));
+      await evaluate('const t = document.querySelector(".trow .tdue"); const e = document.querySelector(".plan-row__due .srow__due"); return !!t && /20\\d\\d/.test(t.querySelector(".tdue__date").textContent) && !!t.querySelector(".countdown") && !!e && /20\\d\\d/.test(e.textContent) && !!e.querySelector(".countdown");'));
+    check('wiersz etapu nie powtarza rodzaju, tematu i numeru standardu w tekście',
+      await evaluate('return ![...document.querySelectorAll(".plan-row__text")].some(n => /standard \\d/.test(n.textContent));'));
     check('bieżący etap jest od razu rozwinięty z zadaniami',
-      await evaluate('const w = document.querySelector(".srow--working"); return !!w && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "true";')
+      await evaluate('const w = document.querySelector(".plan-row--working"); return !!w && w.querySelector(".plan-row__main").getAttribute("aria-expanded") === "true";')
       && (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
-    await evaluate('const w = [...document.querySelectorAll(".srow-wrap[data-stage-id]")].find(w => w.querySelector(".srow__tasks").textContent !== "—" && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "false"); w.querySelector(".srow__expand").click(); return true;');
+    await evaluate('const w = [...document.querySelectorAll(".plan-item[data-stage-id]")].find(w => !/Brak zadań/.test(w.querySelector(".plan-row__sub").textContent) && w.querySelector(".plan-row__main").getAttribute("aria-expanded") === "false"); w.querySelector(".plan-row__main").click(); return true;');
     await sleep(300);
-    check('rozwinięcie kolejnego etapu pokazuje jego zadania', (await evaluate('return document.querySelectorAll(".srow__panel .trow").length;')) >= 3);
-    check('przyciski rozwinięcia ogłaszają stan', await evaluate('return document.querySelectorAll(\'.srow__expand[aria-expanded="true"]\').length === 2;'));
+    check('rozwinięcie kolejnego etapu pokazuje jego zadania', (await evaluate('return document.querySelectorAll(".plan-panel .trow").length;')) >= 3);
+    check('przyciski rozwinięcia ogłaszają stan', await evaluate('return document.querySelectorAll(\'.plan-row__main[aria-expanded="true"]\').length === 2;'));
 
     /* 31. Nowe zadanie */
-    await click('.srow__panel [data-action="add-task"]');
+    await click('.plan-panel [data-action="add-task"]');
     await sleep(300);
     check('formularz zadania proponuje wyłącznie osoby z zespołu projektu',
-      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "DEMO-002"); const allowed = window.ETROM.Team.projectPeople(p.team); const boxes = [...document.querySelectorAll("#tk-assignees input")].map(b => b.value); return boxes.length === allowed.length && boxes.every(id => allowed.indexOf(id) >= 0);'));
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "2602"); const allowed = window.ETROM.Team.projectPeople(p.team); const boxes = [...document.querySelectorAll("#tk-assignees input")].map(b => b.value); return boxes.length === allowed.length && boxes.every(id => allowed.indexOf(id) >= 0);'));
     const taskCount = () => state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).length');
     const beforeTasks = await taskCount();
     await evaluate(
@@ -935,6 +936,60 @@ async function main() {
       (await evaluate('return location.hash;')) === '#/projekty/' + id2 + '/zadania'
       && (await evaluate('return document.querySelectorAll(".task-group").length;')) >= 2);
 
+    /* 36b. Budżet etapu: pracownik widzi procent, lider i zarząd godziny, korekty dodaje zarząd */
+    const ewaId = await state('s.workspace.people.find(p => p.firstName === "Ewa").id');
+    const michalId = await state('s.workspace.people.find(p => p.firstName === "Michał").id');
+    const activeStageId = await state('window.ETROM.Progress.activeStage(s.workspace.projects.find(x => x.code === "2602")).id');
+    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await go('#/projekty/' + id2);
+    await sleep(300);
+    check('pracownik widzi w planie tylko procent zużycia budżetu etapu',
+      await evaluate('const t = [...document.querySelectorAll(".plan-budget__text")].map(n => n.textContent); return t.length > 0 && t.every(x => /^\\d+%$/.test(x));'));
+    await evaluate('window.ETROM.app.actions.editStage(' + id2 + ', "' + activeStageId + '"); return true;');
+    await sleep(300);
+    check('pracownik nie ma w formularzu etapu pola korekty godzin',
+      await evaluate('return !!document.getElementById("cs-hours") && !document.getElementById("cs-adj-hours");'));
+    await evaluate('window.ETROM.app.store.set({ stageForm: null }); return true;');
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await sleep(300);
+    check('zarząd widzi w planie godziny zużyte i zaplanowane',
+      await evaluate('const t = [...document.querySelectorAll(".plan-budget__text")].map(n => n.textContent); return t.length > 0 && t.every(x => /^[\\d,]+ \\/ [\\d\\u00a0,]+\\s?h$/.test(x));'));
+    await evaluate('window.ETROM.app.actions.editStage(' + id2 + ', "' + activeStageId + '"); return true;');
+    await sleep(300);
+    await evaluate('document.getElementById("cs-adj-hours").value = "-3"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
+    await sleep(200);
+    check('ujemna korekta godzin nie przechodzi',
+      await evaluate('return !!document.getElementById("custom-stage-form") && !!document.querySelector("#cs-adj-hours").closest(".field").querySelector(".field__error");'));
+    const plannedHours = await state('s.workspace.projects.find(x => x.code === "2602").stages.find(st => st.id === "' + activeStageId + '").hours');
+    await evaluate('document.getElementById("cs-adj-hours").value = "' + (plannedHours / 2) + '"; document.getElementById("cs-adj-note").value = "Zbliża się termin"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
+    await sleep(300);
+    const adj = await state('s.workspace.projects.find(x => x.code === "2602").stages.find(st => st.id === "' + activeStageId + '").adjustments');
+    check('zarząd dopisuje korektę godzin do etapu', adj.length === 1 && adj[0].hours === plannedHours / 2 && adj[0].by === '' + michalId + '' && adj[0].note === 'Zbliża się termin', JSON.stringify(adj));
+    const usageNow = await state('(() => { const p = s.workspace.projects.find(x => x.code === "2602"); const u = window.ETROM.Budget.usage(p, p.stages.find(st => st.id === "' + activeStageId + '"), s.workspace.entries, new Date()); return { used: Math.round(u.used * 10) / 10, percent: u.percent, bonus: u.bonus }; })()');
+    const stageText = (id) => evaluate('const el = document.querySelector(".plan-item[data-stage-id=\\"' + id + '\\"] .plan-budget__text"); return el ? el.textContent : null;');
+    check('zarząd widzi zużycie z korektą w godzinach', (await stageText(activeStageId)) === String(usageNow.used).replace('.', ',') + ' / ' + plannedHours + ' h' || (await stageText(activeStageId)) === String(usageNow.used).replace('.', ',') + ' / ' + plannedHours + ' h', (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
+    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await sleep(300);
+    check('pracownik widzi to samo zużycie (z korektą) jako zwykły procent, bez godzin', (await stageText(activeStageId)) === usageNow.percent + '%' && usageNow.bonus === plannedHours / 2, (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+
+    /* 36c. Panel szczegółów zwija się (]) i oddaje miejsce środkowi */
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await go('#/projekty/' + id2);
+    await sleep(300);
+    const widthOpen = await evaluate('return document.querySelector(".detail__work").getBoundingClientRect().width;');
+    check('panel szczegółów jest szarą powierzchnią tego samego koloru co menu',
+      await evaluate('const a = getComputedStyle(document.querySelector(".pd-side")).backgroundColor; const b = getComputedStyle(document.querySelector(".sidebar")).backgroundColor; return a === b || b === "rgba(0, 0, 0, 0)";'));
+    await pressKey('rbracket');
+    await sleep(250);
+    const widthClosed = await evaluate('return document.querySelector(".detail__work").getBoundingClientRect().width;');
+    check('klawisz ] zwija panel szczegółów, a treść środkowa się powiększa',
+      !(await evaluate('return !!document.querySelector(".pd-side");')) && (await state('s.prefs.detailsOpen')) === false && widthClosed > widthOpen + 100, widthOpen + ' → ' + widthClosed);
+    await pressKey('rbracket');
+    await sleep(250);
+    check('ponowny ] rozwija panel szczegółów', await evaluate('return !!document.querySelector(".pd-side");') && (await state('s.prefs.detailsOpen')) === true);
+    await client.send('Emulation.clearDeviceMetricsOverride');
+
     /* 37. Projekt bez danych i zły adres */
     await go('#/projekty/99999');
     check('nieistniejący projekt pokazuje pusty stan z drogą powrotu',
@@ -942,20 +997,18 @@ async function main() {
 
     /* 38. Język wizualny: stan projektu, przebieg, inspektor */
     await go('#/projekty');
-    check('wiersz projektu niesie znak stanu i profil przebiegu',
-      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".pf-meter__plan");'));
-    await evaluate('document.querySelector(\'[data-project-code="DEMO-001"] .project-link\').focus(); return true;');
+    check('wiersz projektu niesie znak stanu i numer, bez postępu i godzin',
+      await evaluate('const r = document.querySelector(\'[data-project-code="2602"]\'); return !!r.querySelector(".datum--alarm") && r.querySelector(".pf-num").textContent === "2602" && !r.querySelector(".pf-meter, .pf-progress, .pf-hours");'));
+    await evaluate('document.querySelector(\'[data-project-code="2601"] .project-link\').focus(); return true;');
     await pressKey('space');
     check('Spacja na projekcie otwiera podgląd w inspektorze bez opuszczania listy',
       (await state('s.inspector && s.inspector.kind')) === 'project' && (await evaluate('return location.hash;')) === '#/projekty');
     await pressKey('escape');
-    check('pasek stanu portfela wskazuje projekty wymagające uwagi',
-      await evaluate('return !!document.querySelector(".pf-strip") && /Wymaga uwagi/.test(document.querySelector(".pf-strip").textContent);'));
+    check('lista projektów nie ma paska stanu portfela (analiza trafi do osobnej zakładki)',
+      await evaluate('return !document.querySelector(".pf-strip") && document.getElementById("portfolio").hidden;'));
     await go('#/projekty/' + id2);
-    check('nagłówek projektu ma jeden rząd właściwości: stan, postęp, termin umowy, godziny, lider',
-      await evaluate('const l = [...document.querySelectorAll(".pd-props .pd-prop__label")].map(x => x.textContent).join(","); return l === "Stan,Postęp,Termin umowy,Godziny,Lider" && /Wymaga uwagi/.test(document.querySelector(".pd-state").textContent);'));
-    check('postęp podaje wynik i plan także czytnikowi ekranu oraz rysuje kreskę planu',
-      await evaluate('const g = document.querySelector(".pd-progress"); return !!g && /Postęp \\d+%/.test(g.getAttribute("aria-label")) && !!g.querySelector(".pf-meter__plan") && /zaległość \\d+ p\\.p\\./.test(g.textContent);'));
+    check('nagłówek projektu ma jeden rząd właściwości: stan, termin umowy, lider (bez postępu i godzin)',
+      await evaluate('const l = [...document.querySelectorAll(".pd-props .pd-prop__label")].map(x => x.textContent).join(","); return l === "Stan,Termin umowy,Lider" && /Wymaga uwagi/.test(document.querySelector(".pd-state").textContent) && !document.querySelector(".pd-progress");'));
     check('„Wymaga uwagi” w projekcie wylicza powody z działaniami',
       await evaluate('const a = document.querySelector(".pd-attention"); return !!a && a.querySelectorAll(".pd-attention__item").length >= 1 && !!a.querySelector(".pd-attention__actions button") && /Wymaga uwagi/.test(a.querySelector(".pd-attention__title").textContent);'));
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
@@ -964,12 +1017,6 @@ async function main() {
       await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader") && !!document.querySelector(".pd-date");'));
     check('zakładki projektu: Plan, Zadania, Korespondencja, Zespół, Czas, Aktywność',
       await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,zadania,korespondencja,zespol,czas,aktywnosc";'));
-    await click('.pd-progress');
-    await sleep(400);
-    check('klik w postęp otwiera plan i odchylenia z trzema sekcjami',
-      await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && i.querySelectorAll(".vrow").length === 3;'));
-    await pressKey('escape');
-    await sleep(250);
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',
@@ -1047,7 +1094,7 @@ async function main() {
     await go('#/projekty/' + id2);
 
     /* 38a. Dziennik korespondencji */
-    const mailPid = await state('s.workspace.projects.find(p => p.code === "DEMO-001").id');
+    const mailPid = await state('s.workspace.projects.find(p => p.code === "2601").id');
     await go('#/projekty/' + mailPid + '/korespondencja');
     await sleep(300);
     check('zakładka Korespondencja pokazuje wpisy dziennika z numerami i licznik oczekujących',

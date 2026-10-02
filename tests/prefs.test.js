@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {} };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {} };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -41,7 +41,7 @@ test('touchRecent przenosi projekt na początek listy ostatnich', () => {
 
 test('grupowanie i zwinięty panel boczny', () => {
   assert.equal(Prefs.normalize({ groupBy: 'status' }).groupBy, 'status');
-  assert.equal(Prefs.normalize({ groupBy: 'kolor' }).groupBy, 'health');
+  assert.equal(Prefs.normalize({ groupBy: 'kolor' }).groupBy, 'none');
   assert.equal(Prefs.normalize({ sidebarCollapsed: 'tak' }).sidebarCollapsed, false);
   assert.equal(Prefs.normalize({ sidebarCollapsed: true }).sidebarCollapsed, true);
 });

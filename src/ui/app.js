@@ -22,13 +22,13 @@
   var storage = E.Storage.createStorage();
   var prefsStore = E.Prefs.createPrefs();
 
-  var SORT_LABEL = { deadline: 'Termin', name: 'Nazwa', code: 'Kod', progress: 'Postęp' };
+  var SORT_LABEL = { deadline: 'Termin', name: 'Nazwa', code: 'Numer' };
 
   var store = E.Store.createStore({
     workspace: Model.emptyWorkspace(),
     route: { name: 'projects' },
     screen: 'projects',
-    filters: { query: '', status: 'all', sort: 'deadline', person: 'all', health: 'all', horizon: 0 },
+    filters: { query: '', status: 'all', sort: 'code', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
     prefs: E.Prefs.defaults(),
     selection: {},
@@ -309,7 +309,7 @@
   /* ---------- projekty ---------- */
 
   function openCreate() {
-    store.set({ form: { draft: { status: 'planned' }, errors: {} } });
+    store.set({ form: { draft: { status: 'planned', code: Model.nextProjectCode(store.getState().workspace.projects, new Date()) }, errors: {} } });
   }
 
   function openEdit(id) {
@@ -513,6 +513,14 @@
     if (form.stageId) {
       var current = stageOf(project.id, form.stageId);
       var updated = Model.updateStage(current, values);
+      if (updated.valid && String(values.adjustHours || '').trim() !== '') {
+        if (!E.Budget.canAdjust(currentMe(), people())) {
+          updated = { valid: false, errors: { adjustHours: 'Korekty dodaje tylko zarząd.' }, stage: null };
+        } else {
+          var adjusted = E.Budget.addAdjustment(updated.stage, { hours: values.adjustHours, note: values.adjustNote }, currentMe(), new Date());
+          updated = adjusted.valid ? { valid: true, errors: {}, stage: adjusted.stage } : { valid: false, errors: { adjustHours: adjusted.errors.hours || adjusted.errors.note }, stage: null };
+        }
+      }
       if (!updated.valid) {
         store.set({ stageForm: Object.assign({}, form, { draft: values, errors: updated.errors }) });
         return;
@@ -533,6 +541,14 @@
       return Object.assign({}, current, { stages: current.stages.concat([made.stage]) });
     });
     store.set({ stageForm: null });
+  }
+
+  function removeAdjustment(projectId, stageId, adjustmentId) {
+    if (!E.Budget.canAdjust(currentMe(), people())) return;
+    mapStage(projectId, stageId, function (stage) { return E.Budget.removeAdjustment(stage, adjustmentId); });
+    // Nowy obiekt formularza wymusza ponowne narysowanie panelu z aktualną listą korekt.
+    var open = store.getState().stageForm;
+    if (open) store.set({ stageForm: Object.assign({}, open) });
   }
 
   function toggleStage(projectId, stageId) {
@@ -1099,7 +1115,8 @@
     ['J K', 'Następny / poprzedni wiersz (projekty, moja praca, skrzynka)'],
     ['V', 'Zmień widok: tabela ↔ karty (na zadaniach: lista ↔ kanban)'],
     ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
-    ['[', 'Zwiń lub rozwiń panel boczny'],
+    ['[', 'Zwiń lub rozwiń panel boczny (menu)'],
+    [']', 'Zwiń lub rozwiń panel szczegółów projektu'],
     ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
     ['Ctrl Enter', 'Zapisz formularz'],
     ['?', 'Ta lista']
@@ -1136,8 +1153,10 @@
     });
   }
 
+  // Ta sama kolumna drugi raz odwraca kolejność; nowa zaczyna rosnąco.
   function setSort(key) {
-    setFilters({ sort: key });
+    var f = store.getState().filters;
+    setFilters({ sort: key, dir: f.sort === key && f.dir !== 'desc' ? 'desc' : 'asc' });
   }
 
   function clearFilters() {
@@ -1333,25 +1352,25 @@
 
   // Indeksy odnoszą się do DEMO_PEOPLE powyżej.
   var DEMO_TEAMS = {
-    'DEMO-001': { leader: 0, coordinator: 2, proxyLead: 4, members: [3, 5] },
-    'DEMO-002': { leader: 1, coordinator: 3, proxyLead: 2, proxyExtra: 4, members: [5] },
-    'DEMO-003': { leader: 0, coordinator: 4, members: [2] },
-    'DEMO-004': { leader: 1, coordinator: 2, members: [3, 4] },
-    'DEMO-005': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] }
+    '2601': { leader: 0, coordinator: 2, proxyLead: 4, members: [3, 5] },
+    '2602': { leader: 1, coordinator: 3, proxyLead: 2, proxyExtra: 4, members: [5] },
+    '2603': { leader: 0, coordinator: 4, members: [2] },
+    '2604': { leader: 1, coordinator: 2, members: [3, 4] },
+    '2605': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] }
   };
 
   // Indeksy etapów odnoszą się do katalogu, indeksy osób do DEMO_PEOPLE.
   var DEMO_TASKS = {
-    'DEMO-002': [
+    '2602': [
       { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', workload: 'large', hours: 72, people: [1, 3] },
       { stage: 9, name: 'Uzgodnić kolizję z siecią gazową', status: 'review', workload: 'medium', hours: -36, people: [2] },
       { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', workload: 'veryLarge', hours: 240, people: [3, 4], important: true }
     ],
-    'DEMO-001': [
+    '2601': [
       { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', workload: 'medium', hours: 48, people: [0, 2] },
       { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', workload: 'small', hours: 120, people: [4] }
     ],
-    'DEMO-004': [
+    '2604': [
       {
         stage: 3, name: 'Przygotować kartę informacyjną przedsięwzięcia',
         status: 'changes', workload: 'medium', hours: -12, people: [1],
@@ -1367,11 +1386,11 @@
   var DEMO_PATHS = { todo: [], working: ['working'], review: ['review'], changes: ['review', 'changes'], done: ['done'] };
 
   var DEMO = [
-    { code: 'DEMO-001', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 7, working: 2 },
-    { code: 'DEMO-002', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
-    { code: 'DEMO-003', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
-    { code: 'DEMO-004', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
-    { code: 'DEMO-005', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 }
+    { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 7, working: 2 },
+    { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
+    { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
+    { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
+    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 }
   ];
 
   function loadDemo() {
@@ -1455,12 +1474,12 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     };
     var demoMail = {
-      'DEMO-001': [
+      '2601': [
         { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), replyDue: iso(5) },
         { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), noReply: true },
         { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14), replyDue: iso(-2) }
       ],
-      'DEMO-002': [
+      '2602': [
         { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30), noReply: true },
         { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), replyDue: iso(11) }
       ]
@@ -1751,8 +1770,8 @@
       return {
         label: 'Sortowanie', align: 'end',
         items: [{ type: 'label', label: 'Sortuj według' }].concat(Object.keys(Query.SORTS).map(function (key) {
-          return { type: 'radio', label: Query.SORTS[key], value: key, checked: current === key, onSelect: function () { setSort(key); } };
-        }))
+          return { type: 'radio', label: Query.SORTS[key], value: key, checked: current === key, onSelect: function () { setFilters({ sort: key, dir: 'asc' }); } };
+        })).concat([{ type: 'separator' }, { type: 'checkbox', label: 'Od najnowszych (malejąco)', checked: store.getState().filters.dir === 'desc', onSelect: function () { setFilters({ dir: store.getState().filters.dir === 'desc' ? 'asc' : 'desc' }); } }])
       };
     });
 
@@ -1885,19 +1904,18 @@
     }
     nodes.tally.textContent = filtered ? visible.length + ' z ' + all.length : '';
     nodes.tally.title = filtered ? 'Pasuje ' + visible.length + ' z ' + all.length + ' projektów' : '';
-    nodes.sortButton.querySelector('span').textContent = SORT_LABEL[state.filters.sort] || 'Termin';
+    nodes.sortButton.querySelector('span').textContent = (SORT_LABEL[state.filters.sort] || 'Numer') + (state.filters.dir === 'desc' ? ' ↓' : ' ↑');
     nodes.sortButton.setAttribute('aria-label', 'Sortowanie: ' + (Query.SORTS[state.filters.sort] || ''));
     nodes.columnsButton.hidden = state.prefs.view !== 'list';
     nodes.groupButton.hidden = state.prefs.view !== 'list';
     nodes.groupButton.querySelector('span').textContent = { health: 'Stan', status: 'Status', none: 'Bez grup' }[state.prefs.groupBy];
     nodes.groupButton.setAttribute('aria-label', 'Grupowanie: ' + { health: 'stan projektu', status: 'status', none: 'bez grupowania' }[state.prefs.groupBy]);
 
-    nodes.portfolio.hidden = !all.length;
+    nodes.portfolio.hidden = true;
     nodes.railWrap.hidden = !all.length;
     nodes.viewsBar.hidden = !all.length;
     var pctx = { state: state, people: people(), actions: actions };
     if (all.length) {
-      D.patch(nodes.portfolio, E.ProjectList.strip(all, pctx));
       D.patch(nodes.rail, E.ProjectList.rail(all, pctx));
       D.patch(nodes.viewsBar, E.ProjectList.views(all, pctx));
     }
@@ -2078,8 +2096,12 @@
       var editingStage = !!current.stageId;
       settings.title = editingStage ? 'Edytuj etap' : 'Etap spoza standardu';
       settings.subtitle = owner ? owner.code + ' · ' + owner.name : '';
-      settings.content = E.StageForm.stageForm(current.draft, current.errors, { onSubmit: submitCustomStage, onCancel: function () { store.set({ stageForm: null }); } },
-        { edit: editingStage, custom: current.custom !== false });
+      var editedStage = editingStage ? stageOf(current.projectId, current.stageId) : null;
+      settings.content = E.StageForm.stageForm(current.draft, current.errors, {
+        onSubmit: submitCustomStage,
+        onCancel: function () { store.set({ stageForm: null }); },
+        onRemoveAdjustment: function (id) { removeAdjustment(current.projectId, current.stageId, id); }
+      }, { edit: editingStage, custom: current.custom !== false, management: E.Budget.canAdjust(currentMe(), people()), adjustments: editedStage ? editedStage.adjustments || [] : [] });
     } else {
       var editing = current.draft.id != null;
       settings.title = editing ? 'Edytuj projekt' : 'Nowy projekt';
@@ -2260,6 +2282,7 @@
       if (route === 'project' && state.route.tab === 'zadania') { event.preventDefault(); setPref({ taskView: state.prefs.taskView === 'kanban' ? 'list' : 'kanban' }); return; }
     }
     if (event.key === '[') { event.preventDefault(); toggleSidebar(); return; }
+    if (event.key === ']' && route === 'project') { event.preventDefault(); setPref({ detailsOpen: state.prefs.detailsOpen === false }); return; }
     if (event.key === '?') { event.preventDefault(); showShortcuts(); return; }
     if (event.key === '/') {
       if (route === 'project') return;

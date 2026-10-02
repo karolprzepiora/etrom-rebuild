@@ -58,7 +58,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}
     };
   }
 
@@ -87,7 +87,7 @@
       view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'list',
       accent: ACCENTS.indexOf(accent) >= 0 ? accent : 'standard',
       hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
-      groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
+      groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'none',
       density: DENSITIES.indexOf(source.density) >= 0 ? source.density : 'comfortable',
       taskView: TASK_VIEWS.indexOf(source.taskView) >= 0 ? source.taskView : 'list',
       detailsOpen: source.detailsOpen !== false,

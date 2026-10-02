@@ -36,7 +36,7 @@
       return person.active !== false || Team.projectPeople(values.team).indexOf(person.id) >= 0;
     });
 
-    var code = UI.input({ id: 'pf-code', value: values.code, error: problems.code, maxlength: 50, placeholder: 'np. W-2026-014', attrs: { spellcheck: 'false' } });
+    var code = UI.input({ id: 'pf-code', value: values.code, error: problems.code, maxlength: 50, placeholder: 'np. 2601', attrs: { spellcheck: 'false' } });
     var name = UI.input({ id: 'pf-name', value: values.name, error: problems.name, maxlength: 200, placeholder: 'np. Przebudowa przepustu w Lipnicy' });
     var client = UI.input({ id: 'pf-client', value: values.client, error: problems.client, maxlength: 200, placeholder: 'np. Gmina Lipnica' });
     var deadline = UI.input({ id: 'pf-deadline', type: 'date', value: values.deadline, error: problems.deadline });
@@ -134,7 +134,7 @@
     var body = [
       section('Dane umowy', null, [
         D.el('div', { class: 'form__row' }, [
-          UI.field({ id: 'pf-code', label: 'Kod projektu', required: true, control: code, error: problems.code, hint: 'Niepowtarzalny w biurze.' }),
+          UI.field({ id: 'pf-code', label: 'Kod projektu', required: true, control: code, error: problems.code, hint: 'Numer roczny: rok i kolejny numer (2601, 2602…). Niepowtarzalny w biurze.' }),
           UI.field({ id: 'pf-status', label: 'Status', control: status, error: problems.status })
         ]),
         UI.field({ id: 'pf-name', label: 'Nazwa', required: true, control: name, error: problems.name }),

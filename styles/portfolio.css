@@ -53,7 +53,7 @@
 .pf-reason--alarm { color: var(--alarm-ink); }
 .pf-reason--warning { color: var(--warn-ink); }
 .pf-table .table { table-layout: fixed; }
-.pf-table .col-name { width: auto; } .pf-table .col-team { width: 7.5rem; } .pf-table .col-progress { width: 9.5rem; } .pf-table .col-deadline { width: 8.75rem; } .pf-table .col-tasks { width: 4.5rem; } .pf-table .col-hours { width: 6.5rem; }
+.pf-table .col-code { width: 4.75rem; } .pf-table .col-name { width: auto; } .pf-table .col-team { width: 7.5rem; } .pf-table .col-progress { width: 9.5rem; } .pf-table .col-deadline { width: 8.75rem; } .pf-table .col-tasks { width: 4.5rem; } .pf-table .col-hours { width: 6.5rem; }
 .pf-table th { white-space: nowrap; }
 @container page (max-width: 82rem) { .pf-table .col-hours { display: none; } }
 @container page (max-width: 68rem) { .pf-table .col-team { display: none; } }

@@ -52,7 +52,7 @@
 .pd-tabsrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .pd-tabsrow .tabs { flex: 1; min-width: 0; }
 
-.pd-side { display: grid; gap: var(--space-5); padding-left: var(--space-5); border-left: 1px solid var(--line); }
+.pd-side { display: grid; gap: var(--space-5); align-content: start; padding: var(--space-4); border-radius: var(--radius-lg); background: var(--canvas); position: sticky; top: var(--space-4); }
 .pd-side__h { margin: 0 0 var(--space-2); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-3); }
 .pd-side__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1-5); }
 .pd-side__empty { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
@@ -126,3 +126,60 @@
 .kb-col__body, .kb-card, .kb-card__top, .kb-chip { min-width: 0; }
 .kb-chip { overflow: hidden; }
 .kb { grid-template-columns: repeat(5, minmax(12.5rem, 1fr)); }
+
+/* ---------- Plan pracy: tabela etapów ---------- */
+.plan-rows { list-style: none; margin: 0; padding: 0; }
+.plan-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 8.5rem 10rem 8.5rem 2rem; align-items: center; gap: var(--space-3);
+  min-height: var(--row-h); padding: 0 var(--space-2); border-bottom: 1px solid var(--line);
+}
+.plan-row--head { min-height: 2rem; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
+.plan-row--head > :first-child { padding-left: calc(2rem + var(--space-2)); }
+.plan-item > .plan-row:hover { background: var(--wash); }
+.plan-row.is-current { box-shadow: inset 2px 0 0 var(--ink); }
+.plan-row.is-late { box-shadow: inset 2px 0 0 var(--alarm); }
+.plan-row__main {
+  display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2);
+  min-width: 0; padding: var(--row-pad) 0; text-align: left; font: inherit; color: inherit; border-radius: var(--radius-sm);
+}
+.plan-row__main:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.plan-row__no { font-size: var(--fs-sm); color: var(--ink-3); }
+.plan-row__text { display: grid; gap: 2px; min-width: 0; }
+.plan-row__name { font-weight: 500; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.plan-row__sub { font-size: var(--fs-xs); color: var(--ink-3); }
+.plan-row__late { color: var(--alarm-ink); }
+.plan-row__chevron { display: inline-flex; color: var(--ink-4); transition: transform var(--duration-quick, 120ms) ease; }
+.plan-row.is-open .plan-row__chevron { transform: rotate(180deg); }
+.plan-row__reveal { font-size: var(--fs-sm); color: var(--ink-3); }
+.plan-row--done .plan-row__name { color: var(--ink-3); font-weight: 400; }
+.plan-row--summary .plan-row__name { font-weight: 400; }
+.plan-row__due { font-size: var(--fs-sm); }
+.plan-budget { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.plan-meter { flex: 1; min-width: 2.5rem; height: 6px; border-radius: var(--radius-full); background: var(--track); overflow: hidden; }
+.plan-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--ink-3); }
+.plan-budget__text { min-width: 4.25rem; text-align: right; font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; }
+.plan-budget--warn .plan-meter > i { background: var(--warn); }
+.plan-budget--warn .plan-budget__text { color: var(--warn-ink); }
+.plan-budget--over .plan-meter > i { background: var(--alarm); }
+.plan-budget--over .plan-budget__text { color: var(--alarm-ink); font-weight: 600; }
+.plan-budget.is-done .plan-meter > i { background: var(--ink-4); }
+.plan-budget.is-done .plan-budget__text { color: var(--ink-3); }
+.plan-panel { padding: var(--space-2) 0 var(--space-4) calc(2rem + var(--space-2)); border-bottom: 1px solid var(--line); }
+@container page (max-width: 64rem) {
+  .plan-row { grid-template-columns: minmax(0, 1fr) 10rem 8.5rem 2rem; }
+  .plan-row__due { display: none; }
+  .plan-row--head > :nth-child(2) { display: none; }
+}
+@media (max-width: 40rem) {
+  .plan-row { grid-template-columns: minmax(0, 1fr) 2rem; row-gap: var(--space-1); padding-bottom: var(--space-2); }
+  .plan-row > .plan-budget, .plan-row > .srow__status { grid-column: 1; }
+  .plan-row--head { display: none; }
+}
+
+/* ---------- Korekta zużycia w formularzu etapu ---------- */
+.adjust { display: grid; gap: var(--space-3); margin: var(--space-2) 0 0; padding: var(--space-4) 0 0; border: 0; border-top: 1px solid var(--line); }
+.adjust__legend { padding: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+.adjust__hint { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
+.adjust__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.adjust__item { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); }
+.adjust__note { color: var(--ink-2); }

@@ -1,8 +1,9 @@
-/* ETROM — przebieg etapów jako rail.
-   Pionowa linia przebiegu: ciągła przez etapy zakończone, w kolorze nurtu
-   przez etap w toku, przerywana przez etapy przed nami — jak linie istniejące
-   i projektowane na rysunku. Seria zakończonych etapów od początku zwija się
-   do jednego wiersza, żeby uwaga szła tam, gdzie trwa praca. */
+/* ETROM — plan pracy projektu jako tabela etapów.
+   Wiersz odpowiada na trzy pytania: co (etap), do kiedy (najbliższy termin zadania)
+   i ile godzin (budżet etapu i zużycie przez cały zespół). Postęp i rozbicie godzin
+   według rodzaju pracy należą do analizy projektu, nie do planu. Godziny widzą lider
+   i zarząd, pozostali tylko procent zużycia (core/budget.js). Zakończone etapy od
+   początku zwijają się do jednego wiersza. */
 (function (root) {
   'use strict';
 
@@ -20,16 +21,15 @@
 
   var COLLAPSE_FROM = 3;
 
-  function taskCell(stage) {
+  /** Druga linia pod nazwą etapu: ile zadań i czy któreś jest spóźnione. */
+  function taskLine(stage) {
     var stats = Tasks.taskStats(stage.tasks || []);
-    if (!stats.total) return D.el('span', { class: 'srow__tasks t-muted', text: '—', attrs: { 'aria-label': 'Brak zadań' } });
-    return D.el('span', {
-      class: 'srow__tasks' + (stats.overdue ? ' srow__tasks--alert' : ''),
-      attrs: {
-        'data-tooltip': 'Otwarte ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie ' + stats.overdue : ''),
-        'aria-label': 'Zadania otwarte: ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
-      }
-    }, [stats.open + '/' + stats.total]);
+    if (!stats.total) return D.el('span', { class: 'plan-row__sub t-muted', text: 'Brak zadań' });
+    var text = stats.open ? 'Otwarte ' + stats.open + ' z ' + stats.total : 'Wszystkie zadania zakończone (' + stats.total + ')';
+    return D.el('span', { class: 'plan-row__sub' }, [
+      D.el('span', { text: text }),
+      stats.overdue ? D.el('span', { class: 'plan-row__late', text: ' · ' + stats.overdue + ' po terminie' }) : null
+    ]);
   }
 
   function stageMenu(project, stage, position, count, actions) {
@@ -55,14 +55,6 @@
     return btn;
   }
 
-  function railCell(stage, segment, flash) {
-    var cls = 'rail__node rail__node--' + stage.status
-      + (segment && segment.current ? ' rail__node--current' : '')
-      + (segment && segment.overdue ? ' rail__node--overdue' : '')
-      + (flash ? ' is-pop' : '');
-    return D.el('span', { class: 'srow__rail rail--' + stage.status, attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: cls })]);
-  }
-
   /**
    * Czy etap jest rozwinięty. Bieżący etap otwiera się sam — to, co dzieje się
    * teraz, widać bez klikania — dopóki użytkownik go nie zwinie.
@@ -71,20 +63,6 @@
     var value = (expandedStages || {})[project.id + ':' + stage.id];
     if (value === true || value === false) return value;
     return Progress.activeStage(project) === stage && stage.status === 'working';
-  }
-
-  /** Budżet godzin etapu; gdy zapisano czas, także ile z niego już zużyto. */
-  function hoursCell(stage, loggedMinutes) {
-    if (!loggedMinutes) return D.el('span', { class: 'srow__hours t-num', text: F.hours(stage.hours) });
-    var used = E.TimeLog.hoursOf(loggedMinutes);
-    var over = used > Number(stage.hours);
-    return D.el('span', {
-      class: 'srow__hours srow__hours--logged t-num' + (over ? ' is-over' : ''),
-      attrs: { 'data-tooltip': 'Zapisano ' + E.TimeLog.duration(loggedMinutes) + ' z budżetu ' + F.hours(stage.hours) + (over ? ' — budżet przekroczony' : '') }
-    }, [
-      D.el('span', { class: 'srow__used', text: String(used).replace('.', ',') }),
-      D.el('span', { class: 'srow__budget', text: ' / ' + F.hours(stage.hours) })
-    ]);
   }
 
   /** Etap nie ma własnego terminu: pokazujemy termin najbliższego otwartego zadania, z rokiem i odliczaniem. */
@@ -99,42 +77,56 @@
     ]);
   }
 
-  function stageRow(project, stage, position, count, ctx, segment) {
+  /**
+   * Budżet etapu: wskaźnik zużycia przez cały zespół. Godziny (zapisane + korekty zarządu)
+   * widzi lider projektu i zarząd; pozostali tylko procent.
+   */
+  function budgetCell(project, stage, ctx) {
+    var view = E.Budget.view(project, stage, ctx.state.workspace.entries || [], ctx.state.prefs.me, ctx.people, new Date());
+    var width = Math.max(0, Math.min(100, view.percent));
+    var tip = view.exact
+      ? 'Zapisano ' + F.hours(Math.round(view.logged * 10) / 10) + (view.bonus ? ', korekta zarządu ' + F.hours(view.bonus) : '') + ' z budżetu ' + F.hours(view.planned)
+      : 'Zużycie budżetu etapu przez cały zespół';
+    var text = view.exact
+      ? String(Math.round(view.used * 10) / 10).replace('.', ',') + ' / ' + F.hours(view.planned)
+      : view.percent + '%';
+    return D.el('div', {
+      class: 'plan-budget plan-budget--' + view.state + (stage.status === 'done' ? ' is-done' : ''),
+      attrs: { 'data-tooltip': tip, role: 'img', 'aria-label': 'Zużycie budżetu etapu: ' + (view.exact ? text : text + ' budżetu') + (view.state === 'over' ? ', przekroczone' : '') }
+    }, [
+      D.el('span', { class: 'plan-meter', attrs: { 'aria-hidden': 'true' } }, [D.el('i', { style: { width: width + '%' } })]),
+      D.el('span', { class: 'plan-budget__text t-num', text: text })
+    ]);
+  }
+
+  function stageRow(project, stage, position, count, ctx) {
     var actions = ctx.actions;
     var info = Model.describeStage(stage);
     var open = isOpen(ctx.state.expandedStages, project, stage);
     var flash = ctx.motion && ctx.motion.flashStage === stage.id;
     var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
-    var meta = info.kindLabel + ' · ' + info.domainLabel.toLowerCase() + ' · ' + (info.isCustom ? 'własny' : 'standard ' + info.catalogNumber);
     var nextStatus = Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)];
-    // Rodzaj, temat i numer standardu są w podpowiedzi ikony — wiersz zostaje czysty.
-    var icon = Icons.stageIcon(info, 15);
-    icon.setAttribute('data-tooltip', meta);
+    var current = Progress.activeStage(project) === stage;
+    var late = stage.status !== 'done' && Tasks.taskStats(stage.tasks || []).overdue > 0;
+    var meta = info.kindLabel + ' · ' + info.domainLabel.toLowerCase() + ' · ' + (info.isCustom ? 'własny' : 'standard ' + info.catalogNumber);
 
     var row = D.el('div', {
-      class: 'srow row srow--' + stage.status
-        + (segment && segment.current ? ' srow--current' : '')
-        + (segment && segment.overdue ? ' srow--overdue' : '')
-        + (flash ? ' is-flash' : '') + (open ? ' srow--open' : '')
+      class: 'plan-row plan-row--' + stage.status + (current ? ' is-current' : '') + (late ? ' is-late' : '') + (flash ? ' is-flash' : '') + (open ? ' is-open' : '')
     }, [
-      railCell(stage, segment, flash),
       D.el('button', {
-        class: 'srow__expand',
-        attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': panelId, 'data-fk': 'stage-expand-' + stage.id }
+        class: 'plan-row__main',
+        attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': panelId, 'data-fk': 'stage-expand-' + stage.id, 'data-tooltip': meta }
       }, [
-        D.el('span', { class: 'srow__no t-num', text: String(position + 1) }),
-        icon,
-        D.el('span', { class: 'srow__text' }, [
-          D.el('span', { class: 'srow__name', text: info.name })
+        D.el('span', { class: 'plan-row__no t-num', text: String(position + 1) }),
+        D.el('span', { class: 'plan-row__text' }, [
+          D.el('span', { class: 'plan-row__name', text: info.name }),
+          taskLine(stage)
         ]),
-        D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronDown', 14)]),
+        D.el('span', { class: 'plan-row__chevron' }, [Icons.icon('chevronDown', 14)]),
         D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
       ]),
-      taskCell(stage),
-      hoursCell(stage, ctx.logged && ctx.logged[stage.id]),
-      D.el('span', { class: 'srow__deadline' }, [
-        nearestDue(stage)
-      ]),
+      D.el('span', { class: 'plan-row__due' }, [nearestDue(stage)]),
+      budgetCell(project, stage, ctx),
       UI.statusButton('stage', stage.status, {
         subject: info.name,
         class: 'srow__status',
@@ -144,17 +136,16 @@
       }),
       stageMenu(project, stage, position, count, actions)
     ]);
-    row.querySelector('.srow__expand').addEventListener('click', function () { actions.toggleStage(project.id, stage.id); });
+    row.querySelector('.plan-row__main').addEventListener('click', function () { actions.toggleStage(project.id, stage.id); });
 
     var children = [row];
     if (open) {
-      children.push(D.el('div', { class: 'srow__panel rail--' + stage.status, attrs: { id: panelId } }, [
+      children.push(D.el('div', { class: 'plan-panel', attrs: { id: panelId } }, [
         E.TaskList.taskList(project, stage, actions, ctx.people, ctx.motion)
       ]));
     }
-    return D.el('li', { class: 'srow-wrap', dataset: { stageId: stage.id } }, children);
+    return D.el('li', { class: 'plan-item', dataset: { stageId: stage.id } }, children);
   }
-
   /** Menu „Dodaj etap”: etapy ze standardu, których jeszcze nie ma, i etap własny. */
   function addStageButton(project, actions, variant) {
     var btn = UI.button({ label: 'Dodaj etap', icon: 'plus', variant: variant || 'ghost', size: 'sm', attrs: { 'data-fk': 'add-stage' } });
@@ -183,124 +174,66 @@
     return n;
   }
 
-  /** Budżet godzin projektu według rodzaju pracy: pasek i legenda. */
-  function kindBudget(rows) {
-    var total = rows.reduce(function (sum, r) { return sum + r.hours; }, 0);
-    if (!total) return null;
-    return D.el('div', { class: 'kindbar', attrs: { role: 'group', 'aria-label': 'Budżet godzin według rodzaju pracy' } }, [
-      D.el('div', { class: 'kindbar__track', attrs: { 'aria-hidden': 'true' } }, rows.filter(function (r) { return r.hours > 0; }).map(function (r) {
-        return D.el('span', {
-          class: 'kindbar__seg kindbar__seg--' + r.kind,
-          style: { '--hours': String(r.hours), '--done': (r.hours ? Math.round(r.doneHours / r.hours * 100) : 0) + '%' }
-        });
-      })),
-      D.el('ul', { class: 'kindbar__legend' }, rows.map(function (r) {
-        return D.el('li', { class: 'kindbar__item' + (r.hours ? '' : ' is-zero') }, [
-          D.el('span', { class: 'kindbar__swatch kindbar__swatch--' + r.kind, attrs: { 'aria-hidden': 'true' } }),
-          D.el('span', { class: 'kindbar__label', text: r.label }),
-          D.el('span', { class: 'kindbar__value t-num', text: r.hours ? F.hours(r.hours) + ' · ' + Math.round(r.share * 100) + '%' : 'brak' })
-        ]);
-      }))
-    ]);
-  }
-
   function stageList(project, ctx) {
     var count = project.stages.length;
     var stats = Progress.projectProgress(project);
-    var prof = Insight.profile(project);
-    var segments = {};
-    prof.segments.forEach(function (seg) { segments[seg.id] = seg; });
 
     if (!count) {
       return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
         icon: 'layers',
         title: 'Projekt nie ma jeszcze etapów',
-        text: 'Etapy porządkują pracę i liczą postęp. Wybierz je ze standardu ETROM albo dopisz własne, gdy projekt wymaga czegoś nietypowego.',
+        text: 'Etapy porządkują pracę i budżet godzin. Wybierz je ze standardu ETROM albo dopisz własne, gdy projekt wymaga czegoś nietypowego.',
         actions: [addStageButton(project, ctx.actions, 'primary')]
       })])]);
     }
 
-    ctx = Object.assign({}, ctx, { logged: E.TimeLog.byStage(ctx.state.workspace.entries || [], project.id) });
     var done = leadingDone(project);
     var showDone = !!(ctx.state.showDone && ctx.state.showDone[project.id]);
-    var collapse = !ctx.state.stageGroup && done >= COLLAPSE_FROM && done < count && !showDone;
+    var collapse = done >= COLLAPSE_FROM && done < count && !showDone;
     var items = [];
 
     if (collapse) {
-      var hours = project.stages.slice(0, done).reduce(function (sum, s) { return sum + (Number(s.hours) || 0); }, 0);
-      items.push(D.el('li', { class: 'srow-wrap srow-wrap--summary' }, [D.el('div', { class: 'srow srow--summary srow--done' }, [
-        D.el('span', { class: 'srow__rail rail--done', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: 'rail__node rail__node--done' })]),
+      items.push(D.el('li', { class: 'plan-item plan-item--summary' }, [D.el('div', { class: 'plan-row plan-row--done plan-row--summary' }, [
         D.el('button', {
-          class: 'srow__expand srow__expand--summary',
+          class: 'plan-row__main',
           attrs: { type: 'button', 'aria-expanded': 'false', id: 'show-done' },
           on: { click: function () { ctx.actions.toggleDone(project.id); } }
         }, [
-          D.el('span', { class: 'srow__no t-num', text: '1–' + done }),
-          D.el('span', { class: 'srow__text' }, [
-            D.el('span', { class: 'srow__name', text: F.count(done, 'etap zakończony', 'etapy zakończone', 'etapów zakończonych') }),
-            D.el('span', { class: 'srow__meta' }, [D.el('span', { text: F.hours(hours) + ' wykonanej pracy' })])
+          D.el('span', { class: 'plan-row__no t-num', text: '1–' + done }),
+          D.el('span', { class: 'plan-row__text' }, [
+            D.el('span', { class: 'plan-row__name', text: F.count(done, 'etap zakończony', 'etapy zakończone', 'etapów zakończonych') })
           ]),
-          D.el('span', { class: 'srow__reveal', text: 'Pokaż' })
+          D.el('span', { class: 'plan-row__reveal', text: 'Pokaż' })
         ])
       ])]));
     }
 
-    var grouped = !!ctx.state.stageGroup;
-    var order = project.stages.map(function (stage, index) { return { stage: stage, index: index }; })
-      .filter(function (entry) { return !(collapse && entry.index < done); });
-    if (grouped) {
-      var ranks = {};
-      Catalog.KIND_ORDER.forEach(function (id, rank) { ranks[id] = rank; });
-      order.sort(function (a, b) {
-        return (ranks[Model.describeStage(a.stage).kind] - ranks[Model.describeStage(b.stage).kind]) || (a.index - b.index);
-      });
-    }
-    var lastKind = null;
-    var budget = Insight.budgetByKind(project);
-    order.forEach(function (entry) {
-      var kind = Model.describeStage(entry.stage).kind;
-      if (grouped && kind !== lastKind) {
-        var row = budget.filter(function (b) { return b.kind === kind; })[0];
-        items.push(D.el('li', { class: 'srow-group', attrs: { role: 'presentation' } }, [
-          Icons.icon(Catalog.kind(kind).icon, 14),
-          D.el('span', { class: 'srow-group__label', text: Catalog.kind(kind).label }),
-          D.el('span', { class: 'srow-group__meta t-num', text: F.hours(row.hours) + ' · ' + Math.round(row.share * 100) + '%' })
-        ]));
-        lastKind = kind;
-      }
-      items.push(stageRow(project, entry.stage, entry.index, count, ctx, segments[entry.stage.id]));
+    project.stages.forEach(function (stage, index) {
+      if (collapse && index < done) return;
+      items.push(stageRow(project, stage, index, count, ctx));
     });
 
-    var late = prof.segments.filter(function (s) { return s.overdue; }).length;
+    var late = project.stages.filter(function (st) { return st.status !== 'done' && Tasks.taskStats(st.tasks || []).overdue > 0; }).length;
 
-    return D.el('section', { class: 'section stages', attrs: { 'aria-labelledby': 'stages-title' } }, [
+    return D.el('section', { class: 'section plan', attrs: { 'aria-labelledby': 'stages-title' } }, [
       D.el('div', { class: 'section__head' }, [
         D.el('div', { class: 'section__titles' }, [
-          D.el('h2', { class: 'section__title', text: 'Przebieg etapów', attrs: { id: 'stages-title' } }),
+          D.el('h2', { class: 'section__title', text: 'Etapy', attrs: { id: 'stages-title' } }),
           D.el('span', { class: 'section__meta', text: stats.done + ' z ' + count + ' zakończonych' }),
-          late ? D.el('span', { class: 'section__meta t-alarm', text: F.count(late, 'etap po terminie', 'etapy po terminie', 'etapów po terminie') }) : null
+          late ? D.el('span', { class: 'section__meta t-alarm', text: F.count(late, 'etap ma zadania po terminie', 'etapy mają zadania po terminie', 'etapów ma zadania po terminie') }) : null
         ]),
         D.el('div', { class: 'section__actions' }, [
           !collapse && done >= COLLAPSE_FROM && done < count
             ? UI.button({ label: 'Zwiń zakończone', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.toggleDone(project.id); } })
             : null,
-          UI.button({
-            label: 'Grupuj wg rodzaju', icon: 'layers', variant: 'ghost', size: 'sm',
-            attrs: { 'aria-pressed': grouped ? 'true' : 'false', 'data-fk': 'stage-group' },
-            onClick: function () { ctx.actions.toggleStageGroup(); }
-          }),
           addStageButton(project, ctx.actions)
         ])
       ]),
-      kindBudget(budget),
-      D.el('div', { class: 'srow srow--head', attrs: { 'aria-hidden': 'true' } }, [
-        D.el('span'), D.el('span', { text: 'Etap' }), D.el('span', { class: 'srow__tasks', text: 'Zadania' }),
-        D.el('span', { class: 'srow__hours', text: 'Godziny' }), D.el('span', { class: 'srow__deadline', text: 'Termin zadań' }),
-        D.el('span', { text: 'Status' }), D.el('span')
+      D.el('div', { class: 'plan-row plan-row--head', attrs: { 'aria-hidden': 'true' } }, [
+        D.el('span', { text: 'Etap' }), D.el('span', { text: 'Najbliższy termin' }), D.el('span', { text: 'Budżet etapu' }), D.el('span', { text: 'Status' }), D.el('span')
       ]),
-      D.el('ol', { class: 'srows rail' }, items)
+      D.el('ol', { class: 'plan-rows' }, items)
     ]);
   }
-
   root.ETROM.StageList = { stageList: stageList, addStageButton: addStageButton, isOpen: isOpen };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -15,6 +15,9 @@
   var TimeLog = (typeof module !== 'undefined' && module.exports)
     ? require('./timelog.js')
     : root.ETROM.TimeLog;
+  var Budget = (typeof module !== 'undefined' && module.exports)
+    ? require('./budget.js')
+    : root.ETROM.Budget;
   var Mail = (typeof module !== 'undefined' && module.exports)
     ? require('./mail.js')
     : root.ETROM.Mail;
@@ -90,6 +93,21 @@
   }
 
   /** Najmniejszy wolny dodatni identyfikator. */
+  /**
+   * Proponowany numer nowego projektu: rok (2 cyfry) i kolejny numer w roku,
+   * np. 2601, 2602 … Liczy się największy numer z tego roku w kodach istniejących projektów.
+   */
+  function nextProjectCode(projects, now) {
+    var d = now instanceof Date ? now : new Date();
+    var year = String(d.getFullYear()).slice(2);
+    var max = 0;
+    (projects || []).forEach(function (p) {
+      var match = /^(\d{2})(\d{2,3})$/.exec(String(p && p.code).trim());
+      if (match && match[1] === year) max = Math.max(max, Number(match[2]));
+    });
+    return year + String(max + 1).padStart(2, '0');
+  }
+
   function nextProjectId(projects) {
     var max = 0;
     (projects || []).forEach(function (p) {
@@ -111,6 +129,7 @@
       status: 'todo',
       hours: hours,
       deadline: isDate(options.deadline) ? options.deadline : '',
+      adjustments: [],
       tasks: []
     };
   }
@@ -158,6 +177,7 @@
         status: 'todo',
         hours: hours,
         deadline: isDate(data.deadline) ? data.deadline : '',
+        adjustments: [],
         tasks: []
       }
     };
@@ -337,6 +357,7 @@
           status: Object.prototype.hasOwnProperty.call(STAGE_STATUS, stage.status) ? stage.status : 'todo',
           hours: Number.isFinite(hours) && hours > 0 ? hours : fallbackHours,
           deadline: isDate(stage.deadline) ? stage.deadline : '',
+          adjustments: Budget.normalizeAdjustments(stage.adjustments),
           // Realizatorem może być tylko ktoś z zespołu projektu.
           tasks: Tasks.normalizeTasks(stage.tasks, roster)
         };
@@ -396,6 +417,7 @@
     isDate: isDate,
     validateProject: validateProject,
     nextProjectId: nextProjectId,
+    nextProjectCode: nextProjectCode,
     createProject: createProject,
     createStage: createStage,
     createCustomStage: createCustomStage,

@@ -93,10 +93,17 @@ test('sortowanie po postępie — najpierw najbardziej zaawansowane', () => {
   assert.deepEqual(Query.filterAndSort(list, { sort: 'progress' }).map((p) => p.code), ['B', 'C', 'A']);
 });
 
-test('nieznane sortowanie wraca do sortowania po terminie', () => {
+test('numery projektów RRNN sortują się liczbowo, a kierunek można odwrócić', () => {
+  const list = [project('2610', 'J', 'K', 'active', ''), project('2602', 'B', 'K', 'active', ''), project('2601', 'A', 'K', 'done', ''), project('2509', 'Z', 'K', 'active', '')];
+  assert.deepEqual(Query.filterAndSort(list, { sort: 'code' }).map((p) => p.code), ['2509', '2601', '2602', '2610']);
+  assert.deepEqual(Query.filterAndSort(list, { sort: 'code', dir: 'desc' }).map((p) => p.code), ['2610', '2602', '2601', '2509']);
+  assert.deepEqual(Query.filterAndSort(list, {}).map((p) => p.code), ['2509', '2601', '2602', '2610'], 'domyślnie po numerze, zakończone bez wyróżnienia');
+});
+
+test('nieznane sortowanie wraca do sortowania po numerze', () => {
   assert.deepEqual(
     Query.filterAndSort(SET, { sort: 'nie-ma' }).map((p) => p.code),
-    Query.filterAndSort(SET, { sort: 'deadline' }).map((p) => p.code)
+    Query.filterAndSort(SET, { sort: 'code' }).map((p) => p.code)
   );
 });
 

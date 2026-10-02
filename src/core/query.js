@@ -10,10 +10,9 @@
     : root.ETROM.Team;
 
   var SORTS = {
+    code: 'Numer projektu',
     deadline: 'Termin — najbliższy (zakończone na końcu)',
-    name: 'Nazwa A→Z',
-    code: 'Kod A→Z',
-    progress: 'Postęp — największy'
+    name: 'Nazwa A→Z'
   };
 
   function normalize(value) {
@@ -55,7 +54,7 @@
   var COMPARATORS = {
     deadline: compareDeadline,
     name: function (a, b) { return compareText(a.name, b.name); },
-    code: function (a, b) { return compareText(a.code, b.code); },
+    code: function (a, b) { return compareText(a.code, b.code) || compareText(a.name, b.name); },
     progress: compareProgress
   };
 
@@ -101,8 +100,11 @@
       return matchesQuery(project, query);
     });
 
-    var comparator = COMPARATORS[options.sort] || COMPARATORS.deadline;
-    return filtered.sort(comparator);
+    var comparator = COMPARATORS[options.sort] || COMPARATORS.code;
+    filtered.sort(comparator);
+    // Kierunek: domyślnie rosnąco; „desc” odwraca kolejność, np. najnowsze numery na górze.
+    if (options.dir === 'desc') filtered.reverse();
+    return filtered;
   }
 
   var api = { SORTS: SORTS, HEALTH: HEALTH, filterAndSort: filterAndSort };

@@ -162,7 +162,7 @@ test('createCustomStage tworzy etap z własną nazwą i dziedziną', () => {
   assert.equal(made.valid, true);
   assert.deepEqual(made.stage, {
     id: 'custom-1', source: 'custom', name: 'Uzgodnienie z PKP',
-    domain: 'location', kind: 'docs', status: 'todo', hours: 12, deadline: '2026-07-01', tasks: []
+    domain: 'location', kind: 'docs', status: 'todo', hours: 12, deadline: '2026-07-01', adjustments: [], tasks: []
   });
 });
 

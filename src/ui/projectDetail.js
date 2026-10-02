@@ -107,31 +107,12 @@
   }
 
   function propertyRow(project, ctx, now, health) {
-    var gauge = Insight.gauge(project, now);
-    var level = PL.lagLevel(gauge);
-    var done = project.status === 'done';
-    var stats = Progress.projectProgress(project);
-    var logged = E.TimeLog.projectMinutes((ctx.state && ctx.state.workspace.entries) || [], project.id);
     var attention = health.level === 'alarm' || health.level === 'warning';
     var stateLabel = health.level === 'closed' ? 'Zakończony' : (attention ? 'Wymaga uwagi' : 'W normie');
 
     return D.el('dl', { class: 'pd-props' }, [
-      prop('Stan', [D.el('span', { class: 'pd-state', attrs: { 'data-tooltip': health.reasons.map(function (r) { return r.text; }).join('; ') || null } }, [Sig.datum(attention ? health.level : health.level, { label: false }), D.el('span', { text: stateLabel })])]),
-      prop('Postęp', [D.el('button', {
-        class: 'pd-edit pd-progress', attrs: { type: 'button', 'data-tooltip': done ? null : PL.lagTip(gauge), 'aria-label': 'Postęp ' + gauge.percent + '%. Pokaż plan.' },
-        on: { click: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); } }
-      }, [
-        PL.planMeter(gauge, done ? '' : level),
-        D.el('span', { class: 'pd-progress__num t-num' }, [
-          D.el('b', { text: gauge.percent + '%' }),
-          !done && gauge.expected !== null ? D.el('span', { class: 'pd-prop__sub' + (level ? ' is-' + level : ''), text: level ? 'zaległość ' + Math.round(gauge.lag) + ' p.p.' : 'plan ' + Math.round(gauge.expected) + '%' }) : null
-        ])
-      ])], { tone: level }),
+      prop('Stan', [D.el('span', { class: 'pd-state', attrs: { 'data-tooltip': health.reasons.map(function (r) { return r.text; }).join('; ') || null } }, [Sig.datum(health.level, { label: false }), D.el('span', { text: stateLabel })])]),
       prop('Termin umowy', deadlineProp(project, ctx, now)),
-      prop('Godziny', [D.el('span', { class: 'pd-hours t-num' }, [
-        D.el('b', { text: F.number(stats.hoursDone) }), D.el('span', { class: 't-muted', text: ' / ' + F.number(stats.hoursTotal) + ' h' }),
-        logged ? D.el('span', { class: 'pd-prop__sub', text: 'zapisano ' + String(E.TimeLog.hoursOf(logged)).replace('.', ',') + ' h' }) : null
-      ])]),
       prop('Lider', [PL.leaderCell(project, ctx)])
     ]);
   }
@@ -190,7 +171,6 @@
   function detailsPanel(project, ctx, now) {
     var team = project.team || Team.emptyTeam();
     var entries = (ctx.state.workspace.entries) || [];
-    var budget = Insight.budgetByKind(project);
     var recent = Insight.activity(project, ctx.state.workspace.mail || [], 4);
     var roles = Team.FUNCTIONS.map(function (fn) {
       var person = Team.findPerson(ctx.people, team[fn.key]);
@@ -214,9 +194,6 @@
       section('Zespół', roles.length || members
         ? [D.el('ul', { class: 'pd-side__list' }, roles.concat(members ? [D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Członkowie' }), D.el('span', { class: 'pd-kv__v t-num', text: String(members) })])] : []))]
         : [D.el('p', { class: 'pd-side__empty', text: 'Zespół nie jest przypisany.' })]),
-      section('Godziny według rodzaju', [D.el('ul', { class: 'pd-side__list' }, budget.map(function (b) {
-        return D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: b.label }), D.el('span', { class: 'pd-kv__v t-num', text: F.hours(b.hours) + ' · ' + Math.round(b.share * 100) + '%' })]);
-      }))]),
       section('Ostatnia aktywność', recent.length
         ? [D.el('ul', { class: 'pd-side__list pd-side__list--act' }, recent.map(function (a) {
             return D.el('li', { class: 'pd-act' }, [D.el('span', { class: 'pd-act__text', text: a.text }), D.el('span', { class: 'pd-act__at t-num', text: F.dateTime(String(a.at).slice(0, 16)) })]);
@@ -373,32 +350,43 @@
   /* ---------- zakładki Czas i Aktywność ---------- */
 
   function timeTab(project, ctx) {
-    var entries = (ctx.state.workspace.entries || []).filter(function (e) { return e.projectId === project.id; });
-    var byStage = E.TimeLog.byStage(entries, project.id);
+    var all = ctx.state.workspace.entries || [];
+    var entries = all.filter(function (e) { return e.projectId === project.id; });
+    var now = new Date();
+    var exact = E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.people);
     var total = E.TimeLog.projectMinutes(entries, project.id);
     var rows = project.stages.map(function (stage, index) {
-      var minutes = byStage[stage.id] || 0;
-      return { stage: stage, index: index, minutes: minutes, budget: Number(stage.hours) || 0 };
-    }).filter(function (r) { return r.minutes || r.budget; });
+      return { stage: stage, index: index, view: E.Budget.view(project, stage, all, ctx.state.prefs.me, ctx.people, now), usage: E.Budget.usage(project, stage, all, now) };
+    }).filter(function (r) { return r.usage.used || r.usage.planned; });
 
     if (!total && !rows.length) {
       return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
-        icon: 'clock', title: 'Brak zapisanego czasu', text: 'Czas zapisuje się zegarem przy zadaniu (▶) albo ręcznie. Tu zobaczysz go w podziale na etapy.'
+        icon: 'clock', title: 'Brak zapisanego czasu', text: 'Czas zapisuje się zegarem przy zadaniu (▶) albo ręcznie. Tu zobaczysz zużycie budżetu w podziale na etapy.'
       })])]);
     }
+    function hrs(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
+    var head = exact
+      ? [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zapisano' }), D.el('th', { class: 'cell--num', text: 'Korekta zarządu' }), D.el('th', { class: 'cell--num', text: 'Budżet etapu' }), D.el('th', { class: 'cell--num', text: 'Zużycie' })]
+      : [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zużycie budżetu etapu (cały zespół)' })];
     return D.el('section', { class: 'section' }, [
       D.el('div', { class: 'section__head' }, [D.el('div', { class: 'section__titles' }, [
         D.el('h2', { class: 'section__title', text: 'Czas pracy' }),
-        D.el('span', { class: 'section__meta t-num', text: total ? 'zapisano ' + E.TimeLog.duration(total) : 'nic jeszcze nie zapisano' })
+        exact ? D.el('span', { class: 'section__meta t-num', text: total ? 'zapisano ' + E.TimeLog.duration(total) : 'nic jeszcze nie zapisano' })
+          : D.el('span', { class: 'section__meta', text: 'Godziny zespołu widzi lider i zarząd — tu zobaczysz procent zużycia budżetu.' })
       ])]),
-      D.el('table', { class: 'table pd-time', attrs: { 'aria-label': 'Czas pracy według etapów' } }, [
-        D.el('thead', null, [D.el('tr', null, [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zapisano' }), D.el('th', { class: 'cell--num', text: 'Budżet etapu' })])]),
+      D.el('table', { class: 'table pd-time', attrs: { 'aria-label': 'Zużycie budżetu według etapów' } }, [
+        D.el('thead', null, [D.el('tr', null, head)]),
         D.el('tbody', null, rows.map(function (r) {
-          var over = r.budget && E.TimeLog.hoursOf(r.minutes) > r.budget;
+          var over = r.view.state === 'over';
+          var name = D.el('td', null, [D.el('span', { class: 't-num t-muted', text: (r.index + 1) + '  ' }), D.el('span', { text: Model.describeStage(r.stage).name })]);
+          var pct = D.el('td', { class: 'cell--num t-num' + (over ? ' t-alarm' : '') }, [D.el('span', { text: r.view.percent + '%' })]);
+          if (!exact) return D.el('tr', null, [name, pct]);
           return D.el('tr', null, [
-            D.el('td', null, [D.el('span', { class: 't-num t-muted', text: (r.index + 1) + '  ' }), D.el('span', { text: Model.describeStage(r.stage).name })]),
-            D.el('td', { class: 'cell--num t-num' + (over ? ' t-alarm' : '') }, [D.el('span', { text: r.minutes ? E.TimeLog.duration(r.minutes) : '—' })]),
-            D.el('td', { class: 'cell--num t-num t-muted', text: r.budget ? F.hours(r.budget) : '—' })
+            name,
+            D.el('td', { class: 'cell--num t-num' }, [D.el('span', { text: r.usage.logged ? hrs(r.usage.logged) + ' h' : '—' })]),
+            D.el('td', { class: 'cell--num t-num t-muted', text: r.usage.bonus ? '+' + hrs(r.usage.bonus) + ' h' : '—' }),
+            D.el('td', { class: 'cell--num t-num t-muted', text: r.usage.planned ? F.hours(r.usage.planned) : '—' }),
+            pct
           ]);
         }))
       ])
@@ -452,7 +440,7 @@
     var board = tab === 'zadania' && ctx.state.prefs.taskView === 'kanban';
     var open = ctx.state.prefs.detailsOpen !== false && !board;
     var toggle = UI.iconButton({
-      icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm',
+      icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm', kbd: ']',
       attrs: { 'aria-pressed': String(open), 'data-fk': 'details-toggle' },
       onClick: function () { ctx.actions.setPref({ detailsOpen: !open }); }
     });

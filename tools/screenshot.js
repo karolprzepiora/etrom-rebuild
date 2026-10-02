@@ -208,11 +208,11 @@ async function main() {
     await shoot('menu-filtr', { wait: 250 });
     await escape();
 
-    await run('document.querySelectorAll("#select-' + (await projectId('DEMO-001')) + ', #select-' + (await projectId('DEMO-004')) + '").forEach(b => b.click()); return true;');
+    await run('document.querySelectorAll("#select-' + (await projectId('2601')) + ', #select-' + (await projectId('2604')) + '").forEach(b => b.click()); return true;');
     await shoot('zaznaczenie');
     await run('window.ETROM.app.store.set({ selection: {} }); return true;');
 
-    const id2 = await projectId('DEMO-002');
+    const id2 = await projectId('2602');
     await viewport(1440, 1500);
     await go('#/projekty/' + id2);
     await shoot('projekt', { full: true });
@@ -222,9 +222,12 @@ async function main() {
     await theme('dark');
     await shoot('projekt-ciemny', { full: true });
     await theme('light');
-    await click('[data-fk="stage-group"]');
-    await shoot('projekt-grupy', { full: true, wait: 250 });
-    await click('[data-fk="stage-group"]');
+    await run('window.ETROM.app.actions.setPref({ detailsOpen: false }); return true;');
+    await shoot('projekt-szeroki', { full: true, wait: 300 });
+    await run('window.ETROM.app.actions.setPref({ detailsOpen: true }); return true;');
+    await run('const st = window.ETROM.app.store.getState(); const me = st.workspace.people.find(p => p.firstName === "Ewa").id; window.ETROM.app.actions.setMe(me); return true;');
+    await shoot('projekt-pracownik', { full: true, wait: 300 });
+    await run('const st = window.ETROM.app.store.getState(); const me = st.workspace.people.find(p => p.firstName === "Michał").id; window.ETROM.app.actions.setMe(me); return true;');
 
     await viewport(1440, 900);
     await go('#/projekty/' + id2 + '/zadania');
@@ -239,7 +242,7 @@ async function main() {
     await shoot('menu-status', { wait: 250 });
     await escape();
 
-    const idMail = await projectId('DEMO-001');
+    const idMail = await projectId('2601');
     await go('#/projekty/' + idMail + '/korespondencja');
     await shoot('projekt-korespondencja');
     await run('window.ETROM.app.actions.addMail(' + idMail + ', "in"); return true;');
@@ -259,7 +262,7 @@ async function main() {
     await run('window.ETROM.app.actions.snoozeInbox(document.querySelector("#view-inbox [data-inbox-key]").dataset.inboxKey, "Test"); return true;');
     await shoot('skrzynka-odlozone', { wait: 300 });
     await go('#/moja-praca');
-    await run('const st = window.ETROM.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "DEMO-002"); const stg = p.stages.find(x => (x.tasks || []).length); const a = window.ETROM.app.actions; const T = window.ETROM.TimeLog; const me = st.prefs.me; let list = st.workspace.entries || []; const spec = { personId: me, projectId: p.id, stageId: stg.id, taskId: stg.tasks[0].id, label: stg.tasks[0].name }; [["2026-10-02", 2.5], ["2026-10-02", 1.25]].forEach(([d, h]) => { list = T.addManual(list, Object.assign({}, spec, { date: d, hours: h, note: h > 2 ? "Kolizja z siecią gazową" : "" }), new Date()).entries; }); window.ETROM.app.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { entries: list }) }); }); a.toggleTimer(p.id, stg.id, stg.tasks[0].id); return true;');
+    await run('const st = window.ETROM.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "2602"); const stg = p.stages.find(x => (x.tasks || []).length); const a = window.ETROM.app.actions; const T = window.ETROM.TimeLog; const me = st.prefs.me; let list = st.workspace.entries || []; const spec = { personId: me, projectId: p.id, stageId: stg.id, taskId: stg.tasks[0].id, label: stg.tasks[0].name }; [["2026-10-02", 2.5], ["2026-10-02", 1.25]].forEach(([d, h]) => { list = T.addManual(list, Object.assign({}, spec, { date: d, hours: h, note: h > 2 ? "Kolizja z siecią gazową" : "" }), new Date()).entries; }); window.ETROM.app.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { entries: list }) }); }); a.toggleTimer(p.id, stg.id, stg.tasks[0].id); return true;');
     await shoot('moja-praca-zegar', { wait: 600 });
     await run('window.ETROM.app.actions.stopTimer(); return true;');
     await go('#/projekty/' + id2);
@@ -279,7 +282,7 @@ async function main() {
     await escape();
 
     await go('#/projekty');
-    await run('window.ETROM.app.actions && 0; const E = window.ETROM; const st = E.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "DEMO-002"); E.app.store.set({ inspector: { kind: "project", projectId: p.id } }); return true;');
+    await run('window.ETROM.app.actions && 0; const E = window.ETROM; const st = E.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "2602"); E.app.store.set({ inspector: { kind: "project", projectId: p.id } }); return true;');
     await shoot('inspektor-projekt', { wait: 500 });
     await escape();
     await go('#/zespol');
@@ -336,7 +339,7 @@ async function main() {
 
     // Spokojny portfel (bez alarmów) na szerokim ekranie: „Biuro dziś” w kokpicie.
     await viewport(1900, 1000);
-    await run('const a = window.ETROM.app; a.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { projects: s2.workspace.projects.filter(function (p) { return ["DEMO-001", "DEMO-005", "DEMO-006"].indexOf(p.code) >= 0; }) }) }); }); return true;');
+    await run('const a = window.ETROM.app; a.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { projects: s2.workspace.projects.filter(function (p) { return ["2601", "2605", "2606"].indexOf(p.code) >= 0; }) }) }); }); return true;');
     await go('#/projekty');
     await shoot('projekty-spokojnie-szeroko', { wait: 400 });
   } finally {
