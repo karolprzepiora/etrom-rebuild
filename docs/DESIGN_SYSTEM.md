@@ -359,3 +359,14 @@ Wszystkie ekrany używają jednego języka, ładowanego ostatnim arkuszem:
 5. Puste stany, brak wyników i błędy zaprojektowane.
 6. Zrzuty w `tools/screenshot.js` (1440 / 1024 / 390 px, oba motywy) i sprawdzenie w `tests/browser/smoke.js`.
 7. Pytania kontrolne z [ART_DIRECTION.md](ART_DIRECTION.md).
+
+## Analiza
+
+Ekran `#/analiza` (skrót `G N`) odpowiada na pytanie „czy projekty mieszczą się w godzinach i w pieniądzach”. Liczy je `src/core/analysis.js`, rysuje `src/ui/charts.js` (czysty SVG, bez bibliotek), układa `src/ui/analysisScreen.js`.
+
+- **Dostęp:** zarząd widzi wszystkie projekty i finanse; lider swoje projekty bez finansów; pozostali dostają pusty stan z wyjaśnieniem.
+- **Wskaźniki:** postęp rzeczowy = Σ godzin etapów × stopień ukończenia; zużycie = czas zespołu + korekty zarządu; CPI = postęp/zużycie; SPI = postęp/upływ czasu umowy; EAC = budżet/CPI.
+- **Werdykt:** W normie · Obserwuj · Zagrożony · Zakończony · Brak danych (kolory: nurt, ostrzeżenie, alarm, szarość).
+- **Układ:** kafle → mapa projektów (X postęp, Y zużycie, nad przekątną wydajemy szybciej niż robimy) + „Najwięcej uwagi” → szczegóły wybranego projektu (spalanie godzin z prognozą wyczerpania, trzy pasy, wskaźniki, budżet etapów, rodzaje pracy, osoby, opłacalność) → trend 12 tygodni → tabela wszystkich projektów.
+- **Opłacalność:** wartość umowy (pole w formularzu projektu, tylko zarząd) i „Koszt godziny” (ustawienie na ekranie, domyślnie 0 = brak finansów).
+- Wykresy używają klas `ch-*`, barw wyłącznie z tokenów (poza paletą kategorii `ch-c0…7`, `ch-s0…5`).

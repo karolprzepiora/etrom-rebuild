@@ -58,7 +58,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
     };
   }
 
@@ -98,7 +98,9 @@
       recent: ids(source.recent, MAX_RECENT),
       // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).
       me: typeof source.me === 'string' && /^p-\d+$/.test(source.me) ? source.me : null,
-      snoozed: cleanSnoozed(source.snoozed)
+      snoozed: cleanSnoozed(source.snoozed),
+      // Koszt godziny pracy (zł) do oceny opłacalności; 0 = nie ustawiono.
+      hourlyCost: Number.isFinite(Number(source.hourlyCost)) && Number(source.hourlyCost) >= 0 && Number(source.hourlyCost) <= 10000 ? Math.round(Number(source.hourlyCost) * 100) / 100 : 0
     };
   }
 

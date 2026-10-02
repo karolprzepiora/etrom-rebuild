@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="styles/project.css">
   <link rel="stylesheet" href="styles/inbox.css">
   <link rel="stylesheet" href="styles/feed.css">
+  <link rel="stylesheet" href="styles/analysis.css">
   <link rel="stylesheet" href="styles/polish.css">
 </head>
 <body>
@@ -93,6 +94,17 @@
             <div id="feed-body"></div>
           </section>
 
+          <section class="view" id="view-analysis" hidden aria-labelledby="analysis-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="analysis-title">Analiza</h1>
+                <p class="page-header__description" id="analysis-summary"></p>
+              </div>
+              <div class="page-header__actions" id="analysis-tools"></div>
+            </header>
+            <div id="analysis-body"></div>
+          </section>
+
           <section class="view" id="view-mywork" hidden aria-labelledby="mywork-title">
             <header class="page-header">
               <div class="page-header__main">
@@ -153,6 +165,7 @@
   <script src="src/core/insight.js"></script>
   <script src="src/core/inbox.js"></script>
   <script src="src/core/feed.js"></script>
+  <script src="src/core/analysis.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
   <script src="src/ui/components.js"></script>
@@ -180,6 +193,8 @@
   <script src="src/ui/myWork.js"></script>
   <script src="src/ui/inboxScreen.js"></script>
   <script src="src/ui/feedScreen.js"></script>
+  <script src="src/ui/charts.js"></script>
+  <script src="src/ui/analysisScreen.js"></script>
   <script src="src/ui/inspector.js"></script>
   <script src="src/ui/shell.js"></script>
   <script src="src/ui/app.js"></script>

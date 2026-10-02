@@ -27,7 +27,8 @@
    * @param {{onSubmit: Function, onCancel: Function}} handlers
    * @param {Array} people katalog osób
    */
-  function projectForm(draft, errors, handlers, people) {
+  function projectForm(draft, errors, handlers, people, options) {
+    var management = !!(options && options.management);
     var values = draft || {};
     var problems = errors || {};
     var editing = values.id != null;
@@ -40,6 +41,7 @@
     var name = UI.input({ id: 'pf-name', value: values.name, error: problems.name, maxlength: 200, placeholder: 'np. Przebudowa przepustu w Lipnicy' });
     var client = UI.input({ id: 'pf-client', value: values.client, error: problems.client, maxlength: 200, placeholder: 'np. Gmina Lipnica' });
     var deadline = UI.input({ id: 'pf-deadline', type: 'date', value: values.deadline, error: problems.deadline });
+    var contract = management ? UI.input({ id: 'pf-contract', value: values.contractValue == null ? '' : String(values.contractValue), error: problems.contractValue, placeholder: 'np. 120000', attrs: { inputmode: 'decimal' } }) : null;
     var status = UI.select({
       id: 'pf-status', value: values.status || 'planned',
       options: Object.keys(Model.PROJECT_STATUS).map(function (key) { return { value: key, label: Model.PROJECT_STATUS[key] }; })
@@ -126,6 +128,7 @@
         client: client.value,
         status: status.value,
         deadline: deadline.value,
+        contractValue: contract ? contract.value : undefined,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
         team: resultTeam
       };
@@ -141,7 +144,8 @@
         D.el('div', { class: 'form__row' }, [
           UI.field({ id: 'pf-client', label: 'Zamawiający', required: true, control: client, error: problems.client }),
           UI.field({ id: 'pf-deadline', label: 'Termin umowy', optional: true, control: deadline, error: problems.deadline })
-        ])
+        ]),
+        contract ? UI.field({ id: 'pf-contract', label: 'Wartość umowy, zł netto', optional: true, control: contract, error: problems.contractValue, hint: 'Widoczna tylko dla zarządu; służy do oceny opłacalności w Analizie.' }) : null
       ]),
       D.el('hr', { class: 'form__divider' }),
       section('Zespół', 'Osoba pełniąca funkcję należy do zespołu z urzędu. Tylko zespół może realizować zadania.', teamBody)

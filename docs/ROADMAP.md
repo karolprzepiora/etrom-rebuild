@@ -20,7 +20,7 @@ Każda część zasila następną: umowa daje terminy i budżet, plan rozdziela 
 | 6 | Finanse (dla dyrekcji) | planowany | wartość umowy i harmonogram płatności wg odbiorów, koszt godzin, rentowność projektu, prognoza |
 | 7 | Dokumenty i komunikacja | planowany | pliki przy etapie i zadaniu, komentarze i wzmianki, powiadomienia, korespondencja urzędowa |
 | 8 | Wiedza biura | planowany | budżety godzin wyliczane z historii czasu (dla każdego typu etapu), szablony projektów, raporty |
-| 9 | Aktualności i zakładka „Analiza” | **Aktualności gotowe**, Analiza następna | strumień społecznościowy (wpisy, reakcje, komentarze) jest; osobna „Analiza” zbierze postęp, godziny wg rodzaju pracy i opłacalność projektów |
+| 9 | Aktualności i zakładka „Analiza” | **Aktualności i Analiza gotowe** | strumień społecznościowy (wpisy, reakcje, komentarze) jest; „Analiza” (`#/analiza`, `G N`) zbiera postęp, zużycie godzin, prognozę (CPI/SPI/EAC), godziny wg rodzaju i osób oraz opłacalność (tylko zarząd) |
 
 ## Dlaczego taka kolejność
 

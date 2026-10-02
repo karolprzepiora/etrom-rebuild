@@ -88,10 +88,22 @@
 
     if (deadline && !isDate(deadline)) errors.deadline = 'Użyj poprawnej daty.';
 
+    // Wartość umowy jest opcjonalna i trafia do wyniku tylko wtedy, gdy pole przyszło w danych
+    // (zwykły użytkownik jej nie widzi, więc jej brak w formularzu nie może jej zerować).
+    var contractValue;
+    if (Object.prototype.hasOwnProperty.call(input, 'contractValue')) {
+      var rawValue = text(String(input.contractValue == null ? '' : input.contractValue)).replace(/\s/g, '').replace(',', '.');
+      if (!rawValue) contractValue = null;
+      else if (!/^\d+(\.\d{1,2})?$/.test(rawValue) || Number(rawValue) > 1e10) errors.contractValue = 'Podaj kwotę w złotych, np. 120000.';
+      else contractValue = Number(rawValue);
+    }
+
+    var value = { code: code, name: name, client: client, status: status, deadline: deadline };
+    if (contractValue !== undefined) value.contractValue = contractValue;
     return {
       valid: Object.keys(errors).length === 0,
       errors: errors,
-      value: { code: code, name: name, client: client, status: status, deadline: deadline }
+      value: value
     };
   }
 
@@ -309,6 +321,7 @@
       deadline: v.deadline,
       stages: Array.isArray(input.stages) ? input.stages.slice() : [],
       team: input.team ? Object.assign(Team.emptyTeam(), input.team) : Team.emptyTeam(),
+      contractValue: v.contractValue == null ? null : v.contractValue,
       createdAt: new Date().toISOString()
     };
   }
@@ -389,6 +402,7 @@
         deadline: isDate(item.deadline) ? item.deadline : '',
         stages: stages,
         team: team,
+        contractValue: Number.isFinite(Number(item.contractValue)) && item.contractValue !== null && Number(item.contractValue) >= 0 ? Number(item.contractValue) : null,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

@@ -160,6 +160,7 @@
         D.el('ul', { class: 'nav' }, [
           D.el('li', null, [navItem('inbox', 'mail', 'Skrzynka', '#/skrzynka')]),
           D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
+          D.el('li', null, [navItem('analysis', 'chart', 'Analiza', '#/analiza')]),
           D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
           D.el('li', null, [(function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()]),
           D.el('li', null, [navItem('team', 'people', 'Zespół', '#/zespol')])
@@ -195,6 +196,7 @@
     if (route.name === 'team') return [{ label: 'Zespół' }];
     if (route.name === 'inbox') return [{ label: 'Skrzynka' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
+    if (route.name === 'analysis') return [{ label: 'Analiza' }];
     if (route.name === 'mywork') return [{ label: 'Moja praca' }];
     if (route.name === 'project') return [{ label: 'Projekty', href: '#/projekty' }, { label: project ? project.name : 'Nie znaleziono' }];
     return [{ label: 'Projekty' }];
@@ -202,7 +204,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : 'projects')));
+    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
     Object.keys(nodes.nav).forEach(function (key) {
       var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
@@ -218,6 +220,7 @@
     nodes.counts.mywork.textContent = mine ? String(mine.open + mine.toApprove.length) : '';
     nodes.counts.mywork.classList.toggle('count--alarm', !!(mine && mine.overdue));
     nodes.counts.feed.textContent = '';
+    nodes.counts.analysis.textContent = '';
     var box = E.InboxScreen.count(state, now);
     nodes.counts.inbox.textContent = box && box.total ? String(box.total) : '';
     nodes.counts.inbox.classList.toggle('count--alarm', !!(box && box.urgent));

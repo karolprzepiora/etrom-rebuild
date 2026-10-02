@@ -42,6 +42,7 @@
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
     inboxFilter: 'all',
+    analysisProject: null,
     feedFilter: 'all',
     feedLimit: 20,
     feedOpen: [],
@@ -76,6 +77,7 @@
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'inbox' };
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
+    if (parts[0] === 'analiza') return { name: 'analysis' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
@@ -84,7 +86,7 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : 'projects')));
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -92,6 +94,7 @@
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'inbox') return '#/skrzynka';
     if (route.name === 'feed') return '#/aktualnosci';
+    if (route.name === 'analysis') return '#/analiza';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
     return '#/projekty';
   }
@@ -170,7 +173,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : (screen === 'feed' ? 'feed' : 'projects'))) });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -330,7 +333,7 @@
       form: {
         draft: {
           id: project.id, code: project.code, name: project.name, client: project.client,
-          status: project.status, deadline: project.deadline,
+          status: project.status, deadline: project.deadline, contractValue: project.contractValue,
           team: Object.assign(Team.emptyTeam(), project.team)
         },
         errors: {}
@@ -1522,6 +1525,61 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
     });
+    // Demonstracyjne wartości umów i czas pracy z ostatnich tygodni (do Analizy).
+    var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000 };
+    var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02 };
+    updateWorkspace(function (workspace) {
+      if ((workspace.entries || []).length) return workspace;
+      var entriesOut = [];
+      var projectsOut = workspace.projects.map(function (project) {
+        if (demoValues[project.code] === undefined) return project;
+        return Object.assign({}, project, { contractValue: project.contractValue == null ? demoValues[project.code] : project.contractValue });
+      });
+      var workdays = [];
+      for (var back = 1; workdays.length < 52; back += 1) {
+        var day = new Date(); day.setDate(day.getDate() - back); day.setHours(8, 0, 0, 0);
+        if (day.getDay() !== 0 && day.getDay() !== 6) workdays.unshift(new Date(day));
+      }
+      var counter = 0;
+      projectsOut.forEach(function (project) {
+        var factor = demoFactor[project.code];
+        if (factor === undefined) return;
+        var team = Team.projectPeople(project.team);
+        if (!team.length) return;
+        var plan = [];
+        project.stages.forEach(function (stage) {
+          var share = stage.status === 'done' ? factor : (stage.status === 'working' ? 0.45 * factor : 0);
+          if (share > 0) plan.push({ stage: stage, hours: Math.round((Number(stage.hours) || 0) * share) });
+        });
+        var perDay = 6 * Math.min(3, team.length);
+        var needDays = plan.reduce(function (t, row) { return t + Math.max(1, Math.ceil(row.hours / perDay)); }, 0);
+        var cursor = Math.max(0, workdays.length - needDays);
+        plan.forEach(function (row) {
+          var days = Math.max(1, Math.ceil(row.hours / perDay));
+          var left = row.hours;
+          for (var d = 0; d < days && cursor < workdays.length; d += 1, cursor += 1) {
+            var todayHours = Math.min(left, perDay);
+            var persons = Math.min(team.length, Math.max(1, Math.round(todayHours / 6)));
+            for (var k = 0; k < persons && todayHours > 0; k += 1) {
+              var hours = Math.min(6, todayHours / (persons - k));
+              hours = Math.round(hours * 4) / 4;
+              if (hours <= 0) continue;
+              var start = new Date(workdays[cursor]); start.setHours(8 + k, 0, 0, 0);
+              var end = new Date(start.getTime() + hours * 3600000);
+              counter += 1;
+              entriesOut.push({
+                id: 'e-demo-' + counter, personId: team[(k + d) % team.length], projectId: project.id, stageId: row.stage.id, taskId: '',
+                label: Model.describeStage(row.stage).name, start: start.toISOString(), end: end.toISOString(), note: '', source: 'manual',
+                updatedAt: start.toISOString()
+              });
+              left -= hours; todayHours -= hours;
+            }
+          }
+        });
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: entriesOut });
+    });
+    if (!store.getState().prefs.hourlyCost) setPref({ hourlyCost: 140 });
     updateWorkspace(function (workspace) {
       var social = workspace.social || E.Social.empty();
       if (social.posts.length) return workspace;
@@ -1612,6 +1670,7 @@
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
+      { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
       { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'powiadomienia zatwierdzenia pisma do reakcji', run: function () { goTo('inbox'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia dziś', run: function () { goTo('mywork'); } },
@@ -1700,6 +1759,8 @@
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
     setInboxFilter: function (value) { store.set({ inboxFilter: value }); },
+    setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
+    setHourlyCost: function (value) { var n = Number(String(value).replace(',', '.')); setPref({ hourlyCost: Number.isFinite(n) && n >= 0 ? n : 0 }); },
     setFeedFilter: function (value) { store.set({ feedFilter: value, feedLimit: 20 }); },
     loadMoreFeed: function () { store.set({ feedLimit: (store.getState().feedLimit || 20) + 20 }); },
     toggleFeedComments: function (key) {
@@ -2106,6 +2167,13 @@
     D.patch(nodes.feedBody, [screen.body]);
   }
 
+  function renderAnalysis(state) {
+    var screen = E.AnalysisScreen.view(state, { actions: actions });
+    nodes.analysisSummary.textContent = screen.summary;
+    D.render(nodes.analysisTools, screen.tools ? [screen.tools] : []);
+    D.patch(nodes.analysisBody, [screen.body]);
+  }
+
   function renderInbox(state) {
     var screen = E.InboxScreen.view(state, { actions: actions });
     nodes.inboxSummary.textContent = screen.summary;
@@ -2195,7 +2263,7 @@
       var editing = current.draft.id != null;
       settings.title = editing ? 'Edytuj projekt' : 'Nowy projekt';
       settings.subtitle = editing ? current.draft.code : 'Dane umowy, zespół i etapy ze standardu.';
-      settings.content = E.ProjectForm.projectForm(current.draft, current.errors, { onSubmit: submitForm, onCancel: function () { store.set({ form: null }); } }, state.workspace.people || []);
+      settings.content = E.ProjectForm.projectForm(current.draft, current.errors, { onSubmit: submitForm, onCancel: function () { store.set({ form: null }); } }, state.workspace.people || [], { management: E.Budget.isManagement(state.prefs.me, state.workspace.people || []) });
     }
 
     if (drawerEl) {
@@ -2223,6 +2291,7 @@
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.inbox.hidden = route.name !== 'inbox';
     nodes.views.feed.hidden = route.name !== 'feed';
+    nodes.views.analysis.hidden = route.name !== 'analysis';
 
     var project = route.name === 'project' ? findProject(route.projectId) : null;
     E.Shell.render(state, project);
@@ -2238,7 +2307,10 @@
       E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
     ]);
 
-    if (route.name === 'feed') {
+    if (route.name === 'analysis') {
+      document.title = 'Analiza · ETROM';
+      renderAnalysis(state);
+    } else if (route.name === 'feed') {
       document.title = 'Aktualności · ETROM';
       renderFeed(state);
     } else if (route.name === 'inbox') {
@@ -2330,6 +2402,7 @@
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
       if (event.key === 's' || event.key === 'S') { event.preventDefault(); goTo('inbox'); return; }
       if (event.key === 'a' || event.key === 'A') { event.preventDefault(); goTo('feed'); return; }
+      if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
     }
     if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {
@@ -2421,8 +2494,11 @@
     nodes.inboxBody = D.byId('inbox-body');
     nodes.feedSummary = D.byId('feed-summary');
     nodes.feedBody = D.byId('feed-body');
+    nodes.analysisSummary = D.byId('analysis-summary');
+    nodes.analysisTools = D.byId('analysis-tools');
+    nodes.analysisBody = D.byId('analysis-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

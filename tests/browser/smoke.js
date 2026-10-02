@@ -1163,6 +1163,25 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setFeedFilter("all"); return true;');
     await sleep(200);
 
+    /* 38b. Analiza: zarząd widzi wszystko z finansami, pracownik bez opłacalności */
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/analiza');
+    await sleep(500);
+    check('Analiza: kafle, mapa projektów, szczegóły, trend i tabela',
+      await evaluate('return location.hash === "#/analiza" && !document.getElementById("view-analysis").hidden && document.querySelectorAll(".an-tile").length >= 4 && document.querySelectorAll(".ch-bubble").length >= 4 && !!document.querySelector(".ch--burn") && !!document.querySelector(".ch--weekly") && document.querySelectorAll(".an-tr--row").length >= 4;'));
+    check('Analiza: zarząd widzi opłacalność i pole kosztu godziny',
+      await evaluate('return !!document.querySelector(".an-card--fin .an-fin__v") && !!document.querySelector("[data-fk=an-rate]");'));
+    await evaluate('document.querySelector(".an-tr--row:last-child").click(); return true;');
+    await sleep(300);
+    check('Analiza: wiersz tabeli zmienia projekt w szczegółach',
+      (await evaluate('return document.querySelector(".an-detail").dataset.projectId;')) === (await evaluate('return document.querySelector(".an-tr--row.is-selected").dataset.projectId;')));
+    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await sleep(300);
+    check('Analiza: pracownik nie widzi opłacalności ani kosztu godziny',
+      await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-fk=an-rate]");'));
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/projekty');
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
