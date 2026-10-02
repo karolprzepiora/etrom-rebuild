@@ -1,81 +1,82 @@
-/* ETROM — UI/UX Standard v1.0 · baza: reset, typografia, fokus, narzędzia. */
+/* ETROM — baza: reset, krój, role typograficzne, fokus. */
 
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scroll-padding-top: calc(var(--topbar-height) + var(--space-4));
+  background: var(--canvas);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-feature-settings: "cv11", "ss01";
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--fs-md);
+  line-height: 1.43;
+  font-feature-settings: var(--features);
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
+h1, h2, h3, h4 { font-weight: 600; }
 ul, ol { padding: 0; list-style: none; }
 img, svg { display: block; flex-shrink: 0; }
-button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
-button { cursor: pointer; background: none; border: 0; padding: 0; text-align: inherit; }
-button:disabled { cursor: not-allowed; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; font-feature-settings: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: default; }
 a { color: inherit; text-decoration: none; }
 table { border-collapse: collapse; border-spacing: 0; }
 [hidden] { display: none !important; }
 
-::selection { background: var(--accent-soft); color: var(--text-primary); }
+::selection { background: var(--flow-wash); color: var(--ink); }
 
-/* Jeden, wyraźny pierścień fokusu dla klawiatury — nigdy dla myszy. */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--flow);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
-/* ---------- Typografia: role, nie rozmiary ---------- */
+/* ---------- Role typograficzne ---------- */
+.t-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
+  line-height: 1.1;
+  text-wrap: balance;
+}
 .t-page-title {
   font-family: var(--font-display);
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
-  font-weight: var(--weight-semibold);
+  font-size: var(--fs-3xl);
+  font-weight: 600;
+  line-height: 1.15;
   letter-spacing: var(--tracking-display);
   text-wrap: balance;
 }
-.t-section-title {
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
+.t-num { font-variant-numeric: tabular-nums; font-feature-settings: var(--features), "tnum"; }
+.t-meta { font-size: var(--fs-meta); line-height: 1.4; color: var(--ink-3); }
+.t-secondary { font-size: var(--fs-sm); color: var(--ink-2); }
+.t-muted { color: var(--ink-3); }
+.t-alarm { color: var(--alarm-ink); }
+.t-warn { color: var(--warn-ink); }
+.t-flow { color: var(--flow-ink); }
+
+/* Kod projektu: krój tekstowy, cyfry tabelaryczne, lekko rozstrzelony — jak numer rysunku. */
+.code {
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  font-feature-settings: var(--features), "tnum", "zero";
+  white-space: nowrap;
 }
-.t-title { font-size: var(--text-md); line-height: var(--leading-md); font-weight: var(--weight-medium); }
-.t-body { font-size: var(--text-md); line-height: var(--leading-md); }
-.t-secondary { font-size: var(--text-sm); line-height: var(--leading-sm); color: var(--text-secondary); }
-.t-meta { font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--text-tertiary); }
-.t-label { font-size: var(--text-xs); line-height: var(--leading-xs); font-weight: var(--weight-medium); color: var(--text-secondary); }
-.t-kpi {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-display);
-  font-variant-numeric: tabular-nums;
-}
-.t-mono { font-family: var(--font-mono); font-size: 0.92em; letter-spacing: 0; }
-.t-num { font-variant-numeric: tabular-nums; }
-.t-danger { color: var(--danger); }
-.t-warning { color: var(--warning); }
-.t-success { color: var(--success); }
-.t-muted { color: var(--text-tertiary); }
+
 .truncate { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -92,16 +93,13 @@ table { border-collapse: collapse; border-spacing: 0; }
   top: var(--space-2); left: var(--space-2);
   z-index: var(--z-tooltip);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--bg-inverse);
-  color: var(--text-inverse);
-  font-weight: var(--weight-medium);
+  border-radius: var(--radius-sm);
+  background: var(--inverse);
+  color: var(--on-inverse);
+  font-weight: 500;
   transform: translateY(-200%);
 }
 .skip-link:focus-visible { transform: none; }
-
-/* Przewijanie: cienkie, spokojne paski tam, gdzie przewija się wnętrze. */
-.scroll-y { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

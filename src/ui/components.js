@@ -107,24 +107,25 @@
     }, make());
   }
 
+  // Nurt (flow) = praca trwa teraz. Gotowe = tusz. Kolor ostrzegawczy tylko tam, gdzie trzeba reagować.
   var STATUS = {
     project: {
       planned: { tone: 'neutral', shape: 'planned' },
-      active: { tone: 'info', shape: 'half' },
+      active: { tone: 'flow', shape: 'half' },
       paused: { tone: 'warning', shape: 'paused' },
-      done: { tone: 'success', shape: 'done' }
+      done: { tone: 'done', shape: 'done' }
     },
     stage: {
       todo: { tone: 'neutral', shape: 'empty' },
-      working: { tone: 'info', shape: 'half' },
-      done: { tone: 'success', shape: 'done' }
+      working: { tone: 'flow', shape: 'half' },
+      done: { tone: 'done', shape: 'done' }
     },
     task: {
       todo: { tone: 'neutral', shape: 'empty' },
-      working: { tone: 'info', shape: 'half' },
+      working: { tone: 'flow', shape: 'half' },
       review: { tone: 'review', shape: 'review' },
       changes: { tone: 'warning', shape: 'changes' },
-      done: { tone: 'success', shape: 'done' }
+      done: { tone: 'done', shape: 'done' }
     }
   };
 
@@ -413,7 +414,9 @@
       }, [
         item.icon ? Icons.icon(item.icon) : null,
         D.el('span', { text: item.label }),
-        item.count != null ? D.el('span', { class: 'count', text: String(item.count) }) : null
+        item.count != null ? D.el('span', { class: 'count', text: String(item.count) }) : null,
+        // Wskaźnik to osobny element: przejście widoku przesuwa go między zakładkami.
+        item.value === o.value ? D.el('span', { class: 'tabs__indicator', attrs: { 'aria-hidden': 'true' } }) : null
       ]);
     }));
   }

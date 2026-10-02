@@ -3,8 +3,10 @@
 Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
 **bez instalacji i bez serwera** — wystarczy dwuklik na `index.html`.
 
-Interfejs jest zbudowany według **[UI/UX Standard v1.0](docs/DESIGN_SYSTEM.md)** —
-obowiązującego dla każdego kolejnego ekranu i każdej nowej funkcji.
+Interfejs mówi własnym językiem — rzędna ▽ stanów wód, profil przebiegu etapów,
+tusz i kalka rysunku technicznego — opisanym w **[kierunku artystycznym](docs/ART_DIRECTION.md)**.
+Zasady stosowania: **[UI/UX Standard v2.0](docs/DESIGN_SYSTEM.md)**, obowiązujący
+dla każdego kolejnego ekranu i każdej nowej funkcji.
 
 ![ETROM — lista projektów](docs/screenshots/etrom-projekty.png)
 
@@ -26,9 +28,18 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 
 ## Co już działa
 
-- lista projektów w tabeli (domyślnie) albo w kartach, z postępem rzeczowym liczonym **wagą godzin etapów**,
-- **szczegóły projektu pod własnym adresem** (`#/projekty/12`) z zakładkami Etapy, Zadania, Zespół
-  i paskiem kluczowych liczb — działa przycisk Wstecz i link do konkretnego projektu,
+- **kokpit portfela**: projekty wymagające uwagi z powodami, rozkład stanów, oś najbliższych terminów,
+- **stan projektu** w skali stanów wód (w normie, ostrzegawczy, alarmowy) liczony z terminów
+  i z opóźnienia pracy wobec upływu czasu umowy — zawsze z powodem w słowach,
+- **profil przebiegu**: etapy jako odcinki proporcjonalne do budżetu godzin — długość wykreślonej
+  linii jest postępem rzeczowym; linijka czasu umowy pod nim pokazuje opóźnienie bez liczb,
+- lista projektów w tabeli (domyślnie, pogrupowana według stanu) albo w kartach,
+- **przestrzeń projektu pod własnym adresem** (`#/projekty/12`) z zakładkami Przebieg, Zadania,
+  Zespół — działa przycisk Wstecz i link do konkretnego projektu,
+- **inspektor**: podgląd zadania (z historią zmian statusu), osoby (obciążenie, funkcje, zadania)
+  i projektu (Spacja na wierszu) bez opuszczania bieżącego widoku,
+- **zespół z obciążeniem**: otwarte zadania każdej osoby i jej funkcje w projektach,
+- panel boczny zwijany klawiszem `[`, projekty przypięte i ostatnio otwierane,
 - dodawanie, edycja i usuwanie projektu, z walidacją przy polach
   (kod projektu musi być niepowtarzalny),
 - 14 standardowych etapów jako **szablon do wyboru** — projekt bierze tylko te, które go dotyczą,
@@ -47,7 +58,7 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - obsługa klawiatury: `N` nowy projekt lub osoba, `E` edycja projektu, `/` wyszukiwarka,
   `Esc` zamyka menu i panel, `Ctrl+Enter` zapisuje formularz, strzałki w menu,
 - usuwanie działa od razu i przez kilka sekund da się je cofnąć,
-- trzy warianty akcentu (malinowy, morski, grafitowy) obok motywu jasnego i ciemnego,
+- trzy warianty koloru pracy w toku (nurt, grafit, malina) obok motywu jasnego i ciemnego,
 - **ekran Zespołu**: katalog osób, role w organizacji, forma współpracy,
   wyłączanie z obiegu z zachowaniem historii,
 - **funkcje w projekcie**: Lider, Koordynator, Pełnomocnik wiodący i dodatkowy
@@ -84,13 +95,17 @@ ma je i zostaje nienaruszona do czasu, aż nowa je dogoni.
 ```
 index.html              jedyny plik do otwarcia
 styles/
+  fonts.css             osadzone kroje (generuje tools/build-fonts.py)
   tokens.css            barwy, typografia, odstępy, promienie, warstwy, ruch — jedno źródło prawdy
   base.css              reset, role typograficzne, fokus
   components.css        komponenty bazowe (przyciski, pola, menu, tabela, okna…)
+  signature.css         elementy charakterystyczne: rzędna, profil, linijka czasu, oś etapów
   layout.css            szkielet: panel boczny, pasek górny, strona, szerokości
   views.css             układ treści konkretnych ekranów
 docs/
-  DESIGN_SYSTEM.md      UI/UX Standard v1.0 — obowiązujące zasady interfejsu
+  ART_DIRECTION.md      język wizualny ETROM i jego uzasadnienie
+  DESIGN_SYSTEM.md      UI/UX Standard v2.0 — obowiązujące zasady interfejsu
+  licenses/             licencje osadzonych krojów (SIL OFL 1.1)
   UI_AUDIT.md           audyt interfejsu przed przebudową
 src/core/               logika, zero kodu dotykającego DOM
   catalog.js            14 etapów i dziedziny
@@ -102,10 +117,13 @@ src/core/               logika, zero kodu dotykającego DOM
   storage.js            zapis lokalny i odczyt starej wersji
   store.js              pojemnik na stan
   format.js             daty, liczby i polska odmiana przez liczby
+  insight.js            stan projektu, profil, harmonogram, portfel, obciążenie osób
 src/ui/                 warstwa widoku
   dom.js                budowanie elementów, przerysowanie z zachowaniem fokusu
   icons.js              jeden zestaw ikon
   components.js         komponenty bazowe (ETROM.UI)
+  signature.js          elementy charakterystyczne (ETROM.Sig)
+  inspector.js          inspektor: zadanie, osoba, projekt
   menu.js, tooltip.js   menu rozwijane, popover, podpowiedzi
   dialog.js, toast.js   okna, panel boczny, powiadomienia
   shell.js              panel boczny, ścieżka, ustawienia
@@ -127,9 +145,9 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 174 testy logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 97 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
-node tools/screenshot.js        # 25 zrzutów: ekrany, motywy, 1440/1024/390 px, menu, panel, puste stany
+node --test tests/*.test.js     # 189 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 106 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tools/screenshot.js        # 28 zrzutów: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor
 ```
 
 Testy nie mają żadnych zależności z npm — korzystają z wbudowanego
@@ -153,13 +171,15 @@ z zabezpieczeniem pozwalającym wczytać je też w Node do testów.
 Nazwa projektu wpisana przez użytkownika nigdy nie trafia do `innerHTML`.
 Znika przez to cała klasa błędów z escapowaniem — jest na to test.
 
-**Dlaczego projekt ma tylko mały kwadrat koloru, a nie okładkę?**
-Barwa jest wyliczana z kodu projektu (`src/core/identity.js`), więc ten sam
-projekt zawsze ma ten sam znacznik — w tabeli, na karcie i w panelu bocznym.
-Gradientowe okładki z warstwicami wyglądały efektownie przy pięciu projektach,
-ale przy kilkudziesięciu robiły z listy mozaikę, w której kolor przestawał
-cokolwiek znaczyć. Został znacznik tożsamości, a kolor pracuje dla stanu.
-Malinowy akcent marki został — jako kolor interakcji, nie dekoracji.
+**Dlaczego interfejs jest prawie bez koloru?**
+Kolor ma w ETROM dwa zadania: pokazać to, co dzieje się teraz (nurt),
+i to, co jest zagrożone (bursztyn, czerwień). Wszystko inne jest pisane tuszem.
+Dzięki temu kolor znaczy coś za każdym razem, gdy się pojawia — w portfelu
+z kilkudziesięcioma projektami problem widać, zanim przeczyta się choć słowo.
+
+**Skąd trójkąt ▽ i stany „ostrzegawczy”, „alarmowy”?**
+To język hydrologii, w którym pracuje biuro: rzędna na przekroju i stany wód.
+Zdrowie projektu opisane tymi samymi słowami czyta się bez legendy.
 
 **Dlaczego własne okna zamiast `confirm()` przeglądarki?**
 Systemowe okienko z napisem „localhost mówi” wygląda jak awaria, a nie jak
@@ -232,9 +252,10 @@ co naprawdę się zmieniło: pasek postępu przechodzi ze starej wartości,
 zmieniony etap lub zadanie na chwilę się podświetla.
 Wszystko ustępuje przy włączonym ograniczeniu ruchu w systemie.
 
-**Dlaczego nie ma webfontu?**
-Aplikacja musi działać z dysku, bez sieci. Pobierany krój by się nie wczytał,
-więc charakter buduje skala, grubość i światło, a nie plik z serwera.
+**Jak kroje działają bez sieci?**
+Są osadzone w `styles/fonts.css` jako dane (podzbiór liter łacińskich z polskimi
+znakami), więc wczytują się z dysku razem z aplikacją. Dzięki temu ETROM wygląda
+tak samo na każdym komputerze. Oba kroje mają licencję SIL OFL 1.1.
 
 **Dlaczego sortowanie po terminie odsuwa projekty zakończone?**
 Projekt zamknięty nie ma już czynnego terminu, a przy sortowaniu po dacie

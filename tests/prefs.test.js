@@ -13,18 +13,37 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [] };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [] };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
   assert.deepEqual(Prefs.defaults(), BASE);
 });
 
-test('wariant akcentu przyjmuje tylko znane nazwy, dawny „topo” przechodzi na grafit', () => {
-  assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'hydro');
+test('wariant nurtu przyjmuje tylko znane nazwy, dawne nazwy przechodzą na obecne', () => {
+  assert.equal(Prefs.normalize({ accent: 'raspberry' }).accent, 'raspberry');
   assert.equal(Prefs.normalize({ accent: 'graphite' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'graphite');
+  assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'standard');
   assert.equal(Prefs.normalize({ accent: 'neonowy' }).accent, 'standard');
+});
+
+test('przypięte i ostatnie: tylko dodatnie liczby całkowite, bez powtórzeń, z limitem', () => {
+  const p = Prefs.normalize({ pinned: [3, 3, 'x', -1, 2.5, 7], recent: [1, 2, 3, 4, 5, 6, 7] });
+  assert.deepEqual(p.pinned, [3, 7]);
+  assert.deepEqual(p.recent, [1, 2, 3, 4, 5]);
+});
+
+test('touchRecent przenosi projekt na początek listy ostatnich', () => {
+  const p = Prefs.touchRecent(Prefs.normalize({ recent: [1, 2, 3] }), 3);
+  assert.deepEqual(p.recent, [3, 1, 2]);
+});
+
+test('grupowanie i zwinięty panel boczny', () => {
+  assert.equal(Prefs.normalize({ groupBy: 'status' }).groupBy, 'status');
+  assert.equal(Prefs.normalize({ groupBy: 'kolor' }).groupBy, 'health');
+  assert.equal(Prefs.normalize({ sidebarCollapsed: 'tak' }).sidebarCollapsed, false);
+  assert.equal(Prefs.normalize({ sidebarCollapsed: true }).sidebarCollapsed, true);
 });
 
 test('normalize odrzuca nieznane wartości', () => {

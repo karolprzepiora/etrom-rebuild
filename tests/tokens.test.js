@@ -48,44 +48,51 @@ function expectPair(map, fg, bg, min) {
   });
 }
 
-const SURFACES = ['bg-surface', 'bg-canvas', 'bg-subtle', 'bg-raised', 'bg-hover'];
+const SURFACES = ['sheet', 'wash', 'wash-2', 'canvas', 'raised'];
 
-test('tekst podstawowy, pomocniczy i metadane mają kontrast AA na każdej powierzchni', () => {
+test('tusz, tekst pomocniczy i metadane mają kontrast AA na każdej powierzchni', () => {
   SURFACES.forEach((surface) => {
-    expectPair(base, 'text-primary', surface, 7);
-    expectPair(base, 'text-secondary', surface, 4.5);
-    expectPair(base, 'text-tertiary', surface, 4.5);
+    expectPair(base, 'ink', surface, 7);
+    expectPair(base, 'ink-2', surface, 4.5);
+    expectPair(base, 'ink-3', surface, 4.5);
   });
 });
 
-test('barwy stanów są czytelne jako tekst na tle strony i na własnym tle', () => {
-  ['success', 'warning', 'danger', 'info', 'review', 'neutral'].forEach((tone) => {
-    expectPair(base, tone, 'bg-surface', 4.5);
-    expectPair(base, tone, tone + '-soft', 4.5);
+test('barwy stanów czytelne jako tekst na arkuszu i na własnym tle', () => {
+  [['flow-ink', 'flow-wash'], ['warn-ink', 'warn-wash'], ['alarm-ink', 'alarm-wash'], ['review', 'review-wash']].forEach(([ink, wash]) => {
+    expectPair(base, ink, 'sheet', 4.5);
+    expectPair(base, ink, 'wash', 4.5);
+    expectPair(base, ink, wash, 4.5);
   });
+  expectPair(base, 'success', 'sheet', 4.5);
 });
 
-test('każdy wariant akcentu: tekst na wypełnieniu i akcent jako tekst', () => {
-  ['', 'hydro', 'graphite'].forEach((variant) => {
+test('znaczniki graficzne (nurt, alarm, ostrzeżenie, gotowe) ≥ 3:1 wobec tła (WCAG 1.4.11)', () => {
+  ['flow', 'alarm', 'warn', 'done'].forEach((mark) => {
+    expectPair(base, mark, 'sheet', 3);
+    expectPair(base, mark, 'wash', 3);
+  });
+  expectPair(base, 'done', 'track', 3);
+  expectPair(base, 'flow', 'track', 2);
+});
+
+test('każdy wariant nurtu: tekst i znacznik czytelne', () => {
+  ['', 'graphite', 'raspberry'].forEach((variant) => {
     const map = variant ? tokens(block(':root[data-accent="' + variant + '"]')) : {};
-    expectPair(map, 'on-accent', 'accent-fill', 4.5);
-    expectPair(map, 'on-accent', 'accent-fill-hover', 4.5);
-    expectPair(map, 'accent', 'bg-surface', 4.5);
-    expectPair(map, 'accent', 'accent-soft', 4.5);
+    expectPair(map, 'flow-ink', 'sheet', 4.5);
+    expectPair(map, 'flow-ink', 'flow-wash', 4.5);
+    expectPair(map, 'flow', 'sheet', 3);
   });
 });
 
-test('przycisk niszczący i powiadomienie mają kontrast AA', () => {
-  expectPair({ white: { light: '#ffffff', dark: '#ffffff' } }, 'white', 'danger-fill', 4.5);
-  expectPair(base, 'text-inverse', 'bg-inverse', 7);
+test('przycisk w tuszu, powiadomienie i krawędź pól mają kontrast', () => {
+  expectPair(base, 'on-ink', 'ink', 7);
+  expectPair(base, 'on-ink', 'ink-hover', 4.5);
+  expectPair(base, 'on-inverse', 'inverse', 7);
+  ['sheet', 'raised'].forEach((surface) => expectPair(base, 'control-line', surface, 3));
 });
 
-test('krawędzie kontrolek odróżniają się od tła (WCAG 1.4.11, 3:1 dla krawędzi mocnej)', () => {
-  ['bg-surface', 'bg-subtle', 'bg-raised'].forEach((surface) => expectPair(base, 'border-control', surface, 3));
-  expectPair(base, 'progress-fill', 'progress-track', 3);
-});
-
-test('tokeny promieni: dokładnie trzy wartości i koło', () => {
+test('tokeny promieni: cztery wartości rosnące ze skalą i koło', () => {
   const radii = CSS.match(/--radius-[a-z]+:/g) || [];
-  assert.deepEqual(radii, ['--radius-sm:', '--radius-md:', '--radius-lg:', '--radius-full:']);
+  assert.deepEqual(radii, ['--radius-xs:', '--radius-sm:', '--radius-md:', '--radius-lg:', '--radius-full:']);
 });

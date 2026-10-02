@@ -39,6 +39,8 @@
     stageForm: null,
     taskForm: null,
     expandedStages: {},
+    showDone: {},
+    inspector: null,
     navOpen: false,
     notice: ''
   });
@@ -79,20 +81,48 @@
     location.hash = hash;
   }
 
+  // Element, z którego otwarto projekt — jego nazwa płynnie przechodzi w tytuł przestrzeni roboczej.
+  var titleSource = null;
+  var titleReturn = null;
+
+  function clearTitleNames() {
+    var named = document.querySelectorAll('[data-project-title]');
+    for (var i = 0; i < named.length; i += 1) named[i].style.removeProperty('view-transition-name');
+    titleReturn = null;
+  }
+
   function applyRoute(route) {
     var state = store.getState();
     var changedScreen = state.route.name !== route.name || state.route.projectId !== route.projectId;
-    var commit = function () {
-      store.set({
-        route: route,
-        screen: route.name === 'team' ? 'team' : 'projects',
-        navOpen: false,
-        selection: changedScreen ? {} : state.selection
-      });
+    var changedTab = !changedScreen && state.route.tab !== route.tab;
+    var patch = {
+      route: route,
+      screen: route.name === 'team' ? 'team' : 'projects',
+      navOpen: false,
+      selection: changedScreen ? {} : state.selection
     };
-    if (changedScreen) {
-      Motion.withTransition(commit);
-      window.scrollTo(0, 0);
+    if (route.name === 'project' && changedScreen) {
+      patch.prefs = E.Prefs.touchRecent(state.prefs, route.projectId);
+      prefsStore.save(patch.prefs);
+      patch.inspector = null;
+    } else if (changedScreen) {
+      patch.inspector = null;
+    }
+    // Powrót z projektu na listę: nazwa wraca do swojego wiersza.
+    if (state.route.name === 'project' && route.name === 'projects') titleReturn = state.route.projectId;
+
+    var commit = function () {
+      store.set(patch);
+      if (changedScreen) nodes.scroller.scrollTop = 0;
+    };
+    if (changedScreen || changedTab) {
+      if (titleSource && route.name === 'project') {
+        titleSource.style.setProperty('view-transition-name', 'project-title');
+      }
+      titleSource = null;
+      var transition = Motion.withTransition(commit);
+      if (transition) transition.finished.then(clearTitleNames, clearTitleNames);
+      else clearTitleNames();
     } else {
       commit();
     }
@@ -117,6 +147,8 @@
   }
 
   function openProject(id, tab) {
+    var source = document.querySelector('.view:not([hidden]) [data-project-title="' + id + '"]');
+    titleSource = source || null;
     navigate({ name: 'project', projectId: id, tab: tab || 'etapy' });
   }
 
@@ -326,13 +358,12 @@
     var route = store.getState().route;
     if (route.name === 'project' && ids.indexOf(route.projectId) >= 0) navigate({ name: 'projects' });
 
-    Motion.withTransition(function () {
-      setWorkspace(function (list) { return list.filter(function (p) { return ids.indexOf(p.id) < 0; }); });
-      store.update(function (state) {
-        var selection = Object.assign({}, state.selection);
-        ids.forEach(function (id) { delete selection[id]; });
-        return Object.assign({}, state, { selection: selection });
-      });
+    // Dane zmieniają się od razu — animacja nigdy nie opóźnia skutku działania.
+    setWorkspace(function (list) { return list.filter(function (p) { return ids.indexOf(p.id) < 0; }); });
+    store.update(function (state) {
+      var selection = Object.assign({}, state.selection);
+      ids.forEach(function (id) { delete selection[id]; });
+      return Object.assign({}, state, { selection: selection });
     });
 
     Toast.show({
@@ -464,10 +495,12 @@
 
   function toggleStage(projectId, stageId) {
     var key = projectId + ':' + stageId;
+    var project = findProject(projectId);
+    var stage = stageOf(projectId, stageId);
+    if (!project || !stage) return;
     store.update(function (state) {
       var expandedStages = Object.assign({}, state.expandedStages);
-      if (expandedStages[key]) delete expandedStages[key];
-      else expandedStages[key] = true;
+      expandedStages[key] = !E.StageList.isOpen(state.expandedStages, project, stage);
       return Object.assign({}, state, { expandedStages: expandedStages });
     });
   }
@@ -613,6 +646,129 @@
         });
       }
     });
+  }
+
+  /* ---------- inspektor ---------- */
+
+  var inspectorReturn = null;
+
+  function inspect(ref) {
+    if (!store.getState().inspector) inspectorReturn = document.activeElement;
+    store.set({ inspector: ref });
+    window.setTimeout(function () {
+      var title = document.getElementById('inspector-title');
+      if (title) title.focus({ preventScroll: true });
+    }, 30);
+  }
+
+  function closeInspector() {
+    if (!store.getState().inspector) return;
+    store.set({ inspector: null });
+    // Wiersz mógł zostać przerysowany — szukamy jego następcy po kluczu fokusu.
+    var target = inspectorReturn;
+    if (target && !document.contains(target)) {
+      var key = target.getAttribute && target.getAttribute('data-fk');
+      target = key ? document.querySelector('[data-fk="' + key.replace(/["\\]/g, '\\$&') + '"]') : null;
+    }
+    if (target) target.focus({ preventScroll: true });
+    inspectorReturn = null;
+  }
+
+  function isInspected(kind, id) {
+    var ref = store.getState().inspector;
+    if (!ref || ref.kind !== kind) return false;
+    return (kind === 'task' && ref.taskId === id) || (kind === 'person' && ref.personId === id) || (kind === 'project' && ref.projectId === id);
+  }
+
+  /* ---------- panel boczny: przypięte, zwijanie ---------- */
+
+  function isPinned(id) {
+    return store.getState().prefs.pinned.indexOf(id) >= 0;
+  }
+
+  function togglePin(id) {
+    var project = findProject(id);
+    var pinned = store.getState().prefs.pinned;
+    var on = pinned.indexOf(id) < 0;
+    setPref({ pinned: on ? pinned.concat([id]) : pinned.filter(function (x) { return x !== id; }) });
+    if (project) Toast.show({ message: (on ? 'Przypięto w panelu: ' : 'Odpięto z panelu: ') + project.name, timeout: 3000 });
+  }
+
+  function toggleSidebar() {
+    Motion.withTransition(function () { setPref({ sidebarCollapsed: !store.getState().prefs.sidebarCollapsed }); });
+  }
+
+  function toggleDone(projectId) {
+    store.update(function (state) {
+      var showDone = Object.assign({}, state.showDone);
+      if (showDone[projectId]) delete showDone[projectId];
+      else showDone[projectId] = true;
+      return Object.assign({}, state, { showDone: showDone });
+    });
+  }
+
+  /** Klik w odcinek profilu: rozwija etap na liście i przewija do niego. */
+  function revealStage(projectId, stageId) {
+    var state = store.getState();
+    var project = findProject(projectId);
+    if (!project) return;
+    var index = project.stages.findIndex(function (s) { return s.id === stageId; });
+    var leading = 0;
+    while (leading < project.stages.length && project.stages[leading].status === 'done') leading += 1;
+    var expandedStages = Object.assign({}, state.expandedStages);
+    expandedStages[projectId + ':' + stageId] = true;
+    var showDone = Object.assign({}, state.showDone);
+    if (index < leading) showDone[projectId] = true;
+    pendingFlash = { projectId: projectId, stageId: stageId };
+    var route = Object.assign({}, state.route, { tab: 'etapy' });
+    if (state.route.tab !== 'etapy') navigate(route);
+    store.set({ expandedStages: expandedStages, showDone: showDone });
+    window.setTimeout(function () {
+      var row = document.querySelector('.srow-wrap[data-stage-id="' + window.CSS.escape(String(stageId)) + '"]');
+      if (row) {
+        row.scrollIntoView({ behavior: Motion.prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+        var expand = row.querySelector('.srow__expand');
+        if (expand) expand.focus({ preventScroll: true });
+      }
+    }, 120);
+  }
+
+  /* ---------- skróty ---------- */
+
+  var SHORTCUTS = [
+    ['Ctrl K', 'Szukaj projektu, osoby albo działania'],
+    ['N', 'Nowy projekt (na Zespole: nowa osoba)'],
+    ['E', 'Edytuj otwarty projekt'],
+    ['/', 'Przejdź do wyszukiwarki listy'],
+    ['G P', 'Przejdź do projektów'],
+    ['G Z', 'Przejdź do zespołu'],
+    ['[', 'Zwiń lub rozwiń panel boczny'],
+    ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
+    ['Ctrl Enter', 'Zapisz formularz'],
+    ['?', 'Ta lista']
+  ];
+
+  function showShortcuts() {
+    if (Dialog.anyOpen()) return;
+    var dialog = D.el('dialog', { class: 'dialog dialog--wide', attrs: { 'aria-labelledby': 'shortcuts-title' } }, [
+      D.el('div', { class: 'dialog__card' }, [
+        D.el('div', { class: 'dialog__head' }, [
+          D.el('h2', { class: 'dialog__title', text: 'Skróty klawiszowe', attrs: { id: 'shortcuts-title' } }),
+          D.el('p', { class: 'dialog__text', text: 'Działają wszędzie poza polami tekstowymi.' })
+        ]),
+        D.el('dl', { class: 'shortcuts' }, SHORTCUTS.map(function (row) {
+          return D.el('div', { class: 'shortcuts__row' }, [
+            D.el('dt', null, row[0].split(' ').map(function (k) { return UI.kbd(k); })),
+            D.el('dd', { text: row[1] })
+          ]);
+        })),
+        D.el('div', { class: 'dialog__actions' }, [UI.button({ label: 'Zamknij', variant: 'secondary', onClick: function () { dialog.close(); } })])
+      ])
+    ]);
+    dialog.addEventListener('close', function () { dialog.remove(); });
+    dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
+    document.body.appendChild(dialog);
+    dialog.showModal();
   }
 
   /* ---------- filtry i preferencje ---------- */
@@ -880,9 +1036,11 @@
       { label: 'Motyw jasny', icon: 'sun', meta: now(prefs.theme === 'light'), run: function () { setPref({ theme: 'light' }); } },
       { label: 'Motyw ciemny', icon: 'moon', meta: now(prefs.theme === 'dark'), run: function () { setPref({ theme: 'dark' }); } },
       { label: 'Motyw jak w systemie', icon: 'monitor', meta: now(prefs.theme === 'system'), run: function () { setPref({ theme: 'system' }); } },
-      { label: 'Akcent: malinowy', icon: 'settings', meta: now(prefs.accent === 'standard'), keywords: 'barwy kolor standard etrom', run: function () { setPref({ accent: 'standard' }); } },
-      { label: 'Akcent: morski', icon: 'water', meta: now(prefs.accent === 'hydro'), keywords: 'barwy kolor hydro turkus', run: function () { setPref({ accent: 'hydro' }); } },
-      { label: 'Akcent: grafitowy', icon: 'settings', meta: now(prefs.accent === 'graphite'), keywords: 'barwy kolor szary topo', run: function () { setPref({ accent: 'graphite' }); } },
+      { label: 'Kolor pracy w toku: nurt', icon: 'water', meta: now(prefs.accent === 'standard'), keywords: 'akcent barwy kolor standard morski hydro turkus', run: function () { setPref({ accent: 'standard' }); } },
+      { label: 'Kolor pracy w toku: grafit', icon: 'datum', meta: now(prefs.accent === 'graphite'), keywords: 'akcent barwy kolor szary topo', run: function () { setPref({ accent: 'graphite' }); } },
+      { label: 'Kolor pracy w toku: malina', icon: 'datum', meta: now(prefs.accent === 'raspberry'), keywords: 'akcent barwy kolor malinowy etrom', run: function () { setPref({ accent: 'raspberry' }); } },
+      { label: 'Skróty klawiszowe', icon: 'keyboard', meta: '?', keywords: 'pomoc klawiatura', run: showShortcuts },
+      { label: (prefs.sidebarCollapsed ? 'Rozwiń' : 'Zwiń') + ' panel boczny', icon: 'sidebar', meta: '[', keywords: 'nawigacja menu', run: toggleSidebar },
       { label: 'Dodaj dane przykładowe', icon: 'sparkle', keywords: 'demo testowe przykład', run: loadDemo },
       { label: 'Pobierz kopię zapasową', icon: 'download', keywords: 'eksport json backup zapis', run: exportJson },
       { label: 'Wczytaj kopię zapasową', icon: 'upload', keywords: 'import json przywróć', run: function () { nodes.fileInput.click(); } },
@@ -942,7 +1100,7 @@
     setProjectStatus: setProjectStatus,
     selectProjects: selectProjects,
     setSort: setSort,
-    setPage: function (page) { store.set({ page: page }); window.scrollTo(0, 0); },
+    setPage: function (page) { store.set({ page: page }); nodes.scroller.scrollTop = 0; },
     cycleStage: cycleStage,
     addStage: addStage,
     removeStage: removeStage,
@@ -960,7 +1118,14 @@
     deletePerson: deletePerson,
     newPerson: openNewPerson,
     clearTeamFilters: clearTeamFilters,
-    goTo: goTo
+    goTo: goTo,
+    inspect: inspect,
+    closeInspector: closeInspector,
+    isInspected: isInspected,
+    isPinned: isPinned,
+    togglePin: togglePin,
+    toggleDone: toggleDone,
+    revealStage: revealStage
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */
@@ -1041,6 +1206,18 @@
       };
     });
 
+    nodes.groupButton = UI.button({ label: 'Stan', icon: 'layers', variant: 'ghost', size: 'sm', attrs: { id: 'tb-group' } });
+    Menu.bind(nodes.groupButton, function () {
+      var current = store.getState().prefs.groupBy;
+      var labels = { health: 'Stan projektu', status: 'Status', none: 'Bez grupowania' };
+      return {
+        label: 'Grupowanie', align: 'end',
+        items: [{ type: 'label', label: 'Grupuj według' }].concat(E.Prefs.GROUPS.map(function (key) {
+          return { type: 'radio', label: labels[key], value: key, checked: current === key, onSelect: function () { Motion.withTransition(function () { setPref({ groupBy: key }); }); } };
+        }))
+      };
+    });
+
     nodes.columnsButton = UI.iconButton({ icon: 'columns', label: 'Widoczne kolumny', attrs: { id: 'tb-columns' } });
     Menu.bind(nodes.columnsButton, function () {
       var hidden = store.getState().prefs.hiddenColumns;
@@ -1073,6 +1250,7 @@
       nodes.clearFilters,
       D.el('span', { class: 'toolbar__spacer' }),
       nodes.tally,
+      nodes.groupButton,
       nodes.sortButton,
       nodes.columnsButton,
       nodes.view.node
@@ -1123,13 +1301,9 @@
     var overdue = all.filter(function (p) { return Progress.isOverdue(p); }).length;
     var running = all.filter(function (p) { return p.status === 'active'; }).length;
 
-    D.render(nodes.projectsSummary, all.length ? [
-      D.el('span', { text: F.count(all.length, 'projekt', 'projekty', 'projektów') }),
-      D.el('span', { class: 'detail__dot', text: '·', attrs: { 'aria-hidden': 'true' } }),
-      D.el('span', { text: 'w realizacji ' + running }),
-      overdue ? D.el('span', { class: 'detail__dot', text: '·', attrs: { 'aria-hidden': 'true' } }) : null,
-      overdue ? D.el('span', { class: 't-danger' }, [D.el('span', { text: 'po terminie ' + overdue })]) : null
-    ] : [D.el('span', { text: 'Portfel projektów biura: terminy umów, postęp i zespół.' })]);
+    D.render(nodes.projectsSummary, all.length
+      ? [D.el('span', { text: F.count(all.length, 'projekt', 'projekty', 'projektów') + ' w portfelu, ' + running + ' w realizacji' + (overdue ? ', ' + overdue + ' po terminie umowy' : '') + '.' })]
+      : [D.el('span', { text: 'Portfel projektów biura: terminy umów, przebieg etapów i zespół.' })]);
 
     var person = Team.findPerson(people(), state.filters.person);
     nodes.statusFilter.set(state.filters.status === 'all' ? 'Wszystkie' : Model.PROJECT_STATUS[state.filters.status], state.filters.status !== 'all');
@@ -1139,11 +1313,17 @@
     nodes.sortButton.querySelector('span').textContent = SORT_LABEL[state.filters.sort] || 'Termin';
     nodes.sortButton.setAttribute('aria-label', 'Sortowanie: ' + (Query.SORTS[state.filters.sort] || ''));
     nodes.columnsButton.hidden = state.prefs.view !== 'list';
+    nodes.groupButton.hidden = state.prefs.view !== 'list';
+    nodes.groupButton.querySelector('span').textContent = { health: 'Stan', status: 'Status', none: 'Bez grup' }[state.prefs.groupBy];
+    nodes.groupButton.setAttribute('aria-label', 'Grupowanie: ' + { health: 'stan projektu', status: 'status', none: 'bez grupowania' }[state.prefs.groupBy]);
+
+    nodes.portfolio.hidden = !all.length;
+    if (all.length) D.render(nodes.portfolio, E.ProjectList.cockpit(all, { state: state, people: people(), actions: actions }));
     nodes.view.set(state.prefs.view);
     nodes.filters.hidden = !all.length;
     nodes.newProject.hidden = !all.length;
 
-    var ctx = { state: state, people: people(), actions: actions };
+    var ctx = { state: state, people: people(), actions: actions, motion: { flashProject: pendingFlash && !pendingFlash.stageId && !pendingFlash.taskId ? pendingFlash.projectId : null } };
 
     // Pasek akcji zbiorczych
     var selectedIds = visible.filter(function (p) { return state.selection[p.id]; }).map(function (p) { return p.id; });
@@ -1193,27 +1373,19 @@
       content = E.ProjectList.table(visible, ctx);
     }
     D.patch(nodes.list, [content]);
+    if (titleReturn != null) {
+      var back = nodes.list.querySelector('[data-project-title="' + titleReturn + '"]');
+      if (back) back.style.setProperty('view-transition-name', 'project-title');
+    }
   }
 
   function renderProject(state, project) {
     var motion = buildMotion(state, project);
     var ctx = { state: state, people: people(), actions: actions, motion: motion };
     D.patch(nodes.projectView, E.ProjectDetail.projectDetail(project, ctx));
-    if (motion.progressFrom != null) animateProgress(nodes.projectView, motion.progressFrom);
+    E.Sig.settle(nodes.projectView);
+    D.patch(nodes.topbarActions, E.ProjectDetail.topbarActions(project, ctx));
     commitMotion(project);
-  }
-
-  /** Pasek postępu startuje od poprzedniej wartości — widać, co zmieniła ostatnia czynność. */
-  function animateProgress(container, from) {
-    var bar = container.querySelector('.summary .progress');
-    if (!bar || Motion.prefersReducedMotion()) return;
-    var target = bar.style.getPropertyValue('--value');
-    var fill = bar.querySelector('.progress__fill');
-    fill.style.transition = 'none';
-    bar.style.setProperty('--value', from + '%');
-    void fill.offsetWidth;
-    fill.style.transition = '';
-    bar.style.setProperty('--value', target);
   }
 
   function renderTeam(state) {
@@ -1222,10 +1394,12 @@
     var activeCount = roster.filter(function (p) { return p.active !== false; }).length;
     var filtered = state.teamFilters.query.trim() || state.teamFilters.role !== 'all';
 
+    var team = E.TeamScreen.summary(roster, state.workspace.projects);
     nodes.teamSummary.textContent = roster.length
-      ? F.count(activeCount, 'osoba aktywna', 'osoby aktywne', 'osób aktywnych')
-        + (roster.length - activeCount ? ' · wyłączone z obiegu ' + (roster.length - activeCount) : '')
-      : 'Katalog osób biura: role w organizacji i funkcje w projektach.';
+      ? F.count(activeCount, 'osoba', 'osoby', 'osób') + ' w zespole, ' + team.busy + ' w czynnych projektach'
+        + (team.top ? '. Najwięcej otwartych zadań: ' + Team.fullName(team.top.person) + ' (' + team.top.load.open + ')' : '')
+        + (team.late ? '. Po terminie: ' + F.count(team.late, 'zadanie', 'zadania', 'zadań') : '') + '.'
+      : 'Katalog osób biura: role w organizacji, obciążenie i funkcje w projektach.';
     nodes.roleFilter.set(state.teamFilters.role === 'all' ? 'Wszystkie' : Team.ORG_ROLES[state.teamFilters.role], state.teamFilters.role !== 'all');
     nodes.teamTally.textContent = filtered ? 'Pasuje ' + visible.length + ' z ' + roster.length : '';
     nodes.teamFilters.hidden = !roster.length;
@@ -1303,6 +1477,9 @@
     nodes.app.classList.toggle('app--nav-open', !!state.navOpen);
     nodes.navToggle.setAttribute('aria-expanded', String(!!state.navOpen));
 
+    nodes.app.classList.toggle('app--collapsed', !!state.prefs.sidebarCollapsed);
+    if (route.name !== 'project') D.clear(nodes.topbarActions);
+
     if (route.name === 'team') {
       document.title = 'Zespół · ETROM';
       renderTeam(state);
@@ -1318,12 +1495,22 @@
   function persist(state) {
     if (state.workspace === lastWorkspace) return;
     lastWorkspace = state.workspace;
-    E.Shell.setSaved(storage.save(state.workspace).ok);
+    E.Shell.setSaved(storage.save(state.workspace).ok, true);
+  }
+
+  function renderInspector(state) {
+    E.Inspector.render(nodes.inspector, state.inspector, {
+      people: people(),
+      projects: state.workspace.projects,
+      findProject: findProject,
+      actions: actions
+    });
   }
 
   function renderAll(state) {
     renderNotice(state);
     renderScreen(state);
+    renderInspector(state);
     renderDrawer(state);
     persist(state);
   }
@@ -1337,6 +1524,8 @@
     var tag = target.tagName;
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
   }
+
+  var pendingG = false;
 
   function onKeydown(event) {
     if (event.defaultPrevented) return;
@@ -1360,10 +1549,33 @@
     var route = state.route.name;
 
     if (event.key === 'Escape') {
+      if (state.inspector) { closeInspector(); return; }
       if (state.navOpen) { store.set({ navOpen: false }); return; }
       if (Object.keys(state.selection).length) { clearSelection(); return; }
       return;
     }
+    if (pendingG) {
+      pendingG = false;
+      if (event.key === 'p' || event.key === 'P') { event.preventDefault(); goTo('projects'); return; }
+      if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
+    }
+    if (event.key === 'g' || event.key === 'G') {
+      pendingG = true;
+      window.setTimeout(function () { pendingG = false; }, 900);
+      return;
+    }
+    if (event.key === ' ' && event.target && event.target.classList && event.target.classList.contains('project-link')) {
+      // Spacja na projekcie: szybki podgląd w inspektorze, bez opuszczania listy.
+      var row = event.target.closest('[data-project-id]');
+      if (row) {
+        event.preventDefault();
+        if (state.inspector && state.inspector.kind === 'project' && state.inspector.projectId === Number(row.dataset.projectId)) closeInspector();
+        else inspect({ kind: 'project', projectId: Number(row.dataset.projectId) });
+        return;
+      }
+    }
+    if (event.key === '[') { event.preventDefault(); toggleSidebar(); return; }
+    if (event.key === '?') { event.preventDefault(); showShortcuts(); return; }
     if (event.key === '/') {
       if (route === 'project') return;
       event.preventDefault();
@@ -1401,14 +1613,25 @@
     nodes.teamSummary = D.byId('team-summary');
     nodes.fileInput = D.byId('import-file');
     nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team') };
+    nodes.portfolio = D.byId('portfolio');
+    nodes.scroller = D.byId('scroller');
+    nodes.sheet = D.byId('sheet');
+    nodes.inspector = D.byId('inspector');
+    nodes.topbarActions = D.byId('topbar-actions');
+    nodes.scroller.addEventListener('scroll', function () {
+      nodes.sheet.classList.toggle('is-scrolled', nodes.scroller.scrollTop > 4);
+    }, { passive: true });
 
     E.Shell.build({
       sidebar: D.byId('sidebar'),
       crumb: D.byId('crumb'),
-      save: D.byId('save-state'),
       getState: store.getState,
       actions: {
         openPalette: openPalette,
+        newProject: function () { if (store.getState().route.name === 'team') goTo('projects'); openCreate(); },
+        newPerson: function () { goTo('team'); openNewPerson(); },
+        showShortcuts: showShortcuts,
+        toggleSidebar: toggleSidebar,
         setPref: setPref,
         loadDemo: loadDemo,
         exportJson: exportJson,

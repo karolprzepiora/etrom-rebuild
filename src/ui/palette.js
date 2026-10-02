@@ -2,8 +2,9 @@
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Icons = root.ETROM.Icons;
+  var E = root.ETROM;
+  var D = E.Dom;
+  var Icons = E.Icons;
   var Search = root.ETROM.Search;
   var Progress = root.ETROM.Progress;
   var Team = root.ETROM.Team;
@@ -16,6 +17,7 @@
     var stats = Progress.projectProgress(project);
     return {
       icon: 'folder',
+      leading: E.Sig ? E.Sig.datum(E.Insight.health(project).level, { label: false }) : null,
       label: project.name,
       meta: project.code + ' · ' + (project.client || 'bez zamawiającego') + ' · ' + stats.percent + '%',
       run: function () { onProject(project); }
@@ -108,9 +110,20 @@
       ])
     ]);
 
+    // Jedno podświetlenie przesuwa się między wynikami zamiast migać na każdym z osobna.
+    var highlight = D.el('div', { class: 'palette__highlight', attrs: { 'aria-hidden': 'true' } });
+
+    function moveHighlight(row) {
+      if (!row) { highlight.style.opacity = '0'; return; }
+      highlight.style.opacity = '1';
+      highlight.style.transform = 'translateY(' + row.offsetTop + 'px)';
+      highlight.style.height = row.offsetHeight + 'px';
+    }
+
     function setActive(index) {
       active = Math.max(0, Math.min(entries.length - 1, index));
       var rows = list.querySelectorAll('.palette__row');
+      moveHighlight(rows[active]);
       for (var i = 0; i < rows.length; i += 1) {
         var on = i === active;
         rows[i].classList.toggle('palette__row--active', on);
@@ -140,7 +153,7 @@
               click: function () { run(index); }
             }
           }, [
-            Icons.icon(entry.icon, 16),
+            entry.leading || Icons.icon(entry.icon, 16),
             D.el('span', { class: 'palette__rowBody' }, [
               D.el('span', { class: 'palette__rowLabel', text: entry.label }),
               entry.meta ? D.el('span', { class: 'palette__rowMeta', text: entry.meta }) : null
@@ -151,7 +164,7 @@
       });
 
       if (!children.length) children.push(empty);
-      D.render(list, children);
+      D.render(list, [highlight].concat(children));
       setActive(0);
     }
 

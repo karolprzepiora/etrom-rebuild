@@ -6,10 +6,12 @@
   <meta name="color-scheme" content="light dark">
   <title>ETROM</title>
   <meta name="description" content="ETROM — projekty, etapy, zadania i zespół biura projektowego.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c0266a'/%3E%3Cpath d='M11 9h10M11 16h8M11 23h10M11 9v14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23121A19'/%3E%3Cpath d='M8 9h16L16 21Z M10 25h12' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles/fonts.css">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/signature.css">
   <link rel="stylesheet" href="styles/layout.css">
   <link rel="stylesheet" href="styles/views.css">
 </head>
@@ -20,58 +22,67 @@
     <aside class="sidebar" id="sidebar" aria-label="Nawigacja"></aside>
     <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
 
-    <div class="main">
+    <div class="sheet" id="sheet">
       <header class="topbar">
         <button class="icon-btn topbar__menu" type="button" id="action-nav" aria-label="Otwórz nawigację" aria-controls="sidebar">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <nav class="topbar__crumb" id="crumb" aria-label="Ścieżka"></nav>
         <span class="topbar__spacer"></span>
-        <span class="save-state" id="save-state" role="status" tabindex="0"></span>
+        <div class="topbar__actions" id="topbar-actions"></div>
       </header>
 
-      <main class="page" id="main" tabindex="-1">
-        <div id="notice"></div>
+      <div class="sheet__scroll" id="scroller">
+        <main class="page" id="main" tabindex="-1">
+          <div id="notice"></div>
 
-        <section class="view" id="view-projects" aria-labelledby="projects-title">
-          <header class="page-header">
-            <div class="page-header__main">
-              <h1 class="t-page-title" id="projects-title">Projekty</h1>
-              <p class="page-header__description" id="projects-summary"></p>
+          <section class="view" id="view-projects" aria-labelledby="projects-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="projects-title">Projekty</h1>
+                <p class="page-header__description" id="projects-summary"></p>
+              </div>
+              <div class="page-header__actions">
+                <button class="btn btn--primary" type="button" id="action-new" aria-keyshortcuts="N">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Nowy projekt</span><kbd class="kbd">N</kbd>
+                </button>
+              </div>
+            </header>
+            <section class="cockpit" id="portfolio" aria-label="Stan portfela"></section>
+            <div class="list-block">
+              <div class="toolbar" id="filters" role="search" aria-label="Filtry projektów"></div>
+              <div id="project-list"></div>
+              <div id="bulk-bar" class="bulk-slot"></div>
             </div>
-            <div class="page-header__actions">
-              <button class="btn btn--primary" type="button" id="action-new" aria-keyshortcuts="N">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                <span>Nowy projekt</span><kbd class="kbd">N</kbd>
-              </button>
-            </div>
-          </header>
-          <div class="toolbar" id="filters" role="search" aria-label="Filtry projektów"></div>
-          <div id="bulk-bar" class="bulk-slot"></div>
-          <div id="project-list"></div>
-        </section>
+          </section>
 
-        <section class="view" id="view-project" hidden aria-labelledby="project-title">
-          <div class="detail" id="project-view"></div>
-        </section>
+          <section class="view" id="view-project" hidden aria-labelledby="project-title">
+            <div class="detail" id="project-view"></div>
+          </section>
 
-        <section class="view" id="view-team" hidden aria-labelledby="team-title">
-          <header class="page-header">
-            <div class="page-header__main">
-              <h1 class="t-page-title" id="team-title">Zespół</h1>
-              <p class="page-header__description" id="team-summary"></p>
+          <section class="view" id="view-team" hidden aria-labelledby="team-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="team-title">Zespół</h1>
+                <p class="page-header__description" id="team-summary"></p>
+              </div>
+              <div class="page-header__actions">
+                <button class="btn btn--primary" type="button" id="action-new-person" aria-keyshortcuts="N">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Nowa osoba</span><kbd class="kbd">N</kbd>
+                </button>
+              </div>
+            </header>
+            <div class="list-block">
+              <div class="toolbar" id="team-filters" role="search" aria-label="Filtry osób"></div>
+              <div id="team-list"></div>
             </div>
-            <div class="page-header__actions">
-              <button class="btn btn--primary" type="button" id="action-new-person" aria-keyshortcuts="N">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                <span>Nowa osoba</span><kbd class="kbd">N</kbd>
-              </button>
-            </div>
-          </header>
-          <div class="toolbar" id="team-filters" role="search" aria-label="Filtry osób"></div>
-          <div id="team-list"></div>
-        </section>
-      </main>
+          </section>
+        </main>
+      </div>
+
+      <aside class="inspector" id="inspector" hidden aria-label="Inspektor"></aside>
     </div>
   </div>
 
@@ -91,9 +102,11 @@
   <script src="src/core/prefs.js"></script>
   <script src="src/core/search.js"></script>
   <script src="src/core/format.js"></script>
+  <script src="src/core/insight.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
   <script src="src/ui/components.js"></script>
+  <script src="src/ui/signature.js"></script>
   <script src="src/ui/avatar.js"></script>
   <script src="src/ui/motion.js"></script>
   <script src="src/ui/tooltip.js"></script>
@@ -110,6 +123,7 @@
   <script src="src/ui/taskForm.js"></script>
   <script src="src/ui/stageForm.js"></script>
   <script src="src/ui/teamScreen.js"></script>
+  <script src="src/ui/inspector.js"></script>
   <script src="src/ui/shell.js"></script>
   <script src="src/ui/app.js"></script>
 </body>

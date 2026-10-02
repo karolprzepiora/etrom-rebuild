@@ -15,7 +15,7 @@
   var Icons = E.Icons;
 
   var PART_SHAPE = { todo: 'empty', working: 'half', done: 'done' };
-  var PART_TONE = { todo: 'neutral', working: 'info', done: 'success' };
+  var PART_TONE = { todo: 'neutral', working: 'flow', done: 'done' };
 
   function statusControl(project, stage, task, actions) {
     var btn = UI.statusButton('task', task.status, {
@@ -69,6 +69,7 @@
       return {
         label: 'Działania zadania', align: 'end',
         items: [
+          { label: 'Szczegóły', icon: 'inspector', onSelect: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } },
           { label: 'Edytuj zadanie', icon: 'edit', onSelect: function () { actions.editTask(project.id, stage.id, task.id); } },
           { type: 'separator' },
           { label: 'Usuń zadanie', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteTask(project.id, stage.id, task.id); } }
@@ -88,8 +89,8 @@
       D.el('button', {
         class: 'trow__name',
         text: task.name,
-        attrs: { type: 'button', 'aria-label': 'Edytuj zadanie: ' + task.name, 'data-fk': 'task-name-' + task.id },
-        on: { click: function () { actions.editTask(project.id, stage.id, task.id); } }
+        attrs: { type: 'button', 'aria-label': 'Szczegóły zadania: ' + task.name, 'data-fk': 'task-name-' + task.id },
+        on: { click: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } }
       }),
       task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null
     ]);
@@ -103,7 +104,7 @@
     }
 
     return D.el('li', {
-      class: 'trow row trow--' + task.status + (motion && motion.flashTask === task.id ? ' is-flash' : ''),
+      class: 'trow row trow--' + task.status + (motion && motion.flashTask === task.id ? ' is-flash' : '') + (actions.isInspected && actions.isInspected('task', task.id) ? ' is-inspected' : ''),
       dataset: { taskId: task.id }
     }, [
       statusControl(project, stage, task, actions),

@@ -7,15 +7,31 @@
   var KEY = 'etrom.prefs.v1';
   var THEMES = ['system', 'light', 'dark'];
   var VIEWS = ['list', 'cards'];
-  var ACCENTS = ['standard', 'hydro', 'graphite'];
-  // Kolumny tabeli projektów, które można ukryć. Kod, nazwa i status są zawsze.
+  var ACCENTS = ['standard', 'graphite', 'raspberry'];
+  var GROUPS = ['health', 'status', 'none'];
+  // Elementy wiersza projektu, które można ukryć w opcjach widoku.
   var COLUMNS = ['client', 'progress', 'stages', 'tasks', 'deadline', 'team'];
-  // Nazwy z wcześniejszych wersji, przeniesione na obecne.
-  var LEGACY_ACCENTS = { topo: 'graphite' };
+  // Nazwy z wcześniejszych wersji przeniesione na obecne.
+  var LEGACY_ACCENTS = { hydro: 'standard', topo: 'graphite' };
+  var MAX_PINNED = 8;
+  var MAX_RECENT = 5;
 
   function defaults() {
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
-    return { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [] };
+    return {
+      theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
+      groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: []
+    };
+  }
+
+  function ids(value, max) {
+    var list = Array.isArray(value) ? value : [];
+    var seen = {};
+    return list.filter(function (id) {
+      if (!Number.isSafeInteger(id) || id <= 0 || seen[id]) return false;
+      seen[id] = true;
+      return true;
+    }).slice(0, max);
   }
 
   function normalize(raw) {
@@ -26,8 +42,18 @@
       theme: THEMES.indexOf(source.theme) >= 0 ? source.theme : 'system',
       view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'list',
       accent: ACCENTS.indexOf(accent) >= 0 ? accent : 'standard',
-      hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; })
+      hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
+      groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
+      sidebarCollapsed: source.sidebarCollapsed === true,
+      pinned: ids(source.pinned, MAX_PINNED),
+      recent: ids(source.recent, MAX_RECENT)
     };
+  }
+
+  /** Dopisuje projekt na początek listy ostatnio otwieranych. */
+  function touchRecent(prefs, id) {
+    var list = [id].concat((prefs.recent || []).filter(function (x) { return x !== id; }));
+    return normalize(Object.assign({}, prefs, { recent: list }));
   }
 
   function resolveBackend(backend) {
@@ -71,6 +97,8 @@
     VIEWS: VIEWS,
     ACCENTS: ACCENTS,
     COLUMNS: COLUMNS,
+    GROUPS: GROUPS,
+    touchRecent: touchRecent,
     defaults: defaults,
     normalize: normalize,
     createPrefs: createPrefs

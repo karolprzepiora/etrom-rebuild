@@ -162,15 +162,19 @@ async function main() {
     await run('window.ETROM.app.store.set({ selection: {} }); return true;');
 
     const id2 = await projectId('DEMO-002');
+    await viewport(1440, 1500);
     await go('#/projekty/' + id2);
-    await run('const w = [...document.querySelectorAll(".srow-wrap")].find(w => w.querySelector(".srow__tasks").textContent !== "—"); w.querySelector(".srow__expand").click(); return true;');
     await shoot('projekt', { full: true });
     await theme('dark');
     await shoot('projekt-ciemny', { full: true });
     await theme('light');
 
+    await viewport(1440, 900);
     await go('#/projekty/' + id2 + '/zadania');
     await shoot('projekt-zadania');
+    await click('.trow__name');
+    await shoot('inspektor-zadanie', { wait: 450 });
+    await escape();
     await click('.trow__status');
     await shoot('menu-status', { wait: 250 });
     await escape();
@@ -186,6 +190,9 @@ async function main() {
 
     await go('#/zespol');
     await shoot('zespol');
+    await click('.prow .person__link');
+    await shoot('inspektor-osoba', { wait: 450 });
+    await escape();
 
     await click('#action-settings');
     await shoot('ustawienia', { wait: 250 });
@@ -196,10 +203,15 @@ async function main() {
     await shoot('paleta', { wait: 250 });
     await escape();
 
-    await run('document.documentElement.setAttribute("data-accent", "hydro"); return true;');
-    await go('#/projekty');
-    await shoot('hydro');
+    await run('document.documentElement.setAttribute("data-accent", "raspberry"); return true;');
+    await go('#/projekty/' + id2);
+    await shoot('akcent-malina');
     await run('document.documentElement.removeAttribute("data-accent"); return true;');
+
+    await run('window.ETROM.app.store.set({ prefs: Object.assign({}, window.ETROM.app.store.getState().prefs, { sidebarCollapsed: true }) }); return true;');
+    await go('#/projekty');
+    await shoot('panel-zwiniety');
+    await run('window.ETROM.app.store.set({ prefs: Object.assign({}, window.ETROM.app.store.getState().prefs, { sidebarCollapsed: false }) }); return true;');
 
     // Długie wartości: nazwa, zamawiający, kod — sprawdzenie skracania i zawijania.
     await run(

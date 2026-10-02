@@ -1,8 +1,8 @@
-/* ETROM — etapy projektu.
-   Jeden wiersz na etap: rozwinięcie (zadania), status (klik przestawia),
-   nazwa z dziedziną, zadania, godziny, termin i menu działań.
-   Barwa należy do stanu i do terminów wymagających reakcji — dziedzina
-   ma tylko drobną ikonę. */
+/* ETROM — przebieg etapów jako rail.
+   Pionowa linia przebiegu: ciągła przez etapy zakończone, w kolorze nurtu
+   przez etap w toku, przerywana przez etapy przed nami — jak linie istniejące
+   i projektowane na rysunku. Seria zakończonych etapów od początku zwija się
+   do jednego wiersza, żeby uwaga szła tam, gdzie trwa praca. */
 (function (root) {
   'use strict';
 
@@ -15,17 +15,18 @@
   var Progress = E.Progress;
   var Icons = E.Icons;
   var Tasks = E.Tasks;
+  var Insight = E.Insight;
   var F = E.Format;
+
+  var COLLAPSE_FROM = 3;
 
   function taskCell(stage) {
     var stats = Tasks.taskStats(stage.tasks || []);
-    if (!stats.total) {
-      return D.el('span', { class: 'srow__tasks t-muted', text: '—', attrs: { 'aria-label': 'Brak zadań' } });
-    }
+    if (!stats.total) return D.el('span', { class: 'srow__tasks t-muted', text: '—', attrs: { 'aria-label': 'Brak zadań' } });
     return D.el('span', {
       class: 'srow__tasks' + (stats.overdue ? ' srow__tasks--alert' : ''),
       attrs: {
-        'data-tooltip': 'Otwarte ' + stats.open + ' z ' + stats.total + (stats.overdue ? ' · po terminie ' + stats.overdue : ''),
+        'data-tooltip': 'Otwarte ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie ' + stats.overdue : ''),
         'aria-label': 'Zadania otwarte: ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
       }
     }, [stats.open + '/' + stats.total]);
@@ -53,58 +54,74 @@
     return btn;
   }
 
-  function stageRow(project, stage, position, count, ctx) {
+  function railCell(stage, segment, flash) {
+    var cls = 'rail__node rail__node--' + stage.status
+      + (segment && segment.current ? ' rail__node--current' : '')
+      + (segment && segment.overdue ? ' rail__node--overdue' : '')
+      + (flash ? ' is-pop' : '');
+    return D.el('span', { class: 'srow__rail rail--' + stage.status, attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: cls })]);
+  }
+
+  /**
+   * Czy etap jest rozwinięty. Bieżący etap otwiera się sam — to, co dzieje się
+   * teraz, widać bez klikania — dopóki użytkownik go nie zwinie.
+   */
+  function isOpen(expandedStages, project, stage) {
+    var value = (expandedStages || {})[project.id + ':' + stage.id];
+    if (value === true || value === false) return value;
+    return Progress.activeStage(project) === stage && stage.status === 'working';
+  }
+
+  function stageRow(project, stage, position, count, ctx, segment) {
     var actions = ctx.actions;
     var info = Model.describeStage(stage);
-    var key = project.id + ':' + stage.id;
-    var open = !!(ctx.state.expandedStages && ctx.state.expandedStages[key]);
+    var open = isOpen(ctx.state.expandedStages, project, stage);
     var flash = ctx.motion && ctx.motion.flashStage === stage.id;
     var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
-    var meta = info.isCustom ? 'własny · ' + info.domainLabel : 'standard ' + info.catalogNumber + ' · ' + info.domainLabel;
+    var meta = info.isCustom ? 'własny, ' + info.domainLabel.toLowerCase() : 'standard ' + info.catalogNumber + ', ' + info.domainLabel.toLowerCase();
+    var nextStatus = Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)];
 
     var row = D.el('div', {
-      class: 'srow row srow--' + stage.status + (flash ? ' is-flash' : '') + (open ? ' srow--open' : '')
+      class: 'srow row srow--' + stage.status
+        + (segment && segment.current ? ' srow--current' : '')
+        + (segment && segment.overdue ? ' srow--overdue' : '')
+        + (flash ? ' is-flash' : '') + (open ? ' srow--open' : '')
     }, [
+      railCell(stage, segment, flash),
       D.el('button', {
         class: 'srow__expand',
-        attrs: {
-          type: 'button',
-          'aria-expanded': open ? 'true' : 'false',
-          'aria-controls': panelId,
-          'data-fk': 'stage-expand-' + stage.id
-        },
-        on: { click: function () { actions.toggleStage(project.id, stage.id); } }
+        attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': panelId, 'data-fk': 'stage-expand-' + stage.id }
       }, [
-        D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronRight', 14)]),
-        D.el('span', { class: 'srow__no', text: String(position + 1) }),
-        D.el('span', { class: 'srow__icon', style: { color: info.color }, attrs: { 'data-tooltip': info.domainLabel } }, [Icons.icon(info.domain, 16)]),
+        D.el('span', { class: 'srow__no t-num', text: String(position + 1) }),
         D.el('span', { class: 'srow__text' }, [
           D.el('span', { class: 'srow__name', text: info.name }),
-          D.el('span', { class: 'srow__meta', text: meta })
+          D.el('span', { class: 'srow__meta' }, [
+            D.el('span', { class: 'srow__icon', style: { color: info.color } }, [Icons.icon(info.domain, 13)]),
+            D.el('span', { text: meta })
+          ])
         ]),
+        D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronDown', 14)]),
         D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
       ]),
-      UI.statusButton('stage', stage.status, {
-        subject: info.name,
-        class: 'srow__status',
-        hint: 'Kliknij, aby przestawić na „' + Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)] + '”',
-        attrs: {
-          'data-fk': 'stage-status-' + stage.id,
-          'data-tooltip': 'Przestaw na „' + Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)] + '”'
-        },
-        onClick: function () { actions.cycleStage(project.id, stage.id); }
-      }),
       taskCell(stage),
       D.el('span', { class: 'srow__hours t-num', text: F.hours(stage.hours) }),
       D.el('span', { class: 'srow__deadline' }, [
         UI.due(stage.deadline, Progress.deadlineInfo(stage.deadline), { done: stage.status === 'done', label: 'Termin etapu' })
       ]),
+      UI.statusButton('stage', stage.status, {
+        subject: info.name,
+        class: 'srow__status',
+        hint: 'Kliknij, aby przestawić na „' + nextStatus + '”',
+        attrs: { 'data-fk': 'stage-status-' + stage.id, 'data-tooltip': 'Przestaw na „' + nextStatus + '”' },
+        onClick: function () { actions.cycleStage(project.id, stage.id); }
+      }),
       stageMenu(project, stage, position, count, actions)
     ]);
+    row.querySelector('.srow__expand').addEventListener('click', function () { actions.toggleStage(project.id, stage.id); });
 
     var children = [row];
     if (open) {
-      children.push(D.el('div', { class: 'srow__panel', attrs: { id: panelId } }, [
+      children.push(D.el('div', { class: 'srow__panel rail--' + stage.status, attrs: { id: panelId } }, [
         E.TaskList.taskList(project, stage, actions, ctx.people, ctx.motion)
       ]));
     }
@@ -113,63 +130,101 @@
 
   /** Menu „Dodaj etap”: etapy ze standardu, których jeszcze nie ma, i etap własny. */
   function addStageButton(project, actions, variant) {
-    var btn = UI.button({ label: 'Dodaj etap', icon: 'plus', variant: variant || 'secondary', size: 'sm', iconRight: 'chevronDown', attrs: { 'data-fk': 'add-stage' } });
+    var btn = UI.button({ label: 'Dodaj etap', icon: 'plus', variant: variant || 'ghost', size: 'sm', attrs: { 'data-fk': 'add-stage' } });
     Menu.bind(btn, function () {
       var used = {};
       project.stages.forEach(function (stage) { used[stage.id] = true; });
       var available = Catalog.all.filter(function (entry) { return !used[entry.id]; });
-      var items = [{ label: 'Etap własny…', icon: 'edit', hint: 'spoza standardu', onSelect: function () { actions.openCustomStage(project.id); } }];
-      items.push({ type: 'separator' });
+      var items = [{ label: 'Etap własny…', icon: 'edit', hint: 'spoza standardu', onSelect: function () { actions.openCustomStage(project.id); } }, { type: 'separator' }];
       if (available.length) {
         items.push({ type: 'label', label: 'Ze standardu ETROM' });
         available.forEach(function (entry) {
-          items.push({
-            label: entry.number + '. ' + entry.name,
-            hint: F.hours(entry.defaultHours),
-            value: entry.id,
-            onSelect: function () { actions.addStage(project.id, entry.id); }
-          });
+          items.push({ label: entry.number + '. ' + entry.name, hint: F.hours(entry.defaultHours), value: entry.id, onSelect: function () { actions.addStage(project.id, entry.id); } });
         });
       } else {
         items.push({ type: 'note', label: 'Wszystkie etapy ze standardu są już w projekcie.' });
       }
-      return { label: 'Dodaj etap', items: items, minWidth: '22rem' };
+      return { label: 'Dodaj etap', items: items, minWidth: '22rem', align: 'end' };
     });
     return btn;
   }
 
-  /**
-   * @param {Object} project
-   * @param {{state, people, actions, motion}} ctx
-   */
+  /** Liczba zakończonych etapów od początku — to one zwijają się do jednego wiersza. */
+  function leadingDone(project) {
+    var n = 0;
+    while (n < project.stages.length && project.stages[n].status === 'done') n += 1;
+    return n;
+  }
+
   function stageList(project, ctx) {
     var count = project.stages.length;
     var stats = Progress.projectProgress(project);
+    var prof = Insight.profile(project);
+    var segments = {};
+    prof.segments.forEach(function (seg) { segments[seg.id] = seg; });
 
     if (!count) {
-      return D.el('section', { class: 'section' }, [
-        D.el('div', { class: 'card' }, [UI.emptyState({
-          icon: 'layers',
-          title: 'Projekt nie ma jeszcze etapów',
-          text: 'Etapy porządkują pracę i liczą postęp. Wybierz je ze standardu ETROM albo dopisz własne, gdy projekt wymaga czegoś nietypowego.',
-          actions: [addStageButton(project, ctx.actions, 'primary')]
-        })])
-      ]);
+      return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
+        icon: 'layers',
+        title: 'Projekt nie ma jeszcze etapów',
+        text: 'Etapy porządkują pracę i liczą postęp. Wybierz je ze standardu ETROM albo dopisz własne, gdy projekt wymaga czegoś nietypowego.',
+        actions: [addStageButton(project, ctx.actions, 'primary')]
+      })])]);
     }
 
-    return D.el('section', { class: 'section', attrs: { 'aria-labelledby': 'stages-title' } }, [
+    var done = leadingDone(project);
+    var showDone = !!(ctx.state.showDone && ctx.state.showDone[project.id]);
+    var collapse = done >= COLLAPSE_FROM && done < count && !showDone;
+    var items = [];
+
+    if (collapse) {
+      var hours = project.stages.slice(0, done).reduce(function (sum, s) { return sum + (Number(s.hours) || 0); }, 0);
+      items.push(D.el('li', { class: 'srow-wrap srow-wrap--summary' }, [D.el('div', { class: 'srow srow--summary srow--done' }, [
+        D.el('span', { class: 'srow__rail rail--done', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: 'rail__node rail__node--done' })]),
+        D.el('button', {
+          class: 'srow__expand srow__expand--summary',
+          attrs: { type: 'button', 'aria-expanded': 'false', id: 'show-done' },
+          on: { click: function () { ctx.actions.toggleDone(project.id); } }
+        }, [
+          D.el('span', { class: 'srow__no t-num', text: '1–' + done }),
+          D.el('span', { class: 'srow__text' }, [
+            D.el('span', { class: 'srow__name', text: F.count(done, 'etap zakończony', 'etapy zakończone', 'etapów zakończonych') }),
+            D.el('span', { class: 'srow__meta' }, [D.el('span', { text: F.hours(hours) + ' wykonanej pracy' })])
+          ]),
+          D.el('span', { class: 'srow__reveal', text: 'Pokaż' })
+        ])
+      ])]));
+    }
+
+    project.stages.forEach(function (stage, index) {
+      if (collapse && index < done) return;
+      items.push(stageRow(project, stage, index, count, ctx, segments[stage.id]));
+    });
+
+    var late = prof.segments.filter(function (s) { return s.overdue; }).length;
+
+    return D.el('section', { class: 'section stages', attrs: { 'aria-labelledby': 'stages-title' } }, [
       D.el('div', { class: 'section__head' }, [
         D.el('div', { class: 'section__titles' }, [
-          D.el('h2', { class: 'section__title', text: 'Etapy', attrs: { id: 'stages-title' } }),
-          D.el('span', { class: 'section__meta', text: stats.done + ' z ' + count + ' zakończonych · ' + F.hours(stats.hoursTotal) + ' w budżecie' })
+          D.el('h2', { class: 'section__title', text: 'Przebieg etapów', attrs: { id: 'stages-title' } }),
+          D.el('span', { class: 'section__meta', text: stats.done + ' z ' + count + ' zakończonych' }),
+          late ? D.el('span', { class: 'section__meta t-alarm', text: F.count(late, 'etap po terminie', 'etapy po terminie', 'etapów po terminie') }) : null
         ]),
-        addStageButton(project, ctx.actions)
+        D.el('div', { class: 'section__actions' }, [
+          !collapse && done >= COLLAPSE_FROM && done < count
+            ? UI.button({ label: 'Zwiń zakończone', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.toggleDone(project.id); } })
+            : null,
+          addStageButton(project, ctx.actions)
+        ])
       ]),
-      D.el('ul', { class: 'srows list' }, project.stages.map(function (stage, index) {
-        return stageRow(project, stage, index, count, ctx);
-      }))
+      D.el('div', { class: 'srow srow--head', attrs: { 'aria-hidden': 'true' } }, [
+        D.el('span'), D.el('span', { text: 'Etap' }), D.el('span', { class: 'srow__tasks', text: 'Zadania' }),
+        D.el('span', { class: 'srow__hours', text: 'Godziny' }), D.el('span', { class: 'srow__deadline', text: 'Termin' }),
+        D.el('span', { text: 'Status' }), D.el('span')
+      ]),
+      D.el('ol', { class: 'srows rail' }, items)
     ]);
   }
 
-  root.ETROM.StageList = { stageList: stageList, addStageButton: addStageButton };
+  root.ETROM.StageList = { stageList: stageList, addStageButton: addStageButton, isOpen: isOpen };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,6 +1,6 @@
-/* ETROM — ekran Zespołu: katalog osób w tabeli.
-   Osoba, stanowisko, rola, forma współpracy, funkcje w projektach (linki)
-   i stan. Rzadkie działania (wyłączenie, usunięcie) siedzą w menu wiersza. */
+/* ETROM — zespół: osoby pogrupowane według roli, z obciążeniem i udziałem
+   w projektach. Tożsamość (awatar, nazwisko, stanowisko), obciążenie jako
+   mikro-wykres zadań, funkcje ze znakiem stanu projektu. Klik otwiera inspektor. */
 (function (root) {
   'use strict';
 
@@ -11,8 +11,12 @@
   var Team = E.Team;
   var Avatar = E.Avatar;
   var Search = E.Search;
+  var Insight = E.Insight;
+  var Sig = E.Sig;
+  var F = E.Format;
 
   var MAX_ROLE_BADGES = 2;
+  var PIPS = 8;
 
   /** Filtruje i porządkuje katalog osób. Czysta funkcja. */
   function visiblePeople(people, filters) {
@@ -22,55 +26,55 @@
       if (options.role && options.role !== 'all' && person.orgRole !== options.role) return false;
       return true;
     });
-
     var query = typeof options.query === 'string' ? options.query.trim() : '';
-    if (query) {
-      return Search.rank(list, query, function (person) {
-        return [Team.fullName(person), person.position];
-      });
-    }
-
+    if (query) return Search.rank(list, query, function (person) { return [Team.fullName(person), person.position]; });
     return list.slice().sort(function (a, b) {
       return Team.fullName(a).localeCompare(Team.fullName(b), 'pl', { sensitivity: 'base' });
     });
   }
 
-  function roleBadges(person, projects) {
-    var entries = [];
-    (projects || []).forEach(function (project) {
-      Team.functionsOf(person.id, project.team).forEach(function (fn) {
-        entries.push({ project: project, fn: fn });
-      });
-    });
-
+  function roleBadges(load, now) {
+    var entries = load.functions;
     if (!entries.length) return D.el('span', { class: 't-muted', text: 'Bez przypisań' });
-
     var shown = entries.slice(0, MAX_ROLE_BADGES);
     var rest = entries.length - shown.length;
     var children = shown.map(function (entry) {
+      var h = Insight.health(entry.project, now);
       return D.el('a', {
-        class: 'badge badge--outline role-link',
+        class: 'role-link',
         attrs: {
           href: E.ProjectList.projectHref(entry.project, 'zespol'),
-          'data-tooltip': entry.fn.label + ' — ' + entry.project.name,
+          'data-tooltip': entry.fn.label + ' — ' + entry.project.name + ' (' + h.label.toLowerCase() + ')',
           'aria-label': entry.fn.label + ' w projekcie ' + entry.project.code + ' ' + entry.project.name
         }
-      }, [
-        D.el('span', { class: 't-mono', text: entry.project.code }),
-        D.el('span', { text: '· ' + entry.fn.short })
-      ]);
+      }, [Sig.datum(h.level, { size: 11, label: false }), D.el('span', { class: 'role-link__code', text: entry.project.code }), D.el('span', { class: 'role-link__fn', text: entry.fn.short })]);
     });
     if (rest > 0) {
       children.push(D.el('span', {
-        class: 'badge',
+        class: 'role-more',
         text: '+' + rest,
-        attrs: {
-          'data-tooltip': entries.slice(MAX_ROLE_BADGES).map(function (e) { return e.project.code + ' — ' + e.fn.label; }).join(', '),
-          tabindex: '0'
-        }
+        attrs: { 'data-tooltip': entries.slice(MAX_ROLE_BADGES).map(function (e) { return e.project.code + ' ' + e.fn.label; }).join(', '), tabindex: '0' }
       }));
     }
     return D.el('div', { class: 'role-list' }, children);
+  }
+
+  /** Obciążenie: kropki = otwarte zadania, wypełnione na czerwono = po terminie. */
+  function loadMeter(load) {
+    var pips = [];
+    for (var i = 0; i < PIPS; i += 1) {
+      var cls = 'pip';
+      if (i < load.overdue) cls += ' pip--late';
+      else if (i < load.open) cls += ' pip--on';
+      pips.push(D.el('span', { class: cls }));
+    }
+    return D.el('div', {
+      class: 'load',
+      attrs: { role: 'img', 'aria-label': 'Otwarte zadania: ' + load.open + (load.overdue ? ', po terminie: ' + load.overdue : '') }
+    }, [
+      D.el('span', { class: 'load__pips' + (load.open > PIPS ? ' load__pips--over' : '') }, pips),
+      D.el('span', { class: 'load__value t-num' + (load.overdue ? ' t-alarm' : (load.open ? '' : ' t-muted')), text: load.open ? String(load.open) : '—' })
+    ]);
   }
 
   function personMenu(person, actions) {
@@ -83,12 +87,9 @@
       return {
         label: 'Działania osoby', align: 'end',
         items: [
+          { label: 'Szczegóły', icon: 'inspector', onSelect: function () { actions.inspect({ kind: 'person', personId: person.id }); } },
           { label: 'Edytuj dane', icon: 'edit', onSelect: function () { actions.editPerson(person.id); } },
-          {
-            label: inactive ? 'Przywróć do obiegu' : 'Wyłącz z obiegu', icon: 'power', value: 'toggle',
-            hint: inactive ? '' : 'historia zostaje',
-            onSelect: function () { actions.togglePerson(person.id); }
-          },
+          { label: inactive ? 'Przywróć do obiegu' : 'Wyłącz z obiegu', icon: 'power', value: 'toggle', hint: inactive ? '' : 'historia zostaje', onSelect: function () { actions.togglePerson(person.id); } },
           { type: 'separator' },
           { label: 'Usuń z katalogu', icon: 'trash', tone: 'danger', onSelect: function () { actions.deletePerson(person.id); } }
         ]
@@ -97,57 +98,50 @@
     return btn;
   }
 
-  function personRow(person, projects, actions) {
+  function personRow(person, projects, actions, now) {
     var inactive = person.active === false;
+    var load = Insight.workload(person.id, projects, now);
+    var inspected = actions.isInspected && actions.isInspected('person', person.id);
     return D.el('tr', {
-      class: 'prow table__row' + (inactive ? ' prow--off' : ''),
+      class: 'prow table__row' + (inactive ? ' prow--off' : '') + (inspected ? ' is-inspected' : ''),
       dataset: { personId: person.id },
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label')) return;
-          actions.editPerson(person.id);
+          actions.inspect({ kind: 'person', personId: person.id });
         }
       }
     }, [
-      D.el('td', null, [D.el('span', { class: 'person' }, [
+      D.el('td', { class: 'col-person' }, [D.el('span', { class: 'person' }, [
         Avatar.avatar(person, { size: 'md', tooltip: false }),
         D.el('span', { class: 'person__text' }, [
           D.el('button', {
             class: 'person__name person__link',
             text: Team.fullName(person),
-            attrs: { type: 'button', 'aria-label': 'Edytuj: ' + Team.fullName(person), 'data-fk': 'person-' + person.id },
-            on: { click: function () { actions.editPerson(person.id); } }
+            attrs: { type: 'button', 'aria-label': 'Szczegóły: ' + Team.fullName(person), 'data-fk': 'person-' + person.id },
+            on: { click: function () { actions.inspect({ kind: 'person', personId: person.id }); } }
           }),
-          D.el('span', {
-            class: 'person__meta',
-            text: [person.position || 'Bez stanowiska', Team.COOPERATION[person.cooperation]].filter(Boolean).join(' · ')
-          })
+          D.el('span', { class: 'person__meta', text: [person.position || 'Bez stanowiska', Team.COOPERATION[person.cooperation]].filter(Boolean).join(', ') })
         ])
       ])]),
-      D.el('td', { class: 'col-role' }, [
-        person.orgRole === 'managing'
-          ? UI.badge(Team.ORG_ROLES[person.orgRole])
-          : D.el('span', { class: 't-secondary-cell', text: Team.ORG_ROLES[person.orgRole] })
-      ]),
-      D.el('td', { class: 'col-functions' }, [roleBadges(person, projects)]),
-      D.el('td', { class: 'col-state' }, [
-        inactive
-          ? D.el('span', { class: 'status status--neutral' }, [UI.statusIcon('paused'), D.el('span', { text: 'Wyłączona' })])
-          : D.el('span', { class: 'status status--success' }, [UI.statusIcon('done'), D.el('span', { text: 'Aktywna' })])
-      ]),
+      D.el('td', { class: 'col-load' }, [loadMeter(load)]),
+      D.el('td', { class: 'col-projects t-num' }, [D.el('span', { class: load.projects ? '' : 't-muted', text: load.projects ? String(load.projects) : '—', attrs: { 'aria-label': 'Czynne projekty: ' + load.projects } })]),
+      D.el('td', { class: 'col-functions' }, [roleBadges(load, now)]),
+      D.el('td', { class: 'col-state' }, [inactive ? UI.badge('Wyłączona', 'warning') : null]),
       D.el('td', { class: 'cell--actions' }, [personMenu(person, actions)])
     ]);
   }
 
-  /**
-   * @param {Array} people katalog osób
-   * @param {Array} projects projekty (do wyliczenia funkcji)
-   * @param {Object} filters {query, role, showInactive}
-   * @param {Object} actions editPerson, togglePerson, deletePerson, newPerson, clearTeamFilters
-   */
+  var GROUPS = [
+    { key: 'managing', label: 'Zarządzający', test: function (p) { return p.active !== false && p.orgRole === 'managing'; } },
+    { key: 'member', label: 'Zespół projektowy', test: function (p) { return p.active !== false && p.orgRole !== 'managing'; } },
+    { key: 'off', label: 'Wyłączeni z obiegu', test: function (p) { return p.active === false; } }
+  ];
+
   function teamList(people, projects, filters, actions) {
     var all = people || [];
     var visible = visiblePeople(all, filters);
+    var now = new Date();
 
     if (!all.length) {
       return D.el('div', { class: 'card' }, [UI.emptyState({
@@ -157,10 +151,9 @@
         actions: [UI.button({ label: 'Nowa osoba', icon: 'plus', variant: 'primary', onClick: actions.newPerson })]
       })]);
     }
-
     if (!visible.length) {
       return D.el('div', { class: 'card' }, [UI.emptyState({
-        icon: 'search',
+        icon: 'search', compact: true,
         title: 'Nikt nie pasuje do filtrów',
         text: 'Zmień frazę, wybierz inną rolę albo pokaż także osoby wyłączone z obiegu.',
         actions: [UI.button({ label: 'Wyczyść filtry', variant: 'secondary', onClick: actions.clearTeamFilters })]
@@ -168,20 +161,40 @@
     }
 
     var head = D.el('thead', null, [D.el('tr', null, [
-      D.el('th', { attrs: { scope: 'col' }, text: 'Osoba' }),
-      D.el('th', { class: 'col-role', attrs: { scope: 'col' }, text: 'Rola' }),
-      D.el('th', { class: 'col-functions', attrs: { scope: 'col' }, text: 'Funkcje w projektach' }),
-      D.el('th', { class: 'col-state', attrs: { scope: 'col' }, text: 'Stan' }),
+      D.el('th', { class: 'col-person', attrs: { scope: 'col' }, text: 'Osoba' }),
+      D.el('th', { class: 'col-load', attrs: { scope: 'col' }, text: 'Otwarte zadania' }),
+      D.el('th', { class: 'col-projects', attrs: { scope: 'col' }, text: 'Projekty' }),
+      D.el('th', { class: 'col-functions', attrs: { scope: 'col' }, text: 'Funkcje' }),
+      D.el('th', { class: 'col-state', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Stan' })]),
       D.el('th', { class: 'cell--actions', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Działania' })])
     ])]);
 
+    var bodies = GROUPS.map(function (group) {
+      var members = visible.filter(group.test);
+      if (!members.length) return null;
+      return D.el('tbody', { class: 'group' }, [D.el('tr', { class: 'group-row' }, [
+        D.el('th', { attrs: { colspan: '6', scope: 'rowgroup' } }, [D.el('span', { class: 'group-row__inner' }, [
+          D.el('span', { class: 'group-row__label', text: group.label }),
+          D.el('span', { class: 'group-row__count', text: String(members.length) })
+        ])])
+      ])].concat(members.map(function (person) { return personRow(person, projects, actions, now); })));
+    }).filter(Boolean);
+
     return D.el('div', { class: 'table-wrap team-table' }, [
-      D.el('table', { class: 'table', attrs: { 'aria-label': 'Katalog osób' } }, [
-        head,
-        D.el('tbody', null, visible.map(function (person) { return personRow(person, projects, actions); }))
-      ])
+      D.el('table', { class: 'table', attrs: { 'aria-label': 'Katalog osób' } }, [head].concat(bodies))
     ]);
   }
 
-  root.ETROM.TeamScreen = { teamList: teamList, visiblePeople: visiblePeople };
+  /** Podsumowanie zespołu do nagłówka: kto jest najbardziej obciążony. */
+  function summary(people, projects) {
+    var active = (people || []).filter(function (p) { return p.active !== false; });
+    var now = new Date();
+    var loads = active.map(function (p) { return { person: p, load: Insight.workload(p.id, projects, now) }; });
+    var busy = loads.filter(function (l) { return l.load.projects > 0; }).length;
+    var top = loads.slice().sort(function (a, b) { return b.load.open - a.load.open; })[0];
+    var late = loads.reduce(function (sum, l) { return sum + l.load.overdue; }, 0);
+    return { active: active.length, busy: busy, top: top && top.load.open ? top : null, late: late };
+  }
+
+  root.ETROM.TeamScreen = { teamList: teamList, visiblePeople: visiblePeople, summary: summary };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

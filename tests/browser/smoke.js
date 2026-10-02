@@ -183,7 +183,8 @@ async function main() {
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
       enter: { key: 'Enter', code: 'Enter', vk: 13, text: '\r' },
       escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' },
-      down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' }
+      down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' },
+      space: { key: ' ', code: 'Space', vk: 32, text: ' ' }
     };
     async function pressKey(name, modifiers) {
       const spec = KEYS[name];
@@ -269,27 +270,31 @@ async function main() {
     const id2 = await projectId('DEMO-002');
     check('klik w projekt otwiera jego szczegóły pod własnym adresem',
       (await evaluate('return location.hash;')) === '#/projekty/' + id2 && !(await evaluate('return document.getElementById("view-project").hidden;')));
-    check('szczegóły pokazują listę 14 etapów', (await evaluate('return document.querySelectorAll(".srow").length;')) === 14);
     check('ścieżka w pasku górnym prowadzi z powrotem do listy',
       await evaluate('const a = document.querySelector("#crumb a"); return !!a && a.getAttribute("href") === "#/projekty";'));
     check('fokus po zmianie ekranu trafia na nagłówek strony',
       (await evaluate('return document.activeElement && document.activeElement.id;')) === 'project-title');
 
+    check('zakończone etapy z początku zwinięte w jedną linię z liczbą',
+      await evaluate('const b = document.getElementById("show-done"); return !!b && /9\\u00a0etapów zakończonych/.test(b.textContent);'));
+    await click('#show-done');
+    await sleep(200);
+    check('po rozwinięciu przebieg pokazuje wszystkie 14 etapów', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === 14);
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const progressNow = () => evaluate('return document.querySelector(".summary [role=progressbar]").getAttribute("aria-valuenow");');
+    const progressNow = () => evaluate('return document.querySelector(".profile--macro .profile__number").dataset.count;');
     const before = await progressNow();
-    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
     check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'working');
-    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
     const after = await progressNow();
     check('oznaczenie etapu jako zakończony podnosi postęp', Number(after) > Number(before), 'przed ' + before + '%, po ' + after + '%');
     // Enter z klawiatury na przycisku statusu: po przerysowaniu fokus musi zostać w tym samym miejscu.
-    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").focus(); return true;');
+    await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").focus(); return true;');
     await pressKey('enter');
     check('fokus klawiatury zostaje na przycisku statusu po przerysowaniu',
-      await evaluate('const rows = document.querySelectorAll(".srow"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
+      await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
       && (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'todo');
 
     /* 10. Wstecz w przeglądarce */
@@ -374,7 +379,8 @@ async function main() {
     check('pole „zaznacz wszystkie” jest w stanie pośrednim', await evaluate('return document.getElementById("select-all").indeterminate;'));
     await click('#bulk-delete');
     await sleep(300);
-    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 4 && !(await evaluate('return !!document.querySelector(".bulkbar");')));
+    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 4 && !(await evaluate('return !!document.querySelector(".bulkbar");')),
+      'pozycji: ' + (await cardCount()) + ', pasek: ' + (await evaluate('return !!document.querySelector(".bulkbar");')) + ', w danych: ' + (await state('s.workspace.projects.length')));
     await click('[data-toast-action]');
     await sleep(300);
     check('cofnięcie przywraca oba projekty', (await cardCount()) === 6);
@@ -418,8 +424,8 @@ async function main() {
     /* 19. Widok kart, motyw, zapamiętanie */
     await click('.segmented__btn[aria-label="Widok kart"]');
     await sleep(450);
-    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard [role=progressbar]").length };');
-    check('widok kart: karta i pasek postępu na każdy projekt',
+    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .profile").length };');
+    check('widok kart: karta i profil przebiegu na każdy projekt',
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === cardsCheck.cards, JSON.stringify(cardsCheck));
 
     await click('#action-settings');
@@ -451,11 +457,11 @@ async function main() {
       (await evaluate('return !document.querySelector("dialog.palette[open]");')) && (await evaluate('return location.hash;')) === '#/projekty/' + id1);
 
     await pressKey('k', CTRL);
-    await evaluate('const input = document.querySelector(".palette__input"); input.value = "akcent morski"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    await evaluate('const input = document.querySelector(".palette__input"); input.value = "kolor malina"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     await sleep(200);
     await pressKey('enter');
     await sleep(300);
-    check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'hydro');
+    check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'raspberry');
 
     await pressKey('k', CTRL);
     await pressKey('escape');
@@ -604,10 +610,13 @@ async function main() {
     await go('#/projekty/' + id2);
     check('wiersz etapu pokazuje licznik otwartych zadań',
       await evaluate('return [...document.querySelectorAll(".srow__tasks")].some(c => /^\\d+\\/\\d+$/.test(c.textContent));'));
-    await evaluate('const w = [...document.querySelectorAll(".srow-wrap")].find(w => w.querySelector(".srow__tasks").textContent !== "—"); w.querySelector(".srow__expand").click(); return true;');
+    check('bieżący etap jest od razu rozwinięty z zadaniami',
+      await evaluate('const w = document.querySelector(".srow--working"); return !!w && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "true";')
+      && (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
+    await evaluate('const w = [...document.querySelectorAll(".srow-wrap[data-stage-id]")].find(w => w.querySelector(".srow__tasks").textContent !== "—" && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "false"); w.querySelector(".srow__expand").click(); return true;');
     await sleep(300);
-    check('rozwinięcie etapu pokazuje jego zadania', (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
-    check('przycisk rozwinięcia ogłasza stan', await evaluate('return document.querySelectorAll(\'.srow__expand[aria-expanded="true"]\').length === 1;'));
+    check('rozwinięcie kolejnego etapu pokazuje jego zadania', (await evaluate('return document.querySelectorAll(".srow__panel .trow").length;')) >= 3);
+    check('przyciski rozwinięcia ogłaszają stan', await evaluate('return document.querySelectorAll(\'.srow__expand[aria-expanded="true"]\').length === 2;'));
 
     /* 31. Nowe zadanie */
     await click('.srow__panel [data-action="add-task"]');
@@ -679,7 +688,39 @@ async function main() {
     check('nieistniejący projekt pokazuje pusty stan z drogą powrotu',
       await evaluate('return /Nie znaleziono projektu/.test(document.getElementById("project-view").textContent);'));
 
-    /* 38. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 38. Język wizualny: stan projektu, przebieg, inspektor */
+    await go('#/projekty');
+    check('wiersz projektu niesie znak stanu i profil przebiegu',
+      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".profile--micro");'));
+    await evaluate('document.querySelector(\'[data-project-code="DEMO-001"] .project-link\').focus(); return true;');
+    await pressKey('space');
+    check('Spacja na projekcie otwiera podgląd w inspektorze bez opuszczania listy',
+      (await state('s.inspector && s.inspector.kind')) === 'project' && (await evaluate('return location.hash;')) === '#/projekty');
+    await pressKey('escape');
+    check('kokpit wskazuje projekty wymagające uwagi',
+      await evaluate('return !!document.querySelector(".cockpit") && /wymaga/.test(document.querySelector(".cockpit").textContent);'));
+    await go('#/projekty/' + id2);
+    check('nagłówek projektu pokazuje profil z bieżącym etapem i stan alarmowy',
+      await evaluate('return !!document.querySelector(".profile--macro .profile__seg--current") && !!document.querySelector(".health--alarm");'));
+    await evaluate('document.querySelector(".trow__name").focus(); document.querySelector(".trow__name").click(); return true;');
+    await sleep(400);
+    check('nazwa zadania otwiera inspektor z historią zmian',
+      await evaluate('const i = document.getElementById("inspector"); return !!i && !!i.querySelector("#inspector-title") && !!i.querySelector(".history");')
+      && (await evaluate('return location.hash;')) === '#/projekty/' + id2);
+    await pressKey('escape');
+    check('Escape zamyka inspektor i oddaje fokus nazwie zadania',
+      (await state('s.inspector')) === null
+      && (await evaluate('return document.activeElement && document.activeElement.classList.contains("trow__name");')));
+    await evaluate('document.activeElement && document.activeElement.blur(); return true;');
+    await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "[", bubbles: true })); return true;');
+    await sleep(400);
+    check('klawisz [ zwija panel boczny i zapamiętuje to',
+      (await evaluate('return document.getElementById("app").classList.contains("app--collapsed");'))
+      && (await evaluate('return JSON.parse(localStorage.getItem("etrom.prefs.v1")).sidebarCollapsed;')) === true);
+    await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "[", bubbles: true })); return true;');
+    await sleep(300);
+
+    /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
   } finally {

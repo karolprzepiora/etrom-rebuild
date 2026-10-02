@@ -1,243 +1,189 @@
-# ETROM — UI/UX Standard v1.0
+# ETROM — UI/UX Standard v2.0
 
 Obowiązujący standard interfejsu ETROM. Każdy nowy ekran i każda nowa funkcja
-korzysta z tych tokenów i komponentów. Odstępstwo wymaga zmiany tego dokumentu,
-a nie lokalnego wyjątku w CSS.
+korzysta z tych tokenów, komponentów i elementów charakterystycznych.
+Odstępstwo wymaga zmiany tego dokumentu, a nie lokalnego wyjątku w CSS.
+
+- **Dlaczego tak wygląda** — [ART_DIRECTION.md](ART_DIRECTION.md) (język wizualny, elementy charakterystyczne, ruch).
+- **Jak to stosować** — ten dokument.
+- Wersja 1.0 ustaliła fundamenty i komponenty; wersja 2.0 nadała im tożsamość
+  (kroje, warstwy, kolor „teraz / ryzyko”, rzędna, profil, inspektor).
 
 Kolejność priorytetów przy każdej decyzji:
 **czytelność → intuicyjność → szybkość pracy → hierarchia → spójność → dostępność → estetyka → wrażenie premium.**
-Estetyka nigdy nie wygrywa z pierwszymi sześcioma.
 
-## 1. Kierunek wizualny: „spokojna precyzja”
+## 1. Fundamenty — `styles/tokens.css`
 
-Narzędzie pracy biura projektowego, w którym spędza się cały dzień. Dlatego:
+Jedyne miejsce z wartościami. Każda barwa ma postać `light-dark(jasny, ciemny)`;
+motyw wybiera `color-scheme` (`data-theme="light|dark"` albo ustawienie systemu).
 
-- **Treść jest bohaterem.** Chrom aplikacji (panel boczny, pasek górny) jest jasny,
-  płaski i cichy. Kolor pojawia się tam, gdzie niesie informację.
-- **Jeden akcent, użyty oszczędnie.** Akcent oznacza *interakcję i bieżące miejsce*
-  (główny przycisk, fokus, aktywna zakładka, zaznaczenie). **Nigdy stan.**
-- **Stan ma własny język:** ikona o kształcie stanu + nazwa + barwa semantyczna.
-  Kształt wystarcza, gdy kolor nie jest widoczny.
-- **Gęstość zamiast kart.** Tabele, wiersze i listy z cienkimi podziałami.
-  Karta jest kontenerem, nie dekoracją.
-- **Bez gradientów, szkła i dużych cieni.** Elewację buduje obrys + subtelny cień.
-- **Ruch tłumaczy zmianę** (skąd przyszło, co się zmieniło) i trwa 80–260 ms.
+### Warstwy
 
-## 2. Fundamenty — `styles/tokens.css`
+| Token | Rola |
+|---|---|
+| `--canvas` | kalka: tło okna i panelu nawigacji |
+| `--sheet` | arkusz roboczy |
+| `--wash`, `--wash-2` | ton w arkuszu: grupy, nagłówek projektu, kokpit, wnęki |
+| `--raised` | arkusz pływający: inspektor, menu, okna |
+| `--hover`, `--pressed` | stany interakcji |
+| `--inverse`, `--on-inverse` | podpowiedzi, powiadomienia, pasek akcji zbiorczych |
+| `--backdrop` | przyciemnienie pod oknem modalnym |
 
-Jedyne miejsce z wartościami. Każdy kolor ma postać `light-dark(jasny, ciemny)`,
-więc motyw ciemny nie jest osobnym arkuszem — jest drugą połową tej samej deklaracji.
-Motyw wybiera `color-scheme` (`data-theme="light|dark"` albo ustawienie systemu).
+### Tusz (struktura i rzeczy zakończone)
 
-### Kolor — role semantyczne
+`--ink` (tekst główny, przycisk główny, zaznaczenie) · `--ink-2` (opis) ·
+`--ink-3` (metadane, ≥ 4,5:1 na każdej warstwie) · `--ink-4` (tylko dekoracja) ·
+`--ink-hover`, `--on-ink` · `--done` (zakończone odcinki i węzły).
 
-| Rola | Token | Zastosowanie |
-|---|---|---|
-| Tło aplikacji | `--bg-canvas` | panel boczny, tło za treścią |
-| Powierzchnia | `--bg-surface` | treść strony, tabele, karty |
-| Powierzchnia uniesiona | `--bg-raised` | menu, okna, panel boczny formularza |
-| Powierzchnia wtórna | `--bg-subtle` | nagłówek tabeli, rozwinięty wiersz |
-| Najechanie / wciśnięcie / zaznaczenie | `--bg-hover`, `--bg-pressed`, `--bg-selected` | stany interakcji |
-| Odwrócona | `--bg-inverse` | powiadomienia, podpowiedzi, pasek akcji zbiorczych |
-| Linie | `--border-subtle`, `--border`, `--border-strong`, `--border-control` | podział, krawędź kontenera, hover, krawędź pola (≥ 3:1) |
-| Tekst | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-disabled` | treść, opis, metadane, nieaktywne |
-| Akcent | `--accent`, `--accent-hover`, `--accent-fill`, `--accent-soft`, `--accent-ring`, `--on-accent` | interakcja |
-| Stany | `--success`, `--warning`, `--danger`, `--info`, `--review`, `--neutral` + `-soft` | znaczenie |
+### Kolor „teraz” i „ryzyko”
 
-Warianty akcentu (`data-accent`): **standard** (malinowy ETROM), **hydro** (morski),
-**graphite** (grafit). Zmieniają tylko akcent — stany zostają.
+| Rola | Znacznik (≥ 3:1) | Tekst (≥ 4,5:1) | Tło |
+|---|---|---|---|
+| Nurt — w toku | `--flow` | `--flow-ink` | `--flow-wash` |
+| Stan ostrzegawczy | `--warn` | `--warn-ink` | `--warn-wash` |
+| Stan alarmowy | `--alarm` | `--alarm-ink` | `--alarm-wash` |
+| Do zatwierdzenia | `--review` | `--review` | `--review-wash` |
 
-Kontrast jest sprawdzany automatycznie: `tests/tokens.test.js` liczy WCAG dla
-każdej pary tekst/tło w obu motywach i w każdym wariancie akcentu. Zmiana
-palety, która pogorszy czytelność, nie przejdzie testów.
+Warianty barwy „teraz” (`data-accent`): **standard** (nurt), **graphite**, **raspberry**.
+Zmieniają tylko nurt — tusz i stany ryzyka zostają.
+
+Kontrast sprawdza `tests/tokens.test.js` w obu motywach i każdym wariancie.
+
+### Linie
+
+`--line` (podział wewnątrz arkusza) · `--line-strong` · `--control-line` (krawędź pól, ≥ 3:1) ·
+`--track`, `--track-done` (profil przebiegu).
+Linia jest wyjątkiem: najpierw ton, odstęp i typografia.
 
 ### Typografia
 
-Krój systemowy (Segoe UI Variable na Windows) — aplikacja działa bez sieci.
-Bazowy rozmiar **14 px**. Liczby zawsze tabelaryczne (`font-variant-numeric: tabular-nums`).
+| Rola | Krój | Rozmiar | Gdzie |
+|---|---|---|---|
+| Tytuł ekranu | Display 600–700 | `--fs-3xl` 28 | Projekty, Zespół |
+| Nazwa projektu | Display | `--fs-4xl` 36 | nagłówek przestrzeni projektu |
+| Liczba kluczowa | Display, cyfry tabelaryczne | `--fs-5xl`–`--fs-6xl` 44–56 | kokpit, postęp w nagłówku |
+| Tytuł sekcji | Text 600 | `--fs-lg` 16 | sekcje, formularze |
+| Nazwa w wierszu | Text 600 | `--fs-row` 14 | projekty, osoby, etapy |
+| Tekst roboczy | Text 400 | `--fs-md` 13,5 | wiersze, menu, formularze |
+| Pomocniczy | Text | `--fs-sm` 13 | opisy, powody |
+| Metadane | Text | `--fs-meta` 11,5, `--ink-3` | kody, podpisy w tabelce |
+| Kod projektu | Text, `.code` | `--fs-meta`, tnum, przekreślone zero | wszędzie, gdzie stoi kod |
 
-| Rola | Klasa / token | Rozmiar / wysokość / grubość |
+`--font-display` = ETROM Display (Instrument Sans), `--font-text` = ETROM Text (Inter);
+oba osadzone w `styles/fonts.css` (generuje `tools/build-fonts.py`, licencje w `docs/licenses/`).
+Nagłówki zdaniem, nie wersalikami. Liczby przez `ETROM.Format` (polska odmiana).
+
+### Odstępy, promienie, elewacja, ruch
+
+- **Odstępy:** siatka 4 px, `--space-0-5` … `--space-16`.
+- **Promienie rosną ze skalą:** `--radius-xs` 4 (plakietki) · `--radius-sm` 7 (przyciski, pola, nawigacja) ·
+  `--radius-md` 10 (płaszczyzny, menu, okna) · `--radius-lg` 14 (arkusz, inspektor) · `--radius-full`.
+- **Elewacja:** `--elev-lift` (pozycja wzniesiona do arkusza) · `--elev-hover` · `--elev-sheet` (arkusz) ·
+  `--elev-pop` (menu) · `--elev-float` (inspektor, okna).
+- **Ruch:** `--duration-instant` 80 · `fast` 140 · `base` 200 · `slow` 300 ms;
+  `--ease-out` (wejście), `--ease-spring` (drobne „wyskoczenie” węzła, pola wyboru).
+  Ruch ciągły kończy się po kilku cyklach. `prefers-reduced-motion` zeruje czasy.
+
+## 2. Elementy charakterystyczne — `src/ui/signature.js` + `styles/signature.css`
+
+| Element | Funkcja | Zasady |
 |---|---|---|
-| Tytuł strony | `.t-page-title` | 20 / 28 / 600 |
-| Tytuł sekcji | `.t-section-title`, `.section__title` | 16 / 24 / 600 (w sekcjach treści 14 / 600) |
-| Tytuł elementu | `.t-title` | 14 / 20 / 500 |
-| Tekst | `.t-body` | 14 / 20 / 400 |
-| Tekst pomocniczy, tabele | `.t-secondary` | 13 / 18 |
-| Etykiety, nagłówki kolumn | `.t-label` | 12 / 16 / 500 |
-| Metadane | `.t-meta` | 12 / 16, `--text-tertiary` |
-| Wartość kluczowa (KPI) | `.t-kpi`, `.stat__value` | 20–24 / 600, tabelaryczne |
-| Kod projektu | `.t-mono` | krój monospace, 0,92 em |
+| Rzędna ▽ | `Sig.datum(level)` | `normal` / `warning` / `alarm` / `closed`; zawsze z powodem w słowach lub w podpowiedzi |
+| Profil przebiegu | `Sig.profile(project, {size})` | `micro` (wiersz), `card` (karta), `macro` (nagłówek); odcinki ∝ godzinom; `Sig.settle` animuje grot i liczbę |
+| Linijka czasu | `Sig.timeRuler(project)` | ta sama skala co profil; kreska „dziś”, bursztyn przy opóźnieniu, czerwień po terminie |
+| Oś etapów | klasy `.rail`, `.rail__node--*` | węzły: tusz/ptaszek, nurt/pierścień, pusty, czerwony pierścień |
+| Inspektor | `ETROM.Inspector.render` | zadanie, osoba, projekt; Escape zamyka i oddaje fokus |
 
-Nagłówki zdaniem, nie WERSALIKAMI. Daty skrócone (`12 paź`, rok tylko gdy inny niż bieżący),
-liczby przez `ETROM.Format` (polska odmiana: *1 projekt, 3 projekty, 5 projektów*).
-
-### Odstępy
-
-Siatka 4 px: `--space-0-5` (2) · `1` (4) · `1-5` (6) · `2` (8) · `2-5` (10) · `3` (12) · `4` (16) · `5` (20) · `6` (24) · `8` (32) · `10` (40) · `12` (48).
-Odstęp między sekcjami strony: 20–24 px. Wewnątrz komponentu: 8–12 px.
-
-### Promienie — trzy wartości i koło
-
-`--radius-sm` 4 px (plakietki, klawisze, pola wyboru) · `--radius-md` 6 px (przyciski, pola, pozycje menu) ·
-`--radius-lg` 8 px (kontenery, menu, okna, karty) · `--radius-full` (awatary, przełączniki).
-Test pilnuje, żeby nie pojawiła się czwarta wartość.
-
-### Rozmiary kontrolek
-
-`--control-sm` 28 px (akcje w wierszach) · `--control-md` 32 px (domyślne) · `--control-lg` 36 px.
-Wiersz tabeli `--row-height` 44 px. Ikony 14 / 16 / 20 px.
-
-### Elewacja
-
-| Poziom | Token | Gdzie |
-|---|---|---|
-| Treść | brak — obrys `--border-subtle` | tabele, listy, karty |
-| Przyklejone | `--elev-sticky` | pasek górny, nagłówek tabeli |
-| Uniesione | `--elev-raised` | przyciski z obrysem, karta po najechaniu |
-| Popover | `--elev-popover` | menu, ustawienia, podpowiedzi |
-| Modal | `--elev-modal` | okna, panel boczny, paleta |
-| Powiadomienie | `--elev-toast` | toasty, pasek akcji zbiorczych |
-
-### Ruch
-
-`--duration-instant` 80 ms (hover) · `fast` 120 ms (menu, fokus) · `base` 180 ms (okna, przejścia) · `slow` 260 ms (panel boczny, postęp).
-Krzywe `--ease-out` (wejście), `--ease-in` (wyjście). Przy `prefers-reduced-motion` wszystkie czasy = 0.
-Ruch występuje wyłącznie: przy zmianie ekranu (przenikanie treści), otwarciu okna/menu,
-zmianie wartości postępu (od poprzedniej do nowej) i podświetleniu zmienionego wiersza.
+Wnioski liczy `src/core/insight.js` (testy w `tests/insight.test.js`): stan projektu i powody,
+profil, harmonogram (opóźnienie wobec czasu), najbliższe zdarzenie, przegląd portfela,
+obciążenie osoby. Interfejs tylko to rysuje.
 
 ## 3. Komponenty — `src/ui/components.js` + `styles/components.css`
 
-Widoki **nie składają klas ręcznie**. Wołają funkcje `ETROM.UI.*`:
+Widoki nie składają klas ręcznie — wołają `ETROM.UI.*`:
 
 | Komponent | Funkcja | Uwagi |
 |---|---|---|
-| Button | `UI.button({label, variant, size, icon, kbd})` | warianty: `primary` (jeden na ekran), `secondary`, `tertiary`, `ghost`, `danger`, `danger-solid`; stan ładowania `aria-busy` |
-| Icon button | `UI.iconButton({icon, label})` | etykieta obowiązkowa — trafia do `aria-label` i podpowiedzi |
-| Input, Textarea, Select | `UI.input`, `UI.textarea`, `UI.select` | jedna wysokość 32 px, fokus = obrys akcentu + poświata |
-| Field | `UI.field({id, label, control, required, optional, hint, error})` | gwiazdka dla wymaganych, „opcjonalnie” dla opcjonalnych, błąd z ikoną, `aria-describedby` i `aria-invalid` ustawiane automatycznie |
-| Checkbox, Radio | `UI.checkbox` / `.radio` | własny rysunek, natywne zachowanie, stan pośredni |
-| Switch | `UI.switchControl` | `role="switch"`, zmiana działa od razu |
-| Search | `UI.searchInput({kbd: '/'})` | ikona, skrót znika po wpisaniu |
-| Segmented | `UI.segmented` | przełącznik widoku, motywu, filtra zakładki |
-| Status | `UI.status(scope, key)` | ikona kształtu + nazwa; `scope`: `project`, `stage`, `task` |
-| Status do zmiany | `UI.statusButton` | wygląda jak status, działa jak przycisk (cykl albo menu) |
-| Badge | `UI.badge(text, tone)` | tony: `info`, `success`, `warning`, `danger`, `review`, `accent`; `outline` dla odnośników |
-| Termin | `UI.due(value, info)` | zwykły tekst; kolor i ikona tylko przy przekroczeniu lub < 7 dniach |
-| Postęp | `UI.progress(percent)` | grafit; zielony dopiero przy 100%; `role="progressbar"` |
-| Avatar | `ETROM.Avatar.avatar` / `avatarStack` | barwa z identyfikatora osoby, stos z licznikiem |
-| Tooltip | atrybut `data-tooltip` | `ETROM.Tooltip`: najechanie z opóźnieniem, fokus klawiatury od razu |
-| DropdownMenu | `ETROM.Menu.bind(button, build)` | `role="menu"`, strzałki, Home/End, pierwsza litera, Escape zwraca fokus; pozycje `radio`/`checkbox` |
-| Popover | `ETROM.Menu.open({anchor, content})` | panel z dowolną treścią (ustawienia) |
-| Tabs | `UI.tabs` | zakładki jako linki — adres zmienia się razem z widokiem |
-| Breadcrumb | `UI.breadcrumb` | w pasku górnym |
-| Modal | `Dialog.confirm`, `Dialog.prompt` | tylko dla czynności nieodwracalnych i pytań wymagających treści |
-| Drawer | `Dialog.openDrawer` + `Dialog.drawerForm` | wszystkie formularze; przyklejona stopka z akcjami, `Ctrl+Enter` zapisuje |
-| Toast | `Toast.show({message, tone, actionLabel, onAction})` | „Cofnij” zamiast „Czy na pewno?”; wstrzymanie po najechaniu |
-| Alert | `UI.alert({tone, text})` | komunikat w treści strony |
-| Table | klasy `.table-wrap`, `.table`, `.table__sort` | przyklejony nagłówek, sortowanie z nagłówka, zaznaczanie, akcje wiersza w menu |
-| Bulk bar | `.bulkbar` | pojawia się po zaznaczeniu wierszy |
-| Pagination | `UI.pagination` | powyżej 50 pozycji |
-| Skeleton | `UI.skeleton` | stan ładowania |
-| EmptyState | `UI.emptyState({icon, title, text, actions})` | co tu będzie, dlaczego pusto, następny krok |
-| PageHeader | `UI.pageHeader` | tytuł, opis z liczbami, akcje |
-| Toolbar / FilterBar | `.toolbar`, `.filter-btn` | filtr pokazuje bieżącą wartość; aktywny ma pełny obrys |
-| Card, Section | `.card`, `.section` | kontener i sekcja z nagłówkiem |
-
-### Ikony
-
-Jeden zestaw w `src/ui/icons.js`: siatka 24, kontur 1,6, zaokrąglone końce.
-Ikona wspiera tekst. Ikona bez tekstu = `UI.iconButton` z etykietą i podpowiedzią.
-
-### Status — słownik kształtów
-
-| Kształt | Znaczenie | Ton |
-|---|---|---|
-| ◌ koło przerywane | Przygotowanie | neutralny |
-| ○ puste koło | Do wykonania | neutralny |
-| ◐ półkole | W toku / W realizacji | info |
-| ◕ trzy czwarte | Do zatwierdzenia | review |
-| ⓘ koło z wykrzyknikiem | Do poprawy | warning |
-| ⏸ koło z pauzą | Wstrzymany | warning |
-| ● z ptaszkiem | Zakończony | success |
+| Button | `UI.button({label, variant, size, icon, kbd})` | `primary` (tusz, jeden na ekran), `secondary`, `tertiary`, `ghost`, `danger`, `danger-solid`; rozmiary `sm` / `lg` |
+| Icon button | `UI.iconButton({icon, label})` | etykieta obowiązkowa — `aria-label` + podpowiedź |
+| Pola | `UI.input`, `UI.textarea`, `UI.select`, `UI.checkbox`, `UI.switchControl`, `UI.searchInput` | jedna wysokość, fokus = obrys nurtu |
+| Field | `UI.field({id, label, control, required, optional, hint, error})` | gwiazdka, „opcjonalnie”, błąd z ikoną, `aria-describedby` / `aria-invalid` |
+| Status | `UI.status`, `UI.statusButton`, `UI.statusGlyph` | koło o kształcie stanu + nazwa; ton `flow` dla pracy w toku, `done` (tusz) dla zakończonej |
+| Badge | `UI.badge(text, tone)` | drobna etykieta |
+| Termin | `UI.due(value, info)` | kolor i ikona tylko przy przekroczeniu lub pilnym terminie |
+| Segmented, Tabs, Breadcrumb | `UI.segmented`, `UI.tabs`, `UI.breadcrumb` | zakładki to linki z adresem; wskaźnik przesuwa się przejściem |
+| PageHeader, EmptyState, Alert, Skeleton, Pagination | `UI.pageHeader`, `UI.emptyState`, `UI.alert`, `UI.skeleton`, `UI.pagination` | pusty stan: co tu będzie, dlaczego pusto, następny krok |
+| Menu i popover | `ETROM.Menu.bind` / `open` | strzałki, Home/End, pierwsza litera, Escape oddaje fokus |
+| Tooltip | atrybut `data-tooltip` | fokus klawiatury pokazuje od razu |
+| Okna | `Dialog.confirm`, `Dialog.prompt`, `Dialog.openDrawer` + `Dialog.drawerForm` | formularze w panelu z przyklejoną stopką, `Ctrl+Enter` zapisuje |
+| Toast | `Toast.show({message, tone, actionLabel, onAction})` | „Cofnij” zamiast „Czy na pewno?” |
 
 ## 4. Szkielet i nawigacja
 
-- **Panel boczny (240 px):** znak, wyszukiwanie (`Ctrl K`), sekcje (Projekty, Zespół) z licznikami,
-  skróty do projektów *w realizacji* (z ostrzeżeniem po terminie), na dole „Ustawienia i dane”.
-  Ustawienia i operacje na danych nie stoją obok nawigacji — są w jednym menu.
-- **Pasek górny (48 px):** ścieżka (breadcrumb), stan zapisu. Przyklejony, półprzezroczysty.
-- **Adresy:** `#/projekty`, `#/projekty/:id`, `#/projekty/:id/zadania`, `#/projekty/:id/zespol`, `#/zespol`.
-  Działa Wstecz, odświeżenie i link do konkretnego projektu. Po zmianie ekranu fokus trafia na nagłówek `h1`.
-- **Strona:** maks. 1440 px treści, margines 32 / 24 / 16 px zależnie od szerokości.
+- **Panel boczny na kalce** (240 px, zwijany do 56 px klawiszem `[`, stan zapamiętany):
+  przełącznik przestrzeni ETROM, Szukaj (`Ctrl K`), Utwórz (`+`), Projekty i Zespół z licznikami
+  (przy Projektach liczba stanów alarmowych), **Przypięte** i **Ostatnio otwierane** projekty
+  ze znakiem rzędnej, na dole stan zapisu i skróty.
+- **Arkusz roboczy** uniesiony nad kalką; pasek górny ze ścieżką i działaniami kontekstowymi
+  (przypnij, edytuj, więcej) przykleja się podczas przewijania.
+- **Adresy:** `#/projekty`, `#/projekty/:id`, `…/zadania`, `…/zespol`, `#/zespol`.
+- **Inspektor** pływa nad arkuszem po prawej, nie zmienia adresu ani przewinięcia.
 
 ## 5. Wzorce interakcji — od najlżejszego
 
-1. **Podpowiedź** — wyjaśnienie ikony, pełna data, pełna nazwa.
-2. **Menu** — wybór z listy: status, filtr, sortowanie, akcje wiersza.
-3. **Rozwinięcie w miejscu** — zadania etapu pod wierszem.
-4. **Panel boczny (drawer)** — każdy formularz tworzenia i edycji; kontekst strony zostaje widoczny.
-5. **Okno modalne** — tylko pytanie wymagające decyzji lub treści (usunięcie wszystkich danych, powód zwrotu do poprawy).
-6. **Pełny widok** — szczegóły projektu z zakładkami.
+1. **Podpowiedź** — pełna data, nazwa etapu w profilu, powód stanu.
+2. **Menu** — status, filtr, sortowanie, akcje wiersza.
+3. **Rozwinięcie w miejscu** — zadania etapu (bieżący etap otwarty sam).
+4. **Inspektor** — podgląd zadania, osoby, projektu bez opuszczania miejsca.
+5. **Panel boczny (drawer)** — każdy formularz tworzenia i edycji.
+6. **Okno modalne** — tylko decyzja nieodwracalna albo pytanie o treść.
+7. **Pełny widok** — przestrzeń projektu.
 
-Zasady stałe:
-- **Jeden przycisk główny na ekranie.** Przy pustym stanie główną akcję przejmuje pusty stan.
-- **Rzadkie i ryzykowne akcje w menu „…”,** nie na stałe w wierszu.
-- **Usunięcie bez pytania, z „Cofnij”.** Pytanie tylko tam, gdzie cofnąć się nie da.
-- **Akcje wiersza** widoczne po najechaniu lub fokusie (na ekranach dotykowych zawsze).
-- **Przerysowanie nie gubi fokusu** — elementy z `data-fk` odzyskują fokus (`Dom.patch`).
+Zasady stałe: jeden przycisk główny na ekranie; rzadkie i ryzykowne akcje w menu „…”;
+usunięcie od razu, z „Cofnij”; dane zmieniają się natychmiast, animacja tylko to pokazuje;
+przerysowanie nie gubi fokusu (`data-fk`, `Dom.patch`).
 
-### Skróty klawiszowe
+### Skróty
 
-`Ctrl K` paleta · `N` nowy projekt / nowa osoba · `E` edycja projektu · `/` wyszukiwarka ·
-`Esc` zamyka menu, panel, okno, odznacza wiersze · `Ctrl Enter` zapisuje formularz · strzałki w menu i palecie.
+`Ctrl K` paleta · `N` nowy projekt / osoba · `E` edycja projektu · `/` wyszukiwarka ·
+`Spacja` na projekcie — podgląd · `G P` / `G Z` — Projekty / Zespół · `[` panel boczny ·
+`?` lista skrótów · `Esc` zamyka inspektor, menu, panel, okno, odznacza ·
+`Ctrl Enter` zapisuje formularz.
 
 ## 6. Informacja zwrotna
 
 | Sytuacja | Wzorzec |
 |---|---|
-| Zapis | stan w pasku górnym („Zapisano” / „Zapis niedostępny”) |
-| Sukces po formularzu | toast `success`, krótki |
+| Zapis | „Zapisano lokalnie” na dole panelu; ptaszek rysuje się przy każdym zapisie |
+| Sukces po formularzu | toast `success` |
 | Usunięcie, zmiana zbiorcza | toast z „Cofnij” |
-| Odmowa (reguła modelu) | toast `danger` z powodem i drogą wyjścia |
-| Błąd pola | pod polem, z ikoną, fokus na pierwszym błędnym polu |
-| Pusto | `EmptyState` z następnym krokiem |
-| Brak wyników filtra | `EmptyState` z „Wyczyść filtry” |
-| Ładowanie | `Skeleton` |
+| Odmowa reguły | toast `danger` z powodem i wyjściem |
+| Błąd pola | pod polem, fokus na pierwszym błędnym |
+| Ryzyko w projekcie | rzędna + powód w wierszu, w kokpicie i w panelu stanu projektu |
+| Pusto / brak wyników | `EmptyState` z następnym krokiem |
 
 ## 7. Responsywność
 
-Układ zmienia się, a nie tylko zmniejsza. Kolumny tabel i wierszy chowają się
-według **szerokości obszaru treści** (container queries), nie okna:
-
-- ≥ 64 rem treści: pełna tabela.
-- 48–64 rem: bez kolumny Zespół, potem bez Zamawiającego.
-- < 48 rem: bez Etapów i Zadań, postęp jako liczba.
-- < 40 rem: nazwa, status jako ikona, termin; panel boczny wysuwany, formularze na całą szerokość.
+Układ zmienia się według szerokości **obszaru treści** (container queries):
+pełne kolumny na monitorze, mniej kolumn na laptopie, na telefonie panel boczny
+wysuwany, kokpit w jednej kolumnie, nagłówek projektu z faktami w dwóch kolumnach,
+formularze na całą szerokość.
 
 ## 8. Dostępność (WCAG 2.2 AA)
 
-- Kontrast tekstu ≥ 4,5:1, krawędzi pól ≥ 3:1 — sprawdzane testem w obu motywach.
-- Stan nigdy tylko kolorem: kształt ikony + nazwa.
-- Pełna obsługa klawiaturą; widoczny pierścień fokusu tylko dla klawiatury (`:focus-visible`).
-- Semantyka: `nav`, `main`, `header`, nagłówki w kolejności, `aria-current` w nawigacji i zakładkach,
-  `aria-sort` w tabeli, `aria-expanded` w rozwinięciach i menu, `role="progressbar"`, `role="switch"`.
-- Etykieta dla każdego pola i każdej ikony; błędy powiązane przez `aria-describedby`.
-- Cele dotyku ≥ 24 px (WCAG 2.5.8), domyślnie 32 px.
-- Link „Przejdź do treści”, `prefers-reduced-motion` respektowane.
+- Kontrast tekstu ≥ 4,5:1, znaczników i krawędzi pól ≥ 3:1 — sprawdzane testem.
+- Stan nigdy tylko kolorem: kształt rzędnej i koła statusu + słowa.
+- Pełna obsługa klawiaturą, `:focus-visible`, fokus wraca po zamknięciu inspektora, menu, okna.
+- `aria-current` w nawigacji i zakładkach, `aria-sort`, `aria-expanded`, `role="switch"`,
+  opis profilu przebiegu dla czytnika ekranu.
+- `prefers-reduced-motion` respektowane, ruch ciągły kończy się sam.
 
-## 9. Mikrocopy
+## 9. Jak dodać nowy ekran
 
-- Czasowniki w przyciskach: *Utwórz projekt, Zapisz zmiany, Dodaj zadanie*.
-- Dopełnienie przy niszczących: *Usuń wszystkie dane…*, nie „Wyczyść”.
-- Wielokropek „…” = akcja otworzy okno lub panel z dalszym wyborem.
-- Liczby odmienione: *3 projekty*, *5 osób*. Bez „projekty: 3”.
-- Komunikat odmowy mówi **dlaczego** i **co zrobić**.
-
-## 10. Jak dodać nowy ekran
-
-1. Struktura: `UI.pageHeader` → `.toolbar` → treść (`.table-wrap`, `.list`, `.card`).
-2. Każdy kolor, odstęp, promień i cień z tokenów. Nowa wartość = zmiana `tokens.css` i tego dokumentu.
-3. Stan przez `UI.status`, termin przez `UI.due`, liczby przez `ETROM.Format`.
-4. Formularz w panelu: `Dialog.drawerForm` + `UI.field`.
-5. Pusty stan, brak wyników i błąd — zaprojektowane, nie domyślne.
-6. Zrzuty w `tools/screenshot.js` przy 1440, 1024 i 390 px, w obu motywach, i sprawdzenie w `tests/browser/smoke.js`.
+1. Struktura: tytuł krojem Display → zdanie z liczbami → kokpit lub pasek narzędzi → treść.
+2. Kolor tylko dla „teraz” i „ryzyka”. Wszystko inne tuszem i tonem.
+3. Stan projektu przez `Sig.datum`, postęp przez `Sig.profile`, statusy przez `UI.status`.
+4. Formularz w panelu (`Dialog.drawerForm` + `UI.field`), podgląd w inspektorze.
+5. Puste stany, brak wyników i błędy zaprojektowane.
+6. Zrzuty w `tools/screenshot.js` (1440 / 1024 / 390 px, oba motywy) i sprawdzenie w `tests/browser/smoke.js`.
+7. Pytania kontrolne z [ART_DIRECTION.md](ART_DIRECTION.md).
