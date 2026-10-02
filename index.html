@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles/flow.css">
   <link rel="stylesheet" href="styles/layout.css">
   <link rel="stylesheet" href="styles/views.css">
+  <link rel="stylesheet" href="styles/portfolio.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -52,11 +53,15 @@
                 </button>
               </div>
             </header>
-            <section class="cockpit" id="portfolio" aria-label="Stan portfela"></section>
-            <div class="list-block">
-              <div class="toolbar" id="filters" role="search" aria-label="Filtry projektów"></div>
-              <div id="project-list"></div>
-              <div id="bulk-bar" class="bulk-slot"></div>
+            <div id="views-bar" class="pf-views-bar"></div>
+            <section class="pf-strip-wrap" id="portfolio" aria-label="Stan portfela"></section>
+            <div class="pf-layout">
+              <div class="list-block">
+                <div class="toolbar" id="filters" role="search" aria-label="Filtry projektów"></div>
+                <div id="project-list"></div>
+                <div id="bulk-bar" class="bulk-slot"></div>
+              </div>
+              <aside class="pf-rail" id="rail-wrap" aria-label="Najbliższe terminy"><div id="rail"></div></aside>
             </div>
           </section>
 

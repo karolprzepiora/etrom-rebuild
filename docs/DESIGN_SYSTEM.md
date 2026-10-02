@@ -107,21 +107,19 @@ w awatarze). Elegancji nie osiąga się zmniejszaniem — tylko odstępem, grubo
 | Rzędna ▽ | `Sig.datum(level)` | `normal` / `warning` / `alarm` / `closed`; zawsze z powodem w słowach lub w podpowiedzi |
 | Oś etapów | klasy `.rail`, `.rail__node--*` | węzły: tusz/ptaszek, nurt/pierścień, pusty, czerwony pierścień |
 | Inspektor | `ETROM.Inspector.render` | zadanie, osoba, projekt; Escape zamyka i oddaje fokus |
-| Kokpit portfela | `ProjectList.cockpit(projects, ctx)` | każda liczba, stan i termin jest przyciskiem: filtruje listę albo otwiera projekt / etap |
+| Widoki listy | `ProjectList.views(projects, ctx)` | zakładki z licznikami: Wszystkie, Moje, Wymaga uwagi, Po terminie, Zakończone + własne (`prefs.customViews`, do 6); wybór w `prefs.projectView` |
+| Pasek stanu | `ProjectList.strip` | cienki pasek: wymaga uwagi / w normie / zakończone + godziny; kolor czerwony tylko dla „wymaga uwagi” |
+| Panel terminów | `ProjectList.rail` | `Insight.dueItems`: zadania, odpowiedzi na pisma, terminy umów; Po terminie / Ten tydzień / Później |
+| Postęp wobec planu | `.pf-meter` | pasek 6 px z kreską planu; kolor tylko przy zaległości (bursztyn ≥ 15 p.p., czerwień ≥ 30 p.p.) |
 
-#### Kokpit jako narzędzie
+#### Zasady listy projektów
 
-| Element kokpitu | Działanie |
-|---|---|
-| Liczba „wymagają uwagi” | filtr `health: attention` (stan ostrzegawczy + alarmowy); ponownie — zdejmuje |
-| Pozycja projektu z powodem | otwiera projekt |
-| Pozycja legendy „Stan portfela” | filtr `health: <poziom>`; pozostałe odcinki paska bledną |
-| „Pokaż N projektów” przy terminach | filtr `horizon: 60` (termin umowy lub etapu w 60 dniach), sortowanie po terminie |
-| Znacznik na osi, pozycja terminu | otwiera projekt, a dla etapu — przewija do etapu i go rozwija |
-
-Zawężenie z kokpitu pojawia się w pasku filtrów jako zdejmowalny znacznik (`#tb-scope`)
-i jest zwykłym filtrem `Query.filterAndSort` (`health`, `horizon`, testy w `tests/query.test.js`).
-Stan aktywny: `aria-pressed="true"` i obrys tuszem.
+- Kolor tylko dla wyjątków: czerwony i bursztynowy wyłącznie dla tego, co wymaga reakcji; reszta w tuszu i szarościach.
+- Wiersz: nazwa, pod nią kod i jedna linia powodu (dla projektów wymagających uwagi) albo zamawiający.
+- Edycja w komórce: klik w lidera otwiera wybór osoby; zmiana jest od razu zapisywana (z „Cofnij”).
+- Gęstość: `prefs.density` → `data-density` na `<html>`, zmienne `--row-h`, `--row-pad`.
+- Język: „zaległość 12 p.p. wobec planu” z objaśnieniem w podpowiedzi, a nie sam skrót.
+- Filtr `health: overdue` (`Query`) to projekty z czymkolwiek po terminie: umowa, zadanie albo odpowiedź na pismo (`Insight.hasOverdue`).
 
 Miernik, tor przebiegu, poziom i znaczniki to **ETROM Flow System** (sekcja 2a).
 

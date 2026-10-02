@@ -279,37 +279,54 @@ async function main() {
     await openMenu('#tb-sort', 'deadline');
     check('menu sortowania wraca do terminu', (await state('s.filters.sort')) === 'deadline');
 
-    /* 7a. Przegląd portfela jako narzędzie: kliknięcie zawęża listę */
-    await click('[data-fk="cockpit-attention"]');
+    /* 7a. Zapisane widoki listy: zakładki zawężają listę, wybór zostaje w ustawieniach */
+    await click('[data-fk="view-attention"]');
     await sleep(250);
     const attention = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(r => r.dataset.projectCode);');
-    check('„Wymagają uwagi” w kokpicie zawęża listę do projektów w stanie ostrzegawczym i alarmowym',
+    check('zakładka „Wymaga uwagi” zawęża listę do projektów w stanie ostrzegawczym i alarmowym',
       (await state('s.filters.health')) === 'attention' && attention.length > 0 && attention.length < 5
       && (await state('s.workspace.projects.filter(p => ' + JSON.stringify(attention) + '.includes(p.code)).every(p => ["alarm","warning"].includes(window.ETROM.Insight.health(p, new Date()).level))')),
       'kody: ' + attention.join(','));
-    check('zawężenie widać w pasku filtrów jako zdejmowalny znacznik',
-      await evaluate('const b = document.getElementById("tb-scope"); return !!b && !b.hidden && /Wymaga uwagi/.test(b.textContent) && document.querySelector(\'[data-fk="cockpit-attention"]\').getAttribute("aria-pressed") === "true";'));
-    await click('#tb-scope');
+    check('aktywna zakładka jest zaznaczona, licznik zgadza się z listą, a wybór trafia do ustawień',
+      await evaluate('const t = document.querySelector(\'[data-fk="view-attention"]\'); return t.getAttribute("aria-selected") === "true" && Number(t.querySelector(".pf-view__count").textContent) === ' + attention.length + ';')
+      && (await state('s.prefs.projectView')) === 'attention');
+    await click('[data-fk="view-done"]');
     await sleep(200);
-    check('zdjęcie znacznika przywraca pełną listę', (await cardCount()) === 5 && (await state('s.filters.health')) === 'all');
-    await click('[data-fk="mix-alarm"]');
+    check('zakładka „Zakończone” pokazuje tylko zakończone', (await cardCount()) === 1 && (await state('s.filters.health')) === 'closed');
+    await click('[data-fk="view-overdue"]');
     await sleep(200);
-    check('pozycja legendy stanu portfela filtruje listę po stanie', (await state('s.filters.health')) === 'alarm' && (await cardCount()) === 1);
-    await click('[data-fk="mix-alarm"]');
+    check('zakładka „Po terminie” pokazuje projekty z zaległością (umowa, zadanie albo pismo)',
+      (await state('s.filters.health')) === 'overdue' && (await cardCount()) >= 1
+      && (await state('s.workspace.projects.filter(p => window.ETROM.Insight.hasOverdue(p, new Date(), s.workspace.mail)).length')) === (await cardCount()));
+    await click('[data-fk="view-all"]');
     await sleep(200);
-    check('ponowne kliknięcie legendy zdejmuje filtr', (await cardCount()) === 5);
-    await click('[data-fk="cockpit-horizon"]');
+    check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 5 && (await state('s.filters.health')) === 'all');
+
+    /* 7b. Edycja w komórce: lider zmieniany bez wchodzenia w projekt */
+    const idLead = await projectId('DEMO-003');
+    const leaderBefore = await state('s.workspace.projects.find(p => p.id === ' + idLead + ').team.leader');
+    const otherPerson = await state('s.workspace.people.find(p => p.id !== ' + JSON.stringify(leaderBefore) + ' && p.active !== false).id');
+    await click('[data-fk="leader-' + idLead + '"]');
+    await sleep(150);
+    await pickMenu(otherPerson);
     await sleep(200);
-    check('„Najbliższe terminy” pokazują na liście projekty z terminem w 60 dniach',
-      (await state('s.filters.horizon')) === 60 && (await cardCount()) >= 1 && (await cardCount()) <= 5
-      && (await evaluate('return /Pokaż \\d+/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent) || /Pokaż wszystkie/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent);')));
-    await click('#tb-scope');
-    await sleep(200);
-    const upcomingInfo = await evaluate('const l = [...document.querySelectorAll(".upcoming__item")]; return l.length + ":" + (l[0] ? l[0].textContent : "");');
-    await evaluate('document.querySelector(".upcoming__item").click(); return true;');
+    check('klik w komórkę „Lider” zmienia lidera projektu bez otwierania projektu',
+      (await state('s.workspace.projects.find(p => p.id === ' + idLead + ').team.leader')) === otherPerson && (await evaluate('return location.hash;')) === '#/projekty');
+    await evaluate('window.ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.map(p => p.id === ' + idLead + ' ? Object.assign({}, p, { team: Object.assign({}, p.team, { leader: ' + JSON.stringify(leaderBefore) + ' }) }) : p) }) })); return true;');
+
+    /* 7c. Gęstość listy */
+    await evaluate('window.ETROM.app.actions.setPref({ density: "compact" }); return true;');
+    check('gęstość „Zwarta” ustawia atrybut na dokumencie i skraca wiersze',
+      await evaluate('return document.documentElement.getAttribute("data-density") === "compact" && getComputedStyle(document.documentElement).getPropertyValue("--row-h").trim() === "2.5rem";'));
+    await evaluate('window.ETROM.app.actions.setPref({ density: "comfortable" }); return true;');
+
+    check('panel terminów zbiera zadania, pisma i terminy umów z podziałem na okresy',
+      await evaluate('return document.querySelectorAll(".pf-rail__sec").length >= 1 && document.querySelectorAll(".pf-due-item").length >= 1;'));
+    const dueInfo = await evaluate('const l = [...document.querySelectorAll(".pf-due-item")]; return l.length + ":" + (l[0] ? l[0].textContent : "");');
+    await evaluate('document.querySelector(".pf-due-item").click(); return true;');
     await sleep(1500);
-    const hashAfter = (await evaluate('return location.hash;')) + ' | ' + upcomingInfo;
-    check('termin z kokpitu otwiera projekt na właściwym etapie', /^#\/projekty\/\d+/.test(hashAfter), hashAfter);
+    const hashAfter = (await evaluate('return location.hash;')) + ' | ' + dueInfo;
+    check('termin z panelu otwiera projekt', /^#\/projekty\/\d+/.test(hashAfter), hashAfter);
     await go('#/projekty');
 
     /* 8. Szczegóły projektu pod własnym adresem */
@@ -439,7 +456,7 @@ async function main() {
     await pickMenu('team');
     await pressKey('escape');
     check('ukrycie kolumny „Zespół” usuwa ją z tabeli',
-      await evaluate('return !document.querySelector("#project-list th.col-team") && !!document.querySelector("#project-list th.col-status");')
+      await evaluate('return !document.querySelector("#project-list th.col-team") && !!document.querySelector("#project-list th.col-hours");')
       && (await state('s.prefs.hiddenColumns.join(",")')) === 'team');
     check('Escape zamyka menu i oddaje fokus przyciskowi', await evaluate('return !document.querySelector(".popover") && document.activeElement.id === "tb-columns";'));
 
@@ -472,7 +489,7 @@ async function main() {
     /* 19. Widok kart, motyw, zapamiętanie */
     await click('.segmented__btn[aria-label="Widok kart"]');
     await sleep(450);
-    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .flow").length };');
+    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .pf-meter").length };');
     check('widok kart: karta i profil przebiegu na każdy projekt',
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === cardsCheck.cards, JSON.stringify(cardsCheck));
 
@@ -528,10 +545,8 @@ async function main() {
 
     /* 21a. Termin projektu zawsze z rokiem i licznikiem dni do końca */
     await go('#/projekty');
-    check('termin projektu na liście ma rok i licznik dni',
-      await evaluate('const cells = [...document.querySelectorAll(".deadline-cell")]; return cells.length > 0 && cells.every(c => /20\\d\\d/.test(c.querySelector(".stack__main").textContent) && !!c.querySelector(".countdown"));'));
-    check('licznik pokazuje liczbę dni do końca albo po terminie',
-      await evaluate('return [...document.querySelectorAll(".deadline-cell .countdown")].some(c => /\\d+\\s(dni|dzień)\\s(do końca|po terminie)|zamknięty|termin dzisiaj/.test(c.textContent));'));
+    check('najbliższy termin na liście ma datę i opis względny, a zaległy jest oznaczony',
+      await evaluate('const cells = [...document.querySelectorAll(".pf-due")]; return cells.length > 0 && cells.every(c => !!c.querySelector(".pf-due__date").textContent && /dziś|jutro|za \\d+ dni|po terminie/.test(c.querySelector(".pf-due__rel").textContent)) && cells.some(c => c.classList.contains("is-overdue"));'));
 
     /* 21b. Moja praca: wybór osoby, zadania według czasu, zatwierdzanie */
     await go('#/projekty');
@@ -873,14 +888,14 @@ async function main() {
     /* 38. Język wizualny: stan projektu, przebieg, inspektor */
     await go('#/projekty');
     check('wiersz projektu niesie znak stanu i profil przebiegu',
-      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".flow--mini");'));
+      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".pf-meter__plan");'));
     await evaluate('document.querySelector(\'[data-project-code="DEMO-001"] .project-link\').focus(); return true;');
     await pressKey('space');
     check('Spacja na projekcie otwiera podgląd w inspektorze bez opuszczania listy',
       (await state('s.inspector && s.inspector.kind')) === 'project' && (await evaluate('return location.hash;')) === '#/projekty');
     await pressKey('escape');
-    check('kokpit wskazuje projekty wymagające uwagi',
-      await evaluate('return !!document.querySelector(".cockpit") && /wymaga/.test(document.querySelector(".cockpit").textContent);'));
+    check('pasek stanu portfela wskazuje projekty wymagające uwagi',
+      await evaluate('return !!document.querySelector(".pf-strip") && /Wymaga uwagi/.test(document.querySelector(".pf-strip").textContent);'));
     await go('#/projekty/' + id2);
     check('nagłówek projektu pokazuje tor z bieżącym etapem i werdykt alarmowy',
       await evaluate('return !!document.querySelector(".flow--hero .flow__seg.is-current") && !!document.querySelector(".verdict--alarm");'));

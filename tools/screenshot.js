@@ -190,10 +190,10 @@ async function main() {
     await run('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
     await shoot('projekty');
 
-    await click('[data-fk="cockpit-attention"]');
-    await shoot('kokpit-filtr', { wait: 600 });
+    await click('[data-fk="view-attention"]');
+    await shoot('widok-wymaga-uwagi', { wait: 600 });
     await run('window.scrollTo(0, 0); document.querySelector(".sheet__scroll, .page") && (document.querySelector(".sheet__scroll") || document.querySelector(".page")).scrollTo(0, 0); return true;');
-    await click('#tb-scope');
+    await click('[data-fk="view-all"]');
     await sleep(200);
 
     await theme('dark');

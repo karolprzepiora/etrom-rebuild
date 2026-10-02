@@ -10,6 +10,7 @@
   var Progress = node ? require('./progress.js') : root.ETROM.Progress;
   var Tasks = node ? require('./tasks.js') : root.ETROM.Tasks;
   var Team = node ? require('./team.js') : root.ETROM.Team;
+  var Mail = node ? require('./mail.js') : root.ETROM.Mail;
 
   var DAY_MS = 86400000;
 
@@ -430,6 +431,45 @@
     return { counts: counts, byLevel: byLevel, upcoming: upcoming, horizon: limit, hoursDone: hoursDone, hoursTotal: hoursTotal, total: (projects || []).length };
   }
 
+
+  /**
+   * Terminy do pilnowania w jednym zestawieniu: zadania, odpowiedzi na pisma i terminy umów.
+   * Pozycje po terminie mają ujemne `days`. Zakończone projekty i zadania pomijane.
+   * @returns {Array<{kind:'task'|'mail'|'project', date:string, days:number, project:Object, label:string, overdue:boolean, ref:Object}>}
+   */
+  function dueItems(projects, mail, now, horizon) {
+    var reference = now instanceof Date ? now : new Date();
+    var limit = horizon || 60;
+    var out = [];
+    function push(kind, date, project, label, ref) {
+      var days = Progress.daysUntil(String(date || '').slice(0, 10), reference);
+      if (days === null || days > limit) return;
+      out.push({ kind: kind, date: String(date).slice(0, 10), days: days, project: project, label: label, overdue: days < 0, ref: ref });
+    }
+    (projects || []).forEach(function (project) {
+      if (project.status === 'done') return;
+      if (project.deadline) push('project', project.deadline, project, 'Termin umowy', {});
+      allTasks(project).forEach(function (entry) {
+        if (entry.task.status === 'done' || !entry.task.deadline) return;
+        push('task', entry.task.deadline, project, entry.task.name, { stage: entry.stage, task: entry.task });
+      });
+      Mail.pending(mail || [], project.id, reference).forEach(function (x) {
+        push('mail', x.entry.replyDue, project, 'Odpowiedź: ' + (x.entry.subject || 'pismo'), { entry: x.entry });
+      });
+    });
+    out.sort(function (a, b) { return a.days - b.days || (a.kind < b.kind ? -1 : 1); });
+    return out;
+  }
+
+  /** Czy projekt ma coś po terminie: umowę, zadanie albo odpowiedź na pismo. */
+  function hasOverdue(project, now, mail) {
+    if (!project || project.status === 'done') return false;
+    var reference = now instanceof Date ? now : new Date();
+    if (Progress.isOverdue(project)) return true;
+    if (allTasks(project).some(function (e) { return Tasks.isOverdue(e.task, reference); })) return true;
+    return Mail.pending(mail || [], project.id, reference).some(function (x) { return x.reply.state === 'overdue'; });
+  }
+
   /**
    * Obciążenie osoby: otwarte zadania (jej udział niedomknięty), zadania po terminie,
    * czynne projekty i pełnione funkcje.
@@ -620,6 +660,8 @@
     nextEvent: nextEvent,
     budgetByKind: budgetByKind,
     portfolio: portfolio,
+    dueItems: dueItems,
+    hasOverdue: hasOverdue,
     workload: workload,
     myWork: myWork
   };

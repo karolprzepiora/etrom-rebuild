@@ -21,15 +21,11 @@
 
   // Kolumny, które można ukryć w opcjach widoku (klucze zgodne z Prefs.COLUMNS).
   var COLUMNS = [
-    { key: 'code', label: 'Kod', sort: 'code' },
-    { key: 'name', label: 'Projekt', sort: 'name' },
-    { key: 'client', label: 'Zamawiający', optional: true },
-    { key: 'status', label: 'Status' },
-    { key: 'progress', label: 'Przebieg', sort: 'progress', optional: true },
-    { key: 'stages', label: 'Bieżący etap', optional: true },
-    { key: 'tasks', label: 'Zadania', optional: true, num: true },
-    { key: 'deadline', label: 'Termin', sort: 'deadline', optional: true },
-    { key: 'team', label: 'Zespół', optional: true }
+    { key: 'client', label: 'Zamawiający (pod nazwą)', optional: true },
+    { key: 'team', label: 'Lider', optional: true },
+    { key: 'progress', label: 'Postęp wobec planu', sort: 'progress', optional: true },
+    { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline', optional: true },
+    { key: 'tasks', label: 'Sygnały', optional: true }
   ];
 
   var SORT_DIRECTION = { code: 'ascending', name: 'ascending', deadline: 'ascending', progress: 'descending' };
@@ -82,41 +78,137 @@
     return btn;
   }
 
-  function tasksCell(project, now) {
-    var stats = Tasks.projectTaskStats(project, now);
-    if (!stats.total) return D.el('span', { class: 't-muted', text: '—', attrs: { 'aria-label': 'Brak zadań' } });
-    return D.el('span', {
-      class: 'tasks-count' + (stats.overdue ? ' tasks-count--alert' : ''),
-      attrs: {
-        'data-tooltip': F.count(stats.open, 'otwarte zadanie', 'otwarte zadania', 'otwartych zadań') + ' z ' + stats.total + (stats.overdue ? ', po terminie ' + stats.overdue : ''),
-        'aria-label': 'Otwarte zadania: ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
-      }
-    }, [
-      D.el('span', { class: 'tasks-count__open', text: String(stats.open) }),
-      stats.overdue ? D.el('span', { class: 'tasks-count__late' }, [Icons.icon('alertCircle', 12), D.el('span', { text: String(stats.overdue) })]) : null
-    ]);
+  /* ---------- Wspólne drobiazgi ---------- */
+
+  function shortName(person) {
+    if (!person) return '';
+    var last = String(person.lastName || '').trim();
+    return String(person.firstName || '').trim() + (last ? ' ' + last.charAt(0) + '.' : '');
   }
 
-  function deadlineCell(project, now) {
-    if (!project.deadline) return D.el('span', { class: 'due due--none', text: 'Bez terminu' });
-    var info = Progress.deadlineInfo(project.deadline, now);
-    var done = project.status === 'done';
-    var tone = done ? '' : (info.tone === 'overdue' ? 'is-overdue' : (info.tone === 'urgent' ? 'is-urgent' : ''));
-    return D.el('div', {
-      class: 'stack deadline-cell ' + tone,
-      attrs: { 'data-tooltip': 'Termin umowy: ' + F.dateLong(project.deadline) }
-    }, [
-      D.el('span', { class: 'stack__main t-num', text: F.date(project.deadline, { year: 'always' }) }),
-      D.el('span', { class: 'stack__sub' }, [UI.countdown(project.deadline, { done: done, now: now })])
-    ]);
+  function relDays(days) {
+    if (days === 0) return 'dziś';
+    if (days === 1) return 'jutro';
+    if (days === -1) return '1 dzień po terminie';
+    if (days < 0) return (-days) + ' dni po terminie';
+    return 'za ' + days + ' dni';
   }
 
-  function nameCell(project, hidden, health) {
-    var sub = [D.el('span', { class: 'code', text: project.code })];
-    if (hidden.indexOf('client') < 0 && project.client) sub.push(D.el('span', { class: 'truncate', text: project.client }));
-    if (health.level === 'alarm' || health.level === 'warning') {
-      sub = [D.el('span', { class: 'code', text: project.code }), D.el('span', { class: 'truncate reason reason--' + health.level, text: health.reasons[0].text })];
+  function mailList(ctx) {
+    return (ctx.state.workspace && ctx.state.workspace.mail) || [];
+  }
+
+  /** Najbliższy termin projektu: zadanie, odpowiedź na pismo albo termin umowy (zaległe pierwsze). */
+  function nearest(project, ctx, now) {
+    return Insight.dueItems([project], mailList(ctx), now, 3650)[0] || null;
+  }
+
+  /** Grupy listy: uwaga / w normie / zakończone zamiast czterech poziomów stanu. */
+  var GROUP_LABELS = { attention: 'Wymaga uwagi', normal: 'W normie', closed: 'Zakończone' };
+  function groupKey(project, groupBy, now) {
+    if (groupBy === 'status') return project.status;
+    if (groupBy === 'health') {
+      var level = Insight.health(project, now).level;
+      return level === 'alarm' || level === 'warning' ? 'attention' : level;
     }
+    return 'all';
+  }
+  GROUP_ORDER.health = ['attention', 'normal', 'closed'];
+
+  /** Pasek postępu z kreską planu: rzeczywisty postęp i ile powinno być zrobione dziś. */
+  function planMeter(gauge, level) {
+    var meter = D.el('span', { class: 'pf-meter' + (level ? ' pf-meter--' + level : ''), attrs: { 'aria-hidden': 'true' } }, [
+      D.el('span', { class: 'pf-meter__fill', style: { width: Math.max(0, Math.min(100, gauge.percent)) + '%' } }),
+      gauge.expected !== null ? D.el('span', { class: 'pf-meter__plan', style: { left: Math.max(0, Math.min(100, gauge.expected)) + '%' } }) : null
+    ]);
+    return meter;
+  }
+
+  function lagLevel(gauge) {
+    if (gauge.lag === null) return '';
+    return gauge.lag >= Insight.LAG_ALARM ? 'alarm' : (gauge.lag >= Insight.LAG_WARNING ? 'warning' : '');
+  }
+
+  function lagTip(gauge) {
+    if (gauge.expected === null) return 'Plan na dziś niedostępny: ustaw termin umowy.';
+    var lag = Math.round(gauge.lag);
+    return 'Zrobione ' + gauge.percent + '%, wg planu powinno być ' + Math.round(gauge.expected) + '%'
+      + (lag >= 1 ? ' — zaległość ' + lag + ' p.p. (punktów procentowych).' : '.');
+  }
+
+  function progressCell(project, now) {
+    var gauge = Insight.gauge(project, now);
+    var level = lagLevel(gauge);
+    var done = project.status === 'done';
+    return D.el('div', { class: 'pf-progress', attrs: { 'data-tooltip': done ? null : lagTip(gauge) } }, [
+      planMeter(gauge, done ? '' : level),
+      D.el('span', { class: 'pf-progress__num t-num' }, [
+        D.el('b', { text: gauge.percent + '%' }),
+        !done && gauge.expected !== null ? D.el('span', { class: 'pf-progress__plan' + (level ? ' is-' + level : ''), text: level ? '−' + Math.round(gauge.lag) + ' p.p.' : 'plan ' + Math.round(gauge.expected) + '%' }) : null
+      ])
+    ]);
+  }
+
+  function dueCell(project, ctx, now) {
+    if (project.status === 'done') return D.el('span', { class: 't-muted', text: '—' });
+    var item = nearest(project, ctx, now);
+    if (!item) return D.el('span', { class: 't-muted', text: 'Bez terminu' });
+    return D.el('div', { class: 'pf-due' + (item.overdue ? ' is-overdue' : ''), attrs: { 'data-tooltip': item.label } }, [
+      D.el('span', { class: 'pf-due__date t-num', text: F.date(item.date) }),
+      D.el('span', { class: 'pf-due__rel', text: relDays(item.days) })
+    ]);
+  }
+
+  function signalsCell(project, ctx, now) {
+    var stats = Tasks.projectTaskStats(project, now);
+    var waiting = E.Mail.pending(mailList(ctx), project.id, now);
+    var late = waiting.filter(function (x) { return x.reply.state === 'overdue'; }).length;
+    var parts = [];
+    if (stats.overdue) parts.push(D.el('span', { class: 'pf-sig is-alert', attrs: { 'data-tooltip': F.count(stats.overdue, 'zadanie', 'zadania', 'zadań') + ' po terminie' } }, [Icons.icon('alertCircle', 14), D.el('span', { class: 't-num', text: String(stats.overdue) })]));
+    if (waiting.length) parts.push(D.el('span', { class: 'pf-sig' + (late ? ' is-alert' : ''), attrs: { 'data-tooltip': 'Czeka na odpowiedź: ' + waiting.length + (late ? ' (po terminie: ' + late + ')' : '') } }, [Icons.icon('mail', 14), D.el('span', { class: 't-num', text: String(waiting.length) })]));
+    return parts.length ? D.el('div', { class: 'pf-sigs' }, parts) : D.el('span', { class: 't-muted', text: '—' });
+  }
+
+  function hoursCell(project) {
+    var stats = Progress.projectProgress(project);
+    return D.el('span', { class: 'pf-hours t-num', attrs: { 'data-tooltip': 'Godziny etapów zakończonych z budżetu projektu' } }, [
+      D.el('b', { text: F.number(stats.hoursDone) }),
+      D.el('span', { class: 't-muted', text: ' / ' + F.number(stats.hoursTotal) + ' h' })
+    ]);
+  }
+
+  /** Lider: klik w komórkę otwiera wybór osoby (edycja bez wchodzenia w projekt). */
+  function leaderCell(project, ctx) {
+    var person = Team.findPerson(ctx.people, project.team && project.team.leader);
+    var btn = D.el('button', {
+      class: 'pf-leader',
+      attrs: { type: 'button', 'aria-label': 'Lider projektu ' + project.code + ': ' + (person ? Team.fullName(person) : 'brak') + '. Zmień', 'data-fk': 'leader-' + project.id }
+    }, [
+      person ? Avatar.avatar(person, { size: 'xs', tooltip: false }) : D.el('span', { class: 'pf-leader__none', text: '+' }),
+      D.el('span', { class: 'truncate' + (person ? '' : ' t-muted'), text: person ? shortName(person) : 'Przypisz' })
+    ]);
+    if (ctx.actions.setLeader) {
+      Menu.bind(btn, function () {
+        var roster = ctx.people.filter(function (p) { return p.active !== false; }).sort(function (a, b) { return Team.fullName(a).localeCompare(Team.fullName(b), 'pl', { sensitivity: 'base' }); });
+        return {
+          label: 'Lider projektu ' + project.code,
+          items: roster.map(function (p) {
+            return { type: 'radio', label: Team.fullName(p), value: p.id, checked: person && person.id === p.id, leading: Avatar.avatar(p, { size: 'xs', tooltip: false }), onSelect: function () { ctx.actions.setLeader(project.id, p.id); } };
+          }).concat(roster.length ? [] : [{ type: 'note', label: 'Katalog osób jest pusty.' }])
+        };
+      });
+    }
+    return btn;
+  }
+
+  function reasonLine(project, health, hidden) {
+    if (health.level === 'alarm' || health.level === 'warning') {
+      return D.el('span', { class: 'truncate pf-reason pf-reason--' + health.level, text: health.reasons[0].text });
+    }
+    return D.el('span', { class: 'truncate', text: hidden.indexOf('client') < 0 ? (project.client || '') : '' });
+  }
+
+  function nameCell(project, health, hidden) {
     return D.el('div', { class: 'stack' }, [
       D.el('a', {
         class: 'project-link stack__main truncate',
@@ -124,27 +216,13 @@
         attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id },
         dataset: { projectTitle: project.id }
       }),
-      D.el('span', { class: 'stack__sub stack__sub--row' }, sub)
-    ]);
-  }
-
-  function progressCell(project, hidden, now) {
-    var stage = Progress.activeStage(project);
-    var stats = Progress.projectProgress(project);
-    return D.el('div', { class: 'stack progress-cell' }, [
-      D.el('div', { class: 'progress-cell__line' }, [
-        E.Flow.flowTrack(project, { size: 'mini', now: now }),
-        D.el('span', { class: 'progress-cell__value t-num', text: stats.percent + '%' })
-      ]),
-      hidden.indexOf('stages') < 0
-        ? D.el('span', { class: 'stack__sub truncate', text: stage ? (project.stages.indexOf(stage) + 1) + '/' + project.stages.length + ' ' + Model.describeStage(stage).name : (project.stages.length ? 'Wszystkie etapy zakończone' : 'Brak etapów') })
-        : null
+      D.el('span', { class: 'stack__sub stack__sub--row' }, [D.el('span', { class: 'code', text: project.code }), reasonLine(project, health, hidden)])
     ]);
   }
 
   function header(column, ctx) {
     var sort = ctx.state.filters.sort;
-    var className = UI.cx(column.num ? 'cell--num' : '', 'col-' + column.key);
+    var className = 'col-' + column.key;
     if (!column.sort) return D.el('th', { class: className, attrs: { scope: 'col' }, text: column.label });
     var active = sort === column.sort;
     return D.el('th', { class: className, attrs: { scope: 'col', 'aria-sort': active ? SORT_DIRECTION[column.sort] : null } }, [
@@ -157,15 +235,14 @@
     ]);
   }
 
-  /** Kolumny tabeli po uwzględnieniu ukrytych. Kod i zamawiający są w drugiej linii nazwy. */
   function visibleColumns(hidden) {
     return [
       { key: 'name', label: 'Projekt', sort: 'name' },
-      hidden.indexOf('progress') < 0 ? { key: 'progress', label: 'Przebieg', sort: 'progress' } : null,
-      { key: 'status', label: 'Status' },
-      hidden.indexOf('deadline') < 0 ? { key: 'deadline', label: 'Termin', sort: 'deadline' } : null,
-      hidden.indexOf('tasks') < 0 ? { key: 'tasks', label: 'Zadania', num: true } : null,
-      hidden.indexOf('team') < 0 ? { key: 'team', label: 'Zespół' } : null
+      hidden.indexOf('team') < 0 ? { key: 'team', label: 'Lider' } : null,
+      hidden.indexOf('progress') < 0 ? { key: 'progress', label: 'Postęp wobec planu', sort: 'progress' } : null,
+      hidden.indexOf('deadline') < 0 ? { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline' } : null,
+      hidden.indexOf('tasks') < 0 ? { key: 'tasks', label: 'Sygnały' } : null,
+      { key: 'hours', label: 'Godziny' }
     ].filter(Boolean);
   }
 
@@ -179,16 +256,16 @@
       attrs: { 'aria-label': 'Zaznacz projekt ' + project.code, 'data-fk': 'select-' + project.id },
       on: { change: function (event) { ctx.actions.selectProjects([project.id], event.target.checked); } }
     });
-
-    var cells = { name: nameCell(project, hidden, health), progress: progressCell(project, hidden, now) };
-    cells.status = UI.status('project', project.status);
-    cells.deadline = deadlineCell(project, now);
-    cells.tasks = tasksCell(project, now);
-    var team = people(ctx, project);
-    cells.team = team.length ? Avatar.avatarStack(team, { max: 3, size: 'sm' }) : D.el('span', { class: 't-muted', text: '—' });
-
+    var cells = {
+      name: nameCell(project, health, hidden),
+      team: leaderCell(project, ctx),
+      progress: progressCell(project, now),
+      deadline: dueCell(project, ctx, now),
+      tasks: signalsCell(project, ctx, now),
+      hours: hoursCell(project)
+    };
     return D.el('tr', {
-      class: 'table__row prow-project level-' + health.level + (ctx.motion && ctx.motion.flashProject === project.id ? ' is-flash' : ''),
+      class: 'table__row prow-project level-' + health.level + (project.status === 'done' ? ' is-closed' : '') + (ctx.motion && ctx.motion.flashProject === project.id ? ' is-flash' : ''),
       attrs: { 'aria-selected': selected ? 'true' : null },
       dataset: { projectCode: project.code, projectId: project.id },
       on: {
@@ -203,19 +280,13 @@
         D.el('span', { class: 'pick' }, [Sig.datum(health.level, { label: health.label + (health.reasons[0] ? ': ' + health.reasons[0].text : '') }), box])
       ])
     ].concat(columns.map(function (column) {
-      return D.el('td', { class: UI.cx(column.num ? 'cell--num' : '', 'col-' + column.key) }, [cells[column.key]]);
+      return D.el('td', { class: 'col-' + column.key }, [cells[column.key]]);
     })).concat([D.el('td', { class: 'cell--actions' }, [moreButton(project, ctx.actions)])]));
   }
 
-  function groupKey(project, groupBy, now) {
-    if (groupBy === 'status') return project.status;
-    if (groupBy === 'health') return Insight.health(project, now).level;
-    return 'all';
-  }
-
   function groupHeader(key, groupBy, count, colspan) {
-    var label = groupBy === 'status' ? Model.PROJECT_STATUS[key] : Insight.LEVELS[key].label;
-    var glyph = groupBy === 'status' ? UI.statusGlyph('project', key) : Sig.datum(key, { label: false });
+    var label = groupBy === 'status' ? Model.PROJECT_STATUS[key] : GROUP_LABELS[key];
+    var glyph = groupBy === 'status' ? UI.statusGlyph('project', key) : (key === 'attention' ? Sig.datum('alarm', { label: false }) : Sig.datum(key, { label: false }));
     return D.el('tr', { class: 'group-row' }, [
       D.el('th', { attrs: { colspan: String(colspan), scope: 'rowgroup' } }, [
         D.el('span', { class: 'group-row__inner' }, [glyph, D.el('span', { class: 'group-row__label', text: label }), D.el('span', { class: 'group-row__count', text: String(count) })])
@@ -223,10 +294,6 @@
     ]);
   }
 
-  /**
-   * @param {Array} visible przefiltrowane i posortowane projekty
-   * @param {{state, people, actions, motion}} ctx
-   */
   function table(visible, ctx) {
     var now = new Date();
     var hidden = ctx.state.prefs.hiddenColumns || [];
@@ -249,7 +316,8 @@
       .concat(columns.map(function (column) { return header(column, ctx); }))
       .concat([D.el('th', { class: 'cell--actions', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Działania' })])]))]);
 
-    var colspan = columns.length + 2;
+    // Nagłówek grupy obejmuje tylko kolumny stałe (znak + nazwa): chowane kolumny nie tworzą pustych miejsc.
+    var colspan = 2;
     var bodies = [];
     if (groupBy === 'none') {
       bodies.push(D.el('tbody', null, rows.map(function (p) { return row(p, columns, ctx, now); })));
@@ -266,271 +334,210 @@
       });
     }
 
-    return D.el('div', { class: 'table-wrap project-table' + (selectedVisible ? ' is-selecting' : '') }, [
+    return D.el('div', { class: 'table-wrap project-table pf-table' + (selectedVisible ? ' is-selecting' : '') }, [
       D.el('table', { class: 'table', attrs: { 'aria-label': 'Projekty' } }, [head].concat(bodies)),
       visible.length > PAGE_SIZE ? UI.pagination({ page: page, pageSize: PAGE_SIZE, total: visible.length, onPage: ctx.actions.setPage }) : null
     ]);
   }
 
-  /* ---------- Karty: arkusze z profilem ---------- */
+  /* ---------- Karty ---------- */
 
   function card(project, ctx, now) {
     var health = Insight.health(project, now);
-    var team = people(ctx, project);
-    var active = Progress.activeStage(project);
-    var info = Progress.deadlineInfo(project.deadline, now);
+    var hidden = ctx.state.prefs.hiddenColumns || [];
+    var gauge = Insight.gauge(project, now);
     var risk = health.level === 'alarm' || health.level === 'warning';
+    var leader = Team.findPerson(ctx.people, project.team && project.team.leader);
+    var done = project.status === 'done';
+    var level = lagLevel(gauge);
 
     return D.el('article', {
-      class: 'pcard project level-' + health.level,
-      dataset: { projectCode: project.code, projectId: project.id }
+      class: 'pcard pf-card project level-' + health.level + (done ? ' is-closed' : ''),
+      dataset: { projectCode: project.code, projectId: project.id },
+      on: {
+        click: function (event) {
+          if (event.target.closest('a, button, input, label, [role="menu"]')) return;
+          ctx.actions.openProject(project.id);
+        }
+      }
     }, [
       D.el('div', { class: 'pcard__top' }, [
         Sig.datum(health.level),
         D.el('span', { class: 'code', text: project.code }),
-        UI.status('project', project.status, { class: 'pcard__status' }),
         D.el('span', { class: 'pcard__spacer' }),
         moreButton(project, ctx.actions, 'pcard__more')
       ]),
-      D.el('div', { class: 'pcard__titles' }, [
-        D.el('h3', { class: 'pcard__name' }, [
-          D.el('a', { class: 'project-link clamp-2', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id }, dataset: { projectTitle: project.id } })
-        ]),
-        D.el('p', { class: 'pcard__client truncate', text: project.client || 'Bez zamawiającego' })
+      D.el('h3', { class: 'pcard__name' }, [
+        D.el('a', { class: 'project-link clamp-2', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id }, dataset: { projectTitle: project.id } })
       ]),
-      risk
-        ? D.el('p', { class: 'reason reason--' + health.level + ' pcard__reason' }, [D.el('span', { text: health.reasons[0].text }), health.reasons.length > 1 ? D.el('span', { class: 't-muted', text: ' i ' + (health.reasons.length - 1) + ' więcej' }) : null])
-        : D.el('p', { class: 'pcard__stage truncate' }, [D.el('span', { text: active ? Model.describeStage(active).name : (project.stages.length ? 'Wszystkie etapy zakończone' : 'Brak etapów') })]),
-      E.Flow.flowTrack(project, { size: 'compact', now: now }),
+      D.el('p', { class: 'pcard__client truncate', text: hidden.indexOf('client') < 0 ? (project.client || 'Bez zamawiającego') : '' }),
+      risk ? D.el('p', { class: 'pf-reason pf-reason--' + health.level + ' pcard__reason', text: health.reasons[0].text }) : null,
+      D.el('div', { class: 'pf-card__progress', attrs: { 'data-tooltip': done ? null : lagTip(gauge) } }, [
+        planMeter(gauge, done ? '' : level),
+        D.el('span', { class: 't-num pf-card__pct', text: gauge.percent + '%' })
+      ]),
       D.el('div', { class: 'pcard__foot' }, [
-        project.deadline
-          ? D.el('span', { class: 'pcard__due' }, [
-            D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) }),
-            UI.countdown(project.deadline, { done: project.status === 'done', now: now })
-          ])
-          : D.el('span', { class: 't-muted', text: 'Bez terminu' }),
+        leader ? D.el('span', { class: 'pf-card__lead' }, [Avatar.avatar(leader, { size: 'xs' }), D.el('span', { class: 'truncate', text: shortName(leader) })]) : D.el('span', { class: 't-muted', text: 'Bez lidera' }),
         D.el('span', { class: 'pcard__spacer' }),
-        team.length ? Avatar.avatarStack(team, { max: 4, size: 'sm' }) : null
+        signalsCell(project, ctx, now),
+        dueCell(project, ctx, now)
       ])
     ]);
   }
 
   function cards(visible, ctx) {
     var now = new Date();
-    return D.el('div', { class: 'pcard-grid' }, visible.map(function (project) { return card(project, ctx, now); }));
-  }
-
-  /* ---------- Kokpit portfela ---------- */
-
-  var HORIZON = 60;
-
-  /** Przycisk przeglądu: przełącza zawężenie listy; stan wciśnięcia widać i słychać. */
-  function scopeButton(className, pressed, label, onClick, children, fk) {
-    return D.el('button', {
-      class: className + (pressed ? ' is-active' : ''),
-      attrs: { type: 'button', 'aria-pressed': String(pressed), 'aria-label': label, 'data-fk': fk },
-      on: { click: onClick }
-    }, children);
-  }
-
-  /** Terminy tego samego projektu w tym samym dniu łączą się w jedną pozycję. */
-  function groupAhead(list) {
-    var seen = {};
-    var out = [];
-    list.forEach(function (u) {
-      var key = u.project.id + '|' + u.days;
-      if (seen[key]) { seen[key].more += 1; return; }
-      var copy = Object.assign({}, u, { more: 0 });
-      seen[key] = copy;
-      out.push(copy);
+    var groupBy = ctx.state.prefs.groupBy || 'health';
+    if (groupBy === 'none') {
+      return D.el('div', { class: 'pcard-grid' }, visible.map(function (project) { return card(project, ctx, now); }));
+    }
+    var groups = {};
+    visible.forEach(function (p) {
+      var key = groupKey(p, groupBy, now);
+      (groups[key] = groups[key] || []).push(p);
     });
-    return out;
+    return D.el('div', { class: 'pf-cardgroups' }, GROUP_ORDER[groupBy].filter(function (k) { return groups[k]; }).map(function (key) {
+      return D.el('section', { class: 'pf-cardgroup pf-cardgroup--' + key }, [
+        D.el('h2', { class: 'pf-cardgroup__head' }, [
+          groupBy === 'status' ? UI.statusGlyph('project', key) : Sig.datum(key === 'attention' ? 'alarm' : key, { label: false }),
+          D.el('span', { text: groupBy === 'status' ? Model.PROJECT_STATUS[key] : GROUP_LABELS[key] }),
+          D.el('span', { class: 'group-row__count', text: String(groups[key].length) })
+        ]),
+        D.el('div', { class: 'pcard-grid' }, groups[key].map(function (project) { return card(project, ctx, now); }))
+      ]);
+    }));
   }
 
-  /**
-   * Biuro dziś: ile czasu zapisano i ile osób pracuje teraz — w podziale na projekty,
-   * bez nazwisk (czas konkretnych osób widzi tylko lider projektu i dyrekcja).
-   */
-  function liveNow(projects, ctx) {
+  /* ---------- Zakładki widoków ---------- */
+
+  var BUILTIN = [
+    { id: 'all', label: 'Wszystkie', filters: { health: 'all', person: 'all', status: 'all', query: '' } },
+    { id: 'mine', label: 'Moje', filters: { health: 'all', status: 'all', query: '' }, mine: true },
+    { id: 'attention', label: 'Wymaga uwagi', filters: { health: 'attention', person: 'all', status: 'all', query: '' } },
+    { id: 'overdue', label: 'Po terminie', filters: { health: 'overdue', person: 'all', status: 'all', query: '' } },
+    { id: 'done', label: 'Zakończone', filters: { health: 'closed', person: 'all', status: 'all', query: '' } }
+  ];
+
+  /** Filtry widoku; „Moje” korzysta z osoby przypisanej do tego urządzenia. */
+  function viewFilters(view, prefs) {
+    if (view.mine) return Object.assign({}, view.filters, { person: prefs.me || 'all' });
+    return view.filters;
+  }
+
+  function allViews(prefs) {
+    return BUILTIN.concat((prefs.customViews || []).map(function (v) { return { id: v.id, label: v.name, filters: v.filters, custom: true }; }));
+  }
+
+  function views(projects, ctx) {
+    var state = ctx.state;
+    var now = new Date();
+    var mail = mailList(ctx);
+    return D.el('div', { class: 'pf-views', attrs: { role: 'tablist', 'aria-label': 'Widoki listy projektów' } }, allViews(state.prefs).map(function (view) {
+      var f = viewFilters(view, state.prefs);
+      var count = view.mine && !state.prefs.me ? null : E.Query.filterAndSort(projects, Object.assign({}, f, { now: now, mail: mail, sort: 'deadline' })).length;
+      var cur = state.filters;
+      var active = state.prefs.projectView === view.id && f.health === cur.health && f.person === cur.person && f.status === cur.status && (f.query || '') === String(cur.query || '').trim() && !cur.horizon;
+      var tab = D.el('button', {
+        class: 'pf-view' + (active ? ' is-active' : ''),
+        attrs: { type: 'button', role: 'tab', 'aria-selected': String(active), 'data-fk': 'view-' + view.id, title: view.mine && !state.prefs.me ? 'Wybierz, kim jesteś, w „Moja praca”' : null },
+        on: { click: function () { ctx.actions.applyView(view.id); } }
+      }, [D.el('span', { text: view.label }), count !== null ? D.el('span', { class: 'pf-view__count t-num', text: String(count) }) : null]);
+      if (view.custom) {
+        return D.el('span', { class: 'pf-view-wrap' }, [tab, D.el('button', {
+          class: 'pf-view__remove', attrs: { type: 'button', 'aria-label': 'Usuń widok ' + view.label },
+          on: { click: function () { ctx.actions.removeView(view.id); } }
+        }, [Icons.icon('close', 12)])]);
+      }
+      return tab;
+    }));
+  }
+
+  /* ---------- Pasek stanu portfela ---------- */
+
+  function strip(projects, ctx) {
+    var now = new Date();
+    var view = Insight.portfolio(projects, now, 60);
+    var counts = { attention: view.counts.alarm + view.counts.warning, normal: view.counts.normal, closed: view.counts.closed };
+    var total = view.total || 1;
+    var parts = [
+      { key: 'attention', label: 'Wymaga uwagi' },
+      { key: 'normal', label: 'W normie' },
+      { key: 'closed', label: 'Zakończone' }
+    ];
+    return D.el('div', { class: 'pf-strip' }, [
+      D.el('div', { class: 'pf-strip__bar', attrs: { role: 'img', 'aria-label': parts.map(function (p) { return p.label + ': ' + counts[p.key]; }).join(', ') } },
+        parts.map(function (p) { return counts[p.key] ? D.el('span', { class: 'pf-strip__seg pf-strip__seg--' + p.key, style: { flex: counts[p.key] + ' 0 0' } }) : null; })),
+      D.el('ul', { class: 'pf-strip__legend' }, parts.map(function (p) {
+        return D.el('li', { class: counts[p.key] ? '' : 'is-zero' }, [D.el('i', { class: 'pf-dot pf-dot--' + p.key }), D.el('span', { text: p.label + ' ' }), D.el('b', { class: 't-num', text: String(counts[p.key]) })]);
+      })),
+      D.el('span', { class: 'pf-strip__spacer' }),
+      view.hoursTotal ? D.el('span', { class: 'pf-strip__hours t-num' }, [D.el('b', { text: F.number(view.hoursDone) }), ' z ' + F.number(view.hoursTotal) + ' h wykonane w czynnych projektach']) : null
+    ]);
+  }
+
+  /* ---------- Panel najbliższych terminów ---------- */
+
+  function bucketOf(item) {
+    if (item.days < 0) return 'late';
+    return item.days <= 7 ? 'week' : 'later';
+  }
+
+  function biuroDzis(projects, ctx) {
     var all = (ctx.state.workspace && ctx.state.workspace.entries) || [];
     var now = new Date();
-    var today = all.filter(function (e) { return E.TimeLog.dayKey(e.start) === E.TimeLog.dayKey(now.getTime()); });
-    var people = {};
-    var byProject = {};
-    var order = [];
-    var live = 0;
-    today.forEach(function (e) {
-      people[e.personId] = true;
-      if (!byProject[e.projectId]) { byProject[e.projectId] = { minutes: 0, live: {} }; order.push(e.projectId); }
-      byProject[e.projectId].minutes += E.TimeLog.minutes(e, now);
-      if (!e.end) { byProject[e.projectId].live[e.personId] = true; live += 1; }
-    });
+    var key = E.TimeLog.dayKey(now.getTime());
+    var today = all.filter(function (e) { return E.TimeLog.dayKey(e.start) === key; });
     var total = today.reduce(function (sum, e) { return sum + E.TimeLog.minutes(e, now); }, 0);
-    var header = D.el('p', { class: 'cockpit__label', text: 'Biuro dziś' });
-    if (!today.length) {
-      return D.el('div', { class: 'livenow' }, [header, D.el('p', { class: 'cockpit__empty', text: 'Nikt jeszcze nie zapisał czasu. Zegar włączysz przy zadaniu (▶).' })]);
-    }
-    order.sort(function (a, b) { return byProject[b].minutes - byProject[a].minutes; });
-    return D.el('div', { class: 'livenow' }, [
-      header,
-      D.el('p', { class: 'livenow__stats' }, [
-        D.el('span', { class: 'livenow__big t-num', text: E.TimeLog.duration(total) }),
-        D.el('span', { class: 'livenow__sub', text: 'zapisano · ' + F.count(Object.keys(people).length, 'osoba', 'osoby', 'osób') + (live ? ' · teraz pracuje ' + live : '') })
+    var live = today.filter(function (e) { return !e.end; }).length;
+    return D.el('div', { class: 'pf-rail__foot' }, [
+      D.el('div', { class: 'pf-rail__row' }, [
+        D.el('span', { text: 'Biuro dziś' }),
+        D.el('b', { class: 't-num', text: today.length ? E.TimeLog.duration(total) : '—' })
       ]),
-      D.el('ul', { class: 'livenow__list' }, order.slice(0, 3).map(function (id) {
-        var project = projects.filter(function (p) { return p.id === id; })[0];
-        var row = byProject[id];
-        var working = Object.keys(row.live).length;
-        return D.el('li', { class: 'livenow__item' }, [
-          D.el('span', { class: 'code', text: project ? project.code : '—' }),
-          D.el('span', { class: 'livenow__what truncate', text: project ? project.name : 'Usunięty projekt' }),
-          D.el('span', { class: 'livenow__since t-num', text: (working ? '● ' : '') + E.TimeLog.duration(row.minutes) })
-        ]);
-      }))
+      live ? D.el('p', { class: 'pf-rail__note', text: 'Teraz pracuje: ' + live }) : null
     ]);
   }
 
-  function cockpit(projects, ctx) {
+  function rail(projects, ctx) {
     var now = new Date();
-    var view = Insight.portfolio(projects, now, HORIZON);
-    var attention = view.byLevel.alarm.concat(view.byLevel.warning);
-    var open = view.total - view.counts.closed;
-    var filters = ctx.state.filters || {};
     var act = ctx.actions;
+    var items = Insight.dueItems(projects, mailList(ctx), now, 60);
+    var buckets = { late: [], week: [], later: [] };
+    items.forEach(function (item) { buckets[bucketOf(item)].push(item); });
+    var TITLES = { late: 'Po terminie', week: 'Ten tydzień', later: 'Później' };
+    var MAX = { late: 6, week: 8, later: 6 };
 
-    // A — wymaga uwagi (największa waga)
-    var zoneA;
-    if (attention.length) {
-      var leadPressed = filters.health === 'attention';
-      var titleText = attention.length === 1 ? 'projekt wymaga uwagi' : (F.plural(attention.length, 'projekt wymaga', 'projekty wymagają', 'projektów wymaga') + ' uwagi');
-      zoneA = D.el('div', { class: 'cockpit__zone cockpit__attention' }, [
-        scopeButton('cockpit__lead cockpit__hit', leadPressed,
-          (leadPressed ? 'Pokaż wszystkie projekty' : 'Pokaż tylko projekty wymagające uwagi') + ' (' + attention.length + ')',
-          function () { act.filterPortfolio({ health: 'attention' }); }, [
-            D.el('span', { class: 'cockpit__number t-num', text: String(attention.length) }),
-            D.el('span', { class: 'cockpit__lead-text' }, [
-              D.el('span', { class: 'cockpit__title', text: titleText }),
-              D.el('span', { class: 'cockpit__sub' }, [
-                D.el('span', { text: 'z ' + F.count(open, 'czynnego', 'czynnych', 'czynnych') }),
-                D.el('span', { class: 'cockpit__action', text: leadPressed ? 'Pokaż wszystkie' : 'Pokaż na liście' })
-              ])
-            ])
-          ], 'cockpit-attention'),
-        D.el('ul', { class: 'attention' }, attention.slice(0, 3).map(function (entry) {
-          return D.el('li', null, [D.el('a', {
-            class: 'attention__item',
-            attrs: { href: projectHref(entry.project), 'data-fk': 'attention-' + entry.project.id },
-            dataset: { projectTitle: entry.project.id }
+    function open(item) {
+      if (item.kind === 'task') act.openStage(item.project.id, item.ref.stage.id);
+      else if (item.kind === 'mail') act.openProject(item.project.id, 'korespondencja');
+      else act.openProject(item.project.id);
+    }
+
+    var sections = ['late', 'week', 'later'].filter(function (k) { return buckets[k].length; }).map(function (key) {
+      var list = buckets[key];
+      return D.el('section', { class: 'pf-rail__sec pf-rail__sec--' + key }, [
+        D.el('h3', { class: 'pf-rail__h' }, [D.el('span', { text: TITLES[key] }), D.el('span', { class: 'pf-rail__n t-num', text: String(list.length) })]),
+        D.el('ul', { class: 'pf-rail__list' }, list.slice(0, MAX[key]).map(function (item) {
+          return D.el('li', null, [D.el('button', {
+            class: 'pf-due-item',
+            attrs: { type: 'button', 'data-fk': 'due-' + item.project.id + '-' + item.kind, 'aria-label': item.label + ', ' + item.project.code + ', ' + F.date(item.date) + ', ' + relDays(item.days) },
+            on: { click: function () { open(item); } }
           }, [
-            Sig.datum(entry.health.level),
-            D.el('span', { class: 'attention__text' }, [
-              D.el('span', { class: 'attention__name truncate', text: entry.project.name }),
-              D.el('span', { class: 'attention__reason reason--' + entry.health.level, text: entry.health.reasons[0].text })
+            D.el('span', { class: 'pf-due-item__icon', attrs: { 'aria-hidden': 'true' } }, [Icons.icon(item.kind === 'mail' ? 'mail' : (item.kind === 'project' ? 'flag' : 'checklist'), 14)]),
+            D.el('span', { class: 'pf-due-item__what' }, [
+              D.el('span', { class: 'truncate', text: item.label }),
+              D.el('span', { class: 'code', text: item.project.code })
             ]),
-            D.el('span', { class: 'attention__go', attrs: { 'aria-hidden': 'true' } }, [E.Icons.icon('chevronRight', 14)])
+            D.el('span', { class: 'pf-due-item__when t-num', text: key === 'late' ? relDays(item.days) : F.date(item.date) })
           ])]);
         })),
-        attention.length > 3
-          ? D.el('button', {
-              class: 'cockpit__more',
-              attrs: { type: 'button' },
-              text: 'i ' + (attention.length - 3) + ' więcej — pokaż wszystkie',
-              on: { click: function () { act.filterPortfolio({ health: 'attention' }); } }
-            })
-          : null
+        list.length > MAX[key] ? D.el('p', { class: 'pf-rail__more', text: 'i ' + (list.length - MAX[key]) + ' więcej' }) : null
       ]);
-    } else {
-      zoneA = D.el('div', { class: 'cockpit__zone cockpit__attention cockpit__attention--calm' }, [
-        D.el('div', { class: 'cockpit__lead' }, [
-          Sig.datum('normal', { size: 34, label: false }),
-          D.el('span', { class: 'cockpit__lead-text' }, [
-            D.el('span', { class: 'cockpit__title cockpit__title--big', text: 'Wszystko w normie' }),
-            D.el('span', { class: 'cockpit__sub', text: 'Żaden projekt nie przekracza terminu ani nie ma zaległości.' })
-          ])
-        ]),
-        liveNow(projects, ctx)
-      ]);
-    }
+    });
 
-    // B — stan portfela: każdy stan zawęża listę
-    var levels = ['alarm', 'warning', 'normal', 'closed'];
-    var zoneB = D.el('div', { class: 'cockpit__zone cockpit__mix' }, [
-      D.el('p', { class: 'cockpit__label', text: 'Stan portfela' }),
-      D.el('ul', { class: 'mixlegend', attrs: { 'aria-label': 'Projekty według stanu' } }, levels.map(function (l) {
-        var pressed = filters.health === l;
-        var on = pressed || (filters.health === 'attention' && (l === 'alarm' || l === 'warning'));
-        var dim = filters.health && filters.health !== 'all' && !on;
-        var count = view.counts[l];
-        var share = view.total ? Math.round(count / view.total * 100) : 0;
-        return D.el('li', null, [scopeButton('mixlegend__item cockpit__hit mixlegend__item--' + l + (count ? '' : ' is-zero') + (dim ? ' is-dim' : ''), pressed,
-          Insight.LEVELS[l].label + ': ' + count + (pressed ? '. Pokaż wszystkie projekty' : '. Pokaż na liście'),
-          function () { act.filterPortfolio({ health: l }); }, [
-            Sig.datum(l, { label: false }),
-            D.el('span', { class: 'mixlegend__label', text: Insight.LEVELS[l].label }),
-            D.el('span', { class: 'mixlegend__value t-num', text: String(count) }),
-            D.el('span', { class: 'mixlegend__measure', style: { '--share': share + '%' }, attrs: { 'aria-hidden': 'true' } })
-          ], 'mix-' + l)]);
-      })),
-      view.hoursTotal && view.hoursDone ? D.el('p', { class: 'cockpit__hours' }, [
-        D.el('span', { class: 't-num cockpit__hours-value', text: F.number(view.hoursDone) }),
-        D.el('span', { class: 'cockpit__hours-of t-num', text: ' z ' + F.hours(view.hoursTotal) }),
-        D.el('span', { class: 'cockpit__hours-label', text: 'wykonane w czynnych projektach' })
-      ]) : null
-    ]);
-
-    // C — oś najbliższych terminów: znaczniki i pozycje prowadzą do etapu albo projektu
-    function goTo(u) {
-      if (u.kind === 'stage') act.openStage(u.project.id, u.stage.id);
-      else act.openProject(u.project.id);
-    }
-    function whatOf(u) { return u.kind === 'project' ? 'Termin umowy' : Model.describeStage(u.stage).name; }
-
-    var ahead = view.upcoming.filter(function (u) { return u.days >= 0; });
-    var horizonOn = filters.horizon === HORIZON;
-    var aheadProjects = ahead.reduce(function (set, u) { set[u.project.id] = true; return set; }, {});
-    var aheadCount = Object.keys(aheadProjects).length;
-    var axis = D.el('div', { class: 'timeline', attrs: { role: 'group', 'aria-label': 'Terminy w najbliższych ' + HORIZON + ' dniach' } }, [
-      D.el('div', { class: 'timeline__axis' }, [0, 15, 30, 45, 60].map(function (d) {
-        return D.el('span', { class: 'timeline__tick', style: { left: (d / HORIZON * 100) + '%' }, attrs: { 'aria-hidden': 'true' } });
-      }).concat(ahead.map(function (u, index) {
-        var label = whatOf(u) + ' — ' + u.project.code + ', ' + F.date(u.date) + (u.days === 0 ? ' (dziś)' : ' (za ' + F.count(u.days, 'dzień', 'dni', 'dni') + ')');
-        return D.el('button', {
-          class: 'timeline__mark ' + (u.kind === 'project' ? 'timeline__mark--project' : 'timeline__mark--stage'),
-          style: { left: (u.days / HORIZON * 100) + '%' },
-          attrs: { type: 'button', 'data-tooltip': label, 'aria-label': 'Otwórz: ' + label, tabindex: index < 6 ? null : '-1' },
-          on: { click: function () { goTo(u); } }
-        }, u.kind === 'project' ? [E.Flow.marker('deadline', { level: u.level === 'alarm' ? 'alarm' : (u.level === 'warning' ? 'warning' : 'normal'), filled: u.level === 'alarm' })] : null);
-      }))),
-      D.el('div', { class: 'timeline__scale', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { text: 'dziś' }), D.el('span', { text: '30 dni' }), D.el('span', { text: '60 dni' })])
-    ]);
-    var zoneC = D.el('div', { class: 'cockpit__zone cockpit__upcoming' }, [
-      D.el('div', { class: 'cockpit__label-row' }, [
-        D.el('p', { class: 'cockpit__label', text: 'Najbliższe terminy' }),
-        ahead.length ? scopeButton('cockpit__link', horizonOn,
-          horizonOn ? 'Pokaż wszystkie projekty' : 'Pokaż na liście projekty z terminem w ' + HORIZON + ' dniach',
-          function () { act.filterPortfolio({ horizon: HORIZON }); },
-          [D.el('span', { text: horizonOn ? 'Pokaż wszystkie' : 'Pokaż ' + F.count(aheadCount, 'projekt', 'projekty', 'projektów') })], 'cockpit-horizon') : null
-      ]),
-      axis,
-      ahead.length
-        ? D.el('ol', { class: 'upcoming' }, groupAhead(ahead).slice(0, 3).map(function (u) {
-            return D.el('li', null, [D.el('button', {
-              class: 'upcoming__item',
-              attrs: { type: 'button', 'aria-label': 'Otwórz: ' + whatOf(u) + ', ' + u.project.code + ', ' + F.date(u.date), 'data-fk': 'up-' + u.project.id + '-' + (u.kind === 'stage' ? u.stage.id : 'p') },
-              on: { click: function () { goTo(u); } }
-            }, [
-              D.el('span', { class: 'upcoming__date t-num', text: F.date(u.date) }),
-              D.el('span', { class: 'upcoming__what' }, [
-                D.el('span', { class: 'upcoming__name truncate', text: whatOf(u) + (u.more ? ' · +' + F.count(u.more, 'etap', 'etapy', 'etapów') : '') }),
-                D.el('span', { class: 'code', text: u.project.code })
-              ]),
-              D.el('span', { class: 'upcoming__in t-num' + (u.days <= 7 ? ' is-soon' : ''), text: u.days === 0 ? 'dziś' : (u.days === 1 ? 'jutro' : 'za ' + u.days + ' dni') })
-            ])]);
-          }))
-        : D.el('p', { class: 'cockpit__empty', text: 'Brak terminów w najbliższych ' + HORIZON + ' dniach.' })
-    ]);
-
-    return [zoneA, zoneB, zoneC];
+    return D.el('div', { class: 'pf-rail__inner' }, [
+      D.el('h2', { class: 'pf-rail__title', text: 'Najbliższe terminy' })
+    ].concat(sections.length ? sections : [D.el('p', { class: 'cockpit__empty', text: 'Brak terminów w najbliższych 60 dniach.' })]).concat([biuroDzis(projects, ctx)]));
   }
 
   /* ---------- Pierwsze uruchomienie ---------- */
@@ -595,7 +602,12 @@
     onboarding: onboarding,
     table: table,
     cards: cards,
-    cockpit: cockpit,
+    views: views,
+    strip: strip,
+    rail: rail,
+    BUILTIN_VIEWS: BUILTIN,
+    viewFilters: viewFilters,
+    allViews: allViews,
     COLUMNS: COLUMNS,
     projectHref: projectHref,
     projectMenuItems: projectMenuItems,

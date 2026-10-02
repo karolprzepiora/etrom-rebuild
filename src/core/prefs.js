@@ -15,13 +15,39 @@
   // Nazwy z wcześniejszych wersji przeniesione na obecne.
   var LEGACY_ACCENTS = { hydro: 'standard', topo: 'graphite', raspberry: 'standard' };
   var MAX_PINNED = 8;
+  var MAX_VIEWS = 6;
+  var BUILTIN_VIEWS = ['all', 'mine', 'attention', 'overdue', 'done'];
+  var HEALTH_FILTERS = ['all', 'attention', 'alarm', 'warning', 'normal', 'closed', 'overdue'];
+  var STATUS_FILTERS = ['all', 'active', 'planned', 'paused', 'done'];
+
+  /** Własne widoki listy projektów: nazwa i zapisane filtry. Nigdy nie rzuca. */
+  function customViews(raw) {
+    var seen = {};
+    return (Array.isArray(raw) ? raw : []).map(function (v) {
+      if (!v || typeof v !== 'object') return null;
+      var id = typeof v.id === 'string' && /^c-\d+$/.test(v.id) ? v.id : null;
+      var name = typeof v.name === 'string' ? v.name.trim().slice(0, 30) : '';
+      if (!id || !name || seen[id]) return null;
+      seen[id] = true;
+      var f = v.filters && typeof v.filters === 'object' ? v.filters : {};
+      return {
+        id: id, name: name,
+        filters: {
+          health: HEALTH_FILTERS.indexOf(f.health) >= 0 ? f.health : 'all',
+          status: STATUS_FILTERS.indexOf(f.status) >= 0 ? f.status : 'all',
+          person: typeof f.person === 'string' && (f.person === 'all' || /^p-\d+$/.test(f.person)) ? f.person : 'all',
+          query: typeof f.query === 'string' ? f.query.slice(0, 80) : ''
+        }
+      };
+    }).filter(Boolean).slice(0, MAX_VIEWS);
+  }
   var MAX_RECENT = 5;
 
   function defaults() {
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', density: 'comfortable', sidebarCollapsed: false, pinned: [], recent: [], me: null
+      groupBy: 'health', density: 'comfortable', projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null
     };
   }
 
@@ -35,6 +61,12 @@
     }).slice(0, max);
   }
 
+  function viewId(source) {
+    var id = source.projectView;
+    if (BUILTIN_VIEWS.indexOf(id) >= 0) return id;
+    return customViews(source.customViews).some(function (v) { return v.id === id; }) ? id : 'all';
+  }
+
   function normalize(raw) {
     var source = (raw && typeof raw === 'object') ? raw : {};
     var accent = LEGACY_ACCENTS[source.accent] || source.accent;
@@ -46,6 +78,8 @@
       hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
       groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
       density: DENSITIES.indexOf(source.density) >= 0 ? source.density : 'comfortable',
+      customViews: customViews(source.customViews),
+      projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
@@ -103,6 +137,8 @@
     COLUMNS: COLUMNS,
     GROUPS: GROUPS,
     DENSITIES: DENSITIES,
+    BUILTIN_VIEWS: BUILTIN_VIEWS,
+    MAX_VIEWS: MAX_VIEWS,
     touchRecent: touchRecent,
     defaults: defaults,
     normalize: normalize,

@@ -381,3 +381,28 @@ test('nextAction: etap w toku bez zadań prosi o rozpisanie zadań', () => {
   const filled = project({ deadline: '2027-12-31', stages: [stage('concept', 'working', 80, '', [task({ status: 'working', deadline: '2027-01-10T12:00', assignees: ['p-1'] })])] });
   assert.equal(Insight.nextAction(filled, NOW), null);
 });
+
+test('dueItems: zadania, odpowiedzi na pisma i termin umowy w jednym zestawieniu, zaległe pierwsze', () => {
+  const stages = [stage('preparation', 'working', 40, '', [
+    task({ id: 'a', name: 'Spóźnione', status: 'working', deadline: '2026-09-29T12:00' }),
+    task({ id: 'b', name: 'Za tydzień', deadline: '2026-10-09T12:00' }),
+    task({ id: 'c', name: 'Gotowe', status: 'done', deadline: '2026-10-03T12:00' })
+  ])];
+  const p = project({ deadline: '2026-10-20', stages });
+  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'Zapytanie', replyDue: '2026-10-05', registeredDate: '2026-09-30' }];
+  const items = Insight.dueItems([p], mail, NOW, 60);
+  assert.deepEqual(items.map((i) => i.kind + ':' + i.days), ['task:-3', 'mail:3', 'task:7', 'project:18']);
+  assert.equal(items[0].overdue, true);
+  assert.equal(Insight.dueItems([p], mail, NOW, 5).length, 2);
+  assert.equal(Insight.dueItems([project({ status: 'done' })], [], NOW, 60).length, 0);
+});
+
+test('hasOverdue: termin umowy, zadanie albo pismo po terminie', () => {
+  assert.equal(Insight.hasOverdue(project(), NOW, []), false);
+  assert.equal(Insight.hasOverdue(project({ deadline: '2026-09-26' }), NOW, []), true);
+  const late = project({ stages: [stage('preparation', 'working', 40, '', [task({ deadline: '2026-09-29T12:00' })])] });
+  assert.equal(Insight.hasOverdue(late, NOW, []), true);
+  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'X', replyDue: '2026-09-30', registeredDate: '2026-09-20' }];
+  assert.equal(Insight.hasOverdue(project(), NOW, mail), true);
+  assert.equal(Insight.hasOverdue(project({ status: 'done', deadline: '2026-09-26' }), NOW, mail), false);
+});

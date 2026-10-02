@@ -28,7 +28,7 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 
 ## Co już działa
 
-- **kokpit portfela**: projekty wymagające uwagi z powodami, rozkład stanów, oś najbliższych terminów,
+- **portfel projektów**: zakładki widoków (Wszystkie, Moje, Wymaga uwagi, Po terminie, Zakończone i własne — zapisywane) z licznikami, pasek stanu, tabela grupowana „Wymaga uwagi / W normie / Zakończone” (postęp wobec planu, najbliższy termin, sygnały, lider zmieniany w komórce) albo karty, panel najbliższych terminów (zadania, odpowiedzi na pisma, terminy umów); gęstość Komfortowa/Zwarta w ustawieniach,
 - **stan projektu** w skali stanów wód (w normie, ostrzegawczy, alarmowy) liczony z terminów
   i z opóźnienia pracy wobec upływu czasu umowy — zawsze z powodem w słowach,
 - **profil przebiegu**: etapy jako odcinki proporcjonalne do budżetu godzin — długość wykreślonej
@@ -154,8 +154,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 236 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 171 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 240 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 173 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

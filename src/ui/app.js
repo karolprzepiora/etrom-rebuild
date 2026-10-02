@@ -1135,6 +1135,80 @@
   function clearFilters() {
     nodes.search.value = '';
     setFilters({ query: '', status: 'all', person: 'all', health: 'all', horizon: 0 });
+    if (store.getState().prefs.projectView !== 'all') setPref({ projectView: 'all' });
+  }
+
+  /* ---------- zapisane widoki listy projektów ---------- */
+
+  function findView(id) {
+    return E.ProjectList.allViews(store.getState().prefs).filter(function (v) { return v.id === id; })[0] || null;
+  }
+
+  function applyViewFilters(view, silent) {
+    var prefs = store.getState().prefs;
+    if (view.mine && !prefs.me) {
+      if (!silent) Toast.show({ message: 'Wybierz, kim jesteś, w „Moja praca” — wtedy „Moje” pokaże Twoje projekty.', tone: 'warning', timeout: 6000 });
+      return false;
+    }
+    var f = E.ProjectList.viewFilters(view, prefs);
+    if (nodes.search) nodes.search.value = f.query || '';
+    setFilters({ health: f.health, status: f.status, person: f.person, query: f.query || '', horizon: 0 });
+    return true;
+  }
+
+  function applyView(id) {
+    var view = findView(id);
+    if (!view || !applyViewFilters(view, false)) return;
+    setPref({ projectView: id });
+  }
+
+  function saveView() {
+    var state = store.getState();
+    if ((state.prefs.customViews || []).length >= E.Prefs.MAX_VIEWS) {
+      Toast.show({ message: 'Można zapisać najwyżej ' + E.Prefs.MAX_VIEWS + ' własnych widoków. Usuń któryś, żeby dodać nowy.', tone: 'warning', timeout: 6000 });
+      return;
+    }
+    Dialog.prompt({
+      title: 'Zapisz widok', message: 'Bieżące filtry (stan, osoba, status, fraza) będą dostępne jako zakładka.',
+      label: 'Nazwa widoku', placeholder: 'np. Wodociągi — moje', confirm: 'Zapisz widok'
+    }).then(function (name) {
+      var clean = String(name || '').trim();
+      if (!clean) return;
+      var f = store.getState().filters;
+      var max = (store.getState().prefs.customViews || []).reduce(function (m, v) { return Math.max(m, Number(v.id.slice(2))); }, 0);
+      var id = 'c-' + (max + 1);
+      setPref({
+        customViews: store.getState().prefs.customViews.concat([{ id: id, name: clean, filters: { health: f.health, status: f.status, person: f.person, query: f.query } }]),
+        projectView: id
+      });
+    });
+  }
+
+  function removeView(id) {
+    var prefs = store.getState().prefs;
+    var wasActive = prefs.projectView === id;
+    setPref({ customViews: prefs.customViews.filter(function (v) { return v.id !== id; }), projectView: wasActive ? 'all' : prefs.projectView });
+    if (wasActive) applyViewFilters(findView('all'), true);
+  }
+
+  function setLeader(projectId, personId) {
+    var project = store.getState().workspace.projects.filter(function (p) { return p.id === projectId; })[0];
+    if (!project) return;
+    var before = project.team && project.team.leader || '';
+    if (before === personId) return;
+    setWorkspace(function (list) {
+      return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { team: Object.assign({}, p.team, { leader: personId }) }) : p; });
+    });
+    var person = Team.findPerson(people(), personId);
+    Toast.show({
+      message: 'Lider projektu ' + project.code + ': ' + (person ? Team.fullName(person) : ''),
+      actionLabel: 'Cofnij', timeout: 6000,
+      onAction: function () {
+        setWorkspace(function (list) {
+          return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { team: Object.assign({}, p.team, { leader: before }) }) : p; });
+        });
+      }
+    });
   }
 
   /**
@@ -1553,6 +1627,7 @@
     clearTeamFilters: clearTeamFilters,
     goTo: goTo,
     setMe: setMe,
+    setPref: setPref,
     inspect: inspect,
     closeInspector: closeInspector,
     isInspected: isInspected,
@@ -1563,7 +1638,11 @@
     revealStage: revealStage,
     openStage: openStage,
     loadDemo: function () { loadDemo(); },
-    filterPortfolio: filterPortfolio
+    filterPortfolio: filterPortfolio,
+    applyView: applyView,
+    saveView: saveView,
+    removeView: removeView,
+    setLeader: setLeader
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */
@@ -1677,6 +1756,7 @@
       attrs: { type: 'button', id: 'tb-scope', hidden: true },
       on: { click: function () { setFilters({ health: 'all', horizon: 0 }); } }
     });
+    nodes.saveView = UI.button({ label: 'Zapisz widok', icon: 'plus', variant: 'ghost', size: 'sm', onClick: saveView, attrs: { id: 'tb-save-view', hidden: true } });
     nodes.tally = D.el('span', { class: 'toolbar__count', attrs: { 'aria-live': 'polite' } });
 
     nodes.view = UI.segmented({
@@ -1693,6 +1773,7 @@
       nodes.personFilter.node,
       nodes.scopeChip,
       nodes.clearFilters,
+      nodes.saveView,
       D.el('span', { class: 'toolbar__spacer' }),
       nodes.tally,
       nodes.groupButton,
@@ -1740,27 +1821,20 @@
   /* ---------- rysowanie ekranów ---------- */
 
   function scopeLabel(filters) {
-    var LABEL = { attention: 'Wymaga uwagi', alarm: 'Stan alarmowy', warning: 'Stan ostrzegawczy', normal: 'W normie', closed: 'Zakończone' };
-    var parts = [];
-    var level = null;
-    if (filters.health && filters.health !== 'all' && LABEL[filters.health]) {
-      parts.push(LABEL[filters.health]);
-      level = filters.health === 'attention' ? 'warning' : filters.health;
-    }
-    if (filters.horizon) parts.push('Terminy w ' + filters.horizon + ' dniach');
-    return parts.length ? { text: parts.join(', '), level: level } : null;
+    // Stan (health) pokazują zakładki widoków; znacznik zostaje tylko dla zawężenia terminami.
+    return filters.horizon ? { text: 'Terminy w ' + filters.horizon + ' dniach', level: null } : null;
   }
 
   function renderProjects(state) {
     var all = state.workspace.projects;
-    var visible = Query.filterAndSort(all, state.filters);
+    var visible = Query.filterAndSort(all, Object.assign({}, state.filters, { mail: state.workspace.mail }));
     var scope = scopeLabel(state.filters);
     var filtered = state.filters.query.trim() || state.filters.status !== 'all' || state.filters.person !== 'all' || !!scope;
     var overdue = all.filter(function (p) { return Progress.isOverdue(p); }).length;
     var running = all.filter(function (p) { return p.status === 'active'; }).length;
 
     D.render(nodes.projectsSummary, all.length
-      ? [D.el('span', { text: F.count(all.length, 'projekt', 'projekty', 'projektów') + ' w portfelu, ' + running + ' w realizacji' + (overdue ? ', ' + overdue + ' po terminie umowy' : '') + '.' })]
+      ? [D.el('span', { text: all.length + ' w portfelu · ' + running + ' w realizacji' + (overdue ? ' · ' + overdue + ' po terminie umowy' : '') })]
       : [D.el('span', { text: 'Portfel projektów biura: terminy umów, przebieg etapów i zespół.' })]);
 
     var person = Team.findPerson(people(), state.filters.person);
@@ -1786,7 +1860,19 @@
     nodes.groupButton.setAttribute('aria-label', 'Grupowanie: ' + { health: 'stan projektu', status: 'status', none: 'bez grupowania' }[state.prefs.groupBy]);
 
     nodes.portfolio.hidden = !all.length;
-    if (all.length) D.patch(nodes.portfolio, E.ProjectList.cockpit(all, { state: state, people: people(), actions: actions }));
+    nodes.railWrap.hidden = !all.length;
+    nodes.viewsBar.hidden = !all.length;
+    var pctx = { state: state, people: people(), actions: actions };
+    if (all.length) {
+      D.patch(nodes.portfolio, E.ProjectList.strip(all, pctx));
+      D.patch(nodes.rail, E.ProjectList.rail(all, pctx));
+      D.patch(nodes.viewsBar, E.ProjectList.views(all, pctx));
+    }
+    var matchesView = E.ProjectList.allViews(state.prefs).some(function (v) {
+      var f = E.ProjectList.viewFilters(v, state.prefs);
+      return state.prefs.projectView === v.id && f.health === state.filters.health && f.person === state.filters.person && f.status === state.filters.status && (f.query || '') === state.filters.query.trim() && !state.filters.horizon;
+    });
+    nodes.saveView.hidden = !filtered || matchesView;
     nodes.view.set(state.prefs.view);
     nodes.filters.hidden = !all.length;
     nodes.newProject.hidden = !all.length;
@@ -2132,6 +2218,9 @@
     nodes.fileInput = D.byId('import-file');
     nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork') };
     nodes.portfolio = D.byId('portfolio');
+    nodes.rail = D.byId('rail');
+    nodes.railWrap = D.byId('rail-wrap');
+    nodes.viewsBar = D.byId('views-bar');
     nodes.scroller = D.byId('scroller');
     nodes.sheet = D.byId('sheet');
     nodes.inspector = D.byId('inspector');
@@ -2198,6 +2287,8 @@
           : (loaded.warning || '')
       });
     });
+    var startView = findView(store.getState().prefs.projectView);
+    if (startView && startView.id !== 'all') applyViewFilters(startView, true);
     renderAll(store.getState());
     E.Shell.setSaved(true);
 

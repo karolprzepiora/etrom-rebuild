@@ -64,10 +64,11 @@
     return (typeof module !== 'undefined' && module.exports) ? require('./insight.js') : root.ETROM.Insight;
   }
 
-  var HEALTH = ['attention', 'alarm', 'warning', 'normal', 'closed'];
+  var HEALTH = ['attention', 'alarm', 'warning', 'normal', 'closed', 'overdue'];
 
-  function matchesHealth(project, health, now) {
+  function matchesHealth(project, health, now, mail) {
     if (!health || health === 'all' || HEALTH.indexOf(health) < 0) return true;
+    if (health === 'overdue') return insight().hasOverdue(project, now, mail);
     var level = insight().health(project, now).level;
     if (health === 'attention') return level === 'alarm' || level === 'warning';
     return level === health;
@@ -95,7 +96,7 @@
     var filtered = list.filter(function (project) {
       if (status !== 'all' && project.status !== status) return false;
       if (person !== 'all' && Team.projectPeople(project.team).indexOf(person) < 0) return false;
-      if (!matchesHealth(project, options.health, now)) return false;
+      if (!matchesHealth(project, options.health, now, options.mail)) return false;
       if (horizon && !insight().upcomingFor(project, now, horizon).length) return false;
       return matchesQuery(project, query);
     });

@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', sidebarCollapsed: false, pinned: [], recent: [], me: null };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -102,4 +102,21 @@ test('preferencja „ja” przyjmuje tylko identyfikator osoby', () => {
 test('gęstość: tylko komfortowa lub zwarta', () => {
   assert.equal(Prefs.normalize({ density: 'compact' }).density, 'compact');
   assert.equal(Prefs.normalize({ density: 'x' }).density, 'comfortable');
+});
+
+test('widoki listy: wbudowane i własne, z czyszczeniem złych wartości', () => {
+  assert.equal(Prefs.normalize({ projectView: 'overdue' }).projectView, 'overdue');
+  assert.equal(Prefs.normalize({ projectView: 'zly' }).projectView, 'all');
+  assert.equal(Prefs.normalize({ projectView: 'c-1' }).projectView, 'all', 'nieistniejący własny widok');
+  const prefs = Prefs.normalize({
+    projectView: 'c-2',
+    customViews: [
+      { id: 'c-2', name: '  Mój wodociąg  ', filters: { health: 'overdue', status: 'zly', person: 'p-3', query: 'woda' } },
+      { id: 'c-2', name: 'duplikat', filters: {} },
+      { id: 'x', name: 'zły id', filters: {} },
+      { id: 'c-3', name: '', filters: {} }
+    ]
+  });
+  assert.equal(prefs.projectView, 'c-2');
+  assert.deepEqual(prefs.customViews, [{ id: 'c-2', name: 'Mój wodociąg', filters: { health: 'overdue', status: 'all', person: 'p-3', query: 'woda' } }]);
 });
