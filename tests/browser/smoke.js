@@ -180,6 +180,7 @@ async function main() {
       n: { key: 'n', code: 'KeyN', vk: 78, text: 'n' },
       g: { key: 'g', code: 'KeyG', vk: 71, text: 'g' },
       m: { key: 'm', code: 'KeyM', vk: 77, text: 'm' },
+      t: { key: 't', code: 'KeyT', vk: 84, text: 't' },
       e: { key: 'e', code: 'KeyE', vk: 69, text: 'e' },
       slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
@@ -574,6 +575,14 @@ async function main() {
       (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
     check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
+    check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
+      await evaluate('return !!document.querySelector(".etoday__resume");'));
+    await pressKey('t');
+    await sleep(300);
+    check('klawisz T wznawia ostatnie zadanie', (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+    await pressKey('t');
+    await sleep(300);
+    check('klawisz T zatrzymuje chodzący zegar', (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0);
     await click('.erow .row-actions');
     await sleep(200);
     await evaluate('const item = [...document.querySelectorAll("[role=menuitem]")].find(x => /Zmień godziny/.test(x.textContent)); item.click(); return true;');

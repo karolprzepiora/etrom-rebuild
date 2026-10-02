@@ -118,13 +118,12 @@
     var info = Progress.deadlineInfo(project.deadline, now);
     var done = project.status === 'done';
     return D.el('dl', { class: 'facts' }, [
-      fact('Godziny', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], (loggedMinutes ? 'zapisano ' + String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') + ' h' : stats.done + ' z ' + stats.total + ' etapów')),
+      fact('Godziny wykonane', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], 'wg budżetu etapów'),
       fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
         tasks.overdue ? 'alarm' : ''),
-      fact('Termin umowy', project.deadline ? [D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) })] : 'Bez terminu',
-        project.deadline && !done ? Progress.countdown(project.deadline, now).text : (done ? 'projekt zakończony' : ''),
-        !done && info.tone === 'overdue' ? 'alarm' : (!done && info.tone === 'urgent' ? 'warn' : ''))
+      fact('Zapisany czas', [D.el('span', { class: 't-num', text: loggedMinutes ? String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') : '0' }), D.el('span', { class: 'fact__of t-num', text: ' h' })],
+        loggedMinutes && stats.hoursTotal ? Math.round(loggedMinutes / 60 / stats.hoursTotal * 100) + '% budżetu' : 'rejestr czasu pusty')
     ]);
   }
 

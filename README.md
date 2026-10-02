@@ -153,7 +153,7 @@ Widok tylko czyta stan i rysuje.
 
 ```bash
 node --test tests/*.test.js     # 217 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 148 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tests/browser/smoke.js     # 151 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -275,3 +275,9 @@ w teście przeglądarkowym.
 - Pasek zegara pokazuje „od HH:MM”; komunikaty: „Zegar włączony o …”, „Zakończono o … (start …)”.
 - Moja praca: oś dnia (odcinki w barwach projektów, znacznik „teraz”, start dnia i ostatni koniec).
 - Kokpit portfela: „Teraz w pracy” (chodzące zegary) oraz łączenie terminów tego samego projektu z tego samego dnia.
+
+## Audyt widoku projektu (powtórzenia)
+
+- Nagłówek: termin umowy jest w torze czasu i w stanie projektu, więc fakt „Termin umowy” zastąpił „Zapisany czas”; liczba etapów nie powtarza się w faktach.
+- Flow: etap z zadaniami po terminie ma kropkę alarmu na torze.
+- Zegar: „Wznów ostatnie” w Mojej pracy i skrót klawiszowy T (zatrzymaj / wznów).

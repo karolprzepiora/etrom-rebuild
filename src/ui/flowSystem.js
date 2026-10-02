@@ -226,13 +226,15 @@
           class: 'flow__mark'
         }));
       }
-      var cls = 'flow__seg flow__seg--' + seg.status + ' flow__seg--' + seg.state + (seg.current ? ' is-current' : '');
+      var stageObj = (project.stages || []).filter(function (st) { return st.id === seg.id; })[0];
+      var late = stageObj && E.Tasks ? E.Tasks.taskStats(stageObj.tasks || [], o.now).overdue : 0;
+      var cls = 'flow__seg flow__seg--' + seg.status + ' flow__seg--' + seg.state + (seg.current ? ' is-current' : '') + (hero && late ? ' has-late' : '');
       if (hero) cls += seg.weight < TINY ? (seg.current ? ' is-sliver' : ' is-tiny') : '';
       return D.el(interactive ? 'button' : 'span', {
         class: cls,
         style: { 'flex-grow': String(seg.weight), 'flex-basis': '0' },
         attrs: {
-          'data-tooltip': size === 'mini' ? null : segmentLabel(seg),
+          'data-tooltip': size === 'mini' ? null : segmentLabel(seg) + (late ? ', zadań po terminie: ' + late : ''),
           'aria-label': interactive ? segmentLabel(seg) : null, type: interactive ? 'button' : null,
           'aria-current': hero && seg.current ? 'step' : null
         },

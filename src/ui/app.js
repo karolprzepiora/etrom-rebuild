@@ -719,6 +719,33 @@
     Toast.show({ message: 'Zakończono o ' + E.Timer.hm(new Date()) + ' (start ' + E.Timer.hm(result.stopped.start) + ') · ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (where.task ? where.task.name : result.stopped.label) + '”.', tone: 'success', timeout: 4000 });
   }
 
+  /** Ostatnio zatrzymane zadanie osoby, które nadal jest otwarte. */
+  function lastTimedTask() {
+    var me = currentMe();
+    if (!me) return null;
+    var list = entries().filter(function (e) { return e.personId === me && e.end && e.taskId; })
+      .sort(function (a, b) { return Date.parse(b.end) - Date.parse(a.end); });
+    for (var i = 0; i < list.length; i += 1) {
+      var found = locateEntry(list[i]);
+      if (found && found.task && found.task.status !== 'done') return list[i];
+    }
+    return null;
+  }
+
+  function resumeLast() {
+    var entry = lastTimedTask();
+    if (!entry) return;
+    toggleTimer(entry.projectId, entry.stageId, entry.taskId);
+  }
+
+  function toggleTimerKey() {
+    var me = currentMe();
+    if (!me) { requireMe(); return; }
+    if (TL.running(entries(), me)) { stopTimer(); return; }
+    if (lastTimedTask()) { resumeLast(); return; }
+    Toast.show({ message: 'Zacznij od ▶ przy zadaniu — potem T wznawia ostatnie.', tone: 'info', timeout: 4000 });
+  }
+
   function openTimeForm(spec) {
     var me = currentMe();
     var draft;
@@ -956,6 +983,7 @@
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
     ['G M', 'Przejdź do mojej pracy'],
+    ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
     ['[', 'Zwiń lub rozwiń panel boczny'],
     ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
     ['Ctrl Enter', 'Zapisz formularz'],
@@ -1364,6 +1392,8 @@
     deleteTask: deleteTask,
     moveTask: moveTaskStatus,
     toggleTimer: toggleTimer,
+    resumeLast: resumeLast,
+    lastTimedTask: lastTimedTask,
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
     isTiming: isTiming,
@@ -1881,6 +1911,7 @@
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
     }
+    if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {
       pendingG = true;
       window.setTimeout(function () { pendingG = false; }, 900);

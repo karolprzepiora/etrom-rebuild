@@ -736,3 +736,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .trow__step { all: unset; cursor: pointer; font-size: var(--fs-xs); font-weight: 600; color: var(--flow-ink); border-radius: var(--r-sm); padding: 0 2px; }
 .trow__step:hover { text-decoration: underline; }
 .trow__step:focus-visible { outline: 2px solid var(--flow-ring); outline-offset: 2px; }
+
+.etoday__resume { display: flex; align-items: center; gap: var(--space-2); width: 100%; margin-bottom: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px dashed var(--flow); border-radius: var(--radius-md, 8px); background: var(--flow-wash); color: var(--flow-ink); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; text-align: left; }
+.etoday__resume:hover { background: color-mix(in srgb, var(--flow-wash) 70%, var(--flow) 30%); }
+.etoday__resume:focus-visible { outline: 2px solid var(--flow-ring); outline-offset: 2px; }
+.etoday__resume .kbd { margin-left: auto; }

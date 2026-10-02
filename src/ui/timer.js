@@ -160,6 +160,23 @@
     ]);
   }
 
+  /** „Wznów ostatnie”: jedno kliknięcie wraca do zadania, przy którym zegar stał. */
+  function resumeButton(ctx) {
+    var last = ctx.actions.lastTimedTask && ctx.actions.lastTimedTask();
+    if (!last) return null;
+    var found = ctx.find(last);
+    if (ctx.actions.isTiming(last.projectId, last.stageId, last.taskId)) return null;
+    var name = (found && found.task && found.task.name) || last.label || 'zadanie';
+    return D.el('button', {
+      class: 'etoday__resume', attrs: { type: 'button', 'data-fk': 'timer-resume' },
+      on: { click: function () { ctx.actions.resumeLast(); } }
+    }, [
+      E.Icons.icon('play', 14),
+      D.el('span', { class: 'truncate', text: 'Wznów: ' + name }),
+      D.el('kbd', { class: 'kbd', text: 'T' })
+    ]);
+  }
+
   /** Czas zapisany dziś: suma i lista wpisów. */
   function todayBlock(entries, ctx) {
     var total = TL.sum(entries);
@@ -169,6 +186,7 @@
         D.el('span', { class: 'etoday__total t-num', text: total ? TL.duration(total) : '0 min', attrs: { 'data-total': '1' } })
       ]),
       dayAxis(entries, ctx, new Date()),
+      resumeButton(ctx),
       entries.length
         ? D.el('ul', { class: 'erows' }, entries.map(function (entry) { return entryRow(entry, ctx); }))
         : D.el('p', { class: 'maside__empty', text: 'Włącz zegar przy zadaniu (▶) albo dopisz czas ręcznie z menu zadania.' })
