@@ -5,6 +5,9 @@
   var Progress = (typeof module !== 'undefined' && module.exports)
     ? require('./progress.js')
     : root.ETROM.Progress;
+  var Team = (typeof module !== 'undefined' && module.exports)
+    ? require('./team.js')
+    : root.ETROM.Team;
 
   var SORTS = {
     deadline: 'Termin — najbliższy (zakończone na końcu)',
@@ -58,7 +61,7 @@
 
   /**
    * @param {Array} projects
-   * @param {{query?: string, status?: string, sort?: string}} filters
+   * @param {{query?: string, status?: string, sort?: string, person?: string}} filters
    * @returns {Array} nowa, przefiltrowana i posortowana tablica
    */
   function filterAndSort(projects, filters) {
@@ -67,8 +70,11 @@
     var status = options.status || 'all';
     var query = typeof options.query === 'string' ? options.query.trim() : '';
 
+    var person = options.person || 'all';
+
     var filtered = list.filter(function (project) {
       if (status !== 'all' && project.status !== status) return false;
+      if (person !== 'all' && Team.projectPeople(project.team).indexOf(person) < 0) return false;
       return matchesQuery(project, query);
     });
 

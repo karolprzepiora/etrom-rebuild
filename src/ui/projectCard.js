@@ -8,6 +8,8 @@
   var Identity = root.ETROM.Identity;
   var Icons = root.ETROM.Icons;
   var StageList = root.ETROM.StageList;
+  var Team = root.ETROM.Team;
+  var Avatar = root.ETROM.Avatar;
 
   function tile(value, label, extraClass) {
     return D.el('div', { class: 'tile ' + (extraClass || '') }, [
@@ -46,6 +48,32 @@
           attrs: { title: prefix + info.name + ' — ' + Model.STAGE_STATUS[stage.status] }
         });
       }));
+  }
+
+  /** Awatary zespołu i nazwiska osób pełniących kluczowe funkcje. */
+  function teamLine(project, people) {
+    var ids = Team.projectPeople(project.team);
+    var assigned = ids.map(function (id) { return Team.findPerson(people, id); }).filter(Boolean);
+
+    if (!assigned.length) {
+      return D.el('p', { class: 'project__team project__team--empty' }, [
+        D.el('span', { text: 'Bez przypisanego zespołu' })
+      ]);
+    }
+
+    var named = [];
+    Team.FUNCTIONS.forEach(function (fn) {
+      var person = Team.findPerson(people, project.team[fn.key]);
+      if (person && named.length < 2) named.push(fn.short + ': ' + Team.fullName(person));
+    });
+
+    return D.el('p', { class: 'project__team' }, [
+      Avatar.avatarStack(assigned, { max: 4 }),
+      D.el('span', {
+        class: 'project__teamRoles',
+        text: named.length ? named.join(' · ') : assigned.length + ' os. w zespole'
+      })
+    ]);
   }
 
   function meter(stats, motion) {
@@ -124,6 +152,7 @@
       cover(project, handlers),
       D.el('div', { class: 'project__body' }, [
         D.el('p', { class: 'project__client', text: project.client || 'Zamawiający nieokreślony' }),
+        teamLine(project, (view && view.people) || []),
         activeLine(project),
         meter(stats, motion),
         stageStrip(project),

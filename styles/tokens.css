@@ -87,6 +87,10 @@
   --shadow-lg: 0 14px 36px rgba(20, 42, 54, 0.16);
 
   --focus-ring: 0 0 0 3px rgba(214, 81, 152, 0.4);
+
+  /* Awatary: barwa z identyfikatora osoby, jasność dobrana do motywu. */
+  --avatar-bg-a: 0.18;
+  --avatar-text-l: 30%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -127,6 +131,8 @@
     --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.6);
 
     --focus-ring: 0 0 0 3px rgba(236, 116, 174, 0.45);
+    --avatar-bg-a: 0.26;
+    --avatar-text-l: 76%;
   }
 }
 
@@ -167,6 +173,8 @@
   --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.6);
 
   --focus-ring: 0 0 0 3px rgba(236, 116, 174, 0.45);
+  --avatar-bg-a: 0.26;
+  --avatar-text-l: 76%;
 }
 
 /* ============ Warianty barw ============

@@ -144,6 +144,12 @@ async function main() {
     // Wariant barw hydro
     await run('document.documentElement.setAttribute("data-accent", "hydro"); return true;');
     await shoot('hydro');
+    await run('document.documentElement.removeAttribute("data-accent"); return true;');
+
+    // Ekran Zespołu
+    await run('window.ETROM.app.goTo("team"); return true;');
+    await sleep(500);
+    await shoot('zespol');
 
   } finally {
     client.close();

@@ -6,6 +6,7 @@
   var Icons = root.ETROM.Icons;
   var Search = root.ETROM.Search;
   var Progress = root.ETROM.Progress;
+  var Team = root.ETROM.Team;
 
   var MAX_PROJECTS = 6;
   var MAX_COMMANDS = 8;
@@ -38,8 +39,24 @@
       return { icon: command.icon || 'chevron', label: command.label, meta: command.meta || '', run: command.run };
     });
 
+    var persons = options.onPerson
+      ? Search.rank(
+          options.people || [], query,
+          function (person) { return [Team.fullName(person), person.position]; },
+          5
+        ).map(function (person) {
+          return {
+            icon: 'people',
+            label: Team.fullName(person),
+            meta: [person.position, Team.ORG_ROLES[person.orgRole]].filter(Boolean).join(' · '),
+            run: function () { options.onPerson(person); }
+          };
+        })
+      : [];
+
     var groups = [];
     if (projects.length) groups.push({ title: 'Projekty', entries: projects });
+    if (persons.length) groups.push({ title: 'Osoby', entries: persons });
     if (commands.length) groups.push({ title: 'Działania', entries: commands });
     return groups;
   }

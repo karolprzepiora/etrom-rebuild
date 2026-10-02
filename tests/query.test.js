@@ -104,3 +104,43 @@ test('filterAndSort znosi brak argumentów', () => {
   assert.deepEqual(Query.filterAndSort(null, null), []);
   assert.equal(Query.filterAndSort(SET).length, 4);
 });
+
+/* ---------- filtr po osobie ---------- */
+
+const Team = require('../src/core/team.js');
+
+function withTeam(code, team) {
+  return { id: code.length, code, name: code, client: 'K', status: 'active', deadline: '', stages: [], team };
+}
+
+const PEOPLE = [
+  { id: 'p-1', firstName: 'Anna', lastName: 'Testowa', orgRole: 'member', cooperation: 'internal', active: true },
+  { id: 'p-2', firstName: 'Michał', lastName: 'Testowy', orgRole: 'member', cooperation: 'internal', active: true }
+];
+
+const WITH_TEAMS = [
+  withTeam('T-1', Team.normalizeTeam({ leader: 'p-1' }, PEOPLE)),
+  withTeam('T-2', Team.normalizeTeam({ members: ['p-2'] }, PEOPLE)),
+  withTeam('T-3', Team.normalizeTeam({}, PEOPLE))
+];
+
+test('filtr osoby pokazuje projekty, w których ta osoba cokolwiek pełni', () => {
+  assert.deepEqual(Query.filterAndSort(WITH_TEAMS, { person: 'p-1' }).map((p) => p.code), ['T-1']);
+  assert.deepEqual(Query.filterAndSort(WITH_TEAMS, { person: 'p-2' }).map((p) => p.code), ['T-2']);
+  assert.deepEqual(Query.filterAndSort(WITH_TEAMS, { person: 'p-9' }), []);
+});
+
+test('filtr osoby ustawiony na „wszyscy” niczego nie odcina', () => {
+  assert.equal(Query.filterAndSort(WITH_TEAMS, { person: 'all' }).length, 3);
+  assert.equal(Query.filterAndSort(WITH_TEAMS, {}).length, 3);
+});
+
+test('filtr osoby łączy się z filtrem statusu', () => {
+  const mixed = WITH_TEAMS.concat([
+    Object.assign(withTeam('T-4', Team.normalizeTeam({ leader: 'p-1' }, PEOPLE)), { status: 'done' })
+  ]);
+  assert.deepEqual(
+    Query.filterAndSort(mixed, { person: 'p-1', status: 'done' }).map((p) => p.code),
+    ['T-4']
+  );
+});

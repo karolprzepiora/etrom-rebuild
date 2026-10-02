@@ -1201,3 +1201,125 @@ button, input, select, textarea { font: inherit; color: inherit; }
   ::view-transition-old(*),
   ::view-transition-new(*) { animation: none !important; }
 }
+
+/* ============ Ekrany ============ */
+
+.view[hidden] { display: none; }
+
+/* ============ Awatary ============ */
+
+.avatars { display: inline-flex; align-items: center; }
+.avatars .avatar + .avatar { margin-left: -0.35rem; }
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: hsl(var(--avatar-h, 210) 45% 50% / var(--avatar-bg-a));
+  color: hsl(var(--avatar-h, 210) 45% var(--avatar-text-l));
+  box-shadow: 0 0 0 2px var(--surface);
+  user-select: none;
+}
+.avatar--sm { width: 1.625rem; height: 1.625rem; font-size: 0.6875rem; letter-spacing: -0.02em; }
+.avatar--md { width: 2.25rem; height: 2.25rem; font-size: var(--text-xs); }
+.avatar--lg { width: 3rem; height: 3rem; font-size: var(--text-base); }
+.avatar--off { filter: grayscale(1); opacity: 0.6; }
+.avatar--rest { background: var(--neutral-soft); color: var(--ink-soft); }
+
+/* ============ Zespół na karcie projektu ============ */
+
+.project__team {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.project__teamRoles {
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project__team--empty span { font-size: var(--text-xs); color: var(--ink-faint); }
+
+/* ============ Lista osób ============ */
+
+.prows { display: flex; flex-direction: column; gap: 2px; }
+
+.prow {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 9rem minmax(0, 1.3fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.prow:hover { border-color: var(--line); }
+.prow--off { background: transparent; }
+.prow--off .prow__name > span:first-child { color: var(--ink-soft); }
+
+.prow__body { min-width: 0; }
+.prow__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  line-height: var(--leading-tight);
+}
+.prow__meta { font-size: var(--text-2xs); color: var(--ink-faint); }
+.prow__roles { display: flex; gap: var(--space-1); flex-wrap: wrap; align-items: center; }
+.prow__quiet { font-size: var(--text-xs); color: var(--ink-faint); }
+.prow__tools {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.prow:hover .prow__tools,
+.prow:focus-within .prow__tools { opacity: 1; }
+
+.chip--link {
+  border: 0;
+  font: inherit;
+  font-size: var(--text-2xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+.chip--link:hover { background: var(--accent-soft); color: var(--accent-deep); }
+
+.filters .field--check { flex-direction: row; align-items: center; margin-top: 0; }
+.filters .field--check label { font-size: var(--text-sm); }
+
+@media (max-width: 860px) {
+  .prow {
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    row-gap: var(--space-1);
+  }
+  .prow > .chip { grid-column: 2; justify-self: start; }
+  .prow__roles { grid-column: 2 / -1; }
+  .prow__tools { grid-column: 3; opacity: 1; }
+}
+
+/* ============ Pasek boczny: nawigacja ============ */
+
+.rail__item--nav {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--navy-text);
+  text-align: left;
+  cursor: pointer;
+}
+.rail__item--nav:hover { background: rgba(255, 255, 255, 0.08); }

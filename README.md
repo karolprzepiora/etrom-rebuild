@@ -5,6 +5,8 @@ Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
 
 ![ETROM — widok projektów](docs/screenshots/etrom-light.png)
 
+![ETROM — ekran Zespołu](docs/screenshots/etrom-zespol.png)
+
 ## Uruchomienie
 
 1. Pobierz i rozpakuj **cały** folder.
@@ -38,6 +40,11 @@ przykładowych projektów, żeby było na czym sprawdzić listę, etapy i postę
 - pasek czternastu etapów na karcie — stan całego projektu bez rozwijania,
 - usuwanie działa od razu i przez kilka sekund da się je cofnąć,
 - trzy warianty barw (standard, hydro, topo) obok motywu jasnego i ciemnego,
+- **ekran Zespołu**: katalog osób, role w organizacji, forma współpracy,
+  wyłączanie z obiegu z zachowaniem historii,
+- **funkcje w projekcie**: Lider, Koordynator, Pełnomocnik wiodący i dodatkowy
+  oraz pozostali członkowie zespołu — relacje oparte o stabilny identyfikator osoby,
+- awatary zespołu na kartach i w liście projektów, filtr projektów po osobie,
 - formularz w panelu wysuwanym, potwierdzenia we własnych oknach aplikacji.
 
 ## Czego jeszcze nie ma
@@ -55,6 +62,7 @@ styles/
   app.css               komponenty i układ
 src/core/               logika, zero kodu dotykającego DOM
   catalog.js            14 etapów i dziedziny
+  team.js               katalog osób i funkcje w projektach
   model.js              fabryki i walidacja
   progress.js           postęp i terminy
   query.js              szukanie, filtrowanie, sortowanie
@@ -77,8 +85,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 106 testów logiki, bez przeglądarki
-node tests/browser/smoke.js     # 41 sprawdzeń w Chromium, na adresie file://
+node --test tests/*.test.js     # 131 testów logiki, bez przeglądarki
+node tests/browser/smoke.js     # 54 sprawdzenia w Chromium, na adresie file://
 node tools/screenshot.js        # zrzuty ekranu do docs/screenshots
 ```
 
@@ -128,6 +136,19 @@ wszystko naraz: przy czyszczeniu danych programu.
 stronę. Przy zmianie układu, gdzie ten sam projekt wędruje z kafla do
 wiersza, to się opłaca. Przy rozwijaniu etapów nie — tam wystarcza tania
 animacja wejścia, a przejście tylko opóźniałoby reakcję.
+
+**Dlaczego funkcje w projekcie wskazują na identyfikator, a nie na imię?**
+Wpisane imię i nazwisko rozjeżdża się przy pierwszej literówce i przy zmianie
+nazwiska. Funkcja jest relacją `osoba ↔ projekt` opartą o stabilne `id`, więc
+zmiana danych osoby nie gubi jej przypisań. Dwa pełnomocnictwa to niezależne
+sloty, a osoba pełniąca funkcję należy do zespołu z urzędu.
+
+**Dlaczego osoby się nie usuwa, tylko wyłącza?**
+Usunięcie zerwałoby historię projektów, w których ktoś pracował. Osobę
+z przypisaniami da się tylko wyłączyć z obiegu — znika z list wyboru,
+ale zostaje w projektach. Wyłączenie jest blokowane, dopóki pełni funkcję
+w niezakończonym projekcie. Usunąć wprost można tylko osobę bez żadnych
+przypisań.
 
 **Skąd numery etapów, skoro projekt nie ma wszystkich czternastu?**
 Na kafelku jest numer kolejny w tym projekcie, żeby lista nie miała dziur,

@@ -5,8 +5,11 @@
   var Catalog = (typeof module !== 'undefined' && module.exports)
     ? require('./catalog.js')
     : root.ETROM.Catalog;
+  var Team = (typeof module !== 'undefined' && module.exports)
+    ? require('./team.js')
+    : root.ETROM.Team;
 
-  var WORKSPACE_VERSION = 3;
+  var WORKSPACE_VERSION = 4;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -220,6 +223,7 @@
       status: v.status,
       deadline: v.deadline,
       stages: Array.isArray(input.stages) ? input.stages.slice() : [],
+      team: input.team ? Object.assign(Team.emptyTeam(), input.team) : Team.emptyTeam(),
       createdAt: new Date().toISOString()
     };
   }
@@ -233,6 +237,7 @@
   /** Czyści dane wczytane z dysku — nigdy nie rzuca, pomija uszkodzone wpisy. */
   function normalizeWorkspace(raw) {
     var source = (raw && typeof raw === 'object') ? raw : {};
+    var people = Team.normalizePeople(source.people);
     var list = Array.isArray(source.projects) ? source.projects : [];
     var seenIds = {};
     var seenCodes = {};
@@ -291,6 +296,7 @@
         status: status,
         deadline: isDate(item.deadline) ? item.deadline : '',
         stages: stages,
+        team: Team.normalizeTeam(item.team, people),
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 
@@ -305,11 +311,11 @@
       seenIds[project.id] = true;
     });
 
-    return { version: WORKSPACE_VERSION, projects: projects };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [] };
   }
 
   var api = {

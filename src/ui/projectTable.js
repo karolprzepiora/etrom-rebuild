@@ -7,6 +7,8 @@
   var Progress = root.ETROM.Progress;
   var Icons = root.ETROM.Icons;
   var StageList = root.ETROM.StageList;
+  var Team = root.ETROM.Team;
+  var Avatar = root.ETROM.Avatar;
 
   var STATUS_CHIP = {
     planned: '',
@@ -31,6 +33,7 @@
     { key: 'progress', label: 'Postęp', sort: 'progress' },
     { key: 'stages', label: 'Etapy' },
     { key: 'deadline', label: 'Termin umowy', sort: 'deadline' },
+    { key: 'team', label: 'Zespół' },
     { key: 'actions', label: 'Działania' }
   ];
 
@@ -62,7 +65,7 @@
     ]);
   }
 
-  function row(project, expanded, handlers) {
+  function row(project, expanded, handlers, people) {
     var stats = Progress.projectProgress(project);
     var deadline = Progress.deadlineInfo(project.deadline);
     var stage = Progress.activeStage(project);
@@ -100,6 +103,14 @@
         project.deadline
           ? D.el('span', { class: 'chip ' + DEADLINE_CHIP[deadline.tone], text: deadline.text })
           : D.el('span', { class: 'table__client', text: 'Nie ustalono' })
+      ]),
+      D.el('td', { class: 'table__td' }, [
+        Avatar.avatarStack(
+          Team.projectPeople(project.team)
+            .map(function (id) { return Team.findPerson(people, id); })
+            .filter(Boolean),
+          { max: 3 }
+        )
       ]),
       D.el('td', { class: 'table__td' }, [
         D.el('div', { class: 'table__actions' }, [
@@ -146,7 +157,7 @@
     var body = [];
     projects.forEach(function (project) {
       var expanded = !!state.expanded[project.id];
-      body.push(row(project, expanded, handlers));
+      body.push(row(project, expanded, handlers, state.people || []));
       if (expanded) {
         body.push(detailRow(project, handlers, motionFor(project),
           stageFormFor ? stageFormFor(project) : null));

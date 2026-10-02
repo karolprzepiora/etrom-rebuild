@@ -494,7 +494,7 @@ async function main() {
     await pressKey('n');
     check('formularz pokazuje listę etapów do wyboru, domyślnie pustą',
       await evaluate(
-        'const boxes = [...document.querySelectorAll(".picker__item input")];' +
+        'const boxes = [...document.querySelectorAll("#pf-stage-picker .picker__item input")];' +
         'return boxes.length === 14 && boxes.every(b => !b.checked);'
       ));
 
@@ -575,7 +575,155 @@ async function main() {
     check('etap własny daje się przesunąć pomiędzy standardowe',
       stageOrder === 'preparation,water-docs,custom-1,handover', 'kolejność: ' + stageOrder);
 
-    /* 23. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    /* 23. Ekran Zespołu */
+    check('dane testowe zakładają katalog osób',
+      (await evaluate('return (window.ETROM.app.store.getState().workspace.people || []).length;')) === 6);
+
+    check('karta projektu pokazuje awatary i osobę pełniącą funkcję',
+      await evaluate(
+        'const card = document.querySelector(\'[data-project-code="DEMO-001"]\');' +
+        'const roles = card.querySelector(".project__teamRoles");' +
+        'return card.querySelectorAll(".avatar").length > 0 && /Lider:/.test(roles.textContent);'
+      ));
+
+    await evaluate('document.querySelector(\'.rail__item--nav[data-screen="team"]\').click(); return true;');
+    await sleep(500);
+    check('pasek boczny przełącza na ekran Zespołu',
+      await evaluate(
+        'return !document.getElementById("view-team").hidden &&' +
+        ' document.getElementById("view-projects").hidden &&' +
+        ' document.querySelectorAll(".prow").length === 6;'
+      ));
+
+    check('wiersz osoby pokazuje funkcje pełnione w projektach',
+      await evaluate(
+        'const chips = [...document.querySelectorAll(".prow .chip--link")].map(c => c.textContent);' +
+        'return chips.some(t => t.indexOf("DEMO-") === 0 && t.indexOf("Lider") > 0);'
+      ));
+
+    /* 24. Dodawanie i walidacja osoby */
+    await pressKey('n');
+    check('na ekranie Zespołu klawisz N otwiera formularz osoby',
+      await evaluate('return !!document.querySelector("dialog.drawer[open] #person-form");'));
+
+    await evaluate(
+      'document.getElementById("pe-first").value = "Zofia";' +
+      'document.getElementById("pe-last").value = "Nowakowa";' +
+      'document.getElementById("pe-position").value = "Geodetka";' +
+      'document.getElementById("pe-role").value = "member";' +
+      'document.getElementById("person-form").requestSubmit(); return true;'
+    );
+    await sleep(300);
+    check('nowa osoba trafia do katalogu',
+      (await evaluate('return window.ETROM.app.store.getState().workspace.people.length;')) === 7);
+
+    await pressKey('n');
+    await evaluate(
+      'document.getElementById("pe-first").value = "zofia";' +
+      'document.getElementById("pe-last").value = "NOWAKOWA";' +
+      'document.getElementById("person-form").requestSubmit(); return true;'
+    );
+    await sleep(250);
+    check('druga osoba o tym samym imieniu i nazwisku nie przechodzi',
+      await evaluate(
+        'const err = document.querySelector("#person-form .field__error");' +
+        'return !!err && /już jest/i.test(err.textContent);'
+      ));
+    await pressKey('escape');
+    await sleep(250);
+
+    /* 25. Wyłączanie osoby i jego blokada */
+    const anna = await evaluate(
+      'const p = window.ETROM.app.store.getState().workspace.people' +
+      '  .find(x => x.firstName === "Anna");' +
+      'return p ? p.id : "";'
+    );
+    await evaluate(
+      'const row = document.querySelector(\'[data-person-id="' + anna + '"]\');' +
+      'const btn = [...row.querySelectorAll("button")].find(b => b.textContent === "Wyłącz");' +
+      'btn.click(); return true;'
+    );
+    await sleep(300);
+    check('nie da się wyłączyć osoby pełniącej funkcję w czynnym projekcie',
+      await evaluate(
+        'const toast = document.querySelector(".toast__text");' +
+        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + anna + '");' +
+        'return p.active === true && !!toast && /niezakończonych/i.test(toast.textContent);'
+      ));
+
+    const zofia = await evaluate(
+      'const p = window.ETROM.app.store.getState().workspace.people' +
+      '  .find(x => x.firstName === "Zofia");' +
+      'return p ? p.id : "";'
+    );
+    await evaluate(
+      'const row = document.querySelector(\'[data-person-id="' + zofia + '"]\');' +
+      'const btn = [...row.querySelectorAll("button")].find(b => b.textContent === "Wyłącz");' +
+      'btn.click(); return true;'
+    );
+    await sleep(300);
+    check('osobę bez przypisań da się wyłączyć z obiegu',
+      await evaluate(
+        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + zofia + '");' +
+        'return p.active === false;'
+      ));
+
+    check('wyłączenie można cofnąć z paska',
+      await evaluate(
+        'const action = document.querySelector("[data-toast-action]");' +
+        'if (!action) return false;' +
+        'action.click();' +
+        'return true;'
+      ));
+    await sleep(300);
+    check('po cofnięciu osoba wraca do obiegu',
+      await evaluate(
+        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + zofia + '");' +
+        'return p.active === true;'
+      ));
+
+    /* 26. Filtr osoby na ekranie projektów */
+    await evaluate('window.ETROM.app.goTo("projects"); return true;');
+    await sleep(500);
+    const expected = await evaluate(
+      'const ws = window.ETROM.app.store.getState().workspace;' +
+      'return ws.projects.filter(p => window.ETROM.Team.projectPeople(p.team).indexOf("' + anna + '") >= 0).length;'
+    );
+    await evaluate(
+      'const select = document.getElementById("tb-person");' +
+      'select.value = "' + anna + '";' +
+      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
+    );
+    await sleep(300);
+    const shown = await evaluate('return document.querySelectorAll(".project").length;');
+    check('filtr osoby zawęża listę do jej projektów',
+      shown === expected && shown > 0, 'pokazano ' + shown + ', oczekiwano ' + expected);
+
+    await evaluate(
+      'const select = document.getElementById("tb-person");' +
+      'select.value = "all";' +
+      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
+    );
+    await sleep(250);
+
+    /* 27. Paleta znajduje osoby */
+    await pressKey('k', CTRL);
+    await evaluate(
+      'const input = document.querySelector(".palette__input");' +
+      'input.value = "zofia";' +
+      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
+    );
+    await sleep(250);
+    check('paleta pokazuje osoby w osobnej grupie',
+      await evaluate(
+        'const groups = [...document.querySelectorAll(".palette__group")].map(g => g.textContent);' +
+        'const labels = [...document.querySelectorAll(".palette__rowLabel")].map(l => l.textContent);' +
+        'return groups.indexOf("Osoby") >= 0 && labels.some(l => l.indexOf("Zofia") === 0);'
+      ));
+    await pressKey('escape');
+    await sleep(200);
+
+    /* 28. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu',
       pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

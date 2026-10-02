@@ -6,6 +6,7 @@
   var D = root.ETROM.Dom;
   var Model = root.ETROM.Model;
   var Catalog = root.ETROM.Catalog;
+  var Team = root.ETROM.Team;
 
   function field(id, label, control, error, hint) {
     var children = [
@@ -32,10 +33,14 @@
    * @param {Object} errors mapa pole → komunikat
    * @param {{onSubmit: Function, onCancel: Function}} handlers
    */
-  function projectForm(draft, errors, handlers) {
+  function projectForm(draft, errors, handlers, people) {
     var values = draft || {};
     var problems = errors || {};
     var editing = values.id != null;
+    var roster = (people || []).filter(function (person) {
+      // Wyłączona osoba zostaje na liście tylko wtedy, gdy już pełni funkcję.
+      return person.active !== false || Team.projectPeople(values.team).indexOf(person.id) >= 0;
+    });
 
     var codeInput = input('pf-code', values.code, problems.code, { maxlength: '50', placeholder: 'np. W-2026-014' });
     var nameInput = input('pf-name', values.name, problems.name, { maxlength: '200', placeholder: 'np. Przebudowa przepustu w Lipnicy' });
@@ -67,7 +72,7 @@
       refreshCount();
     }
 
-    var stagePicker = D.el('div', { class: 'picker' }, [
+    var stagePicker = D.el('div', { class: 'picker', attrs: { id: 'pf-stage-picker' } }, [
       D.el('div', { class: 'picker__head' }, [
         D.el('span', { class: 'label', text: 'Etapy projektu' }),
         pickedCount,
@@ -103,6 +108,69 @@
 
     refreshCount();
 
+    var team = values.team || Team.emptyTeam();
+    var functionSelects = {};
+    var memberBoxes = {};
+
+    function personOptions(selected) {
+      return [D.el('option', { text: '— nie przypisano —', attrs: { value: '' } })].concat(
+        roster.map(function (person) {
+          return D.el('option', {
+            text: Team.fullName(person) + (person.position ? ' · ' + person.position : ''),
+            attrs: { value: person.id, selected: selected === person.id }
+          });
+        })
+      );
+    }
+
+    var teamSection = roster.length
+      ? D.el('div', { class: 'picker', attrs: { id: 'pf-team-picker' } }, [
+          D.el('div', { class: 'picker__head' }, [
+            D.el('span', { class: 'label', text: 'Funkcje w projekcie' })
+          ]),
+          D.el('div', { class: 'form__grid' }, Team.FUNCTIONS.map(function (fn) {
+            var id = 'pf-fn-' + fn.key;
+            var control = D.el('select', { class: 'select', attrs: { id: id } }, personOptions(team[fn.key]));
+            functionSelects[fn.key] = control;
+            return field(id, fn.label, control);
+          })),
+          D.el('span', { class: 'label', text: 'Pozostali członkowie zespołu' }),
+          D.el('ul', { class: 'picker__list' }, roster.map(function (person) {
+            var id = 'pf-member-' + person.id;
+            var box = D.el('input', {
+              attrs: Object.assign(
+                { id: id, type: 'checkbox', value: person.id },
+                (team.members || []).indexOf(person.id) >= 0 ? { checked: true } : {}
+              )
+            });
+            memberBoxes[person.id] = box;
+            return D.el('li', { class: 'picker__item' }, [
+              box,
+              D.el('label', { attrs: { for: id } }, [
+                D.el('span', { class: 'picker__name', text: Team.fullName(person) }),
+                D.el('span', { class: 'picker__hours', text: Team.ORG_ROLES[person.orgRole] })
+              ])
+            ]);
+          })),
+          D.el('p', {
+            class: 'field__hint',
+            text: 'Osoba pełniąca funkcję należy do zespołu z urzędu — nie trzeba jej zaznaczać.'
+          })
+        ])
+      : D.el('p', {
+          class: 'field__hint',
+          text: 'Katalog osób jest pusty. Dodaj osoby na ekranie Zespół, żeby przypisać funkcje.'
+        });
+
+    function collectTeam() {
+      var result = Team.emptyTeam();
+      Object.keys(functionSelects).forEach(function (key) {
+        result[key] = functionSelects[key].value;
+      });
+      result.members = Object.keys(memberBoxes).filter(function (id) { return memberBoxes[id].checked; });
+      return result;
+    }
+
     function collect() {
       return {
         id: values.id,
@@ -111,7 +179,8 @@
         client: clientInput.value,
         status: statusSelect.value,
         deadline: deadlineInput.value,
-        stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; })
+        stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
+        team: collectTeam()
       };
     }
 
@@ -132,6 +201,7 @@
         field('pf-status', 'Status', statusSelect, problems.status),
         field('pf-deadline', 'Termin umowy', deadlineInput, problems.deadline, 'Pole opcjonalne.')
       ]),
+      teamSection,
       !editing && stagePicker,
       D.el('div', { class: 'form__actions' }, [
         D.el('button', {
