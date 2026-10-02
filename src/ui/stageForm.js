@@ -12,14 +12,18 @@
    * @param {Object} values {name, domain, hours, deadline}
    * @param {Object} errors
    * @param {{onSubmit: Function, onCancel: Function}} handlers
+   * @param {{edit?: boolean, custom?: boolean, catalogLabel?: string}} [mode]
+   *   edit — zmiana istniejącego etapu; custom=false — etap standardowy (nazwa tylko do odczytu)
    */
-  function stageForm(values, errors, handlers) {
+  function stageForm(values, errors, handlers, mode) {
+    var m = mode || { edit: false, custom: true };
+    var locked = m.edit && !m.custom;
     var v = values || {};
     var problems = errors || {};
 
-    var name = UI.input({ id: 'cs-name', value: v.name, error: problems.name, maxlength: 200, placeholder: 'np. Uzgodnienie z PKP PLK' });
+    var name = UI.input({ id: 'cs-name', value: v.name, error: problems.name, maxlength: 200, placeholder: 'np. Uzgodnienie z PKP PLK', attrs: locked ? { readonly: 'true' } : null });
     var domain = UI.select({
-      id: 'cs-domain', value: v.domain || 'general',
+      id: 'cs-domain', value: v.domain || 'general', attrs: locked ? { disabled: 'true' } : null,
       options: Object.keys(Catalog.DOMAINS).map(function (key) { return { value: key, label: Catalog.DOMAINS[key].label }; })
     });
     var hours = UI.input({ id: 'cs-hours', type: 'number', value: v.hours || '8', error: problems.hours, attrs: { min: '1', step: '1', inputmode: 'numeric' } });
@@ -27,14 +31,14 @@
 
     var form = E.Dialog.drawerForm({
       id: 'custom-stage-form',
-      submitLabel: 'Dodaj etap',
+      submitLabel: m.edit ? 'Zapisz zmiany' : 'Dodaj etap',
       onCancel: handlers.onCancel,
       onSubmit: function () {
         handlers.onSubmit({ name: name.value, domain: domain.value, hours: hours.value, deadline: deadline.value });
       },
       body: [
-        UI.field({ id: 'cs-name', label: 'Nazwa etapu', required: true, control: name, error: problems.name }),
-        UI.field({ id: 'cs-domain', label: 'Dziedzina', control: domain, error: problems.domain, hint: 'Decyduje o ikonie etapu na liście.' }),
+        UI.field({ id: 'cs-name', label: 'Nazwa etapu', required: !locked, control: name, error: problems.name, hint: locked ? 'Etap standardowy — nazwa i dziedzina wynikają ze standardu ETROM.' : null }),
+        UI.field({ id: 'cs-domain', label: 'Dziedzina', control: domain, error: problems.domain, hint: locked ? null : 'Decyduje o ikonie etapu na liście.' }),
         D.el('div', { class: 'form__row' }, [
           UI.field({ id: 'cs-hours', label: 'Budżet godzin', required: true, control: hours, error: problems.hours, hint: 'Waży postęp projektu.' }),
           UI.field({ id: 'cs-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline })
@@ -42,7 +46,7 @@
       ]
     });
 
-    window.setTimeout(function () { name.focus(); }, 0);
+    window.setTimeout(function () { (locked ? hours : name).focus(); }, 0);
     return form;
   }
 

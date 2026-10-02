@@ -297,3 +297,38 @@ test('normalizeWorkspace ogranicza realizatorów zadań do zespołu projektu', (
     'p-2 nie należy do zespołu projektu, więc nie może być realizatorem'
   );
 });
+
+test('updateStage zmienia godziny i termin, zostawia status, zadania i identyfikator', () => {
+  const stage = Object.assign(Model.createStage('concept'), { status: 'working', tasks: [{ id: 't-1' }] });
+  const result = Model.updateStage(stage, { hours: '100', deadline: '2026-12-01', name: 'Podmieniona', domain: 'water' });
+  assert.equal(result.valid, true);
+  assert.equal(result.stage.hours, 100);
+  assert.equal(result.stage.deadline, '2026-12-01');
+  assert.equal(result.stage.status, 'working');
+  assert.equal(result.stage.id, 'concept');
+  assert.deepEqual(result.stage.tasks, [{ id: 't-1' }]);
+  // Etap standardowy zachowuje nazwę i dziedzinę ze standardu.
+  assert.equal(result.stage.name, undefined);
+  assert.equal(result.stage.domain, undefined);
+});
+
+test('updateStage pozwala przemianować etap własny i zmienić jego dziedzinę', () => {
+  const own = Model.createCustomStage({ name: 'Uzgodnienie', domain: 'location', hours: 8 }, []).stage;
+  const result = Model.updateStage(own, { name: '  Uzgodnienie z PKP ', domain: 'water', hours: 12, deadline: '' });
+  assert.equal(result.valid, true);
+  assert.equal(result.stage.name, 'Uzgodnienie z PKP');
+  assert.equal(result.stage.domain, 'water');
+  assert.equal(result.stage.deadline, '');
+});
+
+test('updateStage odrzuca puste godziny, złą datę i pustą nazwę etapu własnego', () => {
+  const own = Model.createCustomStage({ name: 'A', domain: 'general', hours: 8 }, []).stage;
+  const bad = Model.updateStage(own, { name: ' ', domain: 'kosmos', hours: 0, deadline: '2026-13-40' });
+  assert.equal(bad.valid, false);
+  assert.ok(bad.errors.name && bad.errors.domain && bad.errors.hours && bad.errors.deadline);
+  const catalog = Model.updateStage(Model.createStage('concept'), { hours: -1 });
+  assert.equal(catalog.valid, false);
+  assert.ok(catalog.errors.hours);
+  assert.equal(catalog.errors.name, undefined);
+  assert.equal(Model.updateStage(null, { hours: 5 }).valid, false);
+});

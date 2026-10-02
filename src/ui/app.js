@@ -474,16 +474,45 @@
   }
 
   function openCustomStage(projectId) {
-    store.set({ stageForm: { projectId: projectId, draft: { domain: 'general', hours: '8' }, errors: {} } });
+    store.set({ stageForm: { projectId: projectId, stageId: null, custom: true, draft: { domain: 'general', hours: '8' }, errors: {} } });
+  }
+
+  /** Zmiana nazwy (etap własny), godzin i terminu istniejącego etapu. */
+  function openEditStage(projectId, stageId) {
+    var stage = stageOf(projectId, stageId);
+    if (!stage) return;
+    var info = Model.describeStage(stage);
+    store.set({ stageForm: {
+      projectId: projectId, stageId: stageId, custom: info.isCustom,
+      draft: { name: info.name, domain: info.domain, hours: String(stage.hours), deadline: stage.deadline || '' },
+      errors: {}
+    } });
   }
 
   function submitCustomStage(values) {
     var form = store.getState().stageForm;
     var project = form && findProject(form.projectId);
     if (!project) return;
+
+    if (form.stageId) {
+      var current = stageOf(project.id, form.stageId);
+      var updated = Model.updateStage(current, values);
+      if (!updated.valid) {
+        store.set({ stageForm: Object.assign({}, form, { draft: values, errors: updated.errors }) });
+        return;
+      }
+      pendingFlash = { projectId: project.id, stageId: form.stageId };
+      mapStage(project.id, form.stageId, function () { return updated.stage; });
+      store.set({ stageForm: null });
+      if (updated.stage.deadline && project.deadline && updated.stage.deadline > project.deadline) {
+        Toast.show({ message: 'Termin etapu jest późniejszy niż termin umowy (' + F.date(project.deadline, { year: 'always' }) + ').', tone: 'info', timeout: 7000 });
+      }
+      return;
+    }
+
     var made = Model.createCustomStage(values, project.stages);
     if (!made.valid) {
-      store.set({ stageForm: { projectId: project.id, draft: values, errors: made.errors } });
+      store.set({ stageForm: Object.assign({}, form, { draft: values, errors: made.errors }) });
       return;
     }
     pendingFlash = { projectId: project.id, stageId: made.stage.id };
@@ -1140,6 +1169,7 @@
     removeStage: removeStage,
     moveStage: moveStage,
     openCustomStage: openCustomStage,
+    editStage: openEditStage,
     toggleStage: toggleStage,
     addTask: openAddTask,
     editTask: openEditTask,
@@ -1504,9 +1534,11 @@
       settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster);
     } else if (current === state.stageForm) {
       var owner = findProject(current.projectId);
-      settings.title = 'Etap spoza standardu';
+      var editingStage = !!current.stageId;
+      settings.title = editingStage ? 'Edytuj etap' : 'Etap spoza standardu';
       settings.subtitle = owner ? owner.code + ' · ' + owner.name : '';
-      settings.content = E.StageForm.stageForm(current.draft, current.errors, { onSubmit: submitCustomStage, onCancel: function () { store.set({ stageForm: null }); } });
+      settings.content = E.StageForm.stageForm(current.draft, current.errors, { onSubmit: submitCustomStage, onCancel: function () { store.set({ stageForm: null }); } },
+        { edit: editingStage, custom: current.custom !== false });
     } else {
       var editing = current.draft.id != null;
       settings.title = editing ? 'Edytuj projekt' : 'Nowy projekt';

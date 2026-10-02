@@ -154,6 +154,41 @@
   }
 
   /**
+   * Zmiana danych istniejącego etapu. Etap własny można przemianować i przenieść do innej
+   * dziedziny; etap standardowy zachowuje nazwę i dziedzinę ze standardu ETROM.
+   * Status, zadania i identyfikator zostają bez zmian.
+   * @returns {{valid: boolean, errors: Object, stage: (Object|null)}}
+   */
+  function updateStage(stage, input) {
+    var data = input || {};
+    var errors = {};
+    var custom = !!stage && stage.source === 'custom';
+    var hours = Number(data.hours);
+
+    if (!stage) return { valid: false, errors: { hours: 'Nie znaleziono etapu.' }, stage: null };
+    var name = text(data.name);
+    var domain = text(data.domain) || stage.domain || 'general';
+    if (custom) {
+      if (!name) errors.name = 'Podaj nazwę etapu.';
+      else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
+      if (!Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain)) errors.domain = 'Wybierz dziedzinę.';
+    }
+    if (!Number.isFinite(hours) || hours <= 0) errors.hours = 'Podaj budżet godzin większy od zera.';
+    if (text(data.deadline) && !isDate(text(data.deadline))) errors.deadline = 'Użyj poprawnej daty.';
+    if (Object.keys(errors).length) return { valid: false, errors: errors, stage: null };
+
+    var next = Object.assign({}, stage, {
+      hours: hours,
+      deadline: isDate(text(data.deadline)) ? text(data.deadline) : ''
+    });
+    if (custom) {
+      next.name = name;
+      next.domain = domain;
+    }
+    return { valid: true, errors: {}, stage: next };
+  }
+
+  /**
    * Jednolity opis etapu dla widoku — niezależnie od tego, czy pochodzi
    * z katalogu, czy został dopisany w projekcie.
    */
@@ -339,6 +374,7 @@
     createProject: createProject,
     createStage: createStage,
     createCustomStage: createCustomStage,
+    updateStage: updateStage,
     nextCustomStageId: nextCustomStageId,
     describeStage: describeStage,
     insertCatalogStage: insertCatalogStage,

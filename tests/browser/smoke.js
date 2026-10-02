@@ -554,6 +554,23 @@ async function main() {
     check('wiersz etapu własnego jest oznaczony w podpisie',
       await evaluate('const metas = [...document.querySelectorAll(".srow__meta")].map(n => n.textContent); return metas.some(m => m.indexOf("własny") === 0) && metas.some(m => m.indexOf("standard 07") === 0);'));
 
+    /* 23a. Edycja istniejącego etapu: godziny i termin */
+    const pctBefore = await state('window.ETROM.Progress.projectProgress(s.workspace.projects.find(x => x.code === "PICK-1")).hoursTotal');
+    await openMenu('.srow-wrap:first-child .srow__more', 'Edytuj etap');
+    await sleep(300);
+    check('edycja etapu standardowego blokuje nazwę i dziedzinę, godziny są do zmiany',
+      await evaluate('const n = document.getElementById("cs-name"); const d = document.getElementById("cs-domain"); return n.readOnly && d.disabled && !document.getElementById("cs-hours").disabled && document.querySelector(".drawer, dialog[open]") !== null;'));
+    await evaluate('document.getElementById("cs-hours").value = "0"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
+    await sleep(200);
+    check('zerowy budżet godzin etapu nie przechodzi', await evaluate('return !!document.querySelector("#custom-stage-form .field__error");'));
+    await evaluate('document.getElementById("cs-hours").value = "100"; document.getElementById("cs-deadline").value = "2027-05-05"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
+    await sleep(300);
+    const edited = await state('(() => { const p = s.workspace.projects.find(x => x.code === "PICK-1"); return { id: p.stages[0].id, hours: p.stages[0].hours, deadline: p.stages[0].deadline, total: window.ETROM.Progress.projectProgress(p).hoursTotal }; })()');
+    check('zapis etapu zmienia godziny i termin, a budżet projektu się przelicza',
+      edited.hours === 100 && edited.deadline === '2027-05-05' && edited.total !== pctBefore, JSON.stringify(edited) + ' przed ' + pctBefore);
+    check('po zapisie panel się zamyka, a termin etapu widać w wierszu',
+      await evaluate('return !document.getElementById("custom-stage-form") && /2027/.test(document.querySelector(".srow-wrap:first-child .srow__deadline").textContent);'));
+
     /* 24. Przesuwanie etapu z menu wiersza */
     await openMenu('.srow-wrap:last-child .srow__more', 'Przesuń wyżej');
     check('etap własny daje się przesunąć pomiędzy standardowe',

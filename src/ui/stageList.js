@@ -43,6 +43,7 @@
         label: 'Działania etapu', align: 'end',
         items: [
           { label: 'Dodaj zadanie', icon: 'plus', onSelect: function () { actions.addTask(project.id, stage.id); } },
+          { label: 'Edytuj etap', icon: 'edit', hint: 'termin, godziny', onSelect: function () { actions.editStage(project.id, stage.id); } },
           { type: 'separator' },
           { label: 'Przesuń wyżej', icon: 'arrowUp', disabled: position === 0, onSelect: function () { actions.moveStage(project.id, stage.id, -1); } },
           { label: 'Przesuń niżej', icon: 'arrowDown', disabled: position === count - 1, onSelect: function () { actions.moveStage(project.id, stage.id, 1); } },
