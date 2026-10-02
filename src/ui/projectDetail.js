@@ -25,7 +25,7 @@
     { value: 'zespol', label: 'Zespół' }
   ];
 
-  var EVENT_KIND = { project: 'Termin umowy', stage: 'Termin etapu', task: 'Termin zadania' };
+  var EVENT_KIND = { project: 'Termin umowy', stage: 'Termin zadania', task: 'Termin zadania' };
 
   function statusControl(project, ctx) {
     var btn = UI.statusButton('project', project.status, {
@@ -202,28 +202,33 @@
     ctx.actions.inspect({ kind: 'plan', projectId: project.id });
   }
 
-  /** „Co powinienem zrobić teraz?” — jedna, najpilniejsza pozycja. */
+  /** Jedna, najpilniejsza rzecz do zrobienia; przy spokoju — następny termin w projekcie. */
   function nextAction(project, now, ctx) {
     var action = Insight.nextAction(project, now);
     if (!action) {
+      var next = project.status === 'done' ? null : Insight.nextEvent(project, now);
       return D.el('div', { class: 'naction naction--calm' }, [
-        D.el('span', { class: 'naction__label', text: 'Najbliższa akcja' }),
-        D.el('p', { class: 'naction__calm', text: project.status === 'done' ? 'Projekt zakończony.' : 'Brak działań wymagających uwagi.' })
+        D.el('span', { class: 'naction__label', text: 'Co teraz zrobić' }),
+        D.el('p', { class: 'naction__title', text: project.status === 'done' ? 'Projekt zakończony.' : 'Nic nie wymaga teraz uwagi.' }),
+        next ? D.el('p', { class: 'naction__line' }, [
+          D.el('span', { class: 'naction__muted', text: 'Następny termin: ' }),
+          D.el('span', { text: next.kind === 'project' ? 'termin umowy' : next.label }),
+          D.el('span', { class: 'naction__muted t-num', text: ' — ' + F.date(next.date, { year: 'always' }) + ', ' + (next.days === 0 ? 'dziś' : (next.days === 1 ? 'jutro' : 'za ' + next.days + ' dni')) })
+        ]) : null
       ]);
     }
     var go = function () {
       if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
-      else if (action.kind === 'stage') ctx.actions.revealStage(project.id, action.stageId);
       else ctx.actions.inspect({ kind: 'plan', projectId: project.id });
     };
     return D.el('div', { class: 'naction naction--' + action.tone }, [
-      D.el('span', { class: 'naction__label', text: 'Najbliższa akcja' }),
+      D.el('span', { class: 'naction__label', text: 'Co teraz zrobić' }),
       D.el('p', { class: 'naction__title', text: action.title }),
-      D.el('p', { class: 'naction__parts t-meta' }, action.parts.map(function (part, i) {
-        return D.el('span', { class: i === 0 ? 'naction__lead' : '', text: part });
+      D.el('ul', { class: 'naction__lines' }, action.parts.map(function (part, i) {
+        return D.el('li', { class: i === 0 ? 'naction__lead' : '', text: part });
       })),
       D.el('button', { class: 'naction__go', attrs: { type: 'button', 'data-fk': 'next-action' }, on: { click: go } }, [
-        D.el('span', { text: action.kind === 'task' ? 'Przejdź do zadania' : (action.kind === 'stage' ? 'Przejdź do etapu' : 'Pokaż szczegóły') }),
+        D.el('span', { text: action.kind === 'task' ? 'Otwórz zadanie' : 'Pokaż szczegóły' }),
         E.Icons.icon('chevronRight', 14)
       ])
     ]);

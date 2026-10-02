@@ -59,6 +59,8 @@
       ]),
       context(row)
     ];
+    var steps = settings.approve ? [] : E.TaskList.stepButtons(row.project, row.stage, task, ctx.actions);
+    if (steps.length) body.push(D.el('p', { class: 'trow__meta t-meta' }, steps));
     if (task.status === 'changes' && task.feedback) {
       body.push(D.el('p', { class: 'trow__feedback' }, [Icons.icon('alert', 14), D.el('span', { text: 'Do poprawy: ' + task.feedback })]));
     }
@@ -68,11 +70,7 @@
           UI.button({ label: 'Zatwierdź', icon: 'check', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'approve-' + task.id }, onClick: function () { ctx.actions.moveTask(row.project.id, row.stage.id, task.id, 'done'); } }),
           UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'return-' + task.id }, onClick: function () { ctx.actions.moveTask(row.project.id, row.stage.id, task.id, 'changes'); } })
         ])
-      : D.el('span', { class: 'trow__deadline' }, [
-          task.deadline
-            ? UI.due(task.deadline, info, { done: task.status === 'done', relativeOnly: info.tone === 'overdue' || info.tone === 'urgent' })
-            : D.el('span', { class: 'due due--none', text: 'Bez terminu' })
-        ]);
+      : D.el('span', { class: 'trow__deadline' }, [E.TaskList.deadlineBlock(task, info)]);
 
     return D.el('li', { class: 'mrow row trow--' + task.status + (settings.approve ? ' mrow--approve' : ''), dataset: { taskId: task.id } }, [
       settings.approve ? UI.status('task', task.status) : E.TaskList.statusControl(row.project, row.stage, task, ctx.actions),

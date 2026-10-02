@@ -492,7 +492,7 @@
     var info = Model.describeStage(stage);
     store.set({ stageForm: {
       projectId: projectId, stageId: stageId, custom: info.isCustom,
-      draft: { name: info.name, domain: info.domain, kind: info.kind, hours: String(stage.hours), deadline: stage.deadline || '' },
+      draft: { name: info.name, domain: info.domain, kind: info.kind, hours: String(stage.hours) },
       errors: {}
     } });
   }
@@ -512,9 +512,6 @@
       pendingFlash = { projectId: project.id, stageId: form.stageId };
       mapStage(project.id, form.stageId, function () { return updated.stage; });
       store.set({ stageForm: null });
-      if (updated.stage.deadline && project.deadline && updated.stage.deadline > project.deadline) {
-        Toast.show({ message: 'Termin etapu jest późniejszy niż termin umowy (' + F.date(project.deadline, { year: 'always' }) + ').', tone: 'info', timeout: 7000 });
-      }
       return;
     }
 

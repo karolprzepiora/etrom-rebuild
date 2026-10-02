@@ -9,7 +9,7 @@
   var Catalog = E.Catalog;
 
   /**
-   * @param {Object} values {name, domain, hours, deadline}
+   * @param {Object} values {name, domain, kind, hours}
    * @param {Object} errors
    * @param {{onSubmit: Function, onCancel: Function}} handlers
    * @param {{edit?: boolean, custom?: boolean, catalogLabel?: string}} [mode]
@@ -31,23 +31,19 @@
       options: Catalog.KIND_ORDER.map(function (key) { return { value: key, label: Catalog.KINDS[key].label + ' — ' + Catalog.KINDS[key].hint }; })
     });
     var hours = UI.input({ id: 'cs-hours', type: 'number', value: v.hours || '8', error: problems.hours, attrs: { min: '1', step: '1', inputmode: 'numeric' } });
-    var deadline = UI.input({ id: 'cs-deadline', type: 'date', value: v.deadline, error: problems.deadline });
 
     var form = E.Dialog.drawerForm({
       id: 'custom-stage-form',
       submitLabel: m.edit ? 'Zapisz zmiany' : 'Dodaj etap',
       onCancel: handlers.onCancel,
       onSubmit: function () {
-        handlers.onSubmit({ name: name.value, domain: domain.value, kind: kind.value, hours: hours.value, deadline: deadline.value });
+        handlers.onSubmit({ name: name.value, domain: domain.value, kind: kind.value, hours: hours.value });
       },
       body: [
         UI.field({ id: 'cs-name', label: 'Nazwa etapu', required: !locked, control: name, error: problems.name, hint: locked ? 'Etap standardowy — nazwa, rodzaj pracy i temat wynikają ze standardu ETROM.' : null }),
         UI.field({ id: 'cs-kind', label: 'Rodzaj pracy', control: kind, error: problems.kind, hint: locked ? null : 'Decyzje to etapy postępowań — dostają plakietkę na ikonie.' }),
         UI.field({ id: 'cs-domain', label: 'Temat', control: domain, error: problems.domain, hint: locked ? null : 'Dziedzina sprawy: środowisko, wody, lokalizacja…' }),
-        D.el('div', { class: 'form__row' }, [
-          UI.field({ id: 'cs-hours', label: 'Budżet godzin', required: true, control: hours, error: problems.hours, hint: 'Waży postęp projektu.' }),
-          UI.field({ id: 'cs-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline })
-        ])
+        UI.field({ id: 'cs-hours', label: 'Budżet godzin', required: true, control: hours, error: problems.hours, hint: 'Waży postęp projektu. Termin etapu wynika z najbliższego zadania.' })
       ]
     });
 

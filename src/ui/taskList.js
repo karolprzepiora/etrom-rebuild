@@ -18,9 +18,10 @@
   var PART_TONE = { todo: 'neutral', working: 'flow', done: 'done' };
 
   // Jedno kliknięcie do kolejnego sensownego kroku (pełne menu zostaje pod statusem).
+  // Pracownik może zgłosić zadanie do zatwierdzenia albo zakończyć je samodzielnie.
   var NEXT_STEP = {
-    working: { to: 'review', label: 'Zgłoś do zatwierdzenia' },
-    changes: { to: 'working', label: 'Wróć do pracy' }
+    working: [{ to: 'review', label: 'Do zatwierdzenia' }, { to: 'done', label: 'Zakończ' }],
+    changes: [{ to: 'working', label: 'Wróć do pracy' }]
   };
 
   /** Pasek rozkładu statusów zadań etapu: gotowe → w toku → reszta. */
@@ -99,6 +100,32 @@
     return btn;
   }
 
+  /** Termin zadania: data z rokiem i godziną oraz odliczanie (godziny w ostatniej dobie w podpowiedzi). */
+  function deadlineBlock(task, info) {
+    if (!task.deadline) return D.el('span', { class: 'due due--none', text: 'Bez terminu' });
+    var done = task.status === 'done';
+    var day = task.deadline.slice(0, 10);
+    return D.el('span', {
+      class: 'tdue' + (done ? ' tdue--done' : ''),
+      attrs: { 'data-tooltip': 'Termin: ' + E.Format.dateLong(day) + (done ? '' : ' — ' + info.text) }
+    }, [
+      D.el('span', { class: 'tdue__date t-num', text: E.Format.dateTime(task.deadline, { year: 'always' }) }),
+      done ? D.el('span', { class: 'countdown countdown--done', text: 'zakończone' }) : UI.countdown(day, {})
+    ]);
+  }
+
+  /** Szybkie kroki statusu (jedno kliknięcie): Do zatwierdzenia, Zakończ, Wróć do pracy. */
+  function stepButtons(project, stage, task, actions) {
+    return (NEXT_STEP[task.status] || []).map(function (step) {
+      return D.el('button', {
+        class: 'trow__step' + (step.to === 'done' ? ' trow__step--done' : ''),
+        text: step.label,
+        attrs: { type: 'button', 'data-fk': 'task-step-' + step.to + '-' + task.id, 'data-tooltip': 'Przenieś do: ' + Tasks.TASK_STATUS[step.to] },
+        on: { click: function () { actions.moveTask(project.id, stage.id, task.id, step.to); } }
+      });
+    });
+  }
+
   function taskRow(project, stage, task, actions, people, motion) {
     var info = Tasks.deadlineInfo(task);
     var assigned = (task.assignees || [])
@@ -126,15 +153,7 @@
     var meta = [];
     var logged = actions.taskMinutes ? actions.taskMinutes(task.id) : 0;
     if (logged > 0) meta.push(D.el('span', { class: 't-num', text: 'zapisano ' + E.TimeLog.duration(logged) }));
-    var step = NEXT_STEP[task.status];
-    if (step) {
-      meta.push(D.el('button', {
-        class: 'trow__step',
-        text: step.label,
-        attrs: { type: 'button', 'data-fk': 'task-step-' + task.id, 'data-tooltip': 'Przenieś do: ' + Tasks.TASK_STATUS[step.to] },
-        on: { click: function () { actions.moveTask(project.id, stage.id, task.id, step.to); } }
-      }));
-    }
+    stepButtons(project, stage, task, actions).forEach(function (b) { meta.push(b); });
     if (meta.length) body.push(D.el('p', { class: 'trow__meta t-meta' }, meta));
 
     return D.el('li', {
@@ -147,11 +166,7 @@
         ? assigned.map(function (person) { return partButton(project, stage, task, person, actions); })
         : [D.el('span', { class: 't-meta', text: 'Bez realizatora' })]),
       D.el('span', { class: 'trow__load t-meta', text: Tasks.WORKLOAD[task.workload], attrs: { 'data-tooltip': 'Nakład pracy' } }),
-      D.el('span', { class: 'trow__deadline' }, [
-        task.deadline
-          ? UI.due(task.deadline, info, { done: task.status === 'done', relativeOnly: info.tone === 'overdue' || info.tone === 'urgent' })
-          : D.el('span', { class: 'due due--none', text: 'Bez terminu' })
-      ]),
+      D.el('span', { class: 'trow__deadline' }, [deadlineBlock(task, info)]),
       E.Timer.timerButton(project, stage, task, actions),
       taskMenu(project, stage, task, actions)
     ]);
@@ -195,5 +210,5 @@
     return D.el('div', { class: 'tasks' }, [head, body]);
   }
 
-  root.ETROM.TaskList = { taskList: taskList, taskRow: taskRow, statusControl: statusControl };
+  root.ETROM.TaskList = { taskList: taskList, taskRow: taskRow, statusControl: statusControl, deadlineBlock: deadlineBlock, stepButtons: stepButtons };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

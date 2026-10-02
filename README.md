@@ -152,8 +152,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 226 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 159 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 225 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 161 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -297,3 +297,10 @@ w teście przeglądarkowym.
 - Moja praca → „Dzisiaj”: pasek celu, podział czasu na projekty, przybliżona oś dnia (od godziny przed pierwszym startem), „Wznów”, wpisy zwijane.
 - Kokpit portfela: „Biuro dziś” pokazuje sumy i projekty, bez nazwisk (czas osób widzi tylko lider i dyrekcja — do wymuszenia po wprowadzeniu kont).
 - Stan projektu: wspólna oś tekstu, dzielniki sekcji; lista projektów i Moja praca korzystają z szerokiego ekranu.
+
+## Terminy: zadania i etapy
+
+- Termin etapu **nie jest wpisywany** — to termin najbliższego niezakończonego zadania w etapie (`Tasks.nearestDeadline`). Wiersz etapu pokazuje go z rokiem i odliczaniem; etap bez zadań z terminem ma „—”.
+- Zadania: data z rokiem i godziną oraz odliczanie (np. „5 paź 2026, 15:00 · 3 dni do końca”).
+- Szybkie kroki w zadaniu w toku: „Do zatwierdzenia” albo „Zakończ” (samodzielnie); w Mojej pracy tak samo.
+- Panel „Co teraz zrobić” zamiast „Najbliższa akcja” i „Najbliższy próg”: jedno zadanie, pełne zdania o powodzie; przy spokoju — następny termin.

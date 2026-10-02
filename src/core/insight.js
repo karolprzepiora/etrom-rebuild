@@ -55,7 +55,7 @@
     if (!project || project.status === 'done') return [];
     return (project.stages || []).filter(function (stage) {
       if (stage.status === 'done') return false;
-      var d = Progress.daysUntil(stage.deadline, now);
+      var d = Progress.daysUntil(Tasks.stageDue(stage), now);
       return d !== null && d < 0;
     });
   }
@@ -139,17 +139,6 @@
       });
     }
 
-    var lateStages = overdueStages(project, reference);
-    if (lateStages.length) {
-      reasons.push({
-        rule: 'stages-late',
-        level: 'warning',
-        text: lateStages.length === 1
-          ? 'Etap „' + Model.describeStage(lateStages[0]).name + '” po terminie'
-          : lateStages.length + ' ' + plural(lateStages.length, 'etap', 'etapy', 'etapów') + ' po terminie'
-      });
-    }
-
     var returned = tasks.filter(function (entry) { return entry.task.status === 'changes'; });
     if (returned.length) {
       reasons.push({
@@ -195,10 +184,10 @@
         weight: weight,
         overdue: late.indexOf(stage.id) >= 0,
         current: !!current && current.id === stage.id,
-        deadline: stage.deadline || '',
+        deadline: Tasks.stageDue(stage),
         soon: false
       };
-      var left = stage.status === 'done' ? null : Progress.daysUntil(stage.deadline, reference);
+      var left = stage.status === 'done' ? null : Progress.daysUntil(Tasks.stageDue(stage), reference);
       segment.soon = left !== null && left >= 0 && left <= STAGE_SOON;
       segment.blocked = paused && segment.current;
       segment.state = stage.status === 'done' ? 'done'
@@ -285,14 +274,6 @@
     var left = Progress.daysUntil(project.deadline, reference);
     if (left !== null && left >= 0) events.push({ kind: 'project', label: 'Termin umowy', date: project.deadline, days: left, at: dateValue(project.deadline).getTime() + DAY_MS - 1 });
 
-    (project.stages || []).forEach(function (stage) {
-      if (stage.status === 'done') return;
-      var d = Progress.daysUntil(stage.deadline, reference);
-      if (d !== null && d >= 0) {
-        events.push({ kind: 'stage', label: Model.describeStage(stage).name, date: stage.deadline, days: d, at: dateValue(stage.deadline).getTime() + DAY_MS - 2 });
-      }
-    });
-
     allTasks(project).forEach(function (entry) {
       var task = entry.task;
       if (task.status === 'done' || !task.deadline) return;
@@ -326,9 +307,10 @@
     if (d !== null && d >= 0 && d <= limit) result.push({ project: project, kind: 'project', date: project.deadline, days: d, level: level });
     (project.stages || []).forEach(function (stage) {
       if (stage.status === 'done') return;
-      var sd = Progress.daysUntil(stage.deadline, reference);
+      var due = Tasks.stageDue(stage);
+      var sd = Progress.daysUntil(due, reference);
       if (sd !== null && sd >= 0 && sd <= limit) {
-        result.push({ project: project, kind: 'stage', stage: stage, date: stage.deadline, days: sd, level: level });
+        result.push({ project: project, kind: 'stage', stage: stage, date: due, days: sd, level: level });
       }
     });
     return result;
@@ -481,27 +463,7 @@
   /** „za 7 dni”, „dziś”, „jutro” */
   function when(n) { return n === 0 ? 'dziś' : (n === 1 ? 'jutro' : 'za ' + days(n)); }
 
-  var EVENT_NAME = { project: 'Termin umowy', stage: 'Termin etapu', task: 'Termin zadania' };
-
-  /**
-   * Najbliższy próg: co zmieni stan projektu albo co jest następne w kolejce.
-   * Alarm — nic wyżej już nie ma; ostrzeżenie — próg to termin umowy; norma — najbliższy termin.
-   * @returns {null|{text: string, kind: string, days: number}}
-   */
-  function threshold(project, now) {
-    var reference = now instanceof Date ? now : new Date();
-    if (!project || project.status === 'done') return null;
-    var state = health(project, reference);
-    if (state.level === 'alarm') return null;
-    var left = Progress.daysUntil(project.deadline, reference);
-    if (state.level === 'warning' && left !== null && left >= 0) {
-      return { kind: 'project', days: left, text: 'Alarm, jeśli termin umowy minie (' + when(left) + ').' };
-    }
-    var next = nextEvent(project, reference);
-    if (!next) return null;
-    var label = next.kind === 'project' ? '' : ' „' + next.label + '”';
-    return { kind: next.kind, days: next.days, text: EVENT_NAME[next.kind] + label + ' ' + when(next.days) + '.' };
-  }
+  var EVENT_NAME = { project: 'Termin umowy', task: 'Termin zadania' };
 
   /**
    * Odchylenia od planu. Nic nie jest zgadywane: pole bez danych ma available=false
@@ -573,16 +535,16 @@
     function pick(entry, rule, parts, tone) {
       return { rule: rule, kind: 'task', title: entry.task.name, parts: parts, tone: tone, stageId: entry.stage.id, taskId: entry.task.id };
     }
-    function unassigned(entry) { return !(entry.task.assignees || []).length ? ['Brak realizatora'] : []; }
+    function unassigned(entry) { return !(entry.task.assignees || []).length ? ['Nikt nie jest przypisany'] : []; }
     function byDeadline(a, b) { return (Date.parse(a.task.deadline) || Infinity) - (Date.parse(b.task.deadline) || Infinity); }
 
     var returned = open.filter(function (e) { return e.task.status === 'changes'; }).sort(byDeadline)[0];
-    if (returned) return pick(returned, 'returned', ['Zwrócone do poprawy'].concat(returned.task.feedback ? [returned.task.feedback] : [], unassigned(returned)), 'warning');
+    if (returned) return pick(returned, 'returned', ['Zwrócone do poprawy' + (returned.task.feedback ? ': ' + returned.task.feedback : '')].concat(unassigned(returned)), 'warning');
 
     var late = open.filter(function (e) { return Tasks.isOverdue(e.task, reference); }).sort(byDeadline)[0];
     if (late) {
       var d = -Progress.daysUntil(late.task.deadline.slice(0, 10), reference);
-      return pick(late, 'overdue', [d <= 0 ? 'Termin minął dziś' : days(d) + ' po terminie'].concat(unassigned(late)), 'alarm');
+      return pick(late, 'overdue', [d <= 0 ? 'Termin minął dziś' : 'Termin minął ' + days(d) + ' temu'].concat(unassigned(late)), 'alarm');
     }
 
     var review = open.filter(function (e) { return e.task.status === 'review'; }).sort(byDeadline)[0];
@@ -590,24 +552,22 @@
 
     var active = Progress.activeStage(project);
     var orphan = open.filter(function (e) { return !(e.task.assignees || []).length && (!active || e.stage.id === active.id); }).sort(byDeadline)[0];
-    if (orphan) return pick(orphan, 'unassigned', ['Brak realizatora'].concat(orphan.task.deadline ? ['Termin ' + when(Math.max(0, Progress.daysUntil(orphan.task.deadline.slice(0, 10), reference)))] : []), 'warning');
+    if (orphan) return pick(orphan, 'unassigned', ['Nikt nie jest przypisany'].concat(orphan.task.deadline ? ['Termin ' + when(Math.max(0, Progress.daysUntil(orphan.task.deadline.slice(0, 10), reference)))] : []), 'warning');
 
     var next = nextEvent(project, reference);
     if (next && next.days <= 14) {
       var target = next.kind === 'task' ? open.filter(function (e) { return e.task.name === next.label && e.task.deadline === next.date; })[0] : null;
-      var stageTarget = next.kind === 'stage' ? (project.stages || []).filter(function (st) { return Model.describeStage(st).name === next.label && st.deadline === next.date; })[0] : null;
       return {
-        rule: 'next-event', kind: target ? 'task' : (stageTarget ? 'stage' : 'project'), title: next.kind === 'project' ? 'Termin umowy' : next.label,
+        rule: 'next-event', kind: target ? 'task' : 'project', title: next.kind === 'project' ? 'Termin umowy' : next.label,
         parts: [EVENT_NAME[next.kind] + ' ' + when(next.days)].concat(target ? unassigned(target) : []),
         tone: next.days <= 3 ? 'warning' : 'normal',
-        stageId: target ? target.stage.id : (stageTarget ? stageTarget.id : null), taskId: target ? target.task.id : null
+        stageId: target ? target.stage.id : null, taskId: target ? target.task.id : null
       };
     }
     return null;
   }
 
   var api = {
-    threshold: threshold,
     variance: variance,
     nextAction: nextAction,
     LEVELS: LEVELS,

@@ -6,8 +6,10 @@ const Model = require('../src/core/model.js');
 
 const NOW = new Date(2026, 9, 2, 12, 0);
 
+// Termin etapu jest liczony z zadań: podany termin to termin jedynego zadania etapu.
 function stage(id, status, hours, deadline, tasks) {
-  return Object.assign(Model.createStage(id), { status: status, hours: hours, deadline: deadline || '', tasks: tasks || [] });
+  const own = tasks || (deadline ? [Object.assign({ id: 't-d', name: 'Zadanie', status: 'todo', deadline: deadline + 'T12:00', workload: 'medium', assignees: [], parts: {}, history: [] })] : []);
+  return Object.assign(Model.createStage(id), { status: status, hours: hours, tasks: own });
 }
 
 function project(extra) {
@@ -45,14 +47,13 @@ test('zakończony projekt nie alarmuje, nawet z datą w przeszłości', () => {
   assert.equal(h.level, 'closed');
 });
 
-test('zadanie po terminie i etap po terminie dają ostrzeżenie', () => {
+test('zadanie po terminie daje ostrzeżenie (etap nie ma własnego terminu)', () => {
   const p = project({ createdAt: '2026-09-30T08:00:00.000Z' });
   p.stages[1].tasks = [task({ deadline: '2026-10-01T10:00' })];
-  p.stages[1].deadline = '2026-09-30';
   const h = Insight.health(p, NOW);
   assert.equal(h.level, 'warning');
   assert.ok(h.reasons.some((r) => r.text === '1 zadanie po terminie'));
-  assert.ok(h.reasons.some((r) => /Koncepcja i analizy projektowe” po terminie/.test(r.text)));
+  assert.ok(!h.reasons.some((r) => /Etap/.test(r.text)), 'zaległy etap nie dubluje zaległego zadania');
 });
 
 test('bliski termin przy małym postępie ostrzega, przy prawie skończonej pracy nie', () => {
@@ -84,7 +85,7 @@ test('wstrzymany projekt i zwrot do poprawy są widoczne w powodach', () => {
 
 test('profil: odcinki ważone godzinami, bieżący etap oznaczony, zaległe zaznaczone', () => {
   const p = project();
-  p.stages[2].deadline = '2026-09-01';
+  p.stages[2] = stage('handover', 'todo', 80, '2026-09-01');
   const prof = Insight.profile(p, NOW);
   assert.equal(prof.segments.length, 3);
   assert.deepEqual(prof.segments.map((s) => s.weight), [0.2, 0.4, 0.4]);
@@ -305,18 +306,6 @@ test('variance: projekt zakończony i 100% nie mają prognozy', () => {
   assert.equal(Insight.variance(project({ status: 'done' }), NOW, 0).progress.available, false);
 });
 
-test('threshold: norma → najbliższy termin, ostrzeżenie → termin umowy, alarm → brak', () => {
-  const calm = Insight.threshold(project(), NOW);
-  assert.match(calm.text, /Termin .* za \d+ dni\./);
-  const late = Insight.threshold(project({ deadline: '2026-09-01' }), NOW);
-  assert.equal(late, null);
-  const warn = project({ stages: [stage('preparation', 'done', 40), stage('concept', 'working', 80, '2026-09-20'), stage('handover', 'todo', 80)] });
-  const t = Insight.threshold(warn, NOW);
-  assert.equal(Insight.health(warn, NOW).level, 'warning');
-  assert.match(t.text, /^Alarm, jeśli termin umowy minie/);
-  assert.equal(Insight.threshold(project({ status: 'done' }), NOW), null);
-});
-
 test('nextAction: zwrócone > zaległe > do zatwierdzenia > bez realizatora > termin', () => {
   const mk = (tasks) => project({ stages: [stage('preparation', 'working', 40, '', tasks)] });
   const late = task({ id: 't-1', name: 'Zaległe', status: 'working', deadline: '2026-09-28T12:00', assignees: ['p-1'] });
@@ -329,23 +318,24 @@ test('nextAction: zwrócone > zaległe > do zatwierdzenia > bez realizatora > te
   assert.equal(a.rule, 'overdue');
   assert.equal(a.tone, 'alarm');
   assert.equal(a.taskId, 't-1');
-  assert.match(a.parts[0], /po terminie/);
+  assert.match(a.parts[0], /Termin minął \d+ dni temu/);
   assert.equal(Insight.nextAction(mk([rev, orphan]), NOW).rule, 'review');
   const o = Insight.nextAction(mk([orphan]), NOW);
   assert.equal(o.rule, 'unassigned');
-  assert.deepEqual(o.parts.slice(0, 1), ['Brak realizatora']);
+  assert.deepEqual(o.parts.slice(0, 1), ['Nikt nie jest przypisany']);
   assert.equal(o.stageId, 'preparation');
 });
 
-test('nextAction: nic pilnego → null; zakończony → null; termin etapu bez zadań', () => {
-  const calm = project({ deadline: '2027-12-31', stages: [stage('preparation', 'working', 40, '2027-01-10')] });
+test('nextAction: nic pilnego → null; zakończony → null; zbliżający się termin zadania', () => {
+  const calm = project({ deadline: '2027-12-31', stages: [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2027-01-10T12:00', assignees: ['p-1'] })])] });
   assert.equal(Insight.nextAction(calm, NOW), null);
   assert.equal(Insight.nextAction(project({ status: 'done' }), NOW), null);
-  const soon = project({ stages: [stage('preparation', 'working', 40, '2026-10-06')] });
+  const soon = project({ stages: [stage('preparation', 'working', 40, '', [task({ status: 'working', deadline: '2026-10-06T12:00', assignees: ['p-1'] })])] });
   const a = Insight.nextAction(soon, NOW);
   assert.equal(a.rule, 'next-event');
-  assert.equal(a.kind, 'stage');
+  assert.equal(a.kind, 'task');
   assert.equal(a.stageId, 'preparation');
+  assert.match(a.parts[0], /^Termin zadania za 4 dni$/);
 });
 
 test('nextAction: projekt bez zespołu i bez zadań nie wywraca obliczeń', () => {

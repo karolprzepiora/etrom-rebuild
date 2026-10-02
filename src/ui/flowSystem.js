@@ -208,7 +208,7 @@
   function segmentLabel(seg) {
     var text = (seg.index + 1) + '. ' + seg.name + ' — ' + (seg.status === 'working' && seg.state !== 'delayed' && seg.state !== 'blocked' ? 'w toku' : STATE_TEXT[seg.state]);
     if (seg.status === 'working' && seg.state === 'delayed') text += ', w toku';
-    if (seg.deadline && seg.status !== 'done') text += ', termin ' + F.date(seg.deadline);
+    if (seg.deadline && seg.status !== 'done') text += ', najbliższe zadanie ' + F.date(seg.deadline);
     return text + ', ' + F.hours(seg.hours);
   }
 
@@ -240,7 +240,7 @@
         marks.push(marker('deadline', {
           level: seg.overdue ? 'alarm' : 'warning', filled: seg.overdue,
           style: { left: Math.min(100, (seg.start + seg.weight) * 100) + '%' },
-          tooltip: (seg.overdue ? 'Termin etapu minął ' : 'Termin etapu ') + F.date(seg.deadline) + ' — ' + seg.name,
+          tooltip: (seg.overdue ? 'Zadanie w etapie po terminie: ' : 'Najbliższe zadanie w etapie: ') + F.date(seg.deadline) + ' — ' + seg.name,
           class: 'flow__mark'
         }));
       }
@@ -355,8 +355,7 @@
           ]);
         });
 
-    var calm = l.closed ? 'Projekt zakończony i zamknięty.' : 'Terminy i zadania bez zaległości.';
-    var limit = l.closed ? null : Insight.threshold(project, o.now);
+    var calm = l.closed ? 'Projekt zakończony i zamknięty.' : 'Brak zaległości — terminy i zadania w porządku.';
     var linkable = typeof o.onReason === 'function';
 
     function reasonNode(r, tag, cls) {
@@ -376,11 +375,7 @@
         : D.el('p', { class: 'level__lead level__lead--calm', text: calm }),
       others.length ? D.el('ul', { class: 'level__more' }, others.map(function (r) {
         return reasonNode(r, 'li', 'reason--' + r.level);
-      })) : null,
-      limit ? D.el('p', { class: 'level__limit' }, [
-        D.el('span', { class: 'level__limit-label', text: 'Najbliższy próg' }),
-        D.el('span', { text: limit.text })
-      ]) : null
+      })) : null
     ]);
   }
 

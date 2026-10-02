@@ -87,6 +87,18 @@
     ]);
   }
 
+  /** Etap nie ma własnego terminu: pokazujemy termin najbliższego otwartego zadania, z rokiem i odliczaniem. */
+  function nearestDue(stage) {
+    var at = stage.status === 'done' ? '' : E.Tasks.nearestDeadline(stage);
+    if (!at) return D.el('span', { class: 'due due--none', text: '—', attrs: { 'data-tooltip': stage.status === 'done' ? 'Etap zakończony' : 'Brak zadań z terminem' } });
+    var day = at.slice(0, 10);
+    var info = Progress.deadlineInfo(day);
+    return D.el('span', { class: 'srow__due', attrs: { 'data-tooltip': 'Termin najbliższego zadania: ' + F.dateLong(day) } }, [
+      D.el('span', { class: 'srow__due-date t-num', text: F.date(day, { year: 'always' }) }),
+      UI.countdown(day, {})
+    ]);
+  }
+
   function stageRow(project, stage, position, count, ctx, segment) {
     var actions = ctx.actions;
     var info = Model.describeStage(stage);
@@ -95,6 +107,9 @@
     var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
     var meta = info.kindLabel + ' · ' + info.domainLabel.toLowerCase() + ' · ' + (info.isCustom ? 'własny' : 'standard ' + info.catalogNumber);
     var nextStatus = Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)];
+    // Rodzaj, temat i numer standardu są w podpowiedzi ikony — wiersz zostaje czysty.
+    var icon = Icons.stageIcon(info, 15);
+    icon.setAttribute('data-tooltip', meta);
 
     var row = D.el('div', {
       class: 'srow row srow--' + stage.status
@@ -108,10 +123,9 @@
         attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': panelId, 'data-fk': 'stage-expand-' + stage.id }
       }, [
         D.el('span', { class: 'srow__no t-num', text: String(position + 1) }),
-        Icons.stageIcon(info, 15),
+        icon,
         D.el('span', { class: 'srow__text' }, [
-          D.el('span', { class: 'srow__name', text: info.name }),
-          D.el('span', { class: 'srow__meta' }, [D.el('span', { text: meta })])
+          D.el('span', { class: 'srow__name', text: info.name })
         ]),
         D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronDown', 14)]),
         D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
@@ -119,7 +133,7 @@
       taskCell(stage),
       hoursCell(stage, ctx.logged && ctx.logged[stage.id]),
       D.el('span', { class: 'srow__deadline' }, [
-        UI.due(stage.deadline, Progress.deadlineInfo(stage.deadline), { done: stage.status === 'done', label: 'Termin etapu' })
+        nearestDue(stage)
       ]),
       UI.statusButton('stage', stage.status, {
         subject: info.name,
@@ -281,7 +295,7 @@
       kindBudget(budget),
       D.el('div', { class: 'srow srow--head', attrs: { 'aria-hidden': 'true' } }, [
         D.el('span'), D.el('span', { text: 'Etap' }), D.el('span', { class: 'srow__tasks', text: 'Zadania' }),
-        D.el('span', { class: 'srow__hours', text: 'Godziny' }), D.el('span', { class: 'srow__deadline', text: 'Termin' }),
+        D.el('span', { class: 'srow__hours', text: 'Godziny' }), D.el('span', { class: 'srow__deadline', text: 'Termin zadań' }),
         D.el('span', { text: 'Status' }), D.el('span')
       ]),
       D.el('ol', { class: 'srows rail' }, items)

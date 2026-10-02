@@ -298,9 +298,10 @@ async function main() {
       && (await evaluate('return /Pokaż \\d+/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent) || /Pokaż wszystkie/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent);')));
     await click('#tb-scope');
     await sleep(200);
+    const upcomingInfo = await evaluate('const l = [...document.querySelectorAll(".upcoming__item")]; return l.length + ":" + (l[0] ? l[0].textContent : "");');
     await evaluate('document.querySelector(".upcoming__item").click(); return true;');
     await sleep(1500);
-    const hashAfter = await evaluate('return location.hash;');
+    const hashAfter = (await evaluate('return location.hash;')) + ' | ' + upcomingInfo;
     check('termin z kokpitu otwiera projekt na właściwym etapie', /^#\/projekty\/\d+/.test(hashAfter), hashAfter);
     await go('#/projekty');
 
@@ -537,7 +538,7 @@ async function main() {
     check('wybór osoby zapisuje się w preferencjach i pokazuje jej zadania',
       await evaluate('return !!document.querySelector(".mywork") && !!document.querySelector(".mywho") && document.querySelectorAll(".mrow").length > 0 && /^p-\\d+$/.test(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).me || "");'));
     check('zadania są pogrupowane w przedziały czasu i mają projekt oraz termin',
-      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Czeka na Twoją decyzję","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .due, .mrow .due--none");'));
+      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Czeka na Twoją decyzję","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .tdue, .mrow .due--none");'));
     check('pasek boczny pokazuje licznik pracy osoby',
       await evaluate('return /^\\d+$/.test(document.querySelector("[data-screen=mywork] .nav__count").textContent);'));
     check('moje projekty pokazują funkcję i licznik dni do końca',
@@ -648,7 +649,7 @@ async function main() {
     check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
       custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location', JSON.stringify(custom));
     check('wiersz etapu własnego jest oznaczony w podpisie',
-      await evaluate('const metas = [...document.querySelectorAll(".srow__meta")].map(n => n.textContent); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m));'));
+      await evaluate('const metas = [...document.querySelectorAll(".srow__expand .stageicon")].map(n => n.getAttribute("data-tooltip") || ""); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m)) && ![...document.querySelectorAll(".srow__meta")].some(n => /standard \\d\\d$/.test(n.textContent));'));
 
     /* 23b. Rodzaj pracy: ikony, plakietka decyzji, pasek budżetu, grupowanie */
     check('projekt pokazuje budżet godzin według trzech rodzajów pracy',
@@ -675,13 +676,13 @@ async function main() {
     await evaluate('document.getElementById("cs-hours").value = "0"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
     await sleep(200);
     check('zerowy budżet godzin etapu nie przechodzi', await evaluate('return !!document.querySelector("#custom-stage-form .field__error");'));
-    await evaluate('document.getElementById("cs-hours").value = "100"; document.getElementById("cs-deadline").value = "2027-05-05"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
+    await evaluate('document.getElementById("cs-hours").value = "100"; document.getElementById("custom-stage-form").requestSubmit(); return true;');
     await sleep(300);
-    const edited = await state('(() => { const p = s.workspace.projects.find(x => x.code === "PICK-1"); return { id: p.stages[0].id, hours: p.stages[0].hours, deadline: p.stages[0].deadline, total: window.ETROM.Progress.projectProgress(p).hoursTotal }; })()');
-    check('zapis etapu zmienia godziny i termin, a budżet projektu się przelicza',
-      edited.hours === 100 && edited.deadline === '2027-05-05' && edited.total !== pctBefore, JSON.stringify(edited) + ' przed ' + pctBefore);
-    check('po zapisie panel się zamyka, a termin etapu widać w wierszu',
-      await evaluate('return !document.getElementById("custom-stage-form") && /2027/.test(document.querySelector(".srow-wrap:first-child .srow__deadline").textContent);'));
+    const edited = await state('(() => { const p = s.workspace.projects.find(x => x.code === "PICK-1"); return { id: p.stages[0].id, hours: p.stages[0].hours, total: window.ETROM.Progress.projectProgress(p).hoursTotal }; })()');
+    check('zapis etapu zmienia godziny, a budżet projektu się przelicza',
+      edited.hours === 100 && edited.total !== pctBefore, JSON.stringify(edited) + ' przed ' + pctBefore);
+    check('po zapisie panel się zamyka, a etap bez zadań nie ma własnego terminu',
+      await evaluate('return !document.getElementById("custom-stage-form") && /—/.test(document.querySelector(".srow-wrap:first-child .srow__deadline").textContent);'));
 
     /* 24. Przesuwanie etapu z menu wiersza */
     await openMenu('.srow-wrap:last-child .srow__more', 'Przesuń wyżej');
@@ -778,8 +779,12 @@ async function main() {
       await evaluate('return [...document.querySelectorAll(".srow__tasks")].some(c => /^\\d+\\/\\d+$/.test(c.textContent));'));
     check('etap pokazuje pasek rozkładu statusów zadań',
       await evaluate('return document.querySelectorAll(".sbar .sbar__seg").length >= 1;'));
-    check('zadanie w toku ma szybki krok „Zgłoś do zatwierdzenia”',
-      await evaluate('return [...document.querySelectorAll(".trow--working .trow__step")].some(b => b.textContent === "Zgłoś do zatwierdzenia");'));
+    check('zadanie w toku ma szybkie kroki „Do zatwierdzenia” i „Zakończ”',
+      await evaluate('const t = [...document.querySelectorAll(".trow--working .trow__step")].map(b => b.textContent); return t.includes("Do zatwierdzenia") && t.includes("Zakończ");'));
+    check('termin zadania ma rok i odliczanie, a etap pokazuje termin najbliższego zadania',
+      await evaluate('const t = document.querySelector(".trow .tdue"); const e = document.querySelector(".srow__due"); return !!t && /20\\d\\d/.test(t.querySelector(".tdue__date").textContent) && !!t.querySelector(".countdown") && !!e && /20\\d\\d/.test(e.textContent) && !!e.querySelector(".countdown");'));
+    check('wiersz etapu nie powtarza rodzaju, tematu i numeru standardu w podpisie',
+      await evaluate('return ![...document.querySelectorAll(".srow__expand .srow__meta")].some(n => /standard \\d/.test(n.textContent));'));
     check('bieżący etap jest od razu rozwinięty z zadaniami',
       await evaluate('const w = document.querySelector(".srow--working"); return !!w && w.querySelector(".srow__expand").getAttribute("aria-expanded") === "true";')
       && (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);

@@ -163,12 +163,12 @@ test('filtr stanu: „wymaga uwagi” to alarm i ostrzeżenie, pozostałe dokła
   assert.equal(codes('wymyślony'), 'A,B,C', 'nieznana wartość nie filtruje');
 });
 
-test('filtr terminów: projekty z terminem umowy lub etapu w oknie dni', () => {
+test('filtr terminów: projekty z terminem umowy lub najbliższego zadania etapu w oknie dni', () => {
   const NOW_Q = new Date(2026, 9, 2, 12, 0);
   const projects = [
     { id: 1, code: 'A', name: 'Umowa za 10 dni', status: 'active', deadline: '2026-10-12', stages: [], team: {} },
-    { id: 2, code: 'B', name: 'Etap za 20 dni', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'todo', hours: 1, deadline: '2026-10-22' }], team: {} },
-    { id: 3, code: 'C', name: 'Etap zakończony', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'done', hours: 1, deadline: '2026-10-05' }], team: {} },
+    { id: 2, code: 'B', name: 'Etap za 20 dni', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'todo', hours: 1, tasks: [{ id: 't-1', name: 'Z', status: 'todo', deadline: '2026-10-22T10:00' }] }], team: {} },
+    { id: 3, code: 'C', name: 'Etap zakończony', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'done', hours: 1, tasks: [{ id: 't-1', name: 'Z', status: 'done', deadline: '2026-10-05T10:00' }] }], team: {} },
     { id: 4, code: 'D', name: 'Daleko', status: 'active', deadline: '2027-06-01', stages: [], team: {} }
   ];
   const codes = (horizon) => Query.filterAndSort(projects, { horizon, now: NOW_Q, sort: 'code' }).map((p) => p.code).join(',');

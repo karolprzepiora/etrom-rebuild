@@ -34,3 +34,8 @@ Każda część zasila następną: umowa daje terminy i budżet, plan rozdziela 
 - Każda funkcja pokazuje, co wymaga reakcji, zanim pokaże dane.
 - Dane zapisywane tak, żeby wspólna baza nie wymagała ich przebudowy.
 - Każdy krok kończy się testami, zrzutami ekranu i aktualną dokumentacją.
+
+
+## Korespondencja projektu (AI)
+
+Dziennik poczty przychodzącej i wychodzącej z odczytem pism przez AI i zatwierdzaniem przez człowieka — projekt rozwiązania w [KORESPONDENCJA.md](KORESPONDENCJA.md). Pierwszy krok bez AI (dziennik ręczny) może powstać przed serwerem.

@@ -200,6 +200,25 @@
     return Date.parse(task.deadline) < reference;
   }
 
+  /**
+   * Termin etapu nie jest wpisywany: to termin najbliższego niezakończonego zadania.
+   * @returns {string} data i godzina zadania (ISO) albo ''
+   */
+  function nearestDeadline(stage) {
+    var best = '';
+    ((stage && stage.tasks) || []).forEach(function (task) {
+      if (!isOpen(task) || !isDateTime(task.deadline)) return;
+      if (!best || Date.parse(task.deadline) < Date.parse(best)) best = task.deadline;
+    });
+    return best;
+  }
+
+  /** Jak nearestDeadline, ale sama data „RRRR-MM-DD” — dla osi i progów liczonych w dniach. */
+  function stageDue(stage) {
+    var at = nearestDeadline(stage);
+    return at ? at.slice(0, 10) : '';
+  }
+
   function plDays(count) { return count === 1 ? '1 dzień' : count + ' dni'; }
   function plHours(count) { return count === 1 ? '1 godzina' : count + ' h'; }
 
@@ -340,6 +359,8 @@
     allPartsDone: allPartsDone,
     isOpen: isOpen,
     isOverdue: isOverdue,
+    nearestDeadline: nearestDeadline,
+    stageDue: stageDue,
     deadlineInfo: deadlineInfo,
     taskStats: taskStats,
     projectTaskStats: projectTaskStats,
