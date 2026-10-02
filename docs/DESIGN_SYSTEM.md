@@ -379,3 +379,9 @@ Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte og�
 - **Zdjęcia:** do 4 na wpis, z przycisku, wklejenia (Ctrl+V) albo przeciągnięcia. Zmniejszane w przeglądarce (do 1400 px, JPEG) i zapisywane w danych wpisu; łączny limit pamięci zdjęć to ok. 3,5 MB, dopóki dane są lokalne. Galeria 1–4 zdjęć, klik otwiera powiększenie (←/→, Esc).
 - **Strumień:** zapisy czasu pracy starsze niż 14 dni nie wchodzą do osi (są w „Czasie” projektu); czas pokazywany jako minuty lub godziny, nigdy „0 h”.
 - Filtry: Wszystko, Moje, Pisma, Wpisy, Zdjęcia.
+
+## Analiza w projekcie i edycja wpisów
+
+- Zakładka **Analiza** w projekcie (`#/projekty/<id>/analiza`) pokazuje ten sam szczegółowy widok co ekran Analizy, ale dla jednego projektu. Widzi ją lider projektu i zarząd; pracownikowi zakładka się nie wyświetla, a po wpisaniu adresu dostaje wyjaśnienie.
+- Autor może poprawić własny wpis (ikona ołówka; Ctrl+Enter zapisuje, Esc anuluje). Karta dostaje ślad „edytowano”. Ankiety i zdjęcia nie są edytowane, tylko treść.
+- Stan projektu w panelu bocznym Aktualności używa tego samego znaku (trójkąt) co menu i lista projektów.

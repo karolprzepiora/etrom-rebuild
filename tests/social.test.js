@@ -106,3 +106,18 @@ test('strumień: przypięte ogłoszenia osobno, filtr zdjęć, okno czasu pracy'
   assert.equal(media.items.length, 1);
   assert.equal(media.pinned.length, 0);
 });
+
+test('edycja wpisu: zmienia treść i zostawia ślad, pustego tekstu bez zdjęcia nie przyjmuje', () => {
+  let s = add(Social.empty(), { text: 'pierwsza wersja' }).social;
+  const id = s.posts[0].id;
+  assert.equal(Social.editPost(s, id, '  ').valid, false);
+  assert.equal(Social.editPost(s, 'brak', 'x').valid, false);
+  const same = Social.editPost(s, id, 'pierwsza wersja');
+  assert.equal(same.social.posts[0].edited, undefined);
+  s = Social.editPost(s, id, 'druga wersja').social;
+  assert.equal(s.posts[0].text, 'druga wersja');
+  assert.equal(s.posts[0].edited, true);
+  assert.equal(Social.normalize(s).posts[0].edited, true);
+  const photo = add(Social.empty(), { text: 'x', images: [IMG] }).social;
+  assert.equal(Social.editPost(photo, photo.posts[0].id, '').valid, true, 'wpis ze zdjęciem może mieć pusty opis');
+});

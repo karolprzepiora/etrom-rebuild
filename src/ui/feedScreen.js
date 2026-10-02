@@ -218,6 +218,21 @@
     }).concat([D.el('p', { class: 't-meta fd__polltotal', text: res.total ? Format.count(res.total, 'głos', 'głosy', 'głosów') + (voted ? '' : ' — zagłosuj, aby zobaczyć wyniki') : 'Nikt jeszcze nie głosował' })]));
   }
 
+  function editor(post, ctx) {
+    var area = D.el('textarea', { class: 'fd__textarea fd__edit', attrs: { rows: '3', maxlength: String(Social.LIMITS.post), 'aria-label': 'Treść wpisu', 'data-fk': 'fd-edit-text' } });
+    area.value = post.text;
+    var save = function () { ctx.actions.editPost(post.id, area.value); };
+    area.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); save(); }
+      else if (event.key === 'Escape') { event.preventDefault(); ctx.actions.setFeedEditing(null); }
+    });
+    window.setTimeout(function () { if (area.isConnected) { area.focus(); area.setSelectionRange(area.value.length, area.value.length); } }, 30);
+    return D.el('div', { class: 'fd__editor' }, [area, D.el('div', { class: 'fd__editact' }, [
+      UI.button({ label: 'Anuluj', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setFeedEditing(null); } }),
+      UI.button({ label: 'Zapisz', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'fd-edit-save' }, onClick: save })
+    ])]);
+  }
+
   function card(item, ctx, state, people, now) {
     var h = headline(item, people);
     var me = state.prefs.me;
@@ -228,8 +243,12 @@
     var canDelete = post && (post.personId === me || manage);
     var thread = commentsBlock(item, ctx, state, people);
     var target = type === 'kudos' ? person(people, post.to) : null;
+    var editing = !!post && state.feedEditing === post.id;
+    var canEdit = !!post && post.personId === me;
     var body;
-    if (type === 'kudos') {
+    if (editing) {
+      body = editor(post, ctx);
+    } else if (type === 'kudos') {
       body = D.el('div', { class: 'fd__kudos' }, [
         D.el('span', { class: 'fd__trophy', attrs: { 'aria-hidden': 'true' } }, [Icons.icon('award', 26)]),
         D.el('div', { class: 'fd__kbody' }, [
@@ -250,10 +269,11 @@
         actorAvatar(item, people),
         D.el('div', { class: 'fd__who' }, [
           D.el('span', { class: 'fd__name' }, [D.el('span', { class: 'truncate', text: h.title }), BADGES[type] ? D.el('span', { class: 'fd__badge fd__badge--' + type, text: BADGES[type] }) : null]),
-          D.el('span', { class: 't-meta', text: Format.ago(item.at, now) + (post && post.pinned ? ' · przypięte' : '') })
+          D.el('span', { class: 't-meta', text: Format.ago(item.at, now) + (post && post.edited ? ' · edytowano' : '') + (post && post.pinned ? ' · przypięte' : '') })
         ]),
         projectChip(item.project),
         (type === 'announcement' && manage) ? UI.iconButton({ icon: post.pinned ? 'pinOff' : 'pin', label: post.pinned ? 'Odepnij ogłoszenie' : 'Przypnij na górze', size: 'sm', attrs: { 'data-fk': 'fd-pin-' + post.id }, onClick: function () { ctx.actions.togglePin(post.id); } }) : null,
+        (canEdit && !editing) ? UI.iconButton({ icon: 'edit', label: 'Edytuj wpis', size: 'sm', attrs: { 'data-fk': 'fd-edit-' + post.id }, onClick: function () { ctx.actions.setFeedEditing(post.id); } }) : null,
         canDelete ? UI.iconButton({ icon: 'trash', label: 'Usuń wpis', size: 'sm', onClick: function () { ctx.actions.removePost(post.id); } }) : null
       ])
     ].concat(body, [
@@ -280,7 +300,7 @@
       projects.length ? widget('Projekty w toku', D.el('ul', { class: 'fd__plist' }, projects.map(function (p) {
         var level = E.Insight.health(p, now).level;
         return D.el('li', null, [D.el('button', { class: 'fd__prow', attrs: { type: 'button', 'data-fk': 'fd-story-' + p.id, 'data-tooltip': p.name }, on: { click: function () { ctx.actions.openProject(p.id, 'etapy'); } } }, [
-          D.el('span', { class: 'fd__dot fd__dot--' + level, attrs: { 'aria-hidden': 'true' } }),
+          E.Sig.datum(level, { label: false }),
           D.el('span', { class: 'fd__pcode t-num', text: shortCode(p.code) }),
           D.el('span', { class: 'fd__pname truncate', text: p.name })
         ])]);

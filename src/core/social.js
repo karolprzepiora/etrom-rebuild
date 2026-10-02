@@ -106,6 +106,7 @@
     if (type === 'poll') { out.poll = cleanPoll(p.poll); if (!out.poll) out.type = 'post'; }
     if (type === 'kudos') { if (text(p.to)) out.to = text(p.to); else out.type = 'post'; }
     if (out.type === 'announcement' && p.pinned === true) out.pinned = true;
+    if (p.edited === true) out.edited = true;
     return out;
   }
 
@@ -222,6 +223,19 @@
     };
   }
 
+  /** Poprawia treść wpisu (u ankiety — pytanie); ślad „edytowano” zostaje przy wpisie. */
+  function editPost(social, id, body) {
+    var s = social || empty();
+    var value = text(body);
+    var post = s.posts.filter(function (p) { return p.id === id; })[0];
+    if (!post) return { valid: false, error: 'Nie ma takiego wpisu.', social: s };
+    if (value.length > LIMITS.post) return { valid: false, error: 'Wpis może mieć najwyżej ' + LIMITS.post + ' znaków.', social: s };
+    var needsText = post.type === 'poll' || post.type === 'kudos' || !(post.images && post.images.length);
+    if (!value && needsText) return { valid: false, error: 'Wpis nie może być pusty.', social: s };
+    if (value === post.text) return { valid: true, error: '', social: s };
+    return { valid: true, error: '', social: Object.assign({}, s, { posts: s.posts.map(function (p) { return p.id === id ? Object.assign({}, p, { text: value, edited: true }) : p; }) }) };
+  }
+
   function togglePin(social, id) {
     var s = social || empty();
     return Object.assign({}, s, { posts: s.posts.map(function (p) {
@@ -248,7 +262,7 @@
     REACTIONS: REACTIONS, LIMITS: LIMITS, TYPES: TYPES, empty: empty, normalize: normalize,
     toggleReaction: toggleReaction, reactionsOf: reactionsOf,
     addComment: addComment, removeComment: removeComment, commentsOf: commentsOf,
-    addPost: addPost, removePost: removePost, vote: vote, pollResults: pollResults, togglePin: togglePin, imageChars: imageChars
+    addPost: addPost, removePost: removePost, editPost: editPost, vote: vote, pollResults: pollResults, togglePin: togglePin, imageChars: imageChars
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Social = api; }

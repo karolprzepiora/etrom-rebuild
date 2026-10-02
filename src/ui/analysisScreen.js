@@ -173,9 +173,9 @@
     ]);
   }
 
-  function detail(p, data, ctx, now) {
-    return D.el('div', { class: 'an-detail', dataset: { projectId: p.id } }, [
-      D.el('header', { class: 'an-detail__head' }, [
+  function detail(p, data, ctx, now, bare) {
+    return D.el('div', { class: 'an-detail' + (bare ? ' an-detail--bare' : ''), dataset: { projectId: p.id } }, [
+      bare ? D.el('header', { class: 'an-detail__head' }, [pill(p.verdict), D.el('span', { class: 't-meta', text: 'Zużycie, prognoza i opłacalność tego projektu' })]) : D.el('header', { class: 'an-detail__head' }, [
         D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + p.code }),
         D.el('h2', { class: 'an-detail__title', text: p.name }),
         pill(p.verdict),
@@ -224,6 +224,23 @@
     var input = D.el('input', { class: 'input an-rate__input', attrs: { type: 'number', min: '0', step: '5', 'aria-label': 'Koszt godziny pracy w złotych', value: state.prefs.hourlyCost ? String(state.prefs.hourlyCost) : '', placeholder: '0', 'data-fk': 'an-rate' } });
     input.addEventListener('change', function () { ctx.actions.setHourlyCost(input.value); });
     return D.el('label', { class: 'an-rate' }, [D.el('span', { text: 'Koszt godziny' }), input, D.el('span', { text: 'zł' })]);
+  }
+
+  /** Zakładka „Analiza” w projekcie: ten sam szczegółowy widok, ale dla jednego projektu. */
+  function projectView(project, state, ctx) {
+    var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
+    var data = me ? Analysis.portfolio(state.workspace, me.id, new Date(), { rate: state.prefs.hourlyCost }) : { access: false };
+    var p = data.access ? data.projects.filter(function (x) { return x.id === project.id; })[0] : null;
+    if (!p) {
+      return UI.emptyState({ icon: 'checklist', title: 'Analiza projektu jest dla lidera i zarządu', text: 'Pracownik widzi w planie procent zużycia budżetu etapów. Godziny, prognozy i opłacalność analizują lider projektu oraz zarząd.' });
+    }
+    if (!p.planned) {
+      return UI.emptyState({ icon: 'layers', title: 'Brak budżetu godzin', text: 'Dodaj do etapów budżet godzin, a Analiza pokaże zużycie, prognozę i opłacalność tego projektu.' });
+    }
+    return D.el('div', { class: 'an an--project' }, [
+      data.management ? D.el('div', { class: 'an-bar' }, [rateControl(state, ctx)]) : null,
+      detail(p, data, ctx, new Date(), true)
+    ]);
   }
 
   function view(state, ctx) {
@@ -277,5 +294,5 @@
     };
   }
 
-  root.ETROM.AnalysisScreen = { view: view, insight: insight, VERDICT: VERDICT };
+  root.ETROM.AnalysisScreen = { view: view, projectView: projectView, insight: insight, VERDICT: VERDICT };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

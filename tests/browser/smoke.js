@@ -1016,7 +1016,7 @@ async function main() {
     check('termin umowy i lider da się zmienić w miejscu',
       await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader") && !!document.querySelector(".pd-date");'));
     check('zakładki projektu: Plan, Zadania, Korespondencja, Zespół, Czas, Aktywność',
-      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,zadania,korespondencja,zespol,czas,aktywnosc";'));
+      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,zadania,korespondencja,zespol,czas,analiza,aktywnosc";'));
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',
@@ -1235,6 +1235,30 @@ async function main() {
       await evaluate('return !document.querySelector("[data-fk=fd-mode-announcement]") && !document.querySelector("[data-fk^=fd-pin-]");'));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await evaluate('window.ETROM.app.actions.setFeedFilter("all"); return true;');
+
+    /* 38d. Analiza w projekcie i edycja wpisu */
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/projekty/' + id2 + '/analiza');
+    await sleep(500);
+    check('projekt: zakładka Analiza pokazuje spalanie godzin, wskaźniki i opłacalność dla zarządu',
+      await evaluate('return !!document.querySelector(".an--project .ch--burn") && !!document.querySelector(".an--project .an-idxs") && !!document.querySelector(".an--project .an-card--fin") && !!document.querySelector("[data-fk=an-rate]");'));
+    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await sleep(300);
+    check('projekt: pracownik nie ma zakładki Analiza, a po wpisaniu adresu widzi wyjaśnienie',
+      await evaluate('return !document.querySelector(".detail__tabs [data-tab=analiza]") && !!document.querySelector("#view-project .empty-state") && !document.querySelector(".an--project");'));
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/aktualnosci');
+    await sleep(300);
+    await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Wpis do poprawki"; t.dispatchEvent(new Event("input")); document.querySelector("[data-fk=fd-publish]").click(); return true;');
+    await sleep(400);
+    await evaluate('document.querySelector(".fd__stream .fd__card [data-fk^=fd-edit-]").click(); return true;');
+    await sleep(250);
+    await evaluate('const a = document.querySelector("[data-fk=fd-edit-text]"); a.value = "Wpis po poprawce"; document.querySelector("[data-fk=fd-edit-save]").click(); return true;');
+    await sleep(350);
+    check('autor poprawia własny wpis, a karta dostaje ślad „edytowano”',
+      await evaluate('const c = document.querySelector(".fd__stream .fd__card"); return /Wpis po poprawce/.test(c.textContent) && /edytowano/.test(c.textContent) && !document.querySelector("[data-fk=fd-edit-text]");'));
+    check('cudzy wpis nie ma przycisku edycji',
+      await evaluate('return [...document.querySelectorAll(".fd__stream .fd__card[data-kind=post]")].filter(c => !/Michał/.test(c.querySelector(".fd__name").textContent)).every(c => !c.querySelector("[data-fk^=fd-edit-]"));'));
 
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));

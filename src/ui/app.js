@@ -43,6 +43,7 @@
     mailView: { direction: 'all', waiting: false, query: '' },
     inboxFilter: 'all',
     analysisProject: null,
+    feedEditing: null,
     feedFilter: 'all',
     feedLimit: 20,
     feedOpen: [],
@@ -69,7 +70,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol', 'czas', 'aktywnosc'];
+  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -1833,6 +1834,14 @@
       updateWorkspace(function (ws) { return Object.assign({}, ws, { social: result.social }); });
       return true;
     },
+    editPost: function (id, body) {
+      var result = E.Social.editPost(store.getState().workspace.social, id, body);
+      if (!result.valid) { Toast.show({ message: result.error, tone: 'danger' }); return false; }
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: result.social }); });
+      store.set({ feedEditing: null });
+      return true;
+    },
+    setFeedEditing: function (id) { store.set({ feedEditing: id }); },
     votePoll: function (postId, optionId) {
       var meId = currentMe();
       if (!meId) { Toast.show({ message: 'Wybierz w „Mojej pracy”, kim jesteś.', tone: 'danger' }); return; }

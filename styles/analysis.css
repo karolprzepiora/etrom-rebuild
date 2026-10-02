@@ -18,7 +18,7 @@
 .an-tile__label { font-size: var(--fs-sm); color: var(--ink-3); }
 .an-tile__big { display: flex; align-items: baseline; gap: var(--space-2); }
 .an-tile__big { flex-wrap: wrap; }
-.an-tile__big b { white-space: nowrap; font-size: clamp(1.4rem, 2.2vw, 2rem); line-height: 1; font-weight: 650; color: var(--ink); }
+.an-tile__big b { white-space: nowrap; font-size: clamp(1.25rem, 1.7vw, 2rem); line-height: 1; font-weight: 650; color: var(--ink); }
 .an-tile__big span, .an-tile__sub { font-size: var(--fs-sm); color: var(--ink-3); }
 .an-tile__ring { display: flex; align-items: center; gap: var(--space-3); }
 .an-tile__nums { display: grid; }
@@ -40,6 +40,8 @@
 .an-detail__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .an-detail__title { margin: 0; font-size: var(--fs-lg); font-weight: 650; flex: 1 1 12rem; min-width: 0; }
 .an-detail__insight { margin: 0; color: var(--ink-2); max-width: 70ch; line-height: 1.5; }
+.an-detail--bare { padding: 0; background: transparent; }
+.an-bar { display: flex; justify-content: flex-end; }
 .an-lanes { display: grid; gap: var(--space-3); }
 .an-lane { display: grid; gap: 4px; }
 .an-lane__head { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--ink-2); }

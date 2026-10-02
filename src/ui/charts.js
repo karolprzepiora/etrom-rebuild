@@ -117,7 +117,7 @@
         svg.appendChild(s('line', { class: 'ch-forecast', x1: last[0], y1: last[1], x2: x(p.exhaustAt), y2: y(p.planned) }));
         svg.appendChild(s('circle', { class: 'ch-exhaust', cx: x(p.exhaustAt), cy: y(p.planned), r: 5 }));
         var ed = new Date(p.exhaustAt);
-        svg.appendChild(t(clamp(x(p.exhaustAt), L + 60, L + pw - 4), y(p.planned) + 20, 'budżet wyczerpany ~' + ed.getDate() + ' ' + months[ed.getMonth()], 'ch-note ch-note--bad', clamp(x(p.exhaustAt), L + 60, L + pw - 4) > L + pw - 70 ? 'end' : 'middle'));
+        svg.appendChild(t(clamp(x(p.exhaustAt), L + 60, L + pw - 4), y(p.planned) - 14, 'budżet wyczerpany ~' + ed.getDate() + ' ' + months[ed.getMonth()], 'ch-note ch-note--bad', clamp(x(p.exhaustAt), L + 60, L + pw - 4) > L + pw - 70 ? 'end' : 'middle'));
       }
       svg.appendChild(s('circle', { class: 'ch-now', cx: last[0], cy: last[1], r: 6 }));
       svg.appendChild(t(last[0] - 10, last[1] - 12, F.hours(p.used), 'ch-note ch-note--strong', 'end'));

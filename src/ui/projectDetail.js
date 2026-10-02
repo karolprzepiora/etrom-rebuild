@@ -25,6 +25,7 @@
     { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' },
     { value: 'czas', label: 'Czas' },
+    { value: 'analiza', label: 'Analiza' },
     { value: 'aktywnosc', label: 'Aktywność' }
   ];
 
@@ -421,11 +422,13 @@
     var tasks = Tasks.projectTaskStats(project);
     var counts = { etapy: stats.total, zadania: tasks.open, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zespol: Team.projectPeople(project.team).length };
 
+    var canAnalyse = E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.state.workspace.people || []);
     var body;
     if (tab === 'zadania') body = tasksTab(project, ctx);
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else if (tab === 'czas') body = timeTab(project, ctx);
+    else if (tab === 'analiza') body = E.AnalysisScreen.projectView(project, ctx.state, ctx);
     else if (tab === 'aktywnosc') body = activityTab(project, ctx);
     else body = E.StageList.stageList(project, ctx);
 
@@ -433,7 +436,7 @@
       label: 'Sekcje projektu',
       value: tab,
       class: 'detail__tabs',
-      items: TABS.map(function (t) {
+      items: TABS.filter(function (t) { return t.value !== 'analiza' || canAnalyse; }).map(function (t) {
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });
