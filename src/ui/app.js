@@ -153,14 +153,20 @@
     applyRoute(parseRoute(location.hash));
     // Po zmianie ekranu fokus trafia na jego nagłówek — czytnik ekranu ogłasza nowe miejsce.
     // Zwłoka: przejście widoku podmienia treść dopiero w następnej klatce.
-    window.setTimeout(function () {
+    var wanted = 'view-' + (parseRoute(location.hash).name === 'projects' ? 'projects' : parseRoute(location.hash).name);
+    var tries = 0;
+    var focusHeading = function () {
       if (Dialog.anyOpen()) return;
-      var heading = document.querySelector('.view:not([hidden]) h1');
+      var view = document.getElementById(wanted);
+      // Przejście widoku może jeszcze trwać: czekamy, aż docelowy ekran będzie widoczny.
+      if ((!view || view.hidden) && tries < 30) { tries += 1; window.setTimeout(focusHeading, 60); return; }
+      var heading = view && view.querySelector('h1');
       if (heading) {
         heading.setAttribute('tabindex', '-1');
         heading.focus({ preventScroll: true });
       }
-    }, 80);
+    };
+    window.setTimeout(focusHeading, 80);
   }
 
   function goTo(screen) {

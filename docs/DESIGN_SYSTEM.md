@@ -338,6 +338,18 @@ formularze na całą szerokość.
 - Szkice wpisu i komentarzy żyją poza przerysowaniem, żeby klik w reakcję nie kasował pisanego tekstu.
 - Czas pracy innych osób pojawia się tylko liderowi projektu i zarządowi.
 
+## Język „karty i pigułki” (styles/polish.css)
+
+Wszystkie ekrany używają jednego języka, ładowanego ostatnim arkuszem:
+- **Karty zamiast linii**: wiersze list i tabel (projekty, zadania, etapy, Zespół, Skrzynka, Moja praca) są zaokrąglonymi kartami (14–20 px) z cienką ramką `inset`. Po najechaniu unoszą się o 1–2 px.
+- **Stan = kolor z lewej**: czerwony (alarm) lub bursztynowy (uwaga) pasek 4 px po lewej stronie wiersza, w nagłówkach i na kartach pigułka „Alarm” / „Uwaga”.
+- **Pigułki**: zakładki, przełączniki, plakietki, numer projektu (czarna pigułka `#2602`).
+- **Wstęga czasu umowy**: pasek od założenia projektu do terminu ze znacznikiem „dziś” — nie jest postępem prac (postęp trafi do zakładki Analiza).
+- **Tło**: łuna marki (magenta) i nurtu (błękit) pod arkuszem; arkusz ma promień 22 px.
+- **Nagłówki małych sekcji**: wielkie litery, rozstrzelone, 11 px; tytuły stron 40 px, grube.
+- **Ruch**: jedna krzywa `cubic-bezier(.2,.8,.2,1)`, 150–220 ms; wszystko wyłączane przy `prefers-reduced-motion`.
+- Nowy ekran dziedziczy to automatycznie, gdy używa klas `.trow`, `.mrow`, `.fd__card`, `.pc`, `.plan-row`, `.tabs` lub `.pf-views`.
+
 ## 9. Jak dodać nowy ekran
 
 1. Struktura: tytuł krojem Display → zdanie z liczbami → kokpit lub pasek narzędzi → treść.

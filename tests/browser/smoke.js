@@ -361,7 +361,7 @@ async function main() {
 
     /* 8. Szczegóły projektu pod własnym adresem */
     await evaluate('document.querySelector(\'[data-project-code="2602"] .project-link\').click(); return true;');
-    await sleep(500);
+    await sleep(1100);
     const id2 = await projectId('2602');
     check('klik w projekt otwiera jego szczegóły pod własnym adresem',
       (await evaluate('return location.hash;')) === '#/projekty/' + id2 && !(await evaluate('return document.getElementById("view-project").hidden;')));

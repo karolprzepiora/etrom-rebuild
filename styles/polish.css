@@ -220,3 +220,65 @@ body, .app {
 .inspector { border-radius: 22px; }
 
 @media (prefers-reduced-motion: reduce) { .trow:hover, .kb-card:hover { transform: none; } }
+
+/* =========================================================
+   Seria 2: telefon, formularze, panel terminów, tabela etapów, inspektor
+   ========================================================= */
+
+/* telefon: kafelki 2×2, oś etapów przewijana */
+@media (max-width: 40rem) {
+  .pd-props { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .pd-prop { padding: var(--space-3); }
+  .pd-prop__value { font-size: 1rem; }
+  .pd-prop--ribbon { grid-column: 1 / -1; }
+  .pd-head__title { font-size: 2rem; }
+  .t-page-title { font-size: 2rem; }
+  .pf-views, .tabs { width: auto; overflow-x: auto; scrollbar-width: none; }
+  .jr { margin-inline: calc(var(--space-4) * -1); padding-inline: var(--space-4); }
+}
+
+/* panel boczny z formularzem */
+.drawer__panel { box-shadow: var(--elev-float); }
+.drawer__panel h2, .drawer__panel h3, .fieldset__title, .form-section__title { letter-spacing: -0.01em; }
+.drawer__panel fieldset { border: 0; padding: var(--space-4); margin: 0 0 var(--space-4); border-radius: 18px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+.drawer__panel legend { padding: 0 var(--space-1); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.drawer__panel .input, .drawer__panel .select, .drawer__panel .textarea { background: var(--sheet); }
+.drawer__foot, .drawer__actions { backdrop-filter: blur(10px); }
+
+/* ustawienia: nie przycinaj */
+.popover--panel { min-width: 26rem; max-width: calc(100vw - 24px); }
+
+/* panel „Najbliższe terminy” jako karta */
+.pf-rail { padding: var(--space-4); border: 0; border-radius: 22px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); top: var(--space-2); }
+.pf-rail__title { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; }
+.pf-rail__h { text-transform: uppercase; letter-spacing: .08em; font-size: .6875rem; }
+.pf-rail__list > li { padding: 6px 8px; margin-inline: -8px; border-radius: 10px; }
+.pf-rail__list > li:hover { background: var(--sheet); }
+.pf-layout { grid-template-columns: minmax(0, 1fr) 18rem; }
+
+/* tabela etapów: wiersze-karty */
+.plan-rows { display: grid; gap: 8px; }
+.plan-item > .plan-row { border-radius: 16px; background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); border: 0; transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
+.plan-item > .plan-row:hover { background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line-strong), 0 12px 22px -18px var(--shadow-tint); }
+.plan-item > .plan-row.is-current { box-shadow: inset 4px 0 0 var(--flow), inset 0 0 0 1px var(--line); }
+.plan-item > .plan-row.is-late { box-shadow: inset 4px 0 0 var(--alarm), inset 0 0 0 1px color-mix(in srgb, var(--alarm) 30%, var(--line)); }
+.plan-item > .plan-row--done, .plan-item > .plan-row--summary { background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+.plan-row__no { display: inline-grid; place-items: center; min-width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--wash); font-weight: 600; }
+.plan-row__name { font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.005em; }
+.plan-meter { height: 8px; background: var(--wash-2); }
+.plan-meter > i { background: linear-gradient(90deg, color-mix(in srgb, var(--flow) 55%, transparent), var(--flow)); }
+.plan-panel { border-bottom: 0; }
+.plan-row--head { margin-bottom: 4px; text-transform: uppercase; letter-spacing: .06em; font-size: .6875rem; font-weight: 600; }
+
+/* inspektor */
+.inspector { box-shadow: var(--elev-float); }
+.inspector__body h3, .inspector__body h4 { text-transform: uppercase; letter-spacing: .08em; font-size: .6875rem; font-weight: 700; color: var(--ink-3); }
+
+/* puste stany */
+.empty { border-radius: 22px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* paleta poleceń */
+.palette__card { box-shadow: var(--elev-float), 0 0 0 1px var(--line); }
+.palette__input { font-size: 1.125rem; }
+.plan-row__name { font-size: .9375rem; }
+.plan-row--summary .plan-row__name { font-size: .9375rem; font-weight: 500; }

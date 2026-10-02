@@ -132,7 +132,7 @@
     workspace.setAttribute('aria-haspopup', 'dialog');
     workspace.setAttribute('aria-expanded', 'false');
     workspace.addEventListener('click', function () {
-      Menu.open({ anchor: workspace, label: 'Ustawienia i dane', content: settingsPanel(getState()), minWidth: '18rem' });
+      Menu.open({ anchor: workspace, label: 'Ustawienia i dane', content: settingsPanel(getState()), minWidth: '26rem' });
     });
 
     var search = D.el('button', {
