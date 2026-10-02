@@ -263,7 +263,15 @@ async function main() {
     await shoot('skrzynka-odlozone', { wait: 300 });
     await go('#/aktualnosci');
     await run('const a = window.ETROM.app.actions; const f = document.querySelector("#view-feed [data-feed-key]").dataset.feedKey; a.toggleReaction(f, "like"); a.toggleReaction(f, "party"); a.addComment(f, "Dzięki, biorę to na jutro."); a.toggleFeedComments(f); return true;');
-    await shoot('aktualnosci', { wait: 400 });
+    await viewport(1600, 1500);
+    await shoot('aktualnosci', { wait: 500 });
+    await run('document.querySelector("[data-fk=fd-mode-poll]").click(); return true;');
+    await shoot('aktualnosci-ankieta-szkic', { wait: 300 });
+    await run('document.querySelector("[data-fk=fd-mode-post]").click(); return true;');
+    await run('document.querySelector(".fd__shot").click(); return true;');
+    await shoot('aktualnosci-podglad', { wait: 400 });
+    await run('document.querySelector(".fd__lbbtn").click(); return true;');
+    await viewport(1440, 1100);
     await viewport(390, 900);
     await shoot('aktualnosci-telefon', { wait: 300 });
     await viewport(1440, 1100);

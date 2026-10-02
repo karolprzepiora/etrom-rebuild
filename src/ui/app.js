@@ -1416,7 +1416,37 @@
       if (!exists) roster = roster.concat([Team.createPerson(row, roster)]);
     });
 
-    function demoPersonId(index) {
+    /** Zdjęcie przykładowe rysowane na płótnie (krajobraz z rzeką), żeby galeria miała co pokazać. */
+  function demoPhoto(variant) {
+    try {
+      var palettes = [
+        ['#9cc8e8', '#e8f1f5', '#5f8f58', '#3f6f4a', '#2c7ca0'],
+        ['#f2c48d', '#fbe9d0', '#7d8f4c', '#546b3a', '#3d7f9a'],
+        ['#a8b9c9', '#dfe6ec', '#6f8a6a', '#49644d', '#4c7f98'],
+        ['#cfd8c2', '#f1f0e4', '#8a9a5b', '#5d7142', '#5b8aa0']
+      ];
+      var c = palettes[variant % palettes.length];
+      var canvas = document.createElement('canvas');
+      canvas.width = 960; canvas.height = 600;
+      var g = canvas.getContext('2d');
+      var sky = g.createLinearGradient(0, 0, 0, 340);
+      sky.addColorStop(0, c[0]); sky.addColorStop(1, c[1]);
+      g.fillStyle = sky; g.fillRect(0, 0, 960, 600);
+      g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(150 + variant * 160, 110, 46, 0, 7); g.fill();
+      [[c[2], 330, 70], [c[3], 390, 50]].forEach(function (layer, i) {
+        g.fillStyle = layer[0]; g.beginPath(); g.moveTo(0, 600);
+        for (var x = 0; x <= 960; x += 40) g.lineTo(x, layer[1] + Math.sin((x + variant * 90 + i * 140) / 120) * layer[2] * 0.5);
+        g.lineTo(960, 600); g.closePath(); g.fill();
+      });
+      g.fillStyle = c[4]; g.beginPath(); g.moveTo(300 + variant * 40, 600);
+      g.bezierCurveTo(380, 520, 620, 500, 560 + variant * 30, 430); g.lineTo(600 + variant * 30, 430);
+      g.bezierCurveTo(700, 510, 520, 560, 560 + variant * 60, 600); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(40,50,56,.85)'; g.fillRect(250, 470, 330, 14); g.fillRect(280, 484, 10, 40); g.fillRect(540, 484, 10, 40);
+      return canvas.toDataURL('image/jpeg', 0.7);
+    } catch (error) { return null; }
+  }
+
+  function demoPersonId(index) {
       var row = DEMO_PEOPLE[index];
       if (!row) return '';
       var found = roster.filter(function (person) { return person.firstName === row.firstName && person.lastName === row.lastName; })[0];
@@ -1587,15 +1617,24 @@
       workspace.projects.forEach(function (project) { byCode[project.code] = project; });
       var writers = [demoPersonId(0), demoPersonId(1), demoPersonId(2)];
       var posts = [
-        { who: writers[0], code: '', text: 'W piątek o 14:00 krótkie spotkanie biura — omówimy obłożenie na listopad.', ago: 30 },
+        { who: writers[0], code: '', type: 'announcement', pinned: true, text: 'W piątek o 14:00 spotkanie całego biura — omówimy obłożenie na listopad i plan szkoleń. Kawa i ciasto od zarządu.', ago: 30 },
         { who: writers[1], code: '2602', text: 'Mamy decyzję o warunkach zabudowy odcinka III. Można ruszać z przekrojami.', ago: 20 },
-        { who: writers[2], code: '2601', text: 'Mapy z gminy dotarły — wrzuciłam je do folderu projektu.', ago: 6 }
+        { who: writers[2], code: '2601', text: 'Wizja lokalna przy przepuście zrobiona. Stan lepszy, niż zakładaliśmy w inwentaryzacji — zdjęcia poniżej.', ago: 8, photos: [0, 1, 2] },
+        { who: writers[1], code: '', type: 'poll', text: 'Gdzie robimy firmowy wyjazd integracyjny w tym roku?', options: ['Mazury', 'Bieszczady', 'Kazimierz Dolny', 'Zostajemy w Warszawie'], votes: { 0: 0, 1: 1, 2: 0, 3: 3 }, ago: 5 },
+        { who: writers[0], code: '', type: 'kudos', to: demoPersonId(2), text: 'Za nocne domknięcie dokumentacji środowiskowej przed terminem. Dziękujemy!', ago: 3 },
+        { who: writers[2], code: '2601', text: 'Mapy z gminy dotarły — wrzuciłam je do folderu projektu.', ago: 2, photos: [3] }
       ];
       posts.forEach(function (row) {
         var project = row.code ? byCode[row.code] : null;
-        var res = E.Social.addPost(social, { personId: row.who, projectId: project ? project.id : null, text: row.text }, new Date());
+        var res = E.Social.addPost(social, {
+          personId: row.who, projectId: project ? project.id : null, text: row.text, type: row.type, to: row.to, pinned: row.pinned, options: row.options,
+          images: (row.photos || []).map(demoPhoto).filter(Boolean)
+        }, new Date());
         if (!res.valid) return;
         res.post.at = new Date(Date.now() - row.ago * 3600000).toISOString();
+        if (row.votes && res.post.poll) {
+          Object.keys(row.votes).forEach(function (n) { if (demoPersonId(Number(n)) && res.post.poll.options[row.votes[n]]) res.post.poll.votes[demoPersonId(Number(n))] = res.post.poll.options[row.votes[n]].id; });
+        }
         social = res.social;
         social.posts[social.posts.length - 1] = res.post;
       });
@@ -1783,11 +1822,24 @@
     removeComment: function (id) {
       updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.removeComment(ws.social, id) }); });
     },
-    addPost: function (body, projectId) {
-      var result = E.Social.addPost(store.getState().workspace.social, { personId: currentMe(), projectId: projectId, text: body }, new Date());
+    addPost: function (body, projectId, extra) {
+      var meId = currentMe();
+      var more = extra || {};
+      if ((more.type === 'announcement') && !E.Budget.isManagement(meId, store.getState().workspace.people || [])) {
+        Toast.show({ message: 'Ogłoszenia publikuje zarząd.', tone: 'danger' }); return false;
+      }
+      var result = E.Social.addPost(store.getState().workspace.social, Object.assign({ personId: meId, projectId: projectId, text: body }, more), new Date());
       if (!result.valid) { Toast.show({ message: result.error, tone: 'danger' }); return false; }
       updateWorkspace(function (ws) { return Object.assign({}, ws, { social: result.social }); });
       return true;
+    },
+    votePoll: function (postId, optionId) {
+      var meId = currentMe();
+      if (!meId) { Toast.show({ message: 'Wybierz w „Mojej pracy”, kim jesteś.', tone: 'danger' }); return; }
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.vote(ws.social, postId, meId, optionId) }); });
+    },
+    togglePin: function (postId) {
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.togglePin(ws.social, postId) }); });
     },
     removePost: function (id) {
       updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.removePost(ws.social, id) }); });

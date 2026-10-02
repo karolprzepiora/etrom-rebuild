@@ -11,7 +11,9 @@
   var TimeLog = node ? require('./timelog.js') : root.ETROM.TimeLog;
 
   var MIN_TIME_MINUTES = 5;
-  var FILTERS = ['all', 'mine', 'mail', 'posts'];
+  // Zapisy czasu starsze niż to okno są w „Czasie” projektu, nie w strumieniu.
+  var TIME_WINDOW_DAYS = 14;
+  var FILTERS = ['all', 'mine', 'mail', 'posts', 'media'];
 
   function allTasks(project) {
     var out = [];
@@ -71,6 +73,7 @@
       if (!e.end) return;
       var project = byId[e.projectId];
       if (!project) return;
+      if (Date.parse(e.end) < now.getTime() - TIME_WINDOW_DAYS * 86400000) return;
       if (e.personId !== viewerId && !Budget.canSeeHours(viewerId, project, people)) return;
       var key = 'time:' + e.personId + ':' + e.projectId + ':' + e.stageId + ':' + e.taskId + ':' + dayOf(e.start);
       var g = groups[key] || (groups[key] = { key: key, kind: 'time', at: e.end, actorId: e.personId, project: project, label: e.label, stageId: e.stageId, minutes: 0 });
@@ -93,6 +96,8 @@
     items.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at) || (a.key < b.key ? -1 : 1); });
     return items;
   }
+
+  function isMedia(item) { return item.kind === 'post' && !!(item.post.images && item.post.images.length); }
 
   function isMine(item, viewerId) {
     if (!viewerId) return false;
@@ -117,13 +122,18 @@
       all: all.length,
       mine: all.filter(function (i) { return isMine(i, viewerId); }).length,
       mail: all.filter(function (i) { return i.kind === 'mail'; }).length,
-      posts: all.filter(function (i) { return i.kind === 'post'; }).length
+      posts: all.filter(function (i) { return i.kind === 'post'; }).length,
+      media: all.filter(isMedia).length
     };
+    // Przypięte ogłoszenia stoją osobno na górze, więc nie powtarzamy ich w osi czasu.
+    var pinned = all.filter(function (i) { return i.kind === 'post' && i.post.pinned; });
     var shown = all;
     if (filter === 'mine') shown = all.filter(function (i) { return isMine(i, viewerId); });
     else if (filter === 'mail') shown = all.filter(function (i) { return i.kind === 'mail'; });
     else if (filter === 'posts') shown = all.filter(function (i) { return i.kind === 'post'; });
-    return { items: shown.slice(0, limit), total: shown.length, hasMore: shown.length > limit, counts: counts };
+    else if (filter === 'media') shown = all.filter(isMedia);
+    if (filter === 'all') shown = shown.filter(function (i) { return pinned.indexOf(i) < 0; });
+    return { items: shown.slice(0, limit), total: shown.length, hasMore: shown.length > limit, counts: counts, pinned: filter === 'all' ? pinned : [] };
   }
 
   var api = { FILTERS: FILTERS, MIN_TIME_MINUTES: MIN_TIME_MINUTES, build: build, collect: collect, isMine: isMine, actorOf: actorOf };

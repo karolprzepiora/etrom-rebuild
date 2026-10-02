@@ -1139,8 +1139,8 @@ async function main() {
     await go('#/aktualnosci');
     await sleep(300);
     check('aktualności: ekran ze strumieniem kart, paskiem projektów i kompozytorem',
-      (await evaluate('return location.hash === "#/aktualnosci" && !document.getElementById("view-feed").hidden && document.querySelectorAll(".fd__card").length > 3 && document.querySelectorAll(".fd__story").length > 2 && !!document.querySelector(".fd__textarea");')));
-    const feedKey = await evaluate('return document.querySelector(".fd__card").dataset.feedKey;');
+      (await evaluate('return location.hash === "#/aktualnosci" && !document.getElementById("view-feed").hidden && document.querySelectorAll(".fd__card").length > 3 && document.querySelectorAll(".fd__prow").length > 2 && !!document.querySelector(".fd__side") && !!document.querySelector(".fd__textarea");')));
+    const feedKey = await evaluate('return document.querySelector(".fd__card[data-kind=task], .fd__card[data-kind=time], .fd__card[data-kind=mail]").dataset.feedKey;');
     await evaluate('window.ETROM.app.actions.toggleReaction(' + JSON.stringify(feedKey) + ', "heart"); return true;');
     await sleep(250);
     check('reakcja pojawia się jako wyróżniony chip i znika po ponownym kliku',
@@ -1155,7 +1155,7 @@ async function main() {
     await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Test wpisu z kompozytora"; t.dispatchEvent(new Event("input")); document.querySelector(".fd__composer .btn--primary").click(); return true;');
     await sleep(500);
     check('wpis z kompozytora jest pierwszą kartą i czyści pole',
-      (await evaluate('return /Test wpisu z kompozytora/.test(document.querySelector(".fd__card").textContent) && document.querySelector(".fd__textarea").value === "";')));
+      (await evaluate('return /Test wpisu z kompozytora/.test(document.querySelector(".fd__stream .fd__card").textContent) && document.querySelector(".fd__textarea").value === "";')));
     await evaluate('document.querySelector("#view-feed [data-fk=fd-filter-posts]").click(); return true;');
     await sleep(250);
     check('filtr „Wpisy” zostawia tylko wpisy ludzi',
@@ -1181,6 +1181,60 @@ async function main() {
       await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-fk=an-rate]");'));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await go('#/projekty');
+
+    /* 38c. Aktualności jako media firmowe: zdjęcia, ankieta, wyróżnienie, ogłoszenie */
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/aktualnosci');
+    await sleep(300);
+    check('aktualności: układ na pełną szerokość z prawym panelem',
+      await evaluate('const m = document.querySelector(".fd__main").getBoundingClientRect(); const a = document.querySelector(".fd__side").getBoundingClientRect(); const v = document.getElementById("view-feed").getBoundingClientRect(); return a.right > v.right - 40 && m.width > 500 && a.left > m.right - 1;'));
+    check('kafelki projektów w panelu mają czytelny skrót numeru (bez ucięcia)',
+      await evaluate('return [...document.querySelectorAll(".fd__pcode")].every(n => n.scrollWidth <= n.clientWidth + 1 && n.textContent.length <= 4);'));
+    await evaluate('window.__att = null; const c = document.createElement("canvas"); c.width = 1800; c.height = 1200; const g = c.getContext("2d"); g.fillStyle = "#3a7"; g.fillRect(0,0,1800,1200); c.toBlob(b => { const f = new File([b], "plac.png", { type: "image/png" }); window.ETROM.FeedScreen.attach([f, f]).then(n => { window.__att = n; }); }); return true;');
+    await sleep(1200);
+    check('kompozytor: dodane zdjęcia są zmniejszone i widać podgląd z przyciskiem usunięcia',
+      (await evaluate('return window.__att;')) === 2 && (await evaluate('return document.querySelectorAll(".fd__thumb img").length;')) === 2
+      && (await evaluate('return window.ETROM.FeedScreen.drafts.images.every(u => u.length < 700000 && /^data:image\\/jpeg/.test(u));')));
+    await evaluate('document.querySelector("[data-fk=fd-unattach-1]").click(); return true;');
+    await sleep(150);
+    await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Plac budowy po deszczu"; t.dispatchEvent(new Event("input")); document.querySelector("[data-fk=fd-publish]").click(); return true;');
+    await sleep(500);
+    check('wpis ze zdjęciem trafia na górę osi czasu z galerią',
+      await evaluate('const c = document.querySelector(".fd__stream .fd__card"); return /Plac budowy po deszczu/.test(c.textContent) && c.querySelectorAll(".fd__shot img").length === 1 && window.ETROM.FeedScreen.drafts.images.length === 0;'));
+    await evaluate('document.querySelector(".fd__stream .fd__card .fd__shot").click(); return true;');
+    await sleep(250);
+    check('kliknięcie zdjęcia otwiera powiększenie, Esc je zamyka i oddaje fokus',
+      (await evaluate('return !!document.querySelector(".fd__lightbox .fd__lbimg");'))
+      && (await pressKey('escape'), await sleep(200), await evaluate('return !document.querySelector(".fd__lightbox") && !!document.querySelector(".fd__stream .fd__shot:focus, .fd__stream .fd__shot");')));
+    await evaluate('document.querySelector("[data-fk=fd-mode-poll]").click(); return true;');
+    await sleep(150);
+    await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Pizza czy sushi?"; t.dispatchEvent(new Event("input")); const o = document.querySelectorAll(".fd__optin"); o[0].value = "Pizza"; o[0].dispatchEvent(new Event("input")); o[1].value = "Sushi"; o[1].dispatchEvent(new Event("input")); document.querySelector("[data-fk=fd-publish]").click(); return true;');
+    await sleep(500);
+    const pollId = await evaluate('const c = document.querySelector(".fd__stream .fd__card[data-post-type=poll]"); return c ? c.dataset.feedKey.replace("post:", "") : null;');
+    check('ankieta pojawia się w osi czasu z odpowiedziami', !!pollId && (await evaluate('return document.querySelectorAll("[data-feed-key=\\"post:' + pollId + '\\"] .fd__opt").length;')) === 2);
+    await evaluate('document.querySelector("[data-fk=fd-vote-' + pollId + '-o2]").click(); return true;');
+    await sleep(250);
+    check('głos w ankiecie jest podświetlony i pokazuje procent',
+      await evaluate('const b = document.querySelector("[data-fk=fd-vote-' + pollId + '-o2]"); return b.classList.contains("is-mine") && /100%/.test(b.textContent);'));
+    await evaluate('document.querySelector("[data-fk=fd-mode-kudos]").click(); return true;');
+    await sleep(150);
+    await evaluate('const sel = document.querySelector("[data-fk=fd-kudos-to]"); sel.value = sel.options[1].value; sel.dispatchEvent(new Event("change")); const t = document.querySelector(".fd__textarea"); t.value = "Za sprawną koordynację odbioru"; t.dispatchEvent(new Event("input")); document.querySelector("[data-fk=fd-publish]").click(); return true;');
+    await sleep(500);
+    check('wyróżnienie ma osobną kartę z pucharem i osobą',
+      await evaluate('const c = document.querySelector(".fd__stream .fd__card[data-post-type=kudos]"); return !!c && !!c.querySelector(".fd__trophy") && /Za sprawną koordynację odbioru/.test(c.textContent);'));
+    await evaluate('document.querySelector("[data-fk=fd-mode-announcement]").click(); return true;');
+    await sleep(150);
+    await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Biuro zamknięte w piątek"; t.dispatchEvent(new Event("input")); document.querySelector("[data-fk=fd-publish]").click(); return true;');
+    await sleep(500);
+    check('ogłoszenie zarządu jest przypięte na górze, nad filtrami',
+      await evaluate('const p = document.querySelector(".fd__pinned"); return !!p && /Biuro zamknięte w piątek/.test(p.textContent) && p.compareDocumentPosition(document.querySelector(".fd__filters")) & Node.DOCUMENT_POSITION_FOLLOWING;'));
+    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await sleep(300);
+    check('pracownik nie ma trybu „Ogłoszenie” ani przypinania',
+      await evaluate('return !document.querySelector("[data-fk=fd-mode-announcement]") && !document.querySelector("[data-fk^=fd-pin-]");'));
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await evaluate('window.ETROM.app.actions.setFeedFilter("all"); return true;');
 
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));

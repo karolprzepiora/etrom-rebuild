@@ -370,3 +370,12 @@ Ekran `#/analiza` (skrót `G N`) odpowiada na pytanie „czy projekty mieszczą 
 - **Układ:** kafle → mapa projektów (X postęp, Y zużycie, nad przekątną wydajemy szybciej niż robimy) + „Najwięcej uwagi” → szczegóły wybranego projektu (spalanie godzin z prognozą wyczerpania, trzy pasy, wskaźniki, budżet etapów, rodzaje pracy, osoby, opłacalność) → trend 12 tygodni → tabela wszystkich projektów.
 - **Opłacalność:** wartość umowy (pole w formularzu projektu, tylko zarząd) i „Koszt godziny” (ustawienie na ekranie, domyślnie 0 = brak finansów).
 - Wykresy używają klas `ch-*`, barw wyłącznie z tokenów (poza paletą kategorii `ch-c0…7`, `ch-s0…5`).
+
+## Aktualności jako firmowe media społecznościowe
+
+Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte ogłoszenia, filtry, karty) i prawy panel (projekty w toku, wyróżnienia, zespół). Poniżej 66 rem panel schodzi pod oś.
+
+- **Rodzaje wpisów** (`social.js`): wpis, ogłoszenie (tylko zarząd, domyślnie przypięte), ankieta (2–5 odpowiedzi, zmiana i cofnięcie głosu), wyróżnienie osoby. Kompozytor przełącza je pigułkami.
+- **Zdjęcia:** do 4 na wpis, z przycisku, wklejenia (Ctrl+V) albo przeciągnięcia. Zmniejszane w przeglądarce (do 1400 px, JPEG) i zapisywane w danych wpisu; łączny limit pamięci zdjęć to ok. 3,5 MB, dopóki dane są lokalne. Galeria 1–4 zdjęć, klik otwiera powiększenie (←/→, Esc).
+- **Strumień:** zapisy czasu pracy starsze niż 14 dni nie wchodzą do osi (są w „Czasie” projektu); czas pokazywany jako minuty lub godziny, nigdy „0 h”.
+- Filtry: Wszystko, Moje, Pisma, Wpisy, Zdjęcia.
