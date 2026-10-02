@@ -289,3 +289,7 @@ body, .app {
   .pd-prop:nth-child(2) .pd-prop__sub { display: block; margin-left: 0; }
 }
 @media (max-width: 40rem) { .pd-prop:nth-child(3) { grid-column: 1 / -1; } }
+
+/* Numer projektu zawsze w jednej linii, także przy długich kodach typu DEMO-002 */
+.pf-num--pill { white-space: nowrap; flex: none; width: max-content; max-width: none; line-height: 1.35; }
+.pf-table .col-code { width: 7rem; }
