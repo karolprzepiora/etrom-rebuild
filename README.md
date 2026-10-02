@@ -154,8 +154,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 243 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 170 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 248 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 178 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -290,6 +290,8 @@ w teście przeglądarkowym.
 - **Plan i odchylenia** (`Insight.variance`): postęp (pp), godziny zapisane vs oczekiwane na dziś (h), termin umowny vs prognoza liniowa (dni). Brak danych = brak liczby i jawny powód (nic nie jest zgadywane); prognoza dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu.
 - **Wymaga uwagi** (`Insight.attentionItems`): powody stanu, zaległe pisma, etap bez zadań, zadania bez osoby i czekające na zatwierdzenie — każde z działaniem.
 - **Najbliższa akcja** (`Insight.nextAction`): zwrócone → zaległe → do zatwierdzenia → bez realizatora → termin ≤ 14 dni; inaczej „Brak działań wymagających uwagi”.
+- **Kanban zadań** (Zadania → Lista | Kanban): pięć kolumn (Do wykonania, W toku, Do zatwierdzenia, Do poprawy, Zakończone — ostatnie 30 dni), przeciąganie kart z kontrolą dozwolonych przejść (zwrot do poprawy pyta o powód), szybkie kroki na karcie, filtry Etap / Osoba / Tylko moje, grupowanie etapami; logika w `src/core/board.js`.
+- **Skróty:** `?` pokazuje pełną listę; J/K — po projektach na liście, V — widok tabela↔karty i lista↔kanban.
 - **Panel szczegółów** (zwijany): dane projektu, zespół z funkcjami, godziny wg rodzaju, ostatnia aktywność.
 - **Aktywny etap:** delikatny tint i cienka szyna zamiast pełnego wypełnienia.
 

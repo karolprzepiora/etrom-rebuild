@@ -232,17 +232,26 @@
     var stats = Tasks.projectTaskStats(project);
     var withTasks = project.stages.filter(function (stage) { return (stage.tasks || []).length; });
 
+    var view = ctx.state.prefs.taskView === 'kanban' ? 'kanban' : 'list';
+    var viewToggle = UI.segmented({
+      label: 'Widok zadań', value: view,
+      items: [{ value: 'list', label: 'Lista', icon: 'list' }, { value: 'kanban', label: 'Kanban', icon: 'columns' }],
+      onChange: function (value) { ctx.actions.setPref({ taskView: value }); }
+    });
     var toolbar = D.el('div', { class: 'section__head' }, [
       D.el('div', { class: 'section__titles' }, [
         D.el('h2', { class: 'section__title', text: 'Zadania' }),
         D.el('span', { class: 'section__meta', text: stats.total ? 'otwarte ' + stats.open + ' z ' + stats.total : 'brak zadań' })
       ]),
-      stats.total ? UI.segmented({
-        label: 'Które zadania pokazać',
-        value: filter,
-        items: [{ value: 'open', label: 'Otwarte' }, { value: 'all', label: 'Wszystkie' }],
-        onChange: ctx.actions.setTaskFilter
-      }).node : null
+      D.el('div', { class: 'section__actions' }, [
+        stats.total && view === 'list' ? UI.segmented({
+          label: 'Które zadania pokazać',
+          value: filter,
+          items: [{ value: 'open', label: 'Otwarte' }, { value: 'all', label: 'Wszystkie' }],
+          onChange: ctx.actions.setTaskFilter
+        }).node : null,
+        stats.total ? viewToggle.node : null
+      ])
     ]);
 
     if (!stats.total) {
@@ -254,6 +263,10 @@
           : 'Najpierw dodaj etapy — zadania należą zawsze do któregoś z nich.',
         actions: [UI.button({ label: 'Przejdź do przebiegu', variant: 'secondary', icon: 'layers', onClick: function () { ctx.actions.openProject(project.id, 'etapy'); } })]
       })])]);
+    }
+
+    if (view === 'kanban') {
+      return D.el('section', { class: 'section' }, [toolbar, E.Kanban.toolbar(project, ctx), E.Kanban.board(project, ctx)]);
     }
 
     var groups = withTasks.map(function (stage) {
@@ -435,7 +448,9 @@
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });
-    var open = ctx.state.prefs.detailsOpen !== false;
+    // Tablica zadań potrzebuje całej szerokości: panel szczegółów chowa się, dopóki jest na ekranie.
+    var board = tab === 'zadania' && ctx.state.prefs.taskView === 'kanban';
+    var open = ctx.state.prefs.detailsOpen !== false && !board;
     var toggle = UI.iconButton({
       icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm',
       attrs: { 'aria-pressed': String(open), 'data-fk': 'details-toggle' },
@@ -447,7 +462,7 @@
       attentionBlock(project, ctx, now),
       D.el('div', { class: 'pd-layout' + (open ? '' : ' is-wide') }, [
         D.el('div', { class: 'detail__work' }, [
-          D.el('div', { class: 'pd-tabsrow' }, [tabs, toggle]),
+          D.el('div', { class: 'pd-tabsrow' }, [tabs, board ? null : toggle]),
           D.el('div', { class: 'detail__body', attrs: { 'data-tab': tab } }, [body])
         ]),
         open ? detailsPanel(project, ctx, now) : null

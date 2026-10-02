@@ -229,6 +229,9 @@ async function main() {
     await viewport(1440, 900);
     await go('#/projekty/' + id2 + '/zadania');
     await shoot('projekt-zadania');
+    await run('window.ETROM.app.actions.setPref({ taskView: "kanban" }); return true;');
+    await shoot('projekt-kanban', { wait: 500 });
+    await run('window.ETROM.app.actions.setPref({ taskView: "list" }); return true;');
     await click('.trow__name');
     await shoot('inspektor-zadanie', { wait: 450 });
     await escape();

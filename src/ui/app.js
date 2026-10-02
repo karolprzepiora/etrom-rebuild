@@ -34,6 +34,7 @@
     selection: {},
     page: 0,
     taskFilter: 'open',
+    kanban: { stage: 'all', person: 'all', mine: false, group: 'none' },
     form: null,
     personForm: null,
     stageForm: null,
@@ -1090,6 +1091,8 @@
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
     ['G M', 'Przejdź do mojej pracy'],
+    ['J K', 'Następny / poprzedni projekt na liście'],
+    ['V', 'Zmień widok: tabela ↔ karty (na zadaniach: lista ↔ kanban)'],
     ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
     ['[', 'Zwiń lub rozwiń panel boczny'],
     ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
@@ -1638,6 +1641,7 @@
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
+    setKanban: function (patch) { store.update(function (state) { return Object.assign({}, state, { kanban: Object.assign({}, state.kanban, patch) }); }); },
     editPerson: openEditPerson,
     togglePerson: togglePerson,
     deletePerson: deletePerson,
@@ -2191,6 +2195,22 @@
         else inspect({ kind: 'project', projectId: Number(row.dataset.projectId) });
         return;
       }
+    }
+    if (route === 'projects' && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
+      var links = Array.prototype.slice.call(nodes.list.querySelectorAll('.project-link'));
+      if (links.length) {
+        event.preventDefault();
+        var at = links.indexOf(document.activeElement);
+        var down = event.key === 'j' || event.key === 'J';
+        var to = at < 0 ? (down ? 0 : links.length - 1) : Math.max(0, Math.min(links.length - 1, at + (down ? 1 : -1)));
+        links[to].focus();
+        links[to].scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
+    if (event.key === 'v' || event.key === 'V') {
+      if (route === 'projects') { event.preventDefault(); setView(state.prefs.view === 'list' ? 'cards' : 'list'); return; }
+      if (route === 'project' && state.route.tab === 'zadania') { event.preventDefault(); setPref({ taskView: state.prefs.taskView === 'kanban' ? 'list' : 'kanban' }); return; }
     }
     if (event.key === '[') { event.preventDefault(); toggleSidebar(); return; }
     if (event.key === '?') { event.preventDefault(); showShortcuts(); return; }

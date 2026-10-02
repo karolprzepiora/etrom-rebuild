@@ -191,6 +191,8 @@ async function main() {
       e: { key: 'e', code: 'KeyE', vk: 69, text: 'e' },
       slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
+      j: { key: 'j', code: 'KeyJ', vk: 74, text: 'j' },
+      v: { key: 'v', code: 'KeyV', vk: 86, text: 'v' },
       enter: { key: 'Enter', code: 'Enter', vk: 13, text: '\r' },
       escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' },
       down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' },
@@ -278,6 +280,20 @@ async function main() {
       && (await evaluate('return document.querySelector(\'th[aria-sort] .table__sort\').dataset.sort;')) === 'name');
     await openMenu('#tb-sort', 'deadline');
     check('menu sortowania wraca do terminu', (await state('s.filters.sort')) === 'deadline');
+
+    /* 7-. Klawiatura na liście: J/K przechodzą po projektach, V zmienia widok */
+    await evaluate('document.activeElement && document.activeElement.blur(); return true;');
+    await pressKey('j');
+    const firstFocus = await evaluate('return document.activeElement && document.activeElement.classList.contains("project-link") ? document.activeElement.textContent : null;');
+    await pressKey('j');
+    const secondFocus = await evaluate('return document.activeElement && document.activeElement.classList.contains("project-link") ? document.activeElement.textContent : null;');
+    await pressKey('k');
+    check('J i K przesuwają fokus po projektach na liście', !!firstFocus && !!secondFocus && firstFocus !== secondFocus && (await evaluate('return document.activeElement.textContent;')) === firstFocus);
+    await evaluate('document.activeElement.blur(); return true;');
+    await pressKey('v');
+    check('V przełącza widok listy projektów na karty', (await state('s.prefs.view')) === 'cards');
+    await pressKey('v');
+    check('V przełącza z powrotem na tabelę', (await state('s.prefs.view')) === 'list');
 
     /* 7a. Zapisane widoki listy: zakładki zawężają listę, wybór zostaje w ustawieniach */
     await click('[data-fk="view-attention"]');
@@ -919,6 +935,37 @@ async function main() {
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',
       (await evaluate('return location.hash;')) === '#/projekty/' + id2 + '/zadania');
+    /* 37a. Kanban: pięć kolumn, szybkie kroki, przeciąganie z kontrolą przejść */
+    await evaluate('const b = [...document.querySelectorAll(".segmented__btn")].find(x => /Kanban/.test(x.textContent)); b.click(); return true;');
+    await sleep(300);
+    check('przełącznik Lista | Kanban pokazuje pięć kolumn statusów, wybór trafia do ustawień',
+      (await evaluate('return [...document.querySelectorAll(".kb-col")].map(c => c.dataset.status).join(",");')) === 'todo,working,review,changes,done'
+      && (await state('s.prefs.taskView')) === 'kanban');
+    check('karty na tablicy odpowiadają zadaniom projektu',
+      (await evaluate('return document.querySelectorAll(".kb-card").length;')) === (await state('s.workspace.projects.find(p => p.id === ' + id2 + ').stages.reduce((n, st) => n + (st.tasks || []).length, 0)')));
+    const kb = await evaluate('const c = document.querySelector(".kb-col--working .kb-card"); return c ? { id: c.dataset.taskId, stage: c.dataset.stageId } : null;');
+    const taskStatus = (tid, sid) => state('s.workspace.projects.find(p => p.id === ' + id2 + ').stages.find(st => st.id === ' + JSON.stringify(sid || kb.stage) + ').tasks.find(t => t.id === ' + JSON.stringify(tid) + ').status');
+    await click('.kb-card[data-task-id="' + kb.id + '"][data-stage-id="' + kb.stage + '"] [data-fk="kb-step-review-' + kb.id + '"]');
+    await sleep(250);
+    check('szybki krok „Do zatwierdzenia” przenosi kartę do kolumny Do zatwierdzenia',
+      (await taskStatus(kb.id)) === 'review' && (await evaluate('return !!document.querySelector(".kb-col--review .kb-card[data-task-id=" + JSON.stringify(' + JSON.stringify(kb.id) + ') + "][data-stage-id=" + JSON.stringify(' + JSON.stringify(kb.stage) + ') + "]");')));
+    const drag = (tid, status, sid) => evaluate(`const card = document.querySelector('.kb-card[data-task-id="${tid}"][data-stage-id="${sid || kb.stage}"]'); const col = document.querySelector('.kb-col--${status}');
+      const dt = new DataTransfer(); card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+      col.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      col.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); return true;`);
+    await drag(kb.id, 'done');
+    await sleep(250);
+    check('przeciągnięcie karty do kolumny Zakończone zmienia status zadania', (await taskStatus(kb.id)) === 'done');
+    const todoCard = await evaluate('const c = document.querySelector(".kb-col--todo .kb-card"); return c ? { id: c.dataset.taskId, stage: c.dataset.stageId } : null;');
+    if (todoCard) {
+      await drag(todoCard.id, 'changes', todoCard.stage);
+      await sleep(250);
+      check('niedozwolone upuszczenie (Do wykonania → Do poprawy) nie zmienia statusu', (await taskStatus(todoCard.id, todoCard.stage)) === 'todo');
+    }
+    await evaluate('window.ETROM.app.actions.setPref({ taskView: "list" }); return true;');
+    await sleep(250);
+
     await go('#/projekty/' + id2);
     await sleep(300);
     await click('#show-done');
