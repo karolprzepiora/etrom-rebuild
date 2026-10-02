@@ -147,6 +147,21 @@
   --elev-floating: var(--elev-float);
   --elev-modal: var(--elev-float);
 
+  /* ---------- ETROM Flow System: Gauge · Flow · Level · Marker ----------
+     Jedna geometria pomiaru: ta sama linia, te same znaczniki, ten sam ruch. */
+  --line-w: 1.5px;                 /* oś, tor, znaczniki */
+  --tick-minor: 5px;
+  --tick-major: 10px;
+  --marker-size: 10px;
+  --gauge-w: 10rem;
+  --gauge-axis: 2.25rem;           /* oś miernika od lewej krawędzi (miejsce na liczby) */
+  --gauge-scale-h: 13.5rem;
+  --gauge-bar: 4px;
+  --flow-seg-h: 18px;
+  --flow-gap: 3px;
+  --level-rung-h: 1.75rem;
+  --motion-measure: var(--duration-slow) var(--ease-out);
+
   --focus-ring: 0 0 0 2px var(--sheet), 0 0 0 4px var(--flow-ring);
 
   /* ---------- Warstwy ---------- */

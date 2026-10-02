@@ -117,10 +117,13 @@ async function main() {
       if (ONLY && !ONLY.test(name)) return;
       const settings = options || {};
       await sleep(settings.wait || 400);
-      const shot = await client.send('Page.captureScreenshot', {
-        format: 'png',
-        captureBeyondViewport: !!settings.full
-      });
+      const params = { format: 'png', captureBeyondViewport: !!settings.full };
+      if (settings.clip) {
+        const r = await run('const n = document.querySelector(' + JSON.stringify(settings.clip) + '); const b = n.getBoundingClientRect(); return { x: b.left + window.scrollX - 8, y: b.top + window.scrollY - 8, width: b.width + 16, height: b.height + 16, scale: 1 };');
+        params.clip = r;
+        params.captureBeyondViewport = true;
+      }
+      const shot = await client.send('Page.captureScreenshot', params);
       const file = path.join(OUT, 'etrom-' + name + '.png');
       fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
       process.stdout.write('zapisano ' + path.basename(file) + (errors.length ? '  BŁĘDY: ' + errors.join(' | ') : '') + '\n');
@@ -138,6 +141,45 @@ async function main() {
 
     await viewport(1440, 900);
     await theme('light');
+
+    // Przypadki skrajne nagłówka projektu (Flow System): 0%, 1%, 99%, 100%, po terminie, wstrzymany, bez zespołu, bez terminu.
+    if (!ONLY || ONLY.test('przypadek')) {
+      await run('window.ETROM.app.loadDemo(); return true;');
+      await sleep(300);
+      await run('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
+      const cases = [
+        ['zero', { code: 'EDGE-00', name: 'Projekt bez postępu (0%)', done: 0, deadline: '2027-03-01' }],
+        ['jeden', { code: 'EDGE-01', name: 'Projekt z postępem 1%', done: 1, hours: [12, 600, 60, 30, 40, 24, 70, 32, 48, 90, 32, 120, 56, 24], deadline: '2027-03-01' }],
+        ['polowa', { code: 'EDGE-50', name: 'Projekt w połowie, plan zgodny', done: 7, deadline: '2026-11-20', createdAt: '2026-08-01T08:00:00.000Z' }],
+        ['dziewiecdziewiec', { code: 'EDGE-99', name: 'Projekt z postępem 99%', done: 13, hours: [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 4], deadline: '2026-10-20', createdAt: '2026-06-01T08:00:00.000Z' }],
+        ['sto', { code: 'EDGE-100', name: 'Projekt wykonany w 100%, jeszcze nie zamknięty', done: 14, deadline: '2026-10-20' }],
+        ['zakonczony', { code: 'EDGE-DONE', name: 'Projekt zakończony', status: 'done', done: 14, deadline: '2026-09-01' }],
+        ['wstrzymany', { code: 'EDGE-PAUSE', name: 'Projekt wstrzymany przez zamawiającego', status: 'paused', done: 4, deadline: '2026-12-01', createdAt: '2026-07-01T08:00:00.000Z' }],
+        ['po-terminie', { code: 'EDGE-LATE', name: 'Projekt po terminie z etapem opóźnionym', done: 3, deadline: '2026-09-20', lateStage: 3 }],
+        ['bez-zespolu', { code: 'EDGE-NOTEAM', name: 'Projekt bez zespołu i bez terminu', done: 2, deadline: '', noTeam: true }],
+        ['zagrozony', { code: 'EDGE-WARN', name: 'Projekt z bliskimi terminami etapów', done: 5, deadline: '2026-11-10', soonStages: [5, 6], createdAt: '2026-09-01T08:00:00.000Z' }]
+      ];
+      for (const [name, spec] of cases) {
+        const id = await run(
+          'const E = window.ETROM; const s = E.app.store; const spec = ' + JSON.stringify(spec) + ';' +
+          'const ws = s.getState().workspace;' +
+          'const team = ws.projects[0].team;' +
+          'const p = E.Model.createProject({ code: spec.code, name: spec.name, client: "Klient testowy", status: spec.status || "active", deadline: spec.deadline, stages: E.Catalog.all.map(e => E.Model.createStage(e.id)), team: spec.noTeam ? undefined : team }, ws.projects);' +
+          'p.createdAt = spec.createdAt || "2026-08-15T08:00:00.000Z";' +
+          'p.stages.forEach((st, i) => { if (spec.hours) st.hours = spec.hours[i]; st.status = i < spec.done ? "done" : "todo"; st.deadline = ""; });' +
+          'if (spec.done < p.stages.length && spec.status !== "done") p.stages[spec.done].status = "working";' +
+          'if (spec.lateStage !== undefined) p.stages[spec.lateStage].deadline = "2026-09-25";' +
+          'if (spec.soonStages) spec.soonStages.forEach((i, n) => { p.stages[i].deadline = "2026-10-0" + (4 + n * 2); });' +
+          's.update(st => Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.concat([p]) }) })); return p.id;'
+        );
+        await go('#/projekty/' + id);
+        await shoot('przypadek-' + name, { clip: '.workspace-head__grid' });
+      }
+      await run('localStorage.clear(); location.reload(); return true;');
+      await sleep(800);
+      await ready();
+    }
+
     await shoot('pusty');
     await go('#/zespol');
     await shoot('zespol-pusty');
@@ -197,6 +239,10 @@ async function main() {
     await shoot('panel-blad', { wait: 300 });
     await escape();
 
+    await go('#/projekty');
+    await run('window.ETROM.app.actions && 0; const E = window.ETROM; const st = E.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "DEMO-002"); E.app.store.set({ inspector: { kind: "project", projectId: p.id } }); return true;');
+    await shoot('inspektor-projekt', { wait: 500 });
+    await escape();
     await go('#/zespol');
     await shoot('zespol');
     await click('.prow .person__link');

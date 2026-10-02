@@ -1,4 +1,4 @@
-# ETROM — UI/UX Standard v2.2
+# ETROM — UI/UX Standard v2.3
 
 Obowiązujący standard interfejsu ETROM. Każdy nowy ekran i każda nowa funkcja
 korzysta z tych tokenów, komponentów i elementów charakterystycznych.
@@ -8,6 +8,7 @@ Odstępstwo wymaga zmiany tego dokumentu, a nie lokalnego wyjątku w CSS.
 - **Jak to stosować** — ten dokument.
 - Wersja 1.0 ustaliła fundamenty i komponenty; wersja 2.0 nadała im tożsamość
   (kroje, warstwy, kolor „teraz / ryzyko”, rzędna, profil, inspektor).
+- Wersja 2.3 wprowadza **ETROM Flow System** (Gauge, Flow, Level, Marker) — sekcja 2a.
 - Wersja 2.2 przenosi paletę na barwy logo ETROM: łupek `#78909c` (neutralne tło i struktura
   w odcieniu stali), stalowy błękit jako „teraz”, magenta `#dd5799` wyłącznie jako znak marki.
 - Wersja 2.1 (szlif produktu) nie zmienia kierunku: kokpit portfela stał się narzędziem
@@ -104,8 +105,6 @@ w awatarze). Elegancji nie osiąga się zmniejszaniem — tylko odstępem, grubo
 | Element | Funkcja | Zasady |
 |---|---|---|
 | Rzędna ▽ | `Sig.datum(level)` | `normal` / `warning` / `alarm` / `closed`; zawsze z powodem w słowach lub w podpowiedzi |
-| Profil przebiegu | `Sig.profile(project, {size})` | `micro` (wiersz), `card` (karta), `macro` (nagłówek); odcinki ∝ godzinom; `Sig.settle` animuje grot i liczbę |
-| Linijka czasu | `Sig.timeRuler(project)` | ta sama skala co profil; kreska „dziś”, bursztyn przy opóźnieniu, czerwień po terminie |
 | Oś etapów | klasy `.rail`, `.rail__node--*` | węzły: tusz/ptaszek, nurt/pierścień, pusty, czerwony pierścień |
 | Inspektor | `ETROM.Inspector.render` | zadanie, osoba, projekt; Escape zamyka i oddaje fokus |
 | Kokpit portfela | `ProjectList.cockpit(projects, ctx)` | każda liczba, stan i termin jest przyciskiem: filtruje listę albo otwiera projekt / etap |
@@ -124,9 +123,111 @@ Zawężenie z kokpitu pojawia się w pasku filtrów jako zdejmowalny znacznik (`
 i jest zwykłym filtrem `Query.filterAndSort` (`health`, `horizon`, testy w `tests/query.test.js`).
 Stan aktywny: `aria-pressed="true"` i obrys tuszem.
 
+Miernik, tor przebiegu, poziom i znaczniki to **ETROM Flow System** (sekcja 2a).
+
 Wnioski liczy `src/core/insight.js` (testy w `tests/insight.test.js`): stan projektu i powody,
 profil, harmonogram (opóźnienie wobec czasu), najbliższe zdarzenie, przegląd portfela,
 obciążenie osoby. Interfejs tylko to rysuje.
+
+## 2a. ETROM Flow System
+
+### Filozofia
+
+Interfejs mówi językiem **pomiaru**, nie wody. Hydrotechnika jest strukturą, nie ozdobą:
+wodowskaz → **Gauge**, przepływ → **Flow**, stan wody → **Level**, punkt pomiarowy → **Marker**.
+Nie ma fal, kropel ani niebieskich gradientów. Po usunięciu koloru system nadal się czyta.
+Cztery elementy to jeden język: **jedna linia (`--line-w` 1,5 px)**, jedne znaczniki,
+jedne cyfry tabelaryczne, jeden ruch (`--motion-measure`). Kod: `src/ui/flowSystem.js`,
+`styles/flow.css`, dane: `src/core/insight.js` (`gauge`, `profile`, `ladder`, `health`).
+
+**Status ≠ Stan.** *Status* mówi, co się dzieje z projektem (Przygotowanie, W realizacji, Wstrzymany,
+Zakończony) — to przycisk, bo użytkownik go zmienia. *Stan* mówi, czy projekt przebiega prawidłowo
+(W normie, Stan ostrzegawczy, Stan alarmowy) — jest **liczony z danych**, nikt go nie ustawia.
+Oba wymiary są niezależne i nigdy nie dzielą jednego znacznika.
+
+### Gauge — miernik postępu (`Flow.gauge`)
+
+Pionowa łata 0–100%: liczby kontrolne co 25, krótkie progi na granicach etapów
+(odcinki ∝ godzinom, więc próg to realny udział etapu), pasek tuszu do rzeczywistego postępu,
+pasek nurtu na zakresie bieżącego etapu, grot ◂ w punkcie postępu i **pierścień planu**
+(tyle czasu umowy już minęło). Różnica to odchylenie: „Opóźnienie 43 pkt” / „Zapas 12 pkt”
+(bursztyn od 15, czerwień od 30 pkt). Podpis „Etap 10 · 57 → 69%” pokazuje próg poprzedni i następny
+i prowadzi do etapu. Etap po terminie lub z bliskim terminem ma znak na skali.
+Jeden miernik na ekran projektu (nagłówek); na wąskim ekranie zostaje odczyt bez skali.
+
+### Flow — tor przebiegu (`Flow.flowTrack`)
+
+Odcinek na etap, długość ∝ godzinom. Stany (`state` z `Insight.profile`):
+
+| Stan | Rysunek |
+|---|---|
+| zakończony | tusz |
+| bieżący | nurt z kreskowaniem (płynie 3 cykle), podkreślenie i pogrubiony numer |
+| przyszły | ślad |
+| opóźniony | czerwone kreskowanie jak w przekroju + czerwony romb terminu |
+| zagrożony terminem | bursztynowy romb nad odcinkiem (termin ≤ 7 dni) |
+| wstrzymany | kreskowanie tuszem, bez ruchu |
+| zablokowany | zarezerwowany (gdy model dostanie blokadę etapu; dziś mapowany z projektu wstrzymanego) |
+
+Rozmiary: **hero** (numery, znaczniki, odcinki jako przyciski), **compact** (karta, inspektor: tor
+z odczytem procentu i grotem), **mini** (wiersz listy: sam tor, 5 px).
+Odcinek węższy niż ~2% toru nie ma numeru (zostaje w podpowiedzi); bieżący numer zawsze widać.
+
+### Level — stan projektu (`Flow.level`)
+
+Drabinka progów: *Stan alarmowy* ▸ *Stan ostrzegawczy* ▸ *W normie*. Aktywny szczebel jest
+podświetlony i oznaczony „teraz”, niesie **powód słowami** („Termin umowy minął 6 dni temu”).
+Stan to najgorszy aktywny powód; reguły (`rule`) w `Insight.health`: `deadline-passed`, `deadline-near`,
+`schedule-lag`, `tasks-late`, `stages-late`, `tasks-returned`, `project-paused`. Nowa reguła =
+jeden blok w `health()` z identyfikatorem i poziomem (przewidziane: budżet godzin, brak wymaganych osób,
+zablokowany kamień milowy, ryzyko). Kształt ▽ odróżnia stan bez koloru: kontur / wypełnienie /
+wypełnienie ze znakiem / cienki kontur (zakończony). Rozmiary: **hero** (drabinka + powody),
+**compact** (jeden szczebel + powody — inspektor); w portfolio ta sama drabinka jest legendą
+stanu portfela z cienką miarą udziału pod każdym szczeblem.
+
+### Marker (`Flow.marker`)
+
+Znacznik punktu na osi, kształt niesie znaczenie: **grot** ▽ — teraz / bieżące położenie,
+**pierścień** ○ — plan, **romb** ◇ — termin i kamień milowy (wypełniony, gdy minął),
+**kreska** — próg etapu. Kolor tylko ostrzega (bursztyn, czerwień). Używany na torze, w mierniku,
+na osi czasu umowy (`Flow.timeline`) i na osi najbliższych terminów w portfolio.
+
+### Semantyka koloru
+
+| Barwa | Znaczy | Nie znaczy |
+|---|---|---|
+| Stalowy błękit (`--flow`) | przepływ teraz: bieżący etap, zakres etapu w mierniku, fokus, zaznaczenie | stan projektu |
+| Bursztyn | stan ostrzegawczy, bliski termin, opóźnienie ≥ 15 pkt | marka |
+| Czerwień | stan alarmowy, termin przekroczony, opóźnienie ≥ 30 pkt | marka |
+| Tusz/grafit | zakończone, struktura, rzeczywisty postęp | — |
+| Magenta (`--brand`) | wyłącznie marka (logo, wskaźnik nawigacji) | alarm, błąd, akcent akcji |
+
+### Ruch
+
+150–300 ms, `--ease-out`, bez odbicia. Grot i pasek miernika przesuwają się do nowej wartości,
+liczba dolicza (`Flow.settle`), pasek miary w portfolio zmienia długość. Nurt płynie tylko w nagłówku
+i tylko 3 cykle. `prefers-reduced-motion` zeruje czasy.
+
+### Kiedy używać, a kiedy nie
+
+- **Gauge** — tylko tam, gdzie postęp ma znaczenie decyzyjne: nagłówek projektu. Nie w wierszach, kartach ani raportach zbiorczych.
+- **Flow mini/compact** — każdy projekt na liście i karcie; nie powielaj go na ekranie, który ma już hero.
+- **Level hero** — jeden na ekran projektu; **compact** w panelach podglądu. W wierszu użyj samej rzędnej ▽ z powodem.
+- **Marker** — tylko dla terminów i punktów na osi; nie jako ozdoba i nie jako licznik.
+- Nie rysuj wody, fal, rur ani gradientów; nie koloruj stanu bez kształtu i słów; nie dubluj implementacji — nowe widoki wołają `ETROM.Flow.*`.
+
+### Dostępność
+
+Miernik i tor mają `role="img"`/`group` z pełnym opisem (postęp, plan, bieżący etap, zakres).
+Odcinki toru w nagłówku to przyciski (`aria-current="step"` dla bieżącego), podpis etapu w mierniku też.
+Szczebel stanu ma `aria-current`, powód jest tekstem. Informacja zawsze: kształt + tekst + liczba,
+nigdy sam kolor. Fokus: ring nurtu. Kontrast par pilnuje `tests/tokens.test.js`.
+
+### Tokeny
+
+`--line-w`, `--tick-minor`, `--tick-major`, `--marker-size`, `--gauge-w`, `--gauge-axis`,
+`--gauge-scale-h`, `--gauge-bar`, `--flow-seg-h`, `--flow-gap`, `--level-rung-h`, `--motion-measure`
+(`styles/tokens.css`). Kolory wyłącznie semantyczne: `--flow`, `--done`, `--warn`, `--alarm`, `--track`, `--brand`.
 
 ## 3. Komponenty — `src/ui/components.js` + `styles/components.css`
 

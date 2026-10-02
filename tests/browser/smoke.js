@@ -318,7 +318,7 @@ async function main() {
     await sleep(200);
     check('po rozwinięciu przebieg pokazuje wszystkie 14 etapów', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === 14);
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const progressNow = () => evaluate('return document.querySelector(".profile--macro .profile__number").dataset.count;');
+    const progressNow = () => evaluate('return document.querySelector(".gauge__number").dataset.count;');
     const before = await progressNow();
     await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
@@ -461,7 +461,7 @@ async function main() {
     /* 19. Widok kart, motyw, zapamiętanie */
     await click('.segmented__btn[aria-label="Widok kart"]');
     await sleep(450);
-    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .profile").length };');
+    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard .flow").length };');
     check('widok kart: karta i profil przebiegu na każdy projekt',
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === cardsCheck.cards, JSON.stringify(cardsCheck));
 
@@ -728,7 +728,7 @@ async function main() {
     /* 38. Język wizualny: stan projektu, przebieg, inspektor */
     await go('#/projekty');
     check('wiersz projektu niesie znak stanu i profil przebiegu',
-      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".profile--micro");'));
+      await evaluate('const r = document.querySelector(\'[data-project-code="DEMO-002"]\'); return !!r.querySelector(".datum--alarm") && !!r.querySelector(".flow--mini");'));
     await evaluate('document.querySelector(\'[data-project-code="DEMO-001"] .project-link\').focus(); return true;');
     await pressKey('space');
     check('Spacja na projekcie otwiera podgląd w inspektorze bez opuszczania listy',
@@ -738,7 +738,19 @@ async function main() {
       await evaluate('return !!document.querySelector(".cockpit") && /wymaga/.test(document.querySelector(".cockpit").textContent);'));
     await go('#/projekty/' + id2);
     check('nagłówek projektu pokazuje profil z bieżącym etapem i stan alarmowy',
-      await evaluate('return !!document.querySelector(".profile--macro .profile__seg--current") && !!document.querySelector(".health--alarm");'));
+      await evaluate('return !!document.querySelector(".flow--hero .flow__seg.is-current") && !!document.querySelector(".level--alarm");'));
+    check('miernik podaje postęp, plan i bieżący etap także czytnikowi ekranu',
+      await evaluate('const g = document.querySelector(".gauge"); const l = g.getAttribute("aria-label"); return g.getAttribute("role") === "img" && /Postęp \\d+%/.test(l) && /plan \\d+%/.test(l) && /bieżący etap/.test(l) && !!g.querySelector(".gauge__plan") && !!g.querySelector(".gauge__now");'));
+    check('stan projektu to drabinka progów z jednym aktywnym szczeblem i powodem słowami',
+      await evaluate('const r = document.querySelectorAll(".level--hero .rung"); return r.length === 3 && document.querySelectorAll(".level--hero .rung[aria-current=\\"true\\"]").length === 1 && document.querySelector(".level__lead").textContent.length > 8;'));
+    check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
+      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".level button");'));
+    await click('.gauge__note');
+    await sleep(500);
+    check('podpis etapu w mierniku prowadzi do bieżącego etapu na liście',
+      await evaluate('const row = document.querySelector(".srow-wrap.is-current, .srow-wrap[data-stage-id]"); return !!document.querySelector(".srow-wrap[data-stage-id]");'));
+    check('odcinek toru przebiegu jest przyciskiem z pełnym opisem etapu i stanu',
+      await evaluate('const b = document.querySelector("button.flow__seg.is-current"); return !!b && /w toku/.test(b.getAttribute("aria-label")) && b.getAttribute("aria-current") === "step";'));
     await evaluate('document.querySelector(".trow__name").focus(); document.querySelector(".trow__name").click(); return true;');
     await sleep(400);
     check('nazwa zadania otwiera inspektor z historią zmian',

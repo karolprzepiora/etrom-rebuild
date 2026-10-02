@@ -26,6 +26,8 @@
   // Termin umowy bliżej niż tyle dni przy niedokończonej pracy — ostrzeżenie.
   var DEADLINE_SOON = 14;
   var DEADLINE_SOON_PROGRESS = 85;
+  // Termin etapu bliżej niż tyle dni — znacznik ostrzegawczy na torze przebiegu.
+  var STAGE_SOON = 7;
 
   function plural(n, one, few, many) {
     var t = n % 100;
@@ -101,7 +103,7 @@
 
     if (!project) return { level: 'normal', label: LEVELS.normal.label, reasons: [] };
     if (project.status === 'done') {
-      return { level: 'closed', label: LEVELS.closed.label, reasons: [{ level: 'closed', text: 'Projekt zakończony' }] };
+      return { level: 'closed', label: LEVELS.closed.label, reasons: [{ rule: 'closed', level: 'closed', text: 'Projekt zakończony' }] };
     }
 
     var left = Progress.daysUntil(project.deadline, reference);
@@ -109,9 +111,10 @@
     var plan = schedule(project, reference);
 
     if (left !== null && left < 0) {
-      reasons.push({ level: 'alarm', text: 'Termin umowy minął ' + days(-left) + ' temu' });
+      reasons.push({ rule: 'deadline-passed', level: 'alarm', text: 'Termin umowy minął ' + days(-left) + ' temu' });
     } else if (left !== null && left <= DEADLINE_SOON && progress < DEADLINE_SOON_PROGRESS) {
       reasons.push({
+        rule: 'deadline-near',
         level: 'warning',
         text: (left === 0 ? 'Termin umowy dzisiaj' : 'Do terminu umowy ' + days(left)) + ', postęp ' + progress + '%'
       });
@@ -119,6 +122,7 @@
 
     if (plan && left !== null && left >= 0 && plan.lag >= LAG_WARNING) {
       reasons.push({
+        rule: 'schedule-lag',
         level: plan.lag >= LAG_ALARM ? 'alarm' : 'warning',
         text: 'Postęp ' + progress + '% przy ' + plan.expected + '% czasu umowy'
       });
@@ -128,6 +132,7 @@
     var lateTasks = tasks.filter(function (entry) { return Tasks.isOverdue(entry.task, reference); });
     if (lateTasks.length) {
       reasons.push({
+        rule: 'tasks-late',
         level: 'warning',
         text: lateTasks.length + ' ' + plural(lateTasks.length, 'zadanie', 'zadania', 'zadań') + ' po terminie'
       });
@@ -136,6 +141,7 @@
     var lateStages = overdueStages(project, reference);
     if (lateStages.length) {
       reasons.push({
+        rule: 'stages-late',
         level: 'warning',
         text: lateStages.length === 1
           ? 'Etap „' + Model.describeStage(lateStages[0]).name + '” po terminie'
@@ -146,12 +152,13 @@
     var returned = tasks.filter(function (entry) { return entry.task.status === 'changes'; });
     if (returned.length) {
       reasons.push({
+        rule: 'tasks-returned',
         level: 'warning',
         text: returned.length + ' ' + plural(returned.length, 'zadanie zwrócone', 'zadania zwrócone', 'zadań zwróconych') + ' do poprawy'
       });
     }
 
-    if (project.status === 'paused') reasons.push({ level: 'warning', text: 'Projekt wstrzymany' });
+    if (project.status === 'paused') reasons.push({ rule: 'project-paused', level: 'warning', text: 'Projekt wstrzymany' });
 
     reasons.sort(function (a, b) { return LEVELS[a.level].rank - LEVELS[b.level].rank; });
     var level = reasons.length ? reasons[0].level : 'normal';
@@ -168,6 +175,7 @@
     var stats = Progress.projectProgress(project || { stages: [] });
     var current = Progress.activeStage(project || { stages: [] });
     var late = overdueStages(project, reference).map(function (s) { return s.id; });
+    var paused = !!project && project.status === 'paused';
     var total = stats.hoursTotal || stages.length || 1;
     var offset = 0;
 
@@ -185,8 +193,19 @@
         start: offset,
         weight: weight,
         overdue: late.indexOf(stage.id) >= 0,
-        current: !!current && current.id === stage.id
+        current: !!current && current.id === stage.id,
+        deadline: stage.deadline || '',
+        soon: false
       };
+      var left = stage.status === 'done' ? null : Progress.daysUntil(stage.deadline, reference);
+      segment.soon = left !== null && left >= 0 && left <= STAGE_SOON;
+      segment.blocked = paused && segment.current;
+      segment.state = stage.status === 'done' ? 'done'
+        : segment.overdue ? 'delayed'
+        : segment.blocked ? 'blocked'
+        : segment.current ? 'current'
+        : segment.soon ? 'warning'
+        : 'upcoming';
       offset += weight;
       return segment;
     });
@@ -201,6 +220,57 @@
       done: stats.done,
       total: stats.total
     };
+  }
+
+  /**
+   * Miernik postępu: skala 0–100% z progami na granicach etapów (odcinki ∝ godzinom),
+   * położenie rzeczywiste i planowane oraz sąsiedztwo bieżącego etapu.
+   * Plan = jaka część okresu umowy już minęła; odchylenie = plan − postęp (punkty %).
+   * @returns {{percent: number, expected: (number|null), lag: (number|null), stages: Array,
+   *   current: (Object|null), previous: (Object|null), next: (Object|null), majors: number[]}}
+   */
+  function gauge(project, now) {
+    var data = profile(project, now);
+    var plan = project && project.status !== 'done' ? schedule(project, now) : null;
+    var stages = data.segments.map(function (seg) {
+      return {
+        id: seg.id, index: seg.index, name: seg.name, status: seg.status, state: seg.state,
+        from: seg.start * 100, to: Math.min(100, (seg.start + seg.weight) * 100), current: seg.current
+      };
+    });
+    var at = data.currentIndex;
+    return {
+      percent: data.percent,
+      expected: plan ? plan.expected : null,
+      lag: plan ? plan.lag : null,
+      hoursDone: data.hoursDone,
+      hoursTotal: data.hoursTotal,
+      done: data.done,
+      total: data.total,
+      stages: stages,
+      current: at >= 0 ? stages[at] : null,
+      previous: at > 0 ? stages[at - 1] : null,
+      next: at >= 0 && at < stages.length - 1 ? stages[at + 1] : null,
+      majors: [0, 25, 50, 75, 100]
+    };
+  }
+
+  /**
+   * Stan projektu jako poziom względem progów: alarm → ostrzeżenie → norma.
+   * Każdy próg niesie powody, które go przekroczyły (reguły w health()).
+   * @returns {{level: string, label: string, closed: boolean, rungs: Array<{level, label, active, reasons}>}}
+   */
+  function ladder(project, now) {
+    var state = health(project, now);
+    var rungs = ['alarm', 'warning', 'normal'].map(function (level) {
+      return {
+        level: level,
+        label: LEVELS[level].label,
+        active: state.level === level,
+        reasons: state.reasons.filter(function (r) { return r.level === level; })
+      };
+    });
+    return { level: state.level, label: state.label, closed: state.level === 'closed', rungs: rungs, reasons: state.reasons };
   }
 
   /**
@@ -320,9 +390,13 @@
 
   var api = {
     LEVELS: LEVELS,
+    LAG_WARNING: LAG_WARNING,
+    LAG_ALARM: LAG_ALARM,
     upcomingFor: upcomingFor,
     health: health,
     profile: profile,
+    gauge: gauge,
+    ladder: ladder,
     schedule: schedule,
     nextEvent: nextEvent,
     portfolio: portfolio,

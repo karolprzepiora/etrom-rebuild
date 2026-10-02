@@ -77,27 +77,14 @@ Stan liczony jest w `src/core/insight.js` z terminu umowy, etapów i zadań
 po terminie oraz z **opóźnienia wobec czasu** — różnicy między upływem
 czasu umowy a postępem pracy.
 
-### Profil przebiegu
+### Miernik, tor, poziom, znacznik
 
-Projekt narysowany jak profil podłużny cieku. Każdy etap to odcinek
-o długości proporcjonalnej do **budżetu godzin** — tak samo liczony jest
-postęp, więc długość wyciągniętej tuszem części *jest* procentem postępu.
-
-- zakończone — tusz,
-- w toku — nurt z kreskowaniem, które płynie kilka sekund po wejściu,
-- po terminie — czerwone kreskowanie jak w przekroju, nie plama koloru,
-- przyszłe — ślad.
-
-Trzy skale z jednym znaczeniem: **mikro** w wierszu listy, **karta**
-z grotem ▽ i procentem, **makro** w nagłówku projektu z numerami etapów
-i dużą liczbą, która dolicza się do nowej wartości. Odcinki makro są
-klikalne — prowadzą do etapu.
-
-### Linijka czasu umowy
-
-Pod profilem, w tej samej skali: od założenia projektu do terminu umowy,
-z kreską „dziś”. Rozjazd grotu postępu i kreski dnia **to** opóźnienie —
-widać je bez czytania liczb.
+Cztery elementy jednego języka pomiaru — **Gauge** (łata z progami etapów, pierścień planu
+i odchylenie), **Flow** (tor etapów ∝ godzinom, w trzech skalach), **Level** (drabinka
+alarm / ostrzeżenie / norma z powodem) i **Marker** (grot, pierścień, romb). Mają wspólną linię,
+wspólne znaczniki i wspólny ruch. Pełny opis i zasady użycia: sekcja „ETROM Flow System”
+w [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). *Status* (co się dzieje) i *stan* (czy przebiega
+prawidłowo) to osobne wymiary.
 
 ### Oś etapów
 

@@ -141,3 +141,65 @@ test('obciążenie liczy tylko niedomknięte udziały osoby', () => {
   const w2 = Insight.workload('p-2', [p], NOW);
   assert.equal(w2.open, 0);
 });
+
+test('miernik: próg poprzedniego i następnego etapu wynikają z godzin, postęp z zakończonych', () => {
+  const g = Insight.gauge(project(), NOW);
+  assert.equal(g.percent, 20);                       // 40 z 200 h
+  assert.equal(g.current.index, 1);
+  assert.equal(Math.round(g.current.from), 20);
+  assert.equal(Math.round(g.current.to), 60);
+  assert.equal(g.previous.index, 0);
+  assert.equal(g.next.index, 2);
+  assert.deepEqual(g.stages.map((s) => Math.round(s.to)), [20, 60, 100]);
+  assert.deepEqual(g.majors, [0, 25, 50, 75, 100]);
+});
+
+test('miernik: plan to upływ czasu umowy, odchylenie to plan minus postęp', () => {
+  const p = project({ createdAt: '2026-09-02T12:00:00.000Z', deadline: '2026-10-12' });
+  const g = Insight.gauge(p, NOW);                   // 30 z 40 dni minęło
+  assert.equal(g.expected, 75);
+  assert.equal(g.lag, 75 - g.percent);
+});
+
+test('miernik: projekt zakończony i bez etapów nie ma planu ani bieżącego etapu', () => {
+  assert.equal(Insight.gauge(project({ status: 'done' }), NOW).expected, null);
+  const empty = Insight.gauge(project({ stages: [] }), NOW);
+  assert.equal(empty.current, null);
+  assert.equal(empty.stages.length, 0);
+  assert.equal(empty.percent, 0);
+});
+
+test('miernik: skrajne postępy 0% i 100%', () => {
+  const all = project();
+  all.stages.forEach((s) => { s.status = 'done'; });
+  const full = Insight.gauge(all, NOW);
+  assert.equal(full.percent, 100);
+  assert.equal(full.current, null);
+  const none = project();
+  none.stages.forEach((s) => { s.status = 'todo'; });
+  const zero = Insight.gauge(none, NOW);
+  assert.equal(zero.percent, 0);
+  assert.equal(zero.current.index, 0);
+  assert.equal(zero.previous, null);
+});
+
+test('odcinek toru ma stan: wykonany, opóźniony, wstrzymany, zagrożony terminem, bieżący, przyszły', () => {
+  const p = project();
+  p.stages = [stage('preparation', 'done', 10), stage('concept', 'working', 10, '2026-09-30'),
+    stage('location-docs', 'todo', 10, '2026-10-05'), stage('handover', 'todo', 10, '2026-12-20')];
+  const states = Insight.profile(p, NOW).segments.map((s) => s.state);
+  assert.deepEqual(states, ['done', 'delayed', 'warning', 'upcoming']);
+  const cur = project();
+  assert.equal(Insight.profile(cur, NOW).segments[1].state, 'current');
+  const paused = project({ status: 'paused' });
+  assert.equal(Insight.profile(paused, NOW).segments[1].state, 'blocked');
+});
+
+test('drabinka stanu: aktywny szczebel niesie powody, a każdy powód ma identyfikator reguły', () => {
+  const l = Insight.ladder(project({ deadline: '2026-09-26' }), NOW);
+  assert.deepEqual(l.rungs.map((r) => r.level), ['alarm', 'warning', 'normal']);
+  assert.equal(l.rungs[0].active, true);
+  assert.equal(l.rungs[0].reasons[0].rule, 'deadline-passed');
+  assert.ok(l.reasons.every((r) => typeof r.rule === 'string' && r.rule));
+  assert.equal(Insight.ladder(project({ status: 'done' }), NOW).closed, true);
+});

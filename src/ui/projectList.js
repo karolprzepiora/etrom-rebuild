@@ -133,7 +133,7 @@
     var stats = Progress.projectProgress(project);
     return D.el('div', { class: 'stack progress-cell' }, [
       D.el('div', { class: 'progress-cell__line' }, [
-        Sig.profile(project, { size: 'micro', now: now }),
+        E.Flow.flowTrack(project, { size: 'mini', now: now }),
         D.el('span', { class: 'progress-cell__value t-num', text: stats.percent + '%' })
       ]),
       hidden.indexOf('stages') < 0
@@ -301,7 +301,7 @@
       risk
         ? D.el('p', { class: 'reason reason--' + health.level + ' pcard__reason' }, [D.el('span', { text: health.reasons[0].text }), health.reasons.length > 1 ? D.el('span', { class: 't-muted', text: ' i ' + (health.reasons.length - 1) + ' więcej' }) : null])
         : D.el('p', { class: 'pcard__stage truncate' }, [D.el('span', { text: active ? Model.describeStage(active).name : (project.stages.length ? 'Wszystkie etapy zakończone' : 'Brak etapów') })]),
-      Sig.profile(project, { size: 'card', now: now }),
+      E.Flow.flowTrack(project, { size: 'compact', now: now }),
       D.el('div', { class: 'pcard__foot' }, [
         project.deadline
           ? D.el('span', { class: 'pcard__due' + (project.status !== 'done' && info.tone === 'overdue' ? ' t-alarm' : '') }, [D.el('span', { class: 't-num', text: F.date(project.deadline) })])
@@ -395,23 +395,19 @@
     var levels = ['alarm', 'warning', 'normal', 'closed'];
     var zoneB = D.el('div', { class: 'cockpit__zone cockpit__mix' }, [
       D.el('p', { class: 'cockpit__label', text: 'Stan portfela' }),
-      D.el('div', { class: 'mixbar', attrs: { role: 'img', 'aria-label': levels.map(function (l) { return Insight.LEVELS[l].label + ': ' + view.counts[l]; }).join(', ') } },
-        levels.filter(function (l) { return view.counts[l]; }).map(function (l) {
-          var on = filters.health === l || (filters.health === 'attention' && (l === 'alarm' || l === 'warning'));
-          return D.el('span', {
-            class: 'mixbar__seg mixbar__seg--' + l + (filters.health && filters.health !== 'all' && !on ? ' is-dim' : ''),
-            style: { 'flex-grow': String(view.counts[l]) }
-          });
-        })),
-      D.el('ul', { class: 'mixlegend' }, levels.map(function (l) {
+      D.el('ul', { class: 'mixlegend', attrs: { 'aria-label': 'Projekty według stanu' } }, levels.map(function (l) {
         var pressed = filters.health === l;
+        var on = pressed || (filters.health === 'attention' && (l === 'alarm' || l === 'warning'));
+        var dim = filters.health && filters.health !== 'all' && !on;
         var count = view.counts[l];
-        return D.el('li', null, [scopeButton('mixlegend__item cockpit__hit' + (count ? '' : ' is-zero'), pressed,
+        var share = view.total ? Math.round(count / view.total * 100) : 0;
+        return D.el('li', null, [scopeButton('mixlegend__item cockpit__hit mixlegend__item--' + l + (count ? '' : ' is-zero') + (dim ? ' is-dim' : ''), pressed,
           Insight.LEVELS[l].label + ': ' + count + (pressed ? '. Pokaż wszystkie projekty' : '. Pokaż na liście'),
           function () { act.filterPortfolio({ health: l }); }, [
             Sig.datum(l, { label: false }),
             D.el('span', { class: 'mixlegend__label', text: Insight.LEVELS[l].label }),
-            D.el('span', { class: 'mixlegend__value t-num', text: String(count) })
+            D.el('span', { class: 'mixlegend__value t-num', text: String(count) }),
+            D.el('span', { class: 'mixlegend__measure', style: { '--share': share + '%' }, attrs: { 'aria-hidden': 'true' } })
           ], 'mix-' + l)]);
       })),
       view.hoursTotal ? D.el('p', { class: 'cockpit__hours' }, [
@@ -438,11 +434,11 @@
       }).concat(ahead.map(function (u, index) {
         var label = whatOf(u) + ' — ' + u.project.code + ', ' + F.date(u.date) + (u.days === 0 ? ' (dziś)' : ' (za ' + F.count(u.days, 'dzień', 'dni', 'dni') + ')');
         return D.el('button', {
-          class: 'timeline__mark ' + (u.kind === 'project' ? 'timeline__mark--project datum--' + u.level : 'timeline__mark--stage'),
+          class: 'timeline__mark ' + (u.kind === 'project' ? 'timeline__mark--project' : 'timeline__mark--stage'),
           style: { left: (u.days / HORIZON * 100) + '%' },
           attrs: { type: 'button', 'data-tooltip': label, 'aria-label': 'Otwórz: ' + label, tabindex: index < 6 ? null : '-1' },
           on: { click: function () { goTo(u); } }
-        }, u.kind === 'project' ? [Sig.datum(u.level, { size: 12, label: false })] : null);
+        }, u.kind === 'project' ? [E.Flow.marker('deadline', { level: u.level === 'alarm' ? 'alarm' : (u.level === 'warning' ? 'warning' : 'normal'), filled: u.level === 'alarm' })] : null);
       }))),
       D.el('div', { class: 'timeline__scale', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { text: 'dziś' }), D.el('span', { text: '30 dni' }), D.el('span', { text: '60 dni' })])
     ]);
@@ -482,10 +478,10 @@
     // Profil z zaślepek: zakończone, w toku, przed nami — język ekranu przed pierwszymi danymi.
     function track(done, working, todo) {
       var segs = [];
-      for (var i = 0; i < done; i += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--done', style: { 'flex-grow': String(2 + (i % 3)) } }));
-      for (var j = 0; j < working; j += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--working profile__seg--current', style: { 'flex-grow': '3' } }));
-      for (var k = 0; k < todo; k += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--todo', style: { 'flex-grow': String(2 + (k % 2)) } }));
-      return D.el('div', { class: 'profile profile--micro' }, [D.el('div', { class: 'profile__track' }, segs)]);
+      for (var i = 0; i < done; i += 1) segs.push(D.el('span', { class: 'flow__seg flow__seg--done', style: { 'flex-grow': String(2 + (i % 3)) } }));
+      for (var j = 0; j < working; j += 1) segs.push(D.el('span', { class: 'flow__seg flow__seg--working is-current', style: { 'flex-grow': '3' } }));
+      for (var k = 0; k < todo; k += 1) segs.push(D.el('span', { class: 'flow__seg flow__seg--todo', style: { 'flex-grow': String(2 + (k % 2)) } }));
+      return D.el('div', { class: 'flow flow--mini' }, [D.el('div', { class: 'flow__track' }, segs)]);
     }
     var rows = [
       { level: 'alarm', w: ['11rem', '7rem'], t: [6, 1, 4], d: '3.5rem' },

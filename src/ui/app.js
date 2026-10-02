@@ -1447,7 +1447,7 @@
     var motion = buildMotion(state, project);
     var ctx = { state: state, people: people(), actions: actions, motion: motion };
     D.patch(nodes.projectView, E.ProjectDetail.projectDetail(project, ctx));
-    E.Sig.settle(nodes.projectView);
+    E.Flow.settle(nodes.projectView);
     D.patch(nodes.topbarActions, E.ProjectDetail.topbarActions(project, ctx));
     commitMotion(project);
   }

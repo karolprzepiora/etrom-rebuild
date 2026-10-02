@@ -796,7 +796,7 @@ tr:hover .row-actions, tr:focus-within .row-actions, .row:hover .row-actions, .r
 .preview__lines .ghost:first-child { height: 9px; background: var(--ink-4); opacity: 0.55; }
 .preview__chips { display: flex; gap: var(--space-1-5); flex-wrap: wrap; }
 .preview__chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 3px var(--space-1-5); border-radius: var(--radius-xs); background: var(--wash); }
-.preview .profile--micro { width: 100%; }
+.preview .flow--mini { width: 100%; }
 
 .ghost { display: block; height: 7px; max-width: 100%; border-radius: var(--radius-full); background: var(--wash-2); }
 

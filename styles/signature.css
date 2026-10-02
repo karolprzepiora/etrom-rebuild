@@ -1,4 +1,4 @@
-/* ETROM — sygnatury: rzędna ▽, profil przebiegu, linijka czasu, rail etapów.
+/* ETROM — rzędna ▽ i rail etapów (Flow System: styles/flow.css).
    To jest rozpoznawalny język aplikacji. Opis: docs/ART_DIRECTION.md. */
 
 /* ---------- Rzędna ▽ ---------- */
@@ -7,102 +7,6 @@
 .datum--warning { color: var(--warn); }
 .datum--alarm { color: var(--alarm); --datum-mark: var(--sheet); }
 .datum--closed { color: var(--ink-4); }
-
-/* ---------- Profil przebiegu ---------- */
-.profile { position: relative; min-width: 0; }
-.profile__track { display: flex; gap: 2px; height: 6px; }
-.profile__seg {
-  position: relative;
-  min-width: 2px;
-  border-radius: 1.5px;
-  background: var(--track);
-  transition: background-color var(--duration-base) var(--ease-out), transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast);
-}
-.profile__seg--done { background: var(--done); }
-/* Etap w toku: nurt płynie — powolny ruch pasków, wyłączany przy ograniczeniu ruchu. */
-.profile__seg--working {
-  background-color: var(--flow);
-  background-image: repeating-linear-gradient(115deg, transparent 0 5px, light-dark(rgb(255 255 255 / 0.28), rgb(0 0 0 / 0.22)) 5px 8px);
-  background-size: 40px 100%;
-}
-/* Nurt płynie tylko w nagłówku projektu i tylko chwilę po wejściu — ruch ma zwrócić uwagę, nie męczyć. */
-.profile--macro .profile__seg--working { animation: flow-move 2.4s linear 3; }
-.profile__seg--todo.profile__seg--current { background: var(--flow-wash); box-shadow: inset 0 0 0 1px var(--flow); }
-/* Po terminie: kreskowanie jak w przekroju, nie plama koloru. */
-.profile__seg--overdue:not(.profile__seg--working) {
-  background-color: var(--alarm-wash);
-  background-image: repeating-linear-gradient(135deg, var(--alarm) 0 1.2px, transparent 1.2px 4px);
-}
-.profile__seg--overdue.profile__seg--working { box-shadow: 0 0 0 1.5px var(--alarm); }
-
-.profile--micro { width: 100%; }
-.profile--micro .profile__track { height: 5px; gap: 1.5px; }
-
-.profile--card { padding-top: 1.375rem; }
-.profile--card .profile__track { height: 8px; }
-
-.profile--macro { padding-top: 3.875rem; }
-.profile--macro .profile__track { height: 22px; gap: 3px; }
-.profile--macro .profile__seg { border-radius: 3px; cursor: pointer; }
-.profile--macro .profile__seg:hover { transform: translateY(-2px); }
-.profile--macro .profile__seg:focus-visible { outline: 2px solid var(--flow); outline-offset: 2px; }
-.profile__no {
-  position: absolute;
-  left: 0; right: 0; top: calc(100% + 6px);
-  text-align: center;
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-}
-.profile__seg--current .profile__no { color: var(--flow-ink); font-weight: 600; }
-.profile--macro:has(.profile__no) { padding-bottom: 1.375rem; }
-
-.profile__marker {
-  position: absolute;
-  top: 0;
-  left: clamp(0%, var(--at, 0%), 100%);
-  width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  pointer-events: none;
-  transition: left var(--duration-slow) var(--ease-out);
-}
-/* Grot ▽ stoi dokładnie w punkcie; liczba przesuwa się proporcjonalnie, żeby nie wyjść poza profil. */
-.profile__value { width: max-content; translate: calc(var(--at, 0%) * -1) 0; transition: translate var(--duration-slow) var(--ease-out); }
-.profile__glyph { width: max-content; translate: -50% 0; color: var(--ink); }
-.profile__glyph svg { fill: currentColor; }
-.profile--card .profile__marker { top: 0; }
-.profile--card .profile__value { font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 2px; }
-.profile--card .profile__glyph svg { width: 9px; height: 7px; }
-.profile--macro .profile__value {
-  display: flex;
-  align-items: baseline;
-  font-family: var(--font-display);
-  font-size: var(--fs-6xl);
-  font-weight: 600;
-  line-height: 0.95;
-  letter-spacing: var(--tracking-display);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
-}
-.profile--macro .profile__unit { font-size: 0.5em; margin-left: 2px; color: var(--ink-3); font-weight: 500; }
-.profile--macro .profile__glyph svg { width: 14px; height: 11px; }
-.profile--empty .profile__track { background: repeating-linear-gradient(90deg, var(--track) 0 6px, transparent 6px 10px); border-radius: 2px; }
-.profile__empty { font-size: var(--fs-sm); color: var(--ink-3); }
-
-/* ---------- Linijka czasu umowy ---------- */
-.ruler { display: grid; gap: var(--space-1-5); margin-top: var(--space-4); }
-.ruler__line { position: relative; height: 2px; border-radius: 1px; background: repeating-linear-gradient(90deg, var(--ink-4) 0 3px, transparent 3px 6px); }
-.ruler__elapsed { position: absolute; inset: 0 auto 0 0; width: var(--at); background: var(--ink-2); border-radius: 1px; }
-.ruler__today { position: absolute; left: var(--at); top: -5px; width: 2px; height: 12px; translate: -1px 0; border-radius: 1px; background: var(--ink); }
-.ruler--lag .ruler__today, .ruler--lag .ruler__elapsed { background: var(--warn); }
-.ruler--over .ruler__elapsed, .ruler--over .ruler__today { background: var(--alarm); }
-.ruler__labels { position: relative; display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.ruler__now { position: absolute; left: clamp(4rem, var(--at), calc(100% - 4rem)); translate: -50% 0; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
-.ruler--over .ruler__now { color: var(--alarm-ink); }
-.ruler--lag .ruler__now { color: var(--warn-ink); }
 
 /* ---------- Rail etapów ---------- */
 .rail { position: relative; display: grid; }
@@ -126,4 +30,3 @@
 .rail__node.is-pop { animation: node-pop var(--duration-slow) var(--ease-spring); }
 
 @keyframes flow-move { from { background-position: 0 0; } to { background-position: 40px 0; } }
-.ruler--over .ruler__end { color: var(--alarm-ink); font-weight: 500; }

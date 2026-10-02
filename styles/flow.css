@@ -1,0 +1,184 @@
+/* ETROM Flow System — Gauge, Flow, Level, Marker.
+   Wspólne: linia --line-w, znaczniki --marker-size, cyfry tabelaryczne, ruch --motion-measure.
+   Opis i zasady użycia: docs/DESIGN_SYSTEM.md → „ETROM Flow System”. */
+
+/* =========================================================
+   Marker
+   ========================================================= */
+.marker { display: inline-grid; place-items: center; width: var(--marker-size); height: var(--marker-size); flex: none; color: var(--ink); }
+.marker svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.marker--plan { color: var(--ink-2); }
+.marker--deadline { color: var(--ink-2); }
+.marker--warning { color: var(--warn); }
+.marker--alarm { color: var(--alarm); }
+
+/* =========================================================
+   Gauge — miernik postępu (łata)
+   ========================================================= */
+.gauge { display: grid; align-content: start; gap: var(--space-3); min-width: 0; width: var(--gauge-w); }
+.gauge__read { display: grid; gap: 2px; padding-left: 2px; }
+.gauge__value {
+  display: flex; align-items: baseline;
+  font-family: var(--font-display); font-size: var(--fs-5xl); font-weight: 600; line-height: 0.95;
+  letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums;
+}
+.gauge__unit { font-size: 0.5em; margin-left: 2px; color: var(--ink-3); font-weight: 500; }
+.gauge__caption { font-size: var(--fs-sm); color: var(--ink-3); }
+.gauge__lag { display: grid; gap: 1px; margin-top: var(--space-2); font-size: var(--fs-sm); }
+.gauge__lag-plan { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-weight: 500; }
+.gauge__lag-plan::before { content: ""; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 var(--line-w) var(--ink-2); flex: none; }
+.gauge__lag-text { color: var(--ink-3); padding-left: 15px; }
+.gauge__lag--warning .gauge__lag-text { color: var(--warn-ink); font-weight: 500; }
+.gauge__lag--alarm .gauge__lag-text { color: var(--alarm-ink); font-weight: 500; }
+
+.gauge__scale { position: relative; height: var(--gauge-scale-h); margin: var(--space-3) 0; }
+.gauge__axis { position: absolute; left: var(--gauge-axis); top: 0; bottom: 0; width: var(--line-w); translate: -50% 0; background: var(--line-strong); border-radius: 1px; }
+.gauge__major { position: absolute; left: 0; width: var(--gauge-axis); bottom: calc(var(--at) * 1%); height: 0; }
+.gauge__major::after {
+  content: ""; position: absolute; right: -1px; top: calc(var(--line-w) / -2); width: var(--tick-major); height: var(--line-w);
+  background: var(--ink-4); border-radius: 1px; translate: 0 0;
+}
+.gauge__major-label {
+  position: absolute; right: calc(var(--tick-major) + 6px); bottom: 0; translate: 0 50%;
+  font-size: var(--fs-xs); line-height: 1; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.gauge__tick { position: absolute; left: calc(var(--gauge-axis) + 1px); bottom: calc(var(--at) * 1%); width: var(--tick-minor); height: var(--line-w); translate: 0 50%; background: var(--ink-4); border-radius: 1px; }
+
+.gauge__stage { position: absolute; left: 0; right: 0; bottom: calc(var(--from) * 1%); height: calc((var(--to) - var(--from)) * 1%); border-radius: 2px; transition: background-color var(--duration-fast); }
+.gauge__stage:hover { background: var(--hover); }
+/* Ryzyko na skali: etap po terminie albo z bliskim terminem — znak na progu, nie plama koloru. */
+.gauge__stage--delayed::before, .gauge__stage--warning::before {
+  content: ""; position: absolute; left: calc(var(--gauge-axis) + 8px); top: 1px; bottom: 1px; width: 2px; border-radius: 1px; background: var(--alarm);
+}
+.gauge__stage--warning::before { background: var(--warn); }
+
+.gauge__done, .gauge__span { position: absolute; left: var(--gauge-axis); width: var(--gauge-bar); translate: -50% 0; border-radius: 1px; }
+.gauge__span--blocked { background: repeating-linear-gradient(0deg, var(--ink-3) 0 1.5px, transparent 1.5px 3.5px); }
+.gauge__done { bottom: 0; height: calc(var(--at) * 1%); background: var(--done); transition: height var(--motion-measure); }
+.gauge__span { bottom: calc(var(--from) * 1%); height: calc((var(--to) - var(--from)) * 1%); min-height: 3px; background: var(--flow); }
+
+.gauge__plan { position: absolute; left: var(--gauge-axis); bottom: calc(var(--at) * 1%); width: 0; height: 0; }
+.gauge__plan .marker { position: absolute; translate: -50% 50%; width: 11px; height: 11px; background: var(--sheet); border-radius: 50%; }
+.gauge__plan--warning .marker { color: var(--warn); }
+.gauge__plan--alarm .marker { color: var(--alarm); }
+
+.gauge__now { position: absolute; left: calc(var(--gauge-axis) + 2px); bottom: calc(var(--at) * 1%); translate: 0 50%; transition: bottom var(--motion-measure); line-height: 0; }
+.gauge__now .marker { rotate: 90deg; width: 11px; height: 11px; color: var(--ink); }
+
+.gauge__note {
+  position: absolute; left: calc(var(--gauge-axis) + 20px); right: 0; bottom: calc(var(--at) * 1%); translate: 0 50%;
+  display: grid; gap: 1px; padding: 2px var(--space-1-5); margin-left: -6px; border-radius: var(--radius-sm); text-align: left;
+  transition: bottom var(--motion-measure), background-color var(--duration-fast);
+}
+.gauge__note:hover { background: var(--hover); }
+.gauge__note:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.gauge__note-stage { font-size: var(--fs-sm); font-weight: 600; color: var(--flow-ink); line-height: 1.2; }
+.gauge__note-range { font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.2; }
+
+/* =========================================================
+   Flow — tor przebiegu
+   ========================================================= */
+.flow { position: relative; min-width: 0; }
+.flow__track { display: flex; gap: var(--flow-gap); height: var(--flow-seg-h); }
+.flow__seg {
+  position: relative; min-width: 3px; border-radius: 2px; background: var(--track);
+  transition: background-color var(--duration-base) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+button.flow__seg { cursor: pointer; }
+button.flow__seg:hover { transform: translateY(-2px); }
+button.flow__seg:focus-visible { outline: 2px solid var(--flow); outline-offset: 2px; }
+.flow__seg--done { background: var(--done); }
+.flow__seg--working {
+  background-color: var(--flow);
+  background-image: repeating-linear-gradient(115deg, transparent 0 5px, light-dark(rgb(255 255 255 / 0.28), rgb(0 0 0 / 0.22)) 5px 8px);
+  background-size: 40px 100%;
+}
+/* Nurt płynie tylko w nagłówku projektu i tylko chwilę po wejściu — ruch zwraca uwagę, nie męczy. */
+.flow--hero .flow__seg--working { animation: flow-move 2.4s linear 3; }
+.flow__seg--todo.is-current { background: var(--flow-wash); box-shadow: inset 0 0 0 var(--line-w) var(--flow); }
+/* Po terminie: kreskowanie jak w przekroju. */
+.flow__seg--delayed:not(.flow__seg--working) {
+  background-color: var(--alarm-wash);
+  background-image: repeating-linear-gradient(135deg, var(--alarm) 0 1.2px, transparent 1.2px 4px);
+}
+.flow__seg--delayed.flow__seg--working { box-shadow: 0 0 0 var(--line-w) var(--alarm); }
+/* Wstrzymany: kreskowanie tuszem zamiast nurtu — przepływ stoi. */
+.flow__seg--blocked {
+  animation: none;
+  background-color: var(--wash-2);
+  background-image: repeating-linear-gradient(135deg, var(--ink-3) 0 1.2px, transparent 1.2px 4px);
+  box-shadow: inset 0 0 0 var(--line-w) var(--ink-3);
+}
+.flow__no {
+  position: absolute; left: 0; right: 0; top: calc(100% + 7px); text-align: center; overflow: hidden;
+  font-size: var(--fs-xs); line-height: 1; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.flow__seg.is-tiny .flow__no { display: none; }
+.flow__seg.is-sliver { min-width: 6px; }
+.flow__seg.is-sliver .flow__no { left: auto; right: 0; width: max-content; overflow: visible; }
+.flow__seg.is-current .flow__no { color: var(--flow-ink); font-weight: 600; }
+.flow--hero .flow__seg.is-current::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: var(--line-w); border-radius: 1px; background: var(--flow); }
+.flow:has(.flow__no) { padding-bottom: 1.375rem; }
+.flow__marks { position: relative; height: 12px; margin-bottom: 3px; }
+.flow__mark { position: absolute; bottom: 0; translate: -50% 0; width: 9px; height: 9px; }
+.flow--empty .flow__track { background: repeating-linear-gradient(90deg, var(--track) 0 6px, transparent 6px 10px); border-radius: 2px; }
+.flow__empty { display: block; margin-top: var(--space-2); font-size: var(--fs-sm); color: var(--ink-3); }
+
+/* Rozmiary: ta sama geometria, mniejsza skala. */
+.flow--mini { width: 100%; }
+.flow--mini .flow__track { height: 5px; gap: 1.5px; }
+.flow--mini .flow__seg { min-width: 2px; border-radius: 1.5px; }
+.flow--compact { padding-top: 1.375rem; }
+.flow--compact .flow__track { height: 8px; gap: 2px; }
+.flow--compact .flow__seg { min-width: 2px; border-radius: 1.5px; }
+.flow--compact .flow__seg--blocked, .flow--mini .flow__seg--blocked { box-shadow: none; }
+.flow__reading {
+  position: absolute; top: 0; left: clamp(0%, var(--at, 0%), 100%); width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; pointer-events: none;
+}
+.flow__value { width: max-content; translate: calc(var(--at, 0%) * -1) 0; font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 3px; }
+.flow__glyph { translate: -50% 0; width: 9px; height: 7px; color: var(--ink); }
+
+/* =========================================================
+   Timeline — oś czasu umowy ze znacznikami
+   ========================================================= */
+.timeline-axis { display: grid; gap: var(--space-2); }
+.timeline-axis__line { position: relative; height: var(--line-w); margin: 5px 5px 0; border-radius: 1px; background: repeating-linear-gradient(90deg, var(--ink-4) 0 3px, transparent 3px 6px); }
+.timeline-axis__elapsed { position: absolute; inset: 0 auto 0 0; width: calc(var(--at) * 1%); background: var(--ink-2); border-radius: 1px; }
+.timeline-axis__today { position: absolute; left: calc(var(--at) * 1%); top: 50%; translate: -50% -50%; line-height: 0; }
+.timeline-axis__end { position: absolute; right: 0; top: 50%; translate: 50% -50%; line-height: 0; }
+.timeline-axis--warning .timeline-axis__elapsed { background: var(--warn); }
+.timeline-axis--alarm .timeline-axis__elapsed { background: var(--alarm); }
+.timeline-axis__labels { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.timeline-axis--alarm .timeline-axis__end-label { color: var(--alarm-ink); font-weight: 500; }
+
+/* =========================================================
+   Level — stan projektu jako poziom względem progów
+   ========================================================= */
+.level { display: grid; align-content: start; gap: var(--space-3); min-width: 0; }
+.level__kicker { font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
+.level__ladder { position: relative; display: grid; }
+.level__ladder::before { content: ""; position: absolute; left: 11.25px; top: calc(var(--level-rung-h) / 2); bottom: calc(var(--level-rung-h) / 2); width: var(--line-w); background: var(--line-strong); border-radius: 1px; }
+.rung { position: relative; display: flex; align-items: center; gap: var(--space-2-5); height: var(--level-rung-h); padding: 0 var(--space-2) 0 3px; border-radius: var(--radius-sm); color: var(--ink-3); font-size: var(--fs-sm); }
+.rung__node { position: relative; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--sheet); flex: none; opacity: 0.55; }
+.rung__label { flex: 1; min-width: 0; }
+.rung__here { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.01em; opacity: 0.8; }
+.rung.is-active { font-weight: 600; color: var(--ink); }
+.rung.is-active .rung__node { opacity: 1; }
+.rung--alarm.is-active { color: var(--alarm-ink); background: var(--alarm-wash); }
+.rung--warning.is-active { color: var(--warn-ink); background: var(--warn-wash); }
+.rung--alarm.is-active .rung__node { background: var(--alarm-wash); }
+.rung--warning.is-active .rung__node { background: var(--warn-wash); }
+.rung--normal.is-active, .rung--closed.is-active { background: var(--sheet); box-shadow: var(--elev-lift); }
+.rung--alarm .datum, .rung--warning .datum { color: var(--ink-4); }
+.rung--alarm.is-active .datum { color: var(--alarm); --datum-mark: var(--alarm-wash); }
+.rung--warning.is-active .datum { color: var(--warn); }
+.level--compact { gap: var(--space-2); }
+.level--compact .rung { height: auto; min-height: var(--level-rung-h); padding: 0 var(--space-2) 0 3px; }
+.level--compact .rung__node { opacity: 1; }
+.level--compact .level__lead--calm { margin: 0; }
+.level__lead { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; letter-spacing: var(--tracking-title); line-height: 1.25; text-wrap: balance; }
+.level__lead--calm { font-family: var(--font-text); font-size: var(--fs-md); font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+.level__more { display: grid; gap: 2px; font-size: var(--fs-sm); }
+.level__more li { position: relative; padding-left: var(--space-3); }
+.level__more li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.6; }

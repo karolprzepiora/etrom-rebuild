@@ -5,7 +5,7 @@ Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
 
 Interfejs mówi własnym językiem — rzędna ▽ stanów wód, profil przebiegu etapów,
 tusz i kalka rysunku technicznego — opisanym w **[kierunku artystycznym](docs/ART_DIRECTION.md)**.
-Zasady stosowania: **[UI/UX Standard v2.2](docs/DESIGN_SYSTEM.md)**, obowiązujący
+Zasady stosowania: **[UI/UX Standard v2.3](docs/DESIGN_SYSTEM.md)**, obowiązujący
 dla każdego kolejnego ekranu i każdej nowej funkcji.
 
 ![ETROM — lista projektów](docs/screenshots/etrom-projekty.png)
@@ -99,12 +99,13 @@ styles/
   tokens.css            barwy, typografia, odstępy, promienie, warstwy, ruch — jedno źródło prawdy
   base.css              reset, role typograficzne, fokus
   components.css        komponenty bazowe (przyciski, pola, menu, tabela, okna…)
-  signature.css         elementy charakterystyczne: rzędna, profil, linijka czasu, oś etapów
+  signature.css         rzędna ▽ i oś etapów
+  flow.css              ETROM Flow System: miernik, tor, poziom, znacznik
   layout.css            szkielet: panel boczny, pasek górny, strona, szerokości
   views.css             układ treści konkretnych ekranów
 docs/
   ART_DIRECTION.md      język wizualny ETROM i jego uzasadnienie
-  DESIGN_SYSTEM.md      UI/UX Standard v2.2 — obowiązujące zasady interfejsu
+  DESIGN_SYSTEM.md      UI/UX Standard v2.3 — obowiązujące zasady interfejsu
   licenses/             licencje osadzonych krojów (SIL OFL 1.1)
   UI_AUDIT.md           audyt interfejsu przed przebudową
 src/core/               logika, zero kodu dotykającego DOM
@@ -122,7 +123,8 @@ src/ui/                 warstwa widoku
   dom.js                budowanie elementów, przerysowanie z zachowaniem fokusu
   icons.js              jeden zestaw ikon
   components.js         komponenty bazowe (ETROM.UI)
-  signature.js          elementy charakterystyczne (ETROM.Sig)
+  signature.js          rzędna ▽ (ETROM.Sig)
+  flowSystem.js         ETROM Flow System: Gauge, Flow, Level, Marker (ETROM.Flow)
   inspector.js          inspektor: zadanie, osoba, projekt
   menu.js, tooltip.js   menu rozwijane, popover, podpowiedzi
   dialog.js, toast.js   okna, panel boczny, powiadomienia
@@ -146,9 +148,9 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 191 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 114 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
-node tools/screenshot.js        # 30 zrzutów: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor
+node --test tests/*.test.js     # 197 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 119 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
 Testy nie mają żadnych zależności z npm — korzystają z wbudowanego

@@ -186,13 +186,8 @@
           D.el('h2', { class: 'insp-title__text insp-title__text--big', text: project.name, attrs: { id: 'inspector-title', tabindex: '-1' } }),
           D.el('p', { class: 't-secondary', text: project.client })
         ]),
-        Sig.profile(project, { size: 'card', now: now }),
-        D.el('div', { class: 'health health--' + health.level + ' health--compact' }, [
-          D.el('div', { class: 'health__head' }, [Sig.datum(health.level, { label: false }), D.el('span', { class: 'health__label', text: health.label })]),
-          health.reasons.length && health.level !== 'closed'
-            ? D.el('ul', { class: 'health__more' }, health.reasons.map(function (r) { return D.el('li', { class: 'reason--' + r.level, text: r.text }); }))
-            : null
-        ]),
+        E.Flow.flowTrack(project, { size: 'compact', now: now }),
+        E.Flow.level(project, { size: 'compact', now: now }),
         D.el('dl', { class: 'props' }, [
           prop('Bieżący etap', D.el('span', { text: stage ? Model.describeStage(stage).name : 'Brak' })),
           prop('Termin umowy', project.deadline ? UI.due(project.deadline, Progress.deadlineInfo(project.deadline, now), { done: project.status === 'done' }) : D.el('span', { class: 't-muted', text: 'Bez terminu' })),

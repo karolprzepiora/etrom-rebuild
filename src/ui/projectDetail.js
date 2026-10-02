@@ -75,36 +75,39 @@
     ];
   }
 
-  function healthPanel(project, health, next) {
-    var lead = health.reasons[0];
-    var others = health.reasons.slice(1);
-    return D.el('section', { class: 'health health--' + health.level, attrs: { 'aria-label': 'Stan projektu' } }, [
-      D.el('div', { class: 'health__head' }, [
-        Sig.datum(health.level, { size: 18, label: false }),
-        D.el('span', { class: 'health__label', text: health.label })
-      ]),
-      lead && health.level !== 'closed'
-        ? D.el('p', { class: 'health__lead', text: lead.text })
-        : D.el('p', { class: 'health__lead health__lead--calm', text: health.level === 'closed' ? 'Projekt zakończony i zamknięty.' : 'Terminy i zadania bez zaległości.' }),
-      others.length ? D.el('ul', { class: 'health__more' }, others.map(function (r) {
-        return D.el('li', { class: 'reason--' + r.level, text: r.text });
-      })) : null,
-      next ? D.el('div', { class: 'health__next' }, [
-        D.el('span', { class: 'health__next-label', text: 'Najbliżej' }),
-        D.el('span', { class: 'health__next-what' }, [
-          D.el('span', { class: 'health__next-when t-num', text: next.days === 0 ? 'Dziś' : (next.days === 1 ? 'Jutro' : 'Za ' + next.days + ' dni') }),
-          D.el('span', { class: 'truncate', text: EVENT_KIND[next.kind] + (next.kind === 'project' ? '' : ': ' + next.label) })
-        ])
-      ]) : null
-    ]);
-  }
-
   function fact(label, value, sub, tone) {
     return D.el('div', { class: 'fact' + (tone ? ' fact--' + tone : '') }, [
       D.el('dt', { class: 'fact__label', text: label }),
       D.el('dd', { class: 'fact__value' }, typeof value === 'string' ? [D.el('span', { text: value })] : value),
       sub ? D.el('dd', { class: 'fact__sub', text: sub }) : null
     ]);
+  }
+
+  /** Bieżący etap: nazwa jest głównym zdaniem środka cockpitu, bo odpowiada na „gdzie jesteśmy”. */
+  function stageNow(project, ctx) {
+    var active = Progress.activeStage(project);
+    var total = project.stages.length;
+    var kicker;
+    var name;
+    if (active) {
+      var info = Model.describeStage(active);
+      name = info.name;
+      kicker = 'Bieżący etap · ' + (project.stages.indexOf(active) + 1) + ' z ' + total
+        + (project.status === 'paused' ? ' · wstrzymany' : (active.status === 'working' ? ' · w toku' : ' · do rozpoczęcia'));
+    } else {
+      name = total ? 'Wszystkie etapy zakończone' : 'Brak etapów';
+      kicker = total ? 'Przebieg' : 'Etapy';
+    }
+    var body = [
+      D.el('span', { class: 'stagenow__kicker', text: kicker }),
+      D.el('span', { class: 'stagenow__name', text: name })
+    ];
+    if (!active) return D.el('div', { class: 'stagenow' }, body);
+    return D.el('button', {
+      class: 'stagenow stagenow--link',
+      attrs: { type: 'button', 'aria-label': 'Przejdź do etapu: ' + name },
+      on: { click: function () { ctx.actions.revealStage(project.id, active.id); } }
+    }, body);
   }
 
   function facts(project, now) {
@@ -114,10 +117,7 @@
     var info = Progress.deadlineInfo(project.deadline, now);
     var done = project.status === 'done';
     return D.el('dl', { class: 'facts' }, [
-      fact('Bieżący etap',
-        [D.el('span', { class: 'fact__text clamp-2', text: active ? Model.describeStage(active).name : (project.stages.length ? 'Wszystkie zakończone' : 'Brak etapów') })],
-        active ? 'etap ' + (project.stages.indexOf(active) + 1) + ' z ' + project.stages.length + (active.status === 'working' ? ', w toku' : ', do rozpoczęcia') : ''),
-      fact('Godziny', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], stats.done + ' z ' + stats.total + ' etapów zakończonych'),
+      fact('Godziny', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], stats.done + ' z ' + stats.total + ' etapów'),
       fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
         tasks.overdue ? 'alarm' : ''),
@@ -152,11 +152,10 @@
       ]);
     }
     return D.el('div', { class: 'signatures' }, [
-      D.el('ul', { class: 'signatures__list' }, rows),
-      members.length ? D.el('div', { class: 'signatures__members' }, [
+      D.el('ul', { class: 'signatures__list' }, rows.concat(members.length ? [D.el('li', { class: 'signatures__members' }, [
         Avatar.avatarStack(members, { max: 5, size: 'sm' }),
-        D.el('span', { class: 't-meta', text: '+ ' + F.count(members.length, 'osoba w zespole', 'osoby w zespole', 'osób w zespole') })
-      ]) : null
+        D.el('span', { class: 't-meta', text: '+ ' + F.count(members.length, 'osoba', 'osoby', 'osób') })
+      ])] : []))
     ]);
   }
 
@@ -164,6 +163,8 @@
     var health = Insight.health(project, now);
     var next = Insight.nextEvent(project, now);
     var from = ctx.motion && ctx.motion.progressFrom;
+    var Flow = E.Flow;
+    var reveal = function (stageId) { ctx.actions.revealStage(project.id, stageId); };
 
     return D.el('header', { class: 'workspace-head level-' + health.level }, [
       D.el('div', { class: 'workspace-head__id' }, [
@@ -174,16 +175,27 @@
       D.el('p', { class: 'workspace-head__client', text: project.client || 'Bez zamawiającego' }),
       D.el('div', { class: 'workspace-head__grid' }, [
         D.el('section', { class: 'course', attrs: { 'aria-label': 'Przebieg projektu' } }, [
-          Sig.profile(project, {
-            size: 'macro', now: now, from: typeof from === 'number' ? from : undefined,
-            onSegment: function (stageId) { ctx.actions.revealStage(project.id, stageId); }
-          }),
-          Sig.timeRuler(project, now),
-          facts(project, now),
-          signatures(project, ctx)
+          D.el('div', { class: 'course__gauge' }, [
+            Flow.gauge(project, { now: now, from: typeof from === 'number' ? from : undefined, onStage: reveal })
+          ]),
+          D.el('div', { class: 'course__body' }, [
+            stageNow(project, ctx),
+            Flow.flowTrack(project, { now: now, onSegment: reveal }),
+            Flow.timeline(project, now),
+            facts(project, now),
+            signatures(project, ctx)
+          ])
         ]),
         D.el('aside', { class: 'workspace-head__side' }, [
-          healthPanel(project, health, next)
+          Flow.level(project, { now: now }),
+          next ? D.el('div', { class: 'next' }, [
+            D.el('span', { class: 'next__label', text: 'Najbliżej' }),
+            D.el('span', { class: 'next__what' }, [
+              E.Flow.marker('deadline', { level: next.days <= 3 ? 'warning' : 'normal' }),
+              D.el('span', { class: 'next__when t-num', text: next.days === 0 ? 'Dziś' : (next.days === 1 ? 'Jutro' : 'Za ' + next.days + ' dni') }),
+              D.el('span', { class: 'truncate', text: EVENT_KIND[next.kind] + (next.kind === 'project' ? '' : ': ' + next.label) })
+            ])
+          ]) : null
         ])
       ])
     ]);
