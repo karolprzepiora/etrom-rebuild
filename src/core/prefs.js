@@ -44,11 +44,21 @@
   }
   var MAX_RECENT = 5;
 
+  // Odłożone pozycje Skrzynki: klucz → data RRRR-MM-DD.
+  function cleanSnoozed(value) {
+    var out = {};
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
+    Object.keys(value).slice(0, 200).forEach(function (k) {
+      if (k.length <= 80 && /^\d{4}-\d{2}-\d{2}$/.test(String(value[k]))) out[k] = value[k];
+    });
+    return out;
+  }
+
   function defaults() {
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null
+      groupBy: 'health', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}
     };
   }
 
@@ -87,7 +97,8 @@
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
       // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).
-      me: typeof source.me === 'string' && /^p-\d+$/.test(source.me) ? source.me : null
+      me: typeof source.me === 'string' && /^p-\d+$/.test(source.me) ? source.me : null,
+      snoozed: cleanSnoozed(source.snoozed)
     };
   }
 

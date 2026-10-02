@@ -324,6 +324,12 @@ formularze na całą szerokość.
   opis profilu przebiegu dla czytnika ekranu.
 - `prefers-reduced-motion` respektowane, ruch ciągły kończy się sam.
 
+## Skrzynka i Moja praca
+
+- Skrzynka to lista „do reakcji”, nie archiwum: bez „przeczytane”, pozycja znika, gdy sprawa jest załatwiona. Jedyny zapis to odłożenie do jutra (`prefs.snoozed`).
+- Kolor tylko dla pilnych: lewa kreska i ikona w tonie alarmu przy pozycji po terminie, reszta neutralna.
+- Obie listy używają zakładek z licznikami (`pf-view`), płaskich wierszy z linią zamiast kart z cieniem i gęstości `--row-h`; `J`/`K` przechodzą po wierszach.
+
 ## 9. Jak dodać nowy ekran
 
 1. Struktura: tytuł krojem Display → zdanie z liczbami → kokpit lub pasek narzędzi → treść.

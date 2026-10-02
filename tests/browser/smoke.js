@@ -193,6 +193,7 @@ async function main() {
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
       j: { key: 'j', code: 'KeyJ', vk: 74, text: 'j' },
       v: { key: 'v', code: 'KeyV', vk: 86, text: 'v' },
+      s: { key: 's', code: 'KeyS', vk: 83, text: 's' },
       enter: { key: 'Enter', code: 'Enter', vk: 13, text: '\r' },
       escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' },
       down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' },
@@ -585,6 +586,44 @@ async function main() {
     await sleep(300);
     check('klik w zadanie otwiera inspektor zadania', await evaluate('return !document.getElementById("inspector").hidden;'));
     await pressKey('escape');
+    await click('[data-fk="mywork-view-today"]');
+    await sleep(200);
+    check('zakładka „Dziś” w Mojej pracy zostawia tylko zaległe i dzisiejsze',
+      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Po terminie","Dziś"].includes(x)) && document.querySelector("[data-fk=mywork-view-today]").getAttribute("aria-selected") === "true";'));
+    await click('[data-fk="mywork-view-all"]');
+    await pressKey('j');
+    check('J w Mojej pracy ustawia fokus na pierwszym zadaniu',
+      await evaluate('return document.activeElement && document.activeElement.classList.contains("trow__name");'));
+    await pressKey('g');
+    await pressKey('s');
+    await sleep(300);
+    check('skrót G S otwiera Skrzynkę, a pozycje mają rodzaj, projekt i akcje',
+      (await evaluate('return location.hash;')) === '#/skrzynka' && await evaluate('return !document.getElementById("view-inbox").hidden && document.querySelectorAll(".ibx__row").length > 0 && !!document.querySelector(".ibx__row .mrow__project") && !!document.querySelector(".ibx__row [data-fk^=inbox-snooze]");'));
+    check('pasek boczny pokazuje licznik Skrzynki zgodny z listą',
+      await evaluate('return document.querySelector("[data-screen=inbox] .nav__count").textContent === String(document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length);'));
+    await click('[data-fk="inbox-filter-approve"]');
+    await sleep(150);
+    check('filtr „Do zatwierdzenia” zostawia tylko zatwierdzenia',
+      await evaluate('const r = [...document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => x.dataset.kind === "approve");'));
+    await click('[data-fk="inbox-filter-all"]');
+    await sleep(150);
+    const inboxBefore = await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length;');
+    await click('.ibx__row [data-fk^="inbox-snooze"]');
+    await sleep(250);
+    check('„Odłóż do jutra” chowa pozycję i przenosi ją do odłożonych, zapis trafia do preferencji',
+      await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
+    await click('.ibx__later > summary');
+    await click('.ibx__row--later button');
+    await sleep(250);
+    check('„Przywróć” oddaje pozycję do Skrzynki',
+      await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length === ' + inboxBefore + ';'));
+    await click('[data-fk^="inbox-approve-"]');
+    await sleep(300);
+    check('„Zatwierdź” w Skrzynce zamyka zadanie i pozycja znika',
+      await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length === 0;'));
+    // Przywracamy zadanie do zatwierdzenia — dalsze kroki scenariusza na nim polegają.
+    await evaluate('window.ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.map(function (p) { return Object.assign({}, p, { stages: p.stages.map(function (g) { return Object.assign({}, g, { tasks: (g.tasks || []).map(function (t) { return t.name.indexOf("Uzgodnić kolizję") >= 0 ? Object.assign({}, t, { status: "review" }) : t; }) }); }) }); }) }) }); }); return true;');
+    await go('#/moja-praca');
     await click('[data-fk="my-who"]');
     await sleep(200);
     check('menu „Pracuję jako” pozwala zmienić osobę',

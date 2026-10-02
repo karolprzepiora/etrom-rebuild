@@ -1,0 +1,53 @@
+/* ETROM — Skrzynka i odświeżona „Moja praca”.
+   Ten sam język co Projekty: płaskie listy z cienką linią zamiast kart z cieniem,
+   kolor tylko dla tego, co wymaga reakcji, jedna skala typografii, gęstość z --row-h. */
+
+/* ---------- Skrzynka ---------- */
+.ibx { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.ibx__filters { margin-bottom: 0; }
+.ibx__list { display: block; margin: 0; padding: 0; list-style: none; }
+.ibx__row {
+  display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) 11rem 8.5rem auto; align-items: center; gap: var(--space-3);
+  min-height: var(--row-h); padding: var(--row-pad) var(--space-2); border-bottom: 1px solid var(--line);
+}
+.ibx__row:hover { background: var(--wash); }
+.ibx__row.is-urgent { box-shadow: inset 2px 0 0 var(--alarm); }
+.ibx__kind { display: inline-flex; color: var(--ink-3); }
+.ibx__row.is-urgent .ibx__kind { color: var(--alarm-ink); }
+.ibx__body { display: grid; gap: 2px; min-width: 0; overflow: hidden; }
+.ibx__title { text-align: left; font-weight: 500; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ibx__title:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
+.ibx__detail { color: var(--ink-2); }
+.ibx__kindlabel { white-space: nowrap; }
+.ibx__when { font-size: var(--fs-sm); white-space: nowrap; }
+.ibx__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+.ibx__empty { margin: var(--space-4) 0; color: var(--ink-3); font-size: var(--fs-sm); }
+.ibx__later { margin-top: var(--space-4); }
+.ibx__later > summary { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; color: var(--ink-3); font-size: var(--fs-sm); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
+.ibx__later > summary:hover { color: var(--ink); background: var(--wash); }
+.ibx__later > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ibx__row--later { color: var(--ink-3); }
+.ibx__row--later .ibx__title { color: var(--ink-2); font-weight: 400; }
+
+@media (max-width: 64rem) {
+  .ibx__row { grid-template-columns: 1.5rem minmax(0, 1fr) 8.5rem auto; }
+  .ibx__kindlabel { display: none; }
+}
+@media (max-width: 40rem) {
+  .ibx__row { grid-template-columns: 1.5rem minmax(0, 1fr); row-gap: var(--space-1); }
+  .ibx__when, .ibx__actions { grid-column: 2; justify-content: flex-start; }
+}
+
+/* ---------- Moja praca: płaskie listy ---------- */
+.mywork__views { margin-bottom: var(--space-2); }
+.mywork { margin-top: var(--space-4); }
+.msec__title { font-size: var(--fs-sm); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--ink-2); }
+.msec__count { font-size: var(--fs-xs); background: var(--wash); border-radius: var(--radius-full); padding: 0 var(--space-2); }
+.msec--alarm .msec__title { color: var(--alarm-ink); }
+.msec--alarm .msec__count { background: transparent; color: var(--alarm-ink); }
+.mrows { padding: 0; gap: 0; background: transparent; box-shadow: none; border-radius: 0; border-top: 1px solid var(--line); }
+.mrow { min-height: var(--row-h); padding: var(--row-pad) var(--space-2); border-radius: 0; border-bottom: 1px solid var(--line); }
+.mrow__title .trow__name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
+.mywork__aside { min-width: 0; }
+.mywork__aside > * { min-width: 0; max-width: 100%; }
+.mywork__aside .timer-resume, .mywork__aside [class*="resume"] { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

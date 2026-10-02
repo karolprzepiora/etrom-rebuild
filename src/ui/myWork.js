@@ -21,7 +21,7 @@
 
   var GROUPS = [
     { key: 'overdue', label: 'Po terminie', tone: 'alarm' },
-    { key: 'today', label: 'Dziś', tone: 'flow' },
+    { key: 'today', label: 'Dziś', tone: '' },
     { key: 'week', label: 'W tym tygodniu', tone: '' },
     { key: 'later', label: 'Później', tone: '' },
     { key: 'none', label: 'Bez terminu', tone: '' }
@@ -163,6 +163,49 @@
     return btn;
   }
 
+  // Widoki listy: które przedziały czasu i które zatwierdzenia pokazują.
+  var VIEWS = [
+    { value: 'all', label: 'Wszystko' },
+    { value: 'today', label: 'Dziś' },
+    { value: 'week', label: 'Ten tydzień' },
+    { value: 'approve', label: 'Do decyzji' },
+    { value: 'returned', label: 'Do poprawy' }
+  ];
+
+  function viewCount(key, work) {
+    if (key === 'all') return work.open + work.toApprove.length;
+    if (key === 'today') return work.buckets.overdue.length + work.buckets.today.length;
+    if (key === 'week') return work.buckets.overdue.length + work.buckets.today.length + work.buckets.week.length;
+    if (key === 'approve') return work.toApprove.length;
+    return work.returned.length;
+  }
+
+  /** Które sekcje i które wiersze pokazuje wybrany widok. */
+  function pick(key, work) {
+    var buckets = work.buckets;
+    var out = { approve: work.toApprove, groups: {} };
+    GROUPS.forEach(function (g) { out.groups[g.key] = buckets[g.key]; });
+    if (key === 'today') { out.approve = []; out.groups = { overdue: buckets.overdue, today: buckets.today }; }
+    else if (key === 'week') { out.approve = []; out.groups = { overdue: buckets.overdue, today: buckets.today, week: buckets.week }; }
+    else if (key === 'approve') { out.groups = {}; }
+    else if (key === 'returned') {
+      out.approve = [];
+      GROUPS.forEach(function (g) { out.groups[g.key] = buckets[g.key].filter(function (r) { return r.task.status === 'changes'; }); });
+    }
+    return out;
+  }
+
+  function viewTabs(work, current, actions) {
+    return D.el('div', { class: 'pf-views mywork__views', attrs: { role: 'tablist', 'aria-label': 'Widoki mojej pracy' } }, VIEWS.map(function (v) {
+      var active = v.value === current;
+      return D.el('button', {
+        class: 'pf-view' + (active ? ' is-active' : ''),
+        attrs: { type: 'button', role: 'tab', 'aria-selected': String(active), 'data-fk': 'mywork-view-' + v.value },
+        on: { click: function () { actions.setMyView(v.value); } }
+      }, [D.el('span', { text: v.label }), D.el('span', { class: 'pf-view__count t-num', text: String(viewCount(v.value, work)) })]);
+    }));
+  }
+
   function summaryText(person, work) {
     if (!work.open && !work.toApprove.length) return 'Nic nie czeka na ' + (person.firstName || Team.fullName(person)) + '. Czysty stół.';
     var parts = [F.count(work.open, 'otwarte zadanie', 'otwarte zadania', 'otwartych zadań')];
@@ -184,12 +227,18 @@
     var work = Insight.myWork(me.id, state.workspace.projects, now);
     var nothing = !work.open && !work.toApprove.length && !work.projects.length;
 
-    var main = [];
-    main.push(section('Czeka na Twoją decyzję', work.toApprove.length, 'flow', work.toApprove, ctx, { approve: true }));
+    var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
+    var shown = pick(current, work);
+    var main = [viewTabs(work, current, ctx.actions)];
+    main.push(section('Czeka na Twoją decyzję', shown.approve.length, '', shown.approve, ctx, { approve: true }));
     GROUPS.forEach(function (g) {
-      main.push(section(g.label, work.buckets[g.key].length, g.tone, work.buckets[g.key], ctx));
+      var rows = shown.groups[g.key] || [];
+      main.push(section(g.label, rows.length, g.tone, rows, ctx));
     });
-    if (!work.open && !work.toApprove.length) {
+    if (current !== 'all' && main.length === 1 + 1 + GROUPS.length && main.slice(1).every(function (n) { return !n; })) {
+      main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
+    }
+    if (current === 'all' && !work.open && !work.toApprove.length) {
       main.push(UI.emptyState({
         icon: 'checkCircle',
         title: 'Brak otwartych zadań',
@@ -214,5 +263,5 @@
     };
   }
 
-  root.ETROM.MyWork = { view: view };
+  root.ETROM.MyWork = { view: view, VIEWS: VIEWS };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

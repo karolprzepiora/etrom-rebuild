@@ -41,6 +41,8 @@
     timeForm: null,
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
+    inboxFilter: 'all',
+    myView: 'all',
     taskForm: null,
     expandedStages: {},
     showDone: {},
@@ -69,6 +71,7 @@
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
     if (parts[0] === 'zespol') return { name: 'team' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
+    if (parts[0] === 'skrzynka') return { name: 'inbox' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
@@ -77,12 +80,13 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : 'projects');
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : 'projects'));
   }
 
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
     if (route.name === 'mywork') return '#/moja-praca';
+    if (route.name === 'inbox') return '#/skrzynka';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
     return '#/projekty';
   }
@@ -155,7 +159,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : 'projects') });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : 'projects')) });
   }
 
   function openProject(id, tab) {
@@ -1091,7 +1095,8 @@
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
     ['G M', 'Przejdź do mojej pracy'],
-    ['J K', 'Następny / poprzedni projekt na liście'],
+    ['G S', 'Przejdź do skrzynki'],
+    ['J K', 'Następny / poprzedni wiersz (projekty, moja praca, skrzynka)'],
     ['V', 'Zmień widok: tabela ↔ karty (na zadaniach: lista ↔ kanban)'],
     ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
     ['[', 'Zwiń lub rozwiń panel boczny'],
@@ -1541,6 +1546,7 @@
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
+      { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'powiadomienia zatwierdzenia pisma do reakcji', run: function () { goTo('inbox'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
@@ -1626,6 +1632,10 @@
     toggleTimer: toggleTimer,
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
+    setInboxFilter: function (value) { store.set({ inboxFilter: value }); },
+    setMyView: function (value) { store.set({ myView: value }); },
+    snoozeInbox: snoozeInbox,
+    unsnoozeInbox: unsnoozeInbox,
     lastTimedTask: lastTimedTask,
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
@@ -1989,6 +1999,26 @@
     D.patch(nodes.myworkBody, [screen.body]);
   }
 
+  function renderInbox(state) {
+    var screen = E.InboxScreen.view(state, { actions: actions });
+    nodes.inboxSummary.textContent = screen.summary;
+    D.patch(nodes.inboxBody, [screen.body]);
+  }
+
+  function snoozeInbox(key, title) {
+    var next = E.Inbox.snooze(store.getState().prefs.snoozed, key, new Date(), 1);
+    setPref({ snoozed: next });
+    Toast.show({
+      message: 'Odłożono do jutra: ' + title,
+      actionLabel: 'Cofnij',
+      onAction: function () { setPref({ snoozed: E.Inbox.unsnooze(store.getState().prefs.snoozed, key) }); }
+    });
+  }
+
+  function unsnoozeInbox(key) {
+    setPref({ snoozed: E.Inbox.unsnooze(store.getState().prefs.snoozed, key) });
+  }
+
   function setMe(personId) {
     setPref({ me: personId });
     var person = Team.findPerson(people(), personId);
@@ -2080,6 +2110,7 @@
     nodes.views.project.hidden = route.name !== 'project';
     nodes.views.team.hidden = route.name !== 'team';
     nodes.views.mywork.hidden = route.name !== 'mywork';
+    nodes.views.inbox.hidden = route.name !== 'inbox';
 
     var project = route.name === 'project' ? findProject(route.projectId) : null;
     E.Shell.render(state, project);
@@ -2095,7 +2126,10 @@
       E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
     ]);
 
-    if (route.name === 'mywork') {
+    if (route.name === 'inbox') {
+      document.title = 'Skrzynka · ETROM';
+      renderInbox(state);
+    } else if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
       renderMyWork(state);
     } else if (route.name === 'team') {
@@ -2179,6 +2213,7 @@
       if (event.key === 'p' || event.key === 'P') { event.preventDefault(); goTo('projects'); return; }
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
+      if (event.key === 's' || event.key === 'S') { event.preventDefault(); goTo('inbox'); return; }
     }
     if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {
@@ -2195,6 +2230,18 @@
         else inspect({ kind: 'project', projectId: Number(row.dataset.projectId) });
         return;
       }
+    }
+    if ((route === 'mywork' || route === 'inbox') && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
+      var rows = Array.prototype.slice.call(document.querySelectorAll(route === 'inbox' ? '#view-inbox .ibx > .ibx__list .ibx__title' : '#view-mywork .trow__name'));
+      if (rows.length) {
+        event.preventDefault();
+        var cur = rows.indexOf(document.activeElement);
+        var fwd = event.key === 'j' || event.key === 'J';
+        var target = cur < 0 ? (fwd ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, cur + (fwd ? 1 : -1)));
+        rows[target].focus();
+        rows[target].scrollIntoView({ block: 'nearest' });
+      }
+      return;
     }
     if (route === 'projects' && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
       var links = Array.prototype.slice.call(nodes.list.querySelectorAll('.project-link'));
@@ -2253,8 +2300,10 @@
     nodes.myworkSummary = D.byId('mywork-summary');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
+    nodes.inboxSummary = D.byId('inbox-summary');
+    nodes.inboxBody = D.byId('inbox-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

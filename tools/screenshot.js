@@ -254,6 +254,11 @@ async function main() {
     await shoot('moja-praca-wybor');
     await run('const p = window.ETROM.app.store.getState().workspace.people.find(x => /Michał/.test(x.firstName)); window.ETROM.app.actions.setMe(p.id); return true;');
     await shoot('moja-praca', { wait: 300 });
+    await go('#/skrzynka');
+    await shoot('skrzynka', { wait: 300 });
+    await run('window.ETROM.app.actions.snoozeInbox(document.querySelector("#view-inbox [data-inbox-key]").dataset.inboxKey, "Test"); return true;');
+    await shoot('skrzynka-odlozone', { wait: 300 });
+    await go('#/moja-praca');
     await run('const st = window.ETROM.app.store.getState(); const p = st.workspace.projects.find(x => x.code === "DEMO-002"); const stg = p.stages.find(x => (x.tasks || []).length); const a = window.ETROM.app.actions; const T = window.ETROM.TimeLog; const me = st.prefs.me; let list = st.workspace.entries || []; const spec = { personId: me, projectId: p.id, stageId: stg.id, taskId: stg.tasks[0].id, label: stg.tasks[0].name }; [["2026-10-02", 2.5], ["2026-10-02", 1.25]].forEach(([d, h]) => { list = T.addManual(list, Object.assign({}, spec, { date: d, hours: h, note: h > 2 ? "Kolizja z siecią gazową" : "" }), new Date()).entries; }); window.ETROM.app.store.update(function (s2) { return Object.assign({}, s2, { workspace: Object.assign({}, s2.workspace, { entries: list }) }); }); a.toggleTimer(p.id, stg.id, stg.tasks[0].id); return true;');
     await shoot('moja-praca-zegar', { wait: 600 });
     await run('window.ETROM.app.actions.stopTimer(); return true;');
