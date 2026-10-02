@@ -478,7 +478,138 @@
     return result;
   }
 
+  /** „za 7 dni”, „dziś”, „jutro” */
+  function when(n) { return n === 0 ? 'dziś' : (n === 1 ? 'jutro' : 'za ' + days(n)); }
+
+  var EVENT_NAME = { project: 'Termin umowy', stage: 'Termin etapu', task: 'Termin zadania' };
+
+  /**
+   * Najbliższy próg: co zmieni stan projektu albo co jest następne w kolejce.
+   * Alarm — nic wyżej już nie ma; ostrzeżenie — próg to termin umowy; norma — najbliższy termin.
+   * @returns {null|{text: string, kind: string, days: number}}
+   */
+  function threshold(project, now) {
+    var reference = now instanceof Date ? now : new Date();
+    if (!project || project.status === 'done') return null;
+    var state = health(project, reference);
+    if (state.level === 'alarm') return null;
+    var left = Progress.daysUntil(project.deadline, reference);
+    if (state.level === 'warning' && left !== null && left >= 0) {
+      return { kind: 'project', days: left, text: 'Alarm, jeśli termin umowy minie (' + when(left) + ').' };
+    }
+    var next = nextEvent(project, reference);
+    if (!next) return null;
+    var label = next.kind === 'project' ? '' : ' „' + next.label + '”';
+    return { kind: next.kind, days: next.days, text: EVENT_NAME[next.kind] + label + ' ' + when(next.days) + '.' };
+  }
+
+  /**
+   * Odchylenia od planu. Nic nie jest zgadywane: pole bez danych ma available=false
+   * i powód. Plan = upływ czasu umowy (liniowo od utworzenia projektu).
+   *  - postęp: rzeczywisty % vs % czasu umowy (pp, ujemne = za planem),
+   *  - godziny: zapisane z zegara vs oczekiwane na dziś (h, dodatnie = ponad plan),
+   *  - termin: prognoza liniowa wg dotychczasowego tempa (dni, dodatnie = po terminie),
+   *    liczona dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu.
+   * @returns {{progress: Object, hours: Object, schedule: Object, primary: (string|null)}}
+   */
+  function variance(project, now, loggedMinutes) {
+    var reference = now instanceof Date ? now : new Date();
+    var stats = Progress.projectProgress(project || { stages: [] });
+    var plan = project && project.status !== 'done' ? schedule(project, reference) : null;
+    var actual = stats.percent;
+
+    var progress = plan
+      ? { available: true, actual: actual, plan: plan.expected, variance: actual - plan.expected }
+      : { available: false, actual: actual, plan: null, variance: null, reason: project && project.status === 'done' ? 'done' : 'no-deadline' };
+
+    var used = Math.round((loggedMinutes || 0) / 6) / 10;
+    var hours;
+    if (!plan || !stats.hoursTotal) hours = { available: false, used: used, expected: null, variance: null, budget: stats.hoursTotal, reason: stats.hoursTotal ? 'no-deadline' : 'no-budget' };
+    else if (!loggedMinutes) hours = { available: false, used: 0, expected: Math.round(plan.expected / 100 * stats.hoursTotal), variance: null, budget: stats.hoursTotal, reason: 'no-time-logged' };
+    else {
+      var expectedHours = Math.round(plan.expected / 100 * stats.hoursTotal);
+      hours = { available: true, used: used, expected: expectedHours, variance: Math.round((used - expectedHours) * 10) / 10, budget: stats.hoursTotal };
+    }
+
+    var contract = project && project.deadline ? project.deadline : null;
+    var sched = { contract: contract, forecast: null, days: null, available: false, reason: null };
+    var start = startOf(project);
+    if (!project || project.status === 'done') sched.reason = 'done';
+    else if (!contract) sched.reason = 'no-deadline';
+    else if (!start) sched.reason = 'no-start';
+    else {
+      var startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      var today = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+      var spent = (today - startDay) / DAY_MS;
+      if (spent < 7) sched.reason = 'too-early';
+      else if (actual < 5) sched.reason = 'no-progress';
+      else if (actual >= 100) sched.reason = 'done';
+      else {
+        var finish = new Date(startDay.getTime() + Math.round(spent / (actual / 100)) * DAY_MS);
+        var end = dateValue(contract);
+        sched.available = true;
+        sched.forecast = finish.getFullYear() + '-' + String(finish.getMonth() + 1).padStart(2, '0') + '-' + String(finish.getDate()).padStart(2, '0');
+        sched.days = Math.round((finish - end) / DAY_MS);
+      }
+    }
+
+    var primary = null;
+    if (sched.available && sched.days >= 7) primary = 'schedule';
+    else if (progress.available && progress.variance <= -5) primary = 'progress';
+    else if (hours.available && stats.hoursTotal && hours.variance > 0.1 * stats.hoursTotal) primary = 'hours';
+    else if (progress.available) primary = 'progress';
+    return { progress: progress, hours: hours, schedule: sched, primary: primary };
+  }
+
+  /**
+   * „Co powinienem zrobić teraz?” — jedna pozycja, najpilniejsza:
+   * zwrócone do poprawy → zaległe → czekające na zatwierdzenie → bez realizatora → najbliższy termin (≤ 14 dni).
+   * @returns {null|{rule: string, kind: string, title: string, parts: string[], tone: string, stageId: (string|null), taskId: (string|null)}}
+   */
+  function nextAction(project, now) {
+    var reference = now instanceof Date ? now : new Date();
+    if (!project || project.status === 'done') return null;
+    var open = allTasks(project).filter(function (e) { return e.task.status !== 'done'; });
+    function pick(entry, rule, parts, tone) {
+      return { rule: rule, kind: 'task', title: entry.task.name, parts: parts, tone: tone, stageId: entry.stage.id, taskId: entry.task.id };
+    }
+    function unassigned(entry) { return !(entry.task.assignees || []).length ? ['Brak realizatora'] : []; }
+    function byDeadline(a, b) { return (Date.parse(a.task.deadline) || Infinity) - (Date.parse(b.task.deadline) || Infinity); }
+
+    var returned = open.filter(function (e) { return e.task.status === 'changes'; }).sort(byDeadline)[0];
+    if (returned) return pick(returned, 'returned', ['Zwrócone do poprawy'].concat(returned.task.feedback ? [returned.task.feedback] : [], unassigned(returned)), 'warning');
+
+    var late = open.filter(function (e) { return Tasks.isOverdue(e.task, reference); }).sort(byDeadline)[0];
+    if (late) {
+      var d = -Progress.daysUntil(late.task.deadline.slice(0, 10), reference);
+      return pick(late, 'overdue', [d <= 0 ? 'Termin minął dziś' : days(d) + ' po terminie'].concat(unassigned(late)), 'alarm');
+    }
+
+    var review = open.filter(function (e) { return e.task.status === 'review'; }).sort(byDeadline)[0];
+    if (review) return pick(review, 'review', ['Czeka na zatwierdzenie'].concat(unassigned(review)), 'normal');
+
+    var active = Progress.activeStage(project);
+    var orphan = open.filter(function (e) { return !(e.task.assignees || []).length && (!active || e.stage.id === active.id); }).sort(byDeadline)[0];
+    if (orphan) return pick(orphan, 'unassigned', ['Brak realizatora'].concat(orphan.task.deadline ? ['Termin ' + when(Math.max(0, Progress.daysUntil(orphan.task.deadline.slice(0, 10), reference)))] : []), 'warning');
+
+    var next = nextEvent(project, reference);
+    if (next && next.days <= 14) {
+      var target = next.kind === 'task' ? open.filter(function (e) { return e.task.name === next.label && e.task.deadline === next.date; })[0] : null;
+      var stageTarget = next.kind === 'stage' ? (project.stages || []).filter(function (st) { return Model.describeStage(st).name === next.label && st.deadline === next.date; })[0] : null;
+      return {
+        rule: 'next-event', kind: target ? 'task' : (stageTarget ? 'stage' : 'project'), title: next.kind === 'project' ? 'Termin umowy' : next.label,
+        parts: [EVENT_NAME[next.kind] + ' ' + when(next.days)].concat(target ? unassigned(target) : []),
+        tone: next.days <= 3 ? 'warning' : 'normal',
+        stageId: target ? target.stage.id : (stageTarget ? stageTarget.id : null), taskId: target ? target.task.id : null
+      };
+    }
+    return null;
+  }
+
   var api = {
+    threshold: threshold,
+    variance: variance,
+    nextAction: nextAction,
     LEVELS: LEVELS,
     LAG_WARNING: LAG_WARNING,
     LAG_ALARM: LAG_ALARM,

@@ -18,7 +18,7 @@
   var Icons = E.Icons;
   var F = E.Format;
 
-  var KIND = { task: 'Zadanie', person: 'Osoba', project: 'Podgląd projektu' };
+  var KIND = { task: 'Zadanie', person: 'Osoba', project: 'Podgląd projektu', plan: 'Plan i odchylenia' };
 
   /** Czas pracy zapisany na zadaniu: razem i na osoby, plus start zegara i wpis ręczny. */
   function timeBlock(project, stage, task, assigned, ctx) {
@@ -234,7 +234,87 @@
     };
   }
 
-  var VIEWS = { task: taskView, person: personView, project: projectView };
+  /* ---------- Plan i odchylenia ---------- */
+
+  function sign(n, unit) { return (n > 0 ? '+' : (n < 0 ? '−' : '±')) + String(Math.abs(n)).replace('.', ',') + ' ' + unit; }
+
+  function varianceRow(title, cells, note, tone) {
+    return D.el('section', { class: 'vrow' + (tone ? ' vrow--' + tone : '') }, [
+      D.el('h3', { class: 'vrow__title', text: title }),
+      D.el('dl', { class: 'vrow__cells' }, cells.map(function (c) {
+        return D.el('div', { class: 'vrow__cell' + (c.strong ? ' vrow__cell--strong' : '') }, [
+          D.el('dt', { text: c.label }),
+          D.el('dd', { class: 't-num', text: c.value })
+        ]);
+      })),
+      note ? D.el('p', { class: 'vrow__note t-meta', text: note }) : null
+    ]);
+  }
+
+  function planView(ref, ctx) {
+    var project = ctx.findProject(ref.projectId);
+    if (!project) return null;
+    var now = new Date();
+    var minutes = E.TimeLog.projectMinutes(ctx.entries || [], project.id);
+    var v = Insight.variance(project, now, minutes);
+
+    var p = v.progress;
+    var progressRow = p.available
+      ? varianceRow('Postęp', [
+          { label: 'Rzeczywisty', value: p.actual + '%' },
+          { label: 'Plan na dziś', value: p.plan + '%' },
+          { label: 'Odchylenie', value: sign(p.variance, 'pp'), strong: true }
+        ], 'Plan: tyle, ile upłynęło z czasu umowy (liniowo od utworzenia projektu).', p.variance <= -Insight.LAG_ALARM ? 'alarm' : (p.variance <= -Insight.LAG_WARNING ? 'warning' : ''))
+      : varianceRow('Postęp', [{ label: 'Rzeczywisty', value: p.actual + '%' }],
+          p.reason === 'done' ? 'Projekt zakończony.' : 'Ustaw termin umowy, żeby zobaczyć plan.');
+
+    var h = v.hours;
+    var hoursRow = h.available
+      ? varianceRow('Godziny', [
+          { label: 'Zapisane', value: String(h.used).replace('.', ',') + ' h' },
+          { label: 'Oczekiwane na dziś', value: h.expected + ' h' },
+          { label: 'Odchylenie', value: sign(h.variance, 'h'), strong: true }
+        ], 'Zapisane z zegara i wpisów ręcznych; oczekiwane = plan × budżet ' + F.hours(h.budget) + '.', h.variance > 0.1 * h.budget ? 'warning' : '')
+      : varianceRow('Godziny', [{ label: 'Budżet', value: h.budget ? F.hours(h.budget) : '—' }],
+          h.reason === 'no-time-logged' ? 'Nikt jeszcze nie zapisał czasu — odchylenie pojawi się po pierwszych wpisach.' : (h.reason === 'no-budget' ? 'Etapy nie mają budżetu godzin.' : 'Ustaw termin umowy, żeby zobaczyć plan.'));
+
+    var sc = v.schedule;
+    var scheduleRow;
+    if (sc.available) {
+      scheduleRow = varianceRow('Termin', [
+        { label: 'Umowny', value: F.date(sc.contract, { year: 'always' }) },
+        { label: 'Prognoza', value: F.date(sc.forecast, { year: 'always' }) },
+        { label: 'Odchylenie', value: sign(sc.days, sc.days === 1 || sc.days === -1 ? 'dzień' : 'dni'), strong: true }
+      ], 'Szacunek liniowy: dotychczasowe tempo utrzymane do końca. Zmienia się z każdym zakończonym etapem.', sc.days >= 14 ? 'alarm' : (sc.days > 0 ? 'warning' : ''));
+    } else {
+      var reasons = {
+        'too-early': 'Za wcześnie na prognozę — potrzeba co najmniej tygodnia pracy.',
+        'no-progress': 'Za wcześnie na prognozę — potrzeba co najmniej 5% postępu.',
+        'no-deadline': 'Ustaw termin umowy, żeby zobaczyć prognozę.',
+        'no-start': 'Brak daty utworzenia projektu.',
+        done: 'Projekt zakończony.'
+      };
+      scheduleRow = varianceRow('Termin', [{ label: 'Umowny', value: sc.contract ? F.date(sc.contract, { year: 'always' }) : '—' }], reasons[sc.reason] || '');
+    }
+
+    var rows = { progress: progressRow, hours: hoursRow, schedule: scheduleRow };
+    var order = ['progress', 'hours', 'schedule'];
+    if (v.primary) order = [v.primary].concat(order.filter(function (k) { return k !== v.primary; }));
+
+    return {
+      title: 'Plan i odchylenia',
+      body: [
+        D.el('div', { class: 'insp-title' }, [
+          D.el('div', { class: 'insp-title__row' }, [D.el('span', { class: 'code', text: project.code })]),
+          D.el('h2', { class: 'insp-title__text', text: 'Plan i odchylenia', attrs: { id: 'inspector-title', tabindex: '-1' } }),
+          D.el('p', { class: 't-secondary', text: project.name })
+        ])
+      ].concat(order.map(function (k) { return rows[k]; })),
+      foot: [UI.button({ label: 'Zamknij', variant: 'secondary', size: 'sm', onClick: ctx.actions.closeInspector })]
+    };
+  }
+
+  var VIEWS = { task: taskView, person: personView, project: projectView, plan: planView };
   var lastKey = null;
 
   /**

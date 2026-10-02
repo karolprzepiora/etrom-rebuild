@@ -300,8 +300,8 @@ async function main() {
     await sleep(200);
     await evaluate('document.querySelector(".upcoming__item").click(); return true;');
     await sleep(1500);
-    check('termin z kokpitu otwiera projekt na właściwym etapie',
-      /^#\/projekty\/\d+/.test(await evaluate('return location.hash;')));
+    const hashAfter = await evaluate('return location.hash;');
+    check('termin z kokpitu otwiera projekt na właściwym etapie', /^#\/projekty\/\d+/.test(hashAfter), hashAfter);
     await go('#/projekty');
 
     /* 8. Szczegóły projektu pod własnym adresem */
@@ -871,7 +871,25 @@ async function main() {
     check('stan projektu to drabinka progów z jednym aktywnym szczeblem i powodem słowami',
       await evaluate('const r = document.querySelectorAll(".level--hero .rung"); return r.length === 3 && document.querySelectorAll(".level--hero .rung[aria-current=\\"true\\"]").length === 1 && document.querySelector(".level__lead").textContent.length > 8;'));
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
-      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".level button");'));
+      await evaluate('return !!document.querySelector(".workspace-head__id .detail__status") && !document.querySelector(".level .rung button");'));
+    check('stan projektu pokazuje „Najbliższy próg” albo przyczynę, a powody są klikalne',
+      await evaluate('return !!document.querySelector(".level__reason") && (!!document.querySelector(".level__limit") || document.querySelector(".level--alarm"));'));
+    check('„Najbliższa akcja” wskazuje zadanie z krótkim powodem',
+      await evaluate('const n = document.querySelector(".naction--alarm, .naction--warning, .naction--normal"); return !!n && n.querySelector(".naction__title").textContent.length > 3 && !!n.querySelector(".naction__lead");'));
+    check('zespół w nagłówku nie powtarza tej samej osoby',
+      await evaluate('const n = [...document.querySelectorAll(".signatures__list .signature__name")].map(x => x.textContent); return n.length === new Set(n).size;'));
+    await click('[data-fk="gauge-detail"]');
+    await sleep(400);
+    check('klik w odczyt miernika otwiera plan i odchylenia z trzema sekcjami',
+      await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && i.querySelectorAll(".vrow").length === 3;'));
+    await pressKey('escape');
+    await sleep(250);
+    await click('[data-fk="next-action"]');
+    await sleep(400);
+    check('„Przejdź do zadania” otwiera inspektor tego zadania',
+      await evaluate('const i = document.getElementById("inspector"); return !!i && !i.hidden && !!i.querySelector(".history");'));
+    await pressKey('escape');
+    await sleep(250);
     await click('.gauge__note');
     await sleep(500);
     check('podpis etapu w mierniku prowadzi do bieżącego etapu na liście',

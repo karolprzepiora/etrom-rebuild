@@ -216,6 +216,9 @@ async function main() {
     await viewport(1440, 1500);
     await go('#/projekty/' + id2);
     await shoot('projekt', { full: true });
+    await run('window.ETROM.app.actions.inspect({ kind: "plan", projectId: ' + id2 + ' }); return true;');
+    await shoot('projekt-plan', { wait: 400 });
+    await run('window.ETROM.app.actions.closeInspector(); return true;');
     await theme('dark');
     await shoot('projekt-ciemny', { full: true });
     await theme('light');

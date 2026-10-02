@@ -152,8 +152,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 217 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 151 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 226 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 156 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
@@ -281,3 +281,12 @@ w teście przeglądarkowym.
 - Nagłówek: termin umowy jest w torze czasu i w stanie projektu, więc fakt „Termin umowy” zastąpił „Zapisany czas”; liczba etapów nie powtarza się w faktach.
 - Flow: etap z zadaniami po terminie ma kropkę alarmu na torze.
 - Zegar: „Wznów ostatnie” w Mojej pracy i skrót klawiszowy T (zatrzymaj / wznów).
+
+## Project Workspace — Project Intelligence Pass
+
+- **Gauge:** rzeczywisty postęp, plan (upływ czasu umowy), linia odchylenia i odczyt „Za planem o N pp”; klik otwiera panel „Plan i odchylenia”.
+- **Plan i odchylenia** (`Insight.variance`): postęp (pp), godziny zapisane vs oczekiwane na dziś (h), termin umowny vs prognoza liniowa (dni). Brak danych = brak liczby i jawny powód (nic nie jest zgadywane); prognoza dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu.
+- **Stan projektu:** osobny od postępu; przyczyna, „Najbliższy próg” (`Insight.threshold`), powody klikalne (prowadzą do zadań, etapu albo planu).
+- **Najbliższa akcja** (`Insight.nextAction`): zwrócone → zaległe → do zatwierdzenia → bez realizatora → termin ≤ 14 dni; inaczej „Brak działań wymagających uwagi”.
+- **Hero:** Budżet godzin (z odchyleniem), Zadania otwarte, Termin (z prognozą); zespół bez powtórzeń osób („Lider · Koordynator”).
+- **Aktywny etap:** delikatny tint i cienka szyna zamiast pełnego wypełnienia.

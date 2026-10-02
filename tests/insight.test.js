@@ -258,3 +258,98 @@ test('myWork dzieli zadania osoby na przedziały czasu i wskazuje, co wymaga jej
   assert.equal(lead.projects[0].functions[0].key, 'leader');
   assert.equal(Insight.myWork(null, [p], NOW).open, 0);
 });
+
+/* ---------- odchylenia, najbliższy próg, najbliższa akcja ---------- */
+
+test('variance: postęp vs plan, bez zgadywania godzin gdy nikt nie zapisał czasu', () => {
+  const v = Insight.variance(project(), NOW, 0);
+  assert.equal(v.progress.available, true);
+  assert.equal(v.progress.variance, v.progress.actual - v.progress.plan);
+  assert.equal(v.hours.available, false);
+  assert.equal(v.hours.reason, 'no-time-logged');
+});
+
+test('variance: godziny zapisane vs oczekiwane na dziś', () => {
+  const p = project();
+  const plan = Insight.schedule(p, NOW).expected;
+  const total = 200;
+  const v = Insight.variance(p, NOW, 60 * 120);
+  assert.equal(v.hours.available, true);
+  assert.equal(v.hours.used, 120);
+  assert.equal(v.hours.expected, Math.round(plan / 100 * total));
+  assert.equal(v.hours.variance, 120 - v.hours.expected);
+});
+
+test('variance: bez terminu nie ma planu ani prognozy', () => {
+  const v = Insight.variance(project({ deadline: '' }), NOW, 600);
+  assert.equal(v.progress.available, false);
+  assert.equal(v.progress.reason, 'no-deadline');
+  assert.equal(v.schedule.available, false);
+  assert.equal(v.schedule.reason, 'no-deadline');
+  assert.equal(v.hours.available, false);
+});
+
+test('variance: prognoza dopiero przy ≥ 7 dniach pracy i ≥ 5% postępu', () => {
+  const young = Insight.variance(project({ createdAt: '2026-09-30T08:00:00.000Z' }), NOW, 0);
+  assert.equal(young.schedule.reason, 'too-early');
+  const idle = Insight.variance(project({ stages: [stage('preparation', 'todo', 40), stage('concept', 'todo', 80)] }), NOW, 0);
+  assert.equal(idle.schedule.reason, 'no-progress');
+  const ok = Insight.variance(project(), NOW, 0);
+  assert.equal(ok.schedule.available, true);
+  assert.match(ok.schedule.forecast, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(typeof ok.schedule.days, 'number');
+});
+
+test('variance: projekt zakończony i 100% nie mają prognozy', () => {
+  assert.equal(Insight.variance(project({ status: 'done' }), NOW, 0).schedule.reason, 'done');
+  assert.equal(Insight.variance(project({ status: 'done' }), NOW, 0).progress.available, false);
+});
+
+test('threshold: norma → najbliższy termin, ostrzeżenie → termin umowy, alarm → brak', () => {
+  const calm = Insight.threshold(project(), NOW);
+  assert.match(calm.text, /Termin .* za \d+ dni\./);
+  const late = Insight.threshold(project({ deadline: '2026-09-01' }), NOW);
+  assert.equal(late, null);
+  const warn = project({ stages: [stage('preparation', 'done', 40), stage('concept', 'working', 80, '2026-09-20'), stage('handover', 'todo', 80)] });
+  const t = Insight.threshold(warn, NOW);
+  assert.equal(Insight.health(warn, NOW).level, 'warning');
+  assert.match(t.text, /^Alarm, jeśli termin umowy minie/);
+  assert.equal(Insight.threshold(project({ status: 'done' }), NOW), null);
+});
+
+test('nextAction: zwrócone > zaległe > do zatwierdzenia > bez realizatora > termin', () => {
+  const mk = (tasks) => project({ stages: [stage('preparation', 'working', 40, '', tasks)] });
+  const late = task({ id: 't-1', name: 'Zaległe', status: 'working', deadline: '2026-09-28T12:00', assignees: ['p-1'] });
+  const ret = task({ id: 't-2', name: 'Zwrócone', status: 'changes', feedback: 'Popraw opis', assignees: ['p-1'] });
+  const rev = task({ id: 't-3', name: 'Do akceptu', status: 'review', assignees: ['p-1'] });
+  const orphan = task({ id: 't-4', name: 'Bez osoby', status: 'todo', deadline: '2026-10-09T12:00' });
+
+  assert.equal(Insight.nextAction(mk([late, ret, rev, orphan]), NOW).rule, 'returned');
+  const a = Insight.nextAction(mk([late, rev, orphan]), NOW);
+  assert.equal(a.rule, 'overdue');
+  assert.equal(a.tone, 'alarm');
+  assert.equal(a.taskId, 't-1');
+  assert.match(a.parts[0], /po terminie/);
+  assert.equal(Insight.nextAction(mk([rev, orphan]), NOW).rule, 'review');
+  const o = Insight.nextAction(mk([orphan]), NOW);
+  assert.equal(o.rule, 'unassigned');
+  assert.deepEqual(o.parts.slice(0, 1), ['Brak realizatora']);
+  assert.equal(o.stageId, 'preparation');
+});
+
+test('nextAction: nic pilnego → null; zakończony → null; termin etapu bez zadań', () => {
+  const calm = project({ deadline: '2027-12-31', stages: [stage('preparation', 'working', 40, '2027-01-10')] });
+  assert.equal(Insight.nextAction(calm, NOW), null);
+  assert.equal(Insight.nextAction(project({ status: 'done' }), NOW), null);
+  const soon = project({ stages: [stage('preparation', 'working', 40, '2026-10-06')] });
+  const a = Insight.nextAction(soon, NOW);
+  assert.equal(a.rule, 'next-event');
+  assert.equal(a.kind, 'stage');
+  assert.equal(a.stageId, 'preparation');
+});
+
+test('nextAction: projekt bez zespołu i bez zadań nie wywraca obliczeń', () => {
+  const bare = project({ team: undefined, stages: [] });
+  assert.equal(Insight.nextAction(bare, NOW), null);
+  assert.equal(Insight.variance(bare, NOW, 0).progress.actual, 0);
+});

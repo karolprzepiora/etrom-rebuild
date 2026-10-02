@@ -186,3 +186,17 @@ button.flow__seg:focus-visible { outline: 2px solid var(--flow); outline-offset:
 /* Etap z zadaniami po terminie: kropka alarmu w rogu odcinka */
 .flow--hero .flow__seg.has-late { position: relative; }
 .flow--hero .flow__seg.has-late::after { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--alarm); box-shadow: 0 0 0 2px var(--sheet, canvas); }
+
+/* Gauge: linia odchylenia między rzeczywistym a planowanym postępem */
+.gauge__gap { position: absolute; left: calc(var(--gauge-axis) + 6px); bottom: calc(var(--lo) * 1%); height: calc((var(--hi) - var(--lo)) * 1%); width: 0; border-left: 2px dotted var(--ink-3); }
+.gauge__gap--warning { border-left-color: var(--warn); }
+.gauge__gap--alarm { border-left-color: var(--alarm); }
+button.gauge__lag { all: unset; display: grid; gap: 1px; margin-top: var(--space-2); font-size: var(--fs-sm); cursor: pointer; border-radius: var(--radius-sm); padding: 2px 4px; margin-left: -4px; }
+button.gauge__lag:hover { background: var(--hover); }
+button.gauge__lag:focus-visible { box-shadow: var(--focus-ring); }
+
+.level__reason { all: unset; cursor: pointer; border-radius: var(--radius-sm); }
+.level__reason:hover { text-decoration: underline; text-underline-offset: 3px; }
+.level__reason:focus-visible { box-shadow: var(--focus-ring); }
+.level__limit { display: grid; gap: 1px; margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.level__limit-label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 500; }

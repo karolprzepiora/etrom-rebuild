@@ -75,10 +75,13 @@
     ];
   }
 
-  function fact(label, value, sub, tone) {
-    return D.el('div', { class: 'fact' + (tone ? ' fact--' + tone : '') }, [
+  function fact(label, value, sub, tone, onClick) {
+    var nodes = typeof value === 'string' ? [D.el('span', { text: value })] : value;
+    return D.el('div', { class: 'fact' + (tone ? ' fact--' + tone : '') + (onClick ? ' fact--link' : '') }, [
       D.el('dt', { class: 'fact__label', text: label }),
-      D.el('dd', { class: 'fact__value' }, typeof value === 'string' ? [D.el('span', { text: value })] : value),
+      D.el('dd', { class: 'fact__value' }, onClick
+        ? [D.el('button', { class: 'fact__hit', attrs: { type: 'button', 'aria-label': label + ': ' + (typeof value === 'string' ? value : nodes.map(function (n) { return n.textContent; }).join('')) + '. Pokaż szczegóły.', 'data-fk': 'fact-' + label }, on: { click: onClick } }, nodes)]
+        : nodes),
       sub ? D.el('dd', { class: 'fact__sub', text: sub }) : null
     ]);
   }
@@ -110,40 +113,69 @@
     }, body);
   }
 
-  function facts(project, now, entries) {
+  function facts(project, now, entries, ctx) {
     var stats = Progress.projectProgress(project);
     var loggedMinutes = E.TimeLog.projectMinutes(entries || [], project.id);
     var tasks = Tasks.projectTaskStats(project, now);
-    var active = Progress.activeStage(project);
-    var info = Progress.deadlineInfo(project.deadline, now);
+    var v = Insight.variance(project, now, loggedMinutes);
     var done = project.status === 'done';
+    var info = Progress.deadlineInfo(project.deadline, now);
+    var openPlan = function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); };
+
+    // Budżet godzin: wykonane z budżetu; podpis — zapis z zegara względem oczekiwań.
+    var hoursSub = v.hours.available
+      ? String(v.hours.used).replace('.', ',') + ' h zapisano · ' + (v.hours.variance > 0 ? '+' : (v.hours.variance < 0 ? '−' : '±')) + String(Math.abs(v.hours.variance)).replace('.', ',') + ' h wobec planu'
+      : (loggedMinutes ? 'zapisano ' + String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') + ' h' : 'wg budżetu etapów');
+    var hoursTone = v.hours.available && stats.hoursTotal && v.hours.variance > 0.1 * stats.hoursTotal ? 'warn' : '';
+
+    // Termin: data umowy; podpis — prognoza, a bez niej odliczanie.
+    var deadlineSub;
+    var deadlineTone = '';
+    if (done) deadlineSub = 'projekt zakończony';
+    else if (v.schedule.available) {
+      var dd = v.schedule.days;
+      deadlineSub = 'Prognoza ' + F.date(v.schedule.forecast) + (dd === 0 ? ' · zgodnie z terminem' : ' · ' + (dd > 0 ? '+' : '−') + Math.abs(dd) + ' ' + (Math.abs(dd) === 1 ? 'dzień' : 'dni'));
+      deadlineTone = dd >= 14 ? 'alarm' : (dd > 0 ? 'warn' : '');
+    } else if (project.deadline) {
+      deadlineSub = Progress.countdown(project.deadline, now).text;
+      deadlineTone = info.tone === 'overdue' ? 'alarm' : (info.tone === 'urgent' ? 'warn' : '');
+    } else deadlineSub = '';
+
     return D.el('dl', { class: 'facts' }, [
-      fact('Godziny wykonane', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], 'wg budżetu etapów'),
+      fact('Budżet godzin', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], hoursSub, hoursTone, openPlan),
       fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
-        tasks.overdue ? 'alarm' : ''),
-      fact('Zapisany czas', [D.el('span', { class: 't-num', text: loggedMinutes ? String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') : '0' }), D.el('span', { class: 'fact__of t-num', text: ' h' })],
-        loggedMinutes && stats.hoursTotal ? Math.round(loggedMinutes / 60 / stats.hoursTotal * 100) + '% budżetu' : 'rejestr czasu pusty')
+        tasks.overdue ? 'alarm' : '', function () { ctx.actions.openProject(project.id, 'zadania'); }),
+      fact('Termin umowy', project.deadline ? [D.el('span', { class: 't-num', text: F.date(project.deadline, { year: 'always' }) })] : 'Bez terminu', deadlineSub, deadlineTone, project.deadline ? openPlan : null)
     ]);
   }
 
   function signatures(project, ctx) {
     var team = project.team || Team.emptyTeam();
-    var rows = Team.FUNCTIONS.map(function (fn) {
+    // Jedna osoba w kilku rolach pojawia się raz: „Lider · Koordynator”.
+    var order = [];
+    var roles = {};
+    Team.FUNCTIONS.forEach(function (fn) {
       var person = Team.findPerson(ctx.people, team[fn.key]);
-      if (!person) return null;
+      if (!person) return;
+      if (!roles[person.id]) { roles[person.id] = { person: person, labels: [] }; order.push(person.id); }
+      roles[person.id].labels.push(fn.label);
+    });
+    var rows = order.map(function (id) {
+      var person = roles[id].person;
+      var label = roles[id].labels.join(' · ');
       return D.el('li', null, [D.el('button', {
         class: 'signature',
-        attrs: { type: 'button', 'aria-label': fn.label + ': ' + Team.fullName(person) + '. Pokaż szczegóły osoby.' },
+        attrs: { type: 'button', 'aria-label': label + ': ' + Team.fullName(person) + '. Pokaż szczegóły osoby.', 'data-tooltip': label },
         on: { click: function () { ctx.actions.inspect({ kind: 'person', personId: person.id }); } }
       }, [
         Avatar.avatar(person, { size: 'sm', tooltip: false }),
         D.el('span', { class: 'signature__text' }, [
-          D.el('span', { class: 'signature__role', text: fn.label }),
+          D.el('span', { class: 'signature__role', text: label }),
           D.el('span', { class: 'signature__name truncate', text: Team.fullName(person) })
         ])
       ])]);
-    }).filter(Boolean);
+    });
     var members = (team.members || []).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
     if (!rows.length && !members.length) {
       return D.el('div', { class: 'signatures signatures--empty' }, [
@@ -159,9 +191,46 @@
     ]);
   }
 
+  /** Powód stanu prowadzi tam, gdzie można go usunąć. */
+  function reasonTarget(project, reason, ctx) {
+    var open = function (tab) { ctx.actions.openProject(project.id, tab); };
+    if (reason.rule === 'tasks-late' || reason.rule === 'tasks-returned') { open('zadania'); return; }
+    if (reason.rule === 'stages-late') {
+      var late = (project.stages || []).filter(function (st) { return st.status !== 'done' && Progress.daysUntil(st.deadline, new Date()) < 0; })[0];
+      if (late) { ctx.actions.revealStage(project.id, late.id); return; }
+    }
+    ctx.actions.inspect({ kind: 'plan', projectId: project.id });
+  }
+
+  /** „Co powinienem zrobić teraz?” — jedna, najpilniejsza pozycja. */
+  function nextAction(project, now, ctx) {
+    var action = Insight.nextAction(project, now);
+    if (!action) {
+      return D.el('div', { class: 'naction naction--calm' }, [
+        D.el('span', { class: 'naction__label', text: 'Najbliższa akcja' }),
+        D.el('p', { class: 'naction__calm', text: project.status === 'done' ? 'Projekt zakończony.' : 'Brak działań wymagających uwagi.' })
+      ]);
+    }
+    var go = function () {
+      if (action.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: action.stageId, taskId: action.taskId });
+      else if (action.kind === 'stage') ctx.actions.revealStage(project.id, action.stageId);
+      else ctx.actions.inspect({ kind: 'plan', projectId: project.id });
+    };
+    return D.el('div', { class: 'naction naction--' + action.tone }, [
+      D.el('span', { class: 'naction__label', text: 'Najbliższa akcja' }),
+      D.el('p', { class: 'naction__title', text: action.title }),
+      D.el('p', { class: 'naction__parts t-meta' }, action.parts.map(function (part, i) {
+        return D.el('span', { class: i === 0 ? 'naction__lead' : '', text: part });
+      })),
+      D.el('button', { class: 'naction__go', attrs: { type: 'button', 'data-fk': 'next-action' }, on: { click: go } }, [
+        D.el('span', { text: action.kind === 'task' ? 'Przejdź do zadania' : (action.kind === 'stage' ? 'Przejdź do etapu' : 'Pokaż szczegóły') }),
+        E.Icons.icon('chevronRight', 14)
+      ])
+    ]);
+  }
+
   function header(project, ctx, now) {
     var health = Insight.health(project, now);
-    var next = Insight.nextEvent(project, now);
     var from = ctx.motion && ctx.motion.progressFrom;
     var Flow = E.Flow;
     var reveal = function (stageId) { ctx.actions.revealStage(project.id, stageId); };
@@ -176,26 +245,19 @@
       D.el('div', { class: 'workspace-head__grid' }, [
         D.el('section', { class: 'course', attrs: { 'aria-label': 'Przebieg projektu' } }, [
           D.el('div', { class: 'course__gauge' }, [
-            Flow.gauge(project, { now: now, from: typeof from === 'number' ? from : undefined, onStage: reveal })
+            Flow.gauge(project, { now: now, from: typeof from === 'number' ? from : undefined, onStage: reveal, onDetail: function () { ctx.actions.inspect({ kind: 'plan', projectId: project.id }); } })
           ]),
           D.el('div', { class: 'course__body' }, [
             stageNow(project, ctx),
             Flow.flowTrack(project, { now: now, onSegment: reveal }),
             Flow.timeline(project, now),
-            facts(project, now, ctx.state && ctx.state.workspace.entries),
+            facts(project, now, ctx.state && ctx.state.workspace.entries, ctx),
             signatures(project, ctx)
           ])
         ]),
         D.el('aside', { class: 'workspace-head__side' }, [
-          Flow.level(project, { now: now }),
-          next ? D.el('div', { class: 'next' }, [
-            D.el('span', { class: 'next__label', text: 'Najbliżej' }),
-            D.el('span', { class: 'next__what' }, [
-              E.Flow.marker('deadline', { level: next.days <= 3 ? 'warning' : 'normal' }),
-              D.el('span', { class: 'next__when t-num', text: next.days === 0 ? 'Dziś' : (next.days === 1 ? 'Jutro' : 'Za ' + next.days + ' dni') }),
-              D.el('span', { class: 'truncate', text: EVENT_KIND[next.kind] + (next.kind === 'project' ? '' : ': ' + next.label) })
-            ])
-          ]) : null
+          Flow.level(project, { now: now, onReason: function (reason) { reasonTarget(project, reason, ctx); } }),
+          nextAction(project, now, ctx)
         ])
       ])
     ]);

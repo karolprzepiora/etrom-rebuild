@@ -54,12 +54,26 @@
     var lag = Math.round(g.lag);
     if (lag >= 1) {
       return {
-        text: 'Opóźnienie ' + lag + ' pkt',
+        text: 'Za planem o ' + lag + ' pp',
         level: lag >= Insight.LAG_ALARM ? 'alarm' : (lag >= Insight.LAG_WARNING ? 'warning' : 'normal')
       };
     }
-    if (lag <= -1) return { text: 'Zapas ' + (-lag) + ' pkt', level: 'normal' };
+    if (lag <= -1) return { text: 'Przed planem o ' + (-lag) + ' pp', level: 'normal' };
     return { text: 'Zgodnie z planem', level: 'normal' };
+  }
+
+  /** Plan i odchylenie pod liczbą; z onDetail to przycisk otwierający szczegóły plan vs rzeczywistość. */
+  function lagBlock(g, lag, onDetail) {
+    var kids = [
+      D.el('span', { class: 'gauge__lag-plan t-num', text: 'Plan ' + g.expected + '%' }),
+      D.el('span', { class: 'gauge__lag-text', text: lag.text })
+    ];
+    if (typeof onDetail !== 'function') return D.el('span', { class: 'gauge__lag gauge__lag--' + lag.level }, kids);
+    return D.el('button', {
+      class: 'gauge__lag gauge__lag--' + lag.level + ' gauge__lag--link',
+      attrs: { type: 'button', 'aria-label': 'Plan ' + g.expected + '%, ' + lag.text + '. Pokaż plan i odchylenia.', 'data-tooltip': 'Plan i odchylenia', 'data-fk': 'gauge-detail' },
+      on: { click: onDetail }
+    }, kids);
   }
 
   function gaugeLabel(g) {
@@ -115,6 +129,13 @@
         marker('plan', { tooltip: 'Plan: ' + g.expected + '% — tyle czasu umowy już minęło' })
       ]));
     }
+    if (g.expected !== null && Math.abs(g.expected - g.percent) >= 1) {
+      nodes.push(D.el('span', {
+        class: 'gauge__gap' + (lag && lag.level !== 'normal' ? ' gauge__gap--' + lag.level : ''),
+        style: { '--lo': String(Math.min(g.expected, g.percent)), '--hi': String(Math.max(g.expected, g.percent)) },
+        attrs: { 'aria-hidden': 'true' }
+      }));
+    }
     var now = D.el('span', { class: 'gauge__now', style: { '--at': String(from) }, dataset: { to: String(g.percent) } }, [marker('now')]);
     nodes.push(now);
 
@@ -145,10 +166,7 @@
           D.el('span', { class: 'gauge__unit', text: '%' })
         ]),
         D.el('span', { class: 'gauge__caption', text: g.stages.length ? 'postępu prac' : 'brak etapów' }),
-        lag ? D.el('span', { class: 'gauge__lag gauge__lag--' + lag.level }, [
-          D.el('span', { class: 'gauge__lag-plan t-num', text: 'Plan ' + g.expected + '%' }),
-          D.el('span', { class: 'gauge__lag-text', text: lag.text })
-        ]) : null
+        lag ? lagBlock(g, lag, o.onDetail) : null
       ]),
       scale
     ]);
@@ -338,16 +356,31 @@
         });
 
     var calm = l.closed ? 'Projekt zakończony i zamknięty.' : 'Terminy i zadania bez zaległości.';
+    var limit = l.closed ? null : Insight.threshold(project, o.now);
+    var linkable = typeof o.onReason === 'function';
+
+    function reasonNode(r, tag, cls) {
+      if (!linkable) return D.el(tag, { class: cls, text: r.text });
+      return D.el(tag, { class: cls }, [D.el('button', {
+        class: 'level__reason', text: r.text,
+        attrs: { type: 'button', 'data-tooltip': 'Pokaż, gdzie to naprawić', 'data-fk': 'reason-' + r.rule },
+        on: { click: function () { o.onReason(r); } }
+      })]);
+    }
 
     return D.el('section', { class: 'level level--hero level--' + l.level, attrs: { 'aria-label': 'Stan projektu: ' + l.label } }, [
       D.el('p', { class: 'level__kicker', text: 'Stan projektu' }),
       D.el('ol', { class: 'level__ladder' }, rungs),
       lead && !l.closed
-        ? D.el('p', { class: 'level__lead', text: lead.text })
+        ? reasonNode(lead, 'p', 'level__lead')
         : D.el('p', { class: 'level__lead level__lead--calm', text: calm }),
       others.length ? D.el('ul', { class: 'level__more' }, others.map(function (r) {
-        return D.el('li', { class: 'reason--' + r.level, text: r.text });
-      })) : null
+        return reasonNode(r, 'li', 'reason--' + r.level);
+      })) : null,
+      limit ? D.el('p', { class: 'level__limit' }, [
+        D.el('span', { class: 'level__limit-label', text: 'Najbliższy próg' }),
+        D.el('span', { text: limit.text })
+      ]) : null
     ]);
   }
 
