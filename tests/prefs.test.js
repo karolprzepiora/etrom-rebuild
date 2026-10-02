@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [] };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [], me: null };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -88,4 +88,13 @@ test('zablokowany zapis zwraca false zamiast wyjątku', () => {
   });
   assert.deepEqual(prefs.load(), Prefs.defaults());
   assert.equal(prefs.save({ theme: 'dark' }), false);
+});
+
+test('preferencja „ja” przyjmuje tylko identyfikator osoby', () => {
+  const Prefs = require('../src/core/prefs.js');
+  assert.equal(Prefs.normalize({ me: 'p-3' }).me, 'p-3');
+  assert.equal(Prefs.normalize({ me: 'x' }).me, null);
+  assert.equal(Prefs.normalize({ me: 7 }).me, null);
+  assert.equal(Prefs.normalize({}).me, null);
+  assert.equal(Prefs.defaults().me, null);
 });

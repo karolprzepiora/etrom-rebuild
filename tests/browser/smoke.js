@@ -178,6 +178,8 @@ async function main() {
     // Prawdziwe zdarzenia klawiatury — inaczej natywny <dialog> nie zareaguje na Escape.
     const KEYS = {
       n: { key: 'n', code: 'KeyN', vk: 78, text: 'n' },
+      g: { key: 'g', code: 'KeyG', vk: 71, text: 'g' },
+      m: { key: 'm', code: 'KeyM', vk: 77, text: 'm' },
       e: { key: 'e', code: 'KeyE', vk: 69, text: 'e' },
       slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
@@ -521,6 +523,33 @@ async function main() {
       await evaluate('const cells = [...document.querySelectorAll(".deadline-cell")]; return cells.length > 0 && cells.every(c => /20\\d\\d/.test(c.querySelector(".stack__main").textContent) && !!c.querySelector(".countdown"));'));
     check('licznik pokazuje liczbę dni do końca albo po terminie',
       await evaluate('return [...document.querySelectorAll(".deadline-cell .countdown")].some(c => /\\d+\\s(dni|dzień)\\s(do końca|po terminie)|zamknięty|termin dzisiaj/.test(c.textContent));'));
+
+    /* 21b. Moja praca: wybór osoby, zadania według czasu, zatwierdzanie */
+    await go('#/projekty');
+    await pressKey('g');
+    await pressKey('m');
+    await sleep(250);
+    check('skrót G M otwiera Moją pracę, a bez wybranej osoby pyta „Kim jesteś?”',
+      (await evaluate('return location.hash;')) === '#/moja-praca' && await evaluate('return !!document.querySelector(".mpick") && document.querySelectorAll(".mpick__item").length > 1;'));
+    await evaluate('const b = [...document.querySelectorAll(".mpick__item")].find(x => /Michał Testowy/.test(x.textContent)); b.click(); return true;');
+    await sleep(300);
+    check('wybór osoby zapisuje się w preferencjach i pokazuje jej zadania',
+      await evaluate('return !!document.querySelector(".mywork") && !!document.querySelector(".mywho") && document.querySelectorAll(".mrow").length > 0 && /^p-\\d+$/.test(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).me || "");'));
+    check('zadania są pogrupowane w przedziały czasu i mają projekt oraz termin',
+      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Czeka na Twoją decyzję","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .due, .mrow .due--none");'));
+    check('pasek boczny pokazuje licznik pracy osoby',
+      await evaluate('return /^\\d+$/.test(document.querySelector("[data-screen=mywork] .nav__count").textContent);'));
+    check('moje projekty pokazują funkcję i licznik dni do końca',
+      await evaluate('return document.querySelectorAll(".mproject").length > 0 && !!document.querySelector(".mproject .countdown");'));
+    await click('.mrow .trow__name');
+    await sleep(300);
+    check('klik w zadanie otwiera inspektor zadania', await evaluate('return !document.getElementById("inspector").hidden;'));
+    await pressKey('escape');
+    await click('[data-fk="my-who"]');
+    await sleep(200);
+    check('menu „Pracuję jako” pozwala zmienić osobę',
+      await evaluate('return document.querySelectorAll("[role=menuitem]").length > 1;'));
+    await pressKey('escape');
 
     /* 22. Wybór etapów przy zakładaniu projektu */
     await go('#/projekty');

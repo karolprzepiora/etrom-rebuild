@@ -221,3 +221,40 @@ test('budgetByKind liczy godziny i udziały trzech rodzajów pracy', () => {
   assert.equal(empty.length, 3);
   assert.equal(empty[1].share, 0);
 });
+
+test('myWork dzieli zadania osoby na przedziały czasu i wskazuje, co wymaga jej decyzji', () => {
+  const Team = require('../src/core/team.js');
+  const mk = (over) => Object.assign({ id: 't-' + Math.random(), name: 'Z', status: 'todo', assignees: ['p-2'], deadline: '', parts: {} }, over);
+  const team = Object.assign(Team.emptyTeam(), { leader: 'p-1', members: ['p-2'] });
+  const p = { id: 1, status: 'active', team, stages: [
+    Object.assign(Model.createStage('concept'), { status: 'working', tasks: [
+      mk({ id: 't-1', deadline: '2026-10-01T09:00' }),
+      mk({ id: 't-2', deadline: '2026-10-02T18:00' }),
+      mk({ id: 't-3', deadline: '2026-10-06T09:00' }),
+      mk({ id: 't-4', deadline: '2026-11-20T09:00' }),
+      mk({ id: 't-5' }),
+      mk({ id: 't-6', status: 'done', deadline: '2026-09-01T09:00' }),
+      mk({ id: 't-7', status: 'changes', deadline: '2026-10-09T09:00' }),
+      mk({ id: 't-8', assignees: ['p-3'] }),
+      mk({ id: 't-9', status: 'review', assignees: ['p-2'], deadline: '2026-10-03T09:00' })
+    ] })
+  ] };
+  const mine = Insight.myWork('p-2', [p], NOW);
+  const ids = (list) => list.map((r) => r.task.id);
+  assert.deepEqual(ids(mine.buckets.overdue), ['t-1']);
+  assert.deepEqual(ids(mine.buckets.today), ['t-2']);
+  assert.deepEqual(ids(mine.buckets.week), ['t-9', 't-3', 't-7']);
+  assert.deepEqual(ids(mine.buckets.later), ['t-4']);
+  assert.deepEqual(ids(mine.buckets.none), ['t-5']);
+  assert.deepEqual(ids(mine.returned), ['t-7']);
+  assert.equal(mine.open, 7);
+  assert.equal(mine.overdue, 1);
+  assert.equal(mine.toApprove.length, 0, 'zwykły członek zespołu nie zatwierdza');
+  assert.equal(mine.projects.length, 1);
+
+  const lead = Insight.myWork('p-1', [p], NOW);
+  assert.deepEqual(ids(lead.toApprove), ['t-9']);
+  assert.equal(lead.open, 0);
+  assert.equal(lead.projects[0].functions[0].key, 'leader');
+  assert.equal(Insight.myWork(null, [p], NOW).open, 0);
+});

@@ -236,6 +236,18 @@ async function main() {
     await go('#/projekty/' + id2 + '/zespol');
     await shoot('projekt-zespol');
 
+    await viewport(1440, 1100);
+    await go('#/moja-praca');
+    await shoot('moja-praca-wybor');
+    await run('const p = window.ETROM.app.store.getState().workspace.people.find(x => /Michał/.test(x.firstName)); window.ETROM.app.actions.setMe(p.id); return true;');
+    await shoot('moja-praca', { wait: 300 });
+    await theme('dark');
+    await shoot('moja-praca-ciemny');
+    await theme('light');
+    await viewport(1440, 900);
+    await run('window.ETROM.app.store.update(function (st) { return Object.assign({}, st, { prefs: Object.assign({}, st.prefs, { me: null }) }); }); return true;');
+    await go('#/projekty/' + id2 + '/zespol');
+
     await click('#action-edit-project');
     await shoot('panel', { wait: 500 });
     await run('document.getElementById("pf-code").value = ""; document.getElementById("project-form").requestSubmit(); return true;');

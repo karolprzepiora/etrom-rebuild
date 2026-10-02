@@ -46,7 +46,8 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - **etapy spoza standardu** z własną nazwą, dziedziną, budżetem i terminem,
 - kolejność etapów ustawiana w projekcie, więc własny etap może stanąć pomiędzy standardowymi,
 - status etapu przełączany kliknięciem: *Do wykonania → W toku → Zakończony*,
-- terminy z opisem stanu: *po terminie*, *termin dzisiaj*, *pozostało N dni*,
+- terminy z opisem stanu: *po terminie*, *termin dzisiaj*, *pozostało N dni*; termin projektu zawsze z rokiem i licznikiem dni do końca,
+- **Moja praca** (`#/moja-praca`, skrót `G M`): zadania wybranej osoby w przedziałach czasu (po terminie, dziś, tydzień, później), zadania do zatwierdzenia dla lidera i koordynatora, zwroty do poprawy i moje projekty; kim jest osoba przy urządzeniu, zapamiętuje preferencja „ja”,
 - szukanie po kodzie, nazwie i zamawiającym; filtry statusu i osoby; cztery sortowania,
 - tabela z przyklejonym nagłówkiem, sortowaniem z nagłówka, wyborem kolumn,
   zaznaczaniem wierszy i **akcjami zbiorczymi** (zmiana statusu, usunięcie z cofnięciem),
@@ -134,6 +135,7 @@ src/ui/                 warstwa widoku
   stageList.js          etapy
   taskList.js           zadania
   teamScreen.js         ekran Zespołu
+  myWork.js             ekran Moja praca
   *Form.js              formularze w panelu bocznym
   app.js                stan, adresy, działania, rysowanie
 tests/                  testy logiki (Node) i test przeglądarki
@@ -148,8 +150,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 205 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 127 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 208 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 136 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

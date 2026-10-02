@@ -64,14 +64,20 @@
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
     if (parts[0] === 'zespol') return { name: 'team' };
+    if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
     return { name: 'projects' };
   }
 
+  function screenOf(route) {
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : 'projects');
+  }
+
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
+    if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
     return '#/projekty';
   }
@@ -98,7 +104,7 @@
     var changedTab = !changedScreen && state.route.tab !== route.tab;
     var patch = {
       route: route,
-      screen: route.name === 'team' ? 'team' : 'projects',
+      screen: screenOf(route),
       navOpen: false,
       selection: changedScreen ? {} : state.selection
     };
@@ -144,7 +150,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : 'projects' });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : 'projects') });
   }
 
   function openProject(id, tab) {
@@ -776,6 +782,7 @@
     ['/', 'Przejdź do wyszukiwarki listy'],
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
+    ['G M', 'Przejdź do mojej pracy'],
     ['[', 'Zwiń lub rozwiń panel boczny'],
     ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
     ['Ctrl Enter', 'Zapisz formularz'],
@@ -1101,6 +1108,7 @@
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
+      { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
       { label: 'Widok: karty', icon: 'grid', meta: now(prefs.view === 'cards'), keywords: 'kafelki', run: function () { goTo('projects'); setView('cards'); } },
@@ -1191,6 +1199,7 @@
     newPerson: openNewPerson,
     clearTeamFilters: clearTeamFilters,
     goTo: goTo,
+    setMe: setMe,
     inspect: inspect,
     closeInspector: closeInspector,
     isInspected: isInspected,
@@ -1512,6 +1521,19 @@
     D.patch(nodes.teamList, [E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions)]);
   }
 
+  function renderMyWork(state) {
+    var screen = E.MyWork.view(state, { actions: actions });
+    nodes.myworkSummary.textContent = screen.summary;
+    D.render(nodes.myworkWho, screen.who ? [screen.who] : []);
+    D.patch(nodes.myworkBody, [screen.body]);
+  }
+
+  function setMe(personId) {
+    setPref({ me: personId });
+    var person = Team.findPerson(people(), personId);
+    if (person) Toast.show({ message: 'Pracujesz jako ' + Team.fullName(person) + '.', tone: 'info', timeout: 3000 });
+  }
+
   function renderNotice(state) {
     if (!state.notice) { D.clear(nodes.notice); return; }
     D.render(nodes.notice, [UI.alert({ tone: 'info', text: state.notice, onDismiss: function () { store.set({ notice: '' }); } })]);
@@ -1577,6 +1599,7 @@
     nodes.views.projects.hidden = route.name !== 'projects';
     nodes.views.project.hidden = route.name !== 'project';
     nodes.views.team.hidden = route.name !== 'team';
+    nodes.views.mywork.hidden = route.name !== 'mywork';
 
     var project = route.name === 'project' ? findProject(route.projectId) : null;
     E.Shell.render(state, project);
@@ -1586,7 +1609,10 @@
     nodes.app.classList.toggle('app--collapsed', !!state.prefs.sidebarCollapsed);
     if (route.name !== 'project') D.clear(nodes.topbarActions);
 
-    if (route.name === 'team') {
+    if (route.name === 'mywork') {
+      document.title = 'Moja praca · ETROM';
+      renderMyWork(state);
+    } else if (route.name === 'team') {
       document.title = 'Zespół · ETROM';
       renderTeam(state);
     } else if (route.name === 'project') {
@@ -1664,6 +1690,7 @@
       pendingG = false;
       if (event.key === 'p' || event.key === 'P') { event.preventDefault(); goTo('projects'); return; }
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
+      if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
     }
     if (event.key === 'g' || event.key === 'G') {
       pendingG = true;
@@ -1717,8 +1744,11 @@
     nodes.teamFilters = D.byId('team-filters');
     nodes.teamList = D.byId('team-list');
     nodes.teamSummary = D.byId('team-summary');
+    nodes.myworkSummary = D.byId('mywork-summary');
+    nodes.myworkWho = D.byId('mywork-who');
+    nodes.myworkBody = D.byId('mywork-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork') };
     nodes.portfolio = D.byId('portfolio');
     nodes.scroller = D.byId('scroller');
     nodes.sheet = D.byId('sheet');
@@ -1780,7 +1810,7 @@
       return Object.assign({}, state, {
         workspace: loaded.workspace,
         route: route,
-        screen: route.name === 'team' ? 'team' : 'projects',
+        screen: screenOf(route),
         notice: loaded.importedFromLegacy
           ? 'Wczytano dane ze starszej wersji ETROM (' + F.count(loaded.workspace.projects.length, 'projekt', 'projekty', 'projektów') + '). Stary zapis pozostał nietknięty.'
           : (loaded.warning || '')
@@ -1802,6 +1832,7 @@
     openNewPerson: openNewPerson,
     openPalette: openPalette,
     openProject: openProject,
-    goTo: goTo
+    goTo: goTo,
+    actions: actions
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -20,7 +20,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: []
+      groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [], me: null
     };
   }
 
@@ -46,7 +46,9 @@
       groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
       sidebarCollapsed: source.sidebarCollapsed === true,
       pinned: ids(source.pinned, MAX_PINNED),
-      recent: ids(source.recent, MAX_RECENT)
+      recent: ids(source.recent, MAX_RECENT),
+      // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).
+      me: typeof source.me === 'string' && /^p-\d+$/.test(source.me) ? source.me : null
     };
   }
 

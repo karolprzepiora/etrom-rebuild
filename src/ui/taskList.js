@@ -160,5 +160,5 @@
     return D.el('div', { class: 'tasks' }, [head, body]);
   }
 
-  root.ETROM.TaskList = { taskList: taskList, taskRow: taskRow };
+  root.ETROM.TaskList = { taskList: taskList, taskRow: taskRow, statusControl: statusControl };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

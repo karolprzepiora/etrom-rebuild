@@ -360,6 +360,69 @@
     });
   }
 
+  var APPROVER_KEYS = ['leader', 'coordinator'];
+
+  /**
+   * Praca jednej osoby: jej zadania w przedziałach czasu oraz to, co wymaga
+   * jej decyzji. Zadanie z udziałem już zamkniętym przez tę osobę nie wraca.
+   * Zatwierdzają lider i koordynator projektu; własnego zadania nie zatwierdza się samemu.
+   * @returns {{
+   *   open: number, overdue: number, today: number,
+   *   buckets: {overdue: Array, today: Array, week: Array, later: Array, none: Array},
+   *   returned: Array, toApprove: Array, projects: Array
+   * }}
+   */
+  function myWork(personId, projects, now) {
+    var reference = now instanceof Date ? now : new Date();
+    var result = {
+      open: 0, overdue: 0, today: 0,
+      buckets: { overdue: [], today: [], week: [], later: [], none: [] },
+      returned: [], toApprove: [], projects: []
+    };
+    if (!personId) return result;
+
+    (projects || []).forEach(function (project) {
+      var fns = Team.functionsOf(personId, project.team);
+      var approver = fns.some(function (fn) { return APPROVER_KEYS.indexOf(fn.key) >= 0; });
+      if (fns.length && project.status !== 'done') result.projects.push({ project: project, functions: fns });
+
+      allTasks(project).forEach(function (entry) {
+        var task = entry.task;
+        var mine = (task.assignees || []).indexOf(personId) >= 0;
+        var item = { project: project, stage: entry.stage, task: task };
+
+        if (approver && task.status === 'review' && !(mine && (task.assignees || []).length === 1)) {
+          result.toApprove.push(item);
+        }
+        if (!mine || task.status === 'done' || Tasks.partStatus(task, personId) === 'done') return;
+
+        var day = task.deadline ? Progress.daysUntil(String(task.deadline).slice(0, 10), reference) : null;
+        var late = Tasks.isOverdue(task, reference);
+        var row = { project: project, stage: entry.stage, task: task, days: day, overdue: late };
+        result.open += 1;
+        if (task.status === 'changes') result.returned.push(row);
+
+        var bucket = 'none';
+        if (late) bucket = 'overdue';
+        else if (day === null) bucket = 'none';
+        else if (day <= 0) bucket = 'today';
+        else if (day <= 7) bucket = 'week';
+        else bucket = 'later';
+        if (bucket === 'overdue') result.overdue += 1;
+        if (bucket === 'today') result.today += 1;
+        result.buckets[bucket].push(row);
+      });
+    });
+
+    var byDeadline = function (a, b) {
+      return String(a.task.deadline || '9999').localeCompare(String(b.task.deadline || '9999'));
+    };
+    Object.keys(result.buckets).forEach(function (key) { result.buckets[key].sort(byDeadline); });
+    result.returned.sort(byDeadline);
+    result.toApprove.sort(byDeadline);
+    return result;
+  }
+
   function portfolio(projects, now, horizon) {
     var reference = now instanceof Date ? now : new Date();
     var limit = horizon || 60;
@@ -428,7 +491,8 @@
     nextEvent: nextEvent,
     budgetByKind: budgetByKind,
     portfolio: portfolio,
-    workload: workload
+    workload: workload,
+    myWork: myWork
   };
 
   if (node) module.exports = api;
