@@ -282,3 +282,10 @@ body, .app {
 .palette__input { font-size: 1.125rem; }
 .plan-row__name { font-size: .9375rem; }
 .plan-row--summary .plan-row__name { font-size: .9375rem; font-weight: 500; }
+@media (max-width: 40rem) {
+  .pd-prop:nth-child(2), .pd-prop:nth-child(3) { grid-column: auto; }
+  .pd-prop--ribbon { grid-column: 1 / -1 !important; }
+  .pd-prop:nth-child(1) { grid-column: auto; }
+  .pd-prop:nth-child(2) .pd-prop__sub { display: block; margin-left: 0; }
+}
+@media (max-width: 40rem) { .pd-prop:nth-child(3) { grid-column: 1 / -1; } }
