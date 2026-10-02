@@ -139,11 +139,20 @@ async function main() {
     await viewport(1440, 900);
     await theme('light');
     await shoot('pusty');
+    await go('#/zespol');
+    await shoot('zespol-pusty');
+    await go('#/projekty');
 
     await run('window.ETROM.app.loadDemo(); return true;');
     await sleep(300);
     await run('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
     await shoot('projekty');
+
+    await click('[data-fk="cockpit-attention"]');
+    await shoot('kokpit-filtr', { wait: 600 });
+    await run('window.scrollTo(0, 0); document.querySelector(".sheet__scroll, .page") && (document.querySelector(".sheet__scroll") || document.querySelector(".page")).scrollTo(0, 0); return true;');
+    await click('#tb-scope');
+    await sleep(200);
 
     await theme('dark');
     await shoot('projekty-ciemny');

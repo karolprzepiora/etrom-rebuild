@@ -59,9 +59,26 @@
     progress: compareProgress
   };
 
+  // Wczytywane przy wywołaniu: w przeglądarce insight.js ładuje się po query.js.
+  function insight() {
+    return (typeof module !== 'undefined' && module.exports) ? require('./insight.js') : root.ETROM.Insight;
+  }
+
+  var HEALTH = ['attention', 'alarm', 'warning', 'normal', 'closed'];
+
+  function matchesHealth(project, health, now) {
+    if (!health || health === 'all' || HEALTH.indexOf(health) < 0) return true;
+    var level = insight().health(project, now).level;
+    if (health === 'attention') return level === 'alarm' || level === 'warning';
+    return level === health;
+  }
+
   /**
    * @param {Array} projects
-   * @param {{query?: string, status?: string, sort?: string, person?: string}} filters
+   * @param {{query?: string, status?: string, sort?: string, person?: string,
+   *          health?: string, horizon?: number, now?: Date}} filters
+   *   health: all | attention (alarmowy + ostrzegawczy) | alarm | warning | normal | closed
+   *   horizon: tylko projekty z terminem (umowy lub etapu) w najbliższych N dniach
    * @returns {Array} nowa, przefiltrowana i posortowana tablica
    */
   function filterAndSort(projects, filters) {
@@ -72,9 +89,14 @@
 
     var person = options.person || 'all';
 
+    var now = options.now instanceof Date ? options.now : new Date();
+    var horizon = Number(options.horizon) > 0 ? Number(options.horizon) : 0;
+
     var filtered = list.filter(function (project) {
       if (status !== 'all' && project.status !== status) return false;
       if (person !== 'all' && Team.projectPeople(project.team).indexOf(person) < 0) return false;
+      if (!matchesHealth(project, options.health, now)) return false;
+      if (horizon && !insight().upcomingFor(project, now, horizon).length) return false;
       return matchesQuery(project, query);
     });
 
@@ -82,7 +104,7 @@
     return filtered.sort(comparator);
   }
 
-  var api = { SORTS: SORTS, filterAndSort: filterAndSort };
+  var api = { SORTS: SORTS, HEALTH: HEALTH, filterAndSort: filterAndSort };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Query = api; }

@@ -5,7 +5,7 @@ Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
 
 Interfejs mówi własnym językiem — rzędna ▽ stanów wód, profil przebiegu etapów,
 tusz i kalka rysunku technicznego — opisanym w **[kierunku artystycznym](docs/ART_DIRECTION.md)**.
-Zasady stosowania: **[UI/UX Standard v2.0](docs/DESIGN_SYSTEM.md)**, obowiązujący
+Zasady stosowania: **[UI/UX Standard v2.1](docs/DESIGN_SYSTEM.md)**, obowiązujący
 dla każdego kolejnego ekranu i każdej nowej funkcji.
 
 ![ETROM — lista projektów](docs/screenshots/etrom-projekty.png)
@@ -104,7 +104,7 @@ styles/
   views.css             układ treści konkretnych ekranów
 docs/
   ART_DIRECTION.md      język wizualny ETROM i jego uzasadnienie
-  DESIGN_SYSTEM.md      UI/UX Standard v2.0 — obowiązujące zasady interfejsu
+  DESIGN_SYSTEM.md      UI/UX Standard v2.1 — obowiązujące zasady interfejsu
   licenses/             licencje osadzonych krojów (SIL OFL 1.1)
   UI_AUDIT.md           audyt interfejsu przed przebudową
 src/core/               logika, zero kodu dotykającego DOM
@@ -145,9 +145,9 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 189 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 106 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
-node tools/screenshot.js        # 28 zrzutów: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor
+node --test tests/*.test.js     # 191 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 114 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tools/screenshot.js        # 30 zrzutów: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor
 ```
 
 Testy nie mają żadnych zależności z npm — korzystają z wbudowanego

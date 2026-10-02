@@ -28,7 +28,7 @@
     workspace: Model.emptyWorkspace(),
     route: { name: 'projects' },
     screen: 'projects',
-    filters: { query: '', status: 'all', sort: 'deadline', person: 'all' },
+    filters: { query: '', status: 'all', sort: 'deadline', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
     prefs: E.Prefs.defaults(),
     selection: {},
@@ -785,7 +785,41 @@
 
   function clearFilters() {
     nodes.search.value = '';
-    setFilters({ query: '', status: 'all', person: 'all' });
+    setFilters({ query: '', status: 'all', person: 'all', health: 'all', horizon: 0 });
+  }
+
+  /**
+   * Przegląd portfela działa jak filtr: klik w stan albo w „terminy” zawęża
+   * listę poniżej, drugi klik zdejmuje zawężenie. Lista przewija się do widoku,
+   * żeby skutek był widoczny od razu.
+   */
+  function filterPortfolio(patch) {
+    var current = store.getState().filters;
+    var next = {};
+    if (patch.health !== undefined) next.health = current.health === patch.health ? 'all' : patch.health;
+    if (patch.horizon !== undefined) {
+      next.horizon = current.horizon === patch.horizon ? 0 : patch.horizon;
+      if (next.horizon) next.sort = 'deadline';
+    }
+    setFilters(next);
+    window.requestAnimationFrame(function () {
+      var bar = nodes.filters;
+      var rect = bar.getBoundingClientRect();
+      if (rect.top > window.innerHeight * 0.6 || rect.top < 0) {
+        bar.scrollIntoView({ behavior: Motion.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
+    });
+  }
+
+  /** Etap z przeglądu portfela: otwiera projekt i pokazuje etap na osi przebiegu. */
+  function openStage(projectId, stageId) {
+    var state = store.getState();
+    if (state.route.name === 'project' && state.route.projectId === projectId) {
+      revealStage(projectId, stageId);
+      return;
+    }
+    openProject(projectId, 'etapy');
+    window.setTimeout(function () { revealStage(projectId, stageId); }, 320);
   }
 
   function setTeamFilters(patch) {
@@ -1125,7 +1159,10 @@
     isPinned: isPinned,
     togglePin: togglePin,
     toggleDone: toggleDone,
-    revealStage: revealStage
+    revealStage: revealStage,
+    openStage: openStage,
+    loadDemo: function () { loadDemo(); },
+    filterPortfolio: filterPortfolio
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */
@@ -1232,7 +1269,13 @@
       };
     });
 
-    nodes.clearFilters = UI.button({ label: 'Wyczyść filtry', variant: 'ghost', size: 'sm', icon: 'close', onClick: clearFilters, attrs: { id: 'tb-clear' } });
+    nodes.clearFilters = UI.button({ label: 'Wyczyść', variant: 'ghost', size: 'sm', icon: 'close', onClick: clearFilters, attrs: { id: 'tb-clear', title: 'Wyczyść wszystkie filtry' } });
+    // Zawężenie ustawione z przeglądu portfela — widoczne w pasku i zdejmowane jednym kliknięciem.
+    nodes.scopeChip = D.el('button', {
+      class: 'filter-btn filter-btn--active filter-btn--scope',
+      attrs: { type: 'button', id: 'tb-scope', hidden: true },
+      on: { click: function () { setFilters({ health: 'all', horizon: 0 }); } }
+    });
     nodes.tally = D.el('span', { class: 'toolbar__count', attrs: { 'aria-live': 'polite' } });
 
     nodes.view = UI.segmented({
@@ -1247,6 +1290,7 @@
       search.node,
       nodes.statusFilter.node,
       nodes.personFilter.node,
+      nodes.scopeChip,
       nodes.clearFilters,
       D.el('span', { class: 'toolbar__spacer' }),
       nodes.tally,
@@ -1294,10 +1338,23 @@
 
   /* ---------- rysowanie ekranów ---------- */
 
+  function scopeLabel(filters) {
+    var LABEL = { attention: 'Wymaga uwagi', alarm: 'Stan alarmowy', warning: 'Stan ostrzegawczy', normal: 'W normie', closed: 'Zakończone' };
+    var parts = [];
+    var level = null;
+    if (filters.health && filters.health !== 'all' && LABEL[filters.health]) {
+      parts.push(LABEL[filters.health]);
+      level = filters.health === 'attention' ? 'warning' : filters.health;
+    }
+    if (filters.horizon) parts.push('Terminy w ' + filters.horizon + ' dniach');
+    return parts.length ? { text: parts.join(', '), level: level } : null;
+  }
+
   function renderProjects(state) {
     var all = state.workspace.projects;
     var visible = Query.filterAndSort(all, state.filters);
-    var filtered = state.filters.query.trim() || state.filters.status !== 'all' || state.filters.person !== 'all';
+    var scope = scopeLabel(state.filters);
+    var filtered = state.filters.query.trim() || state.filters.status !== 'all' || state.filters.person !== 'all' || !!scope;
     var overdue = all.filter(function (p) { return Progress.isOverdue(p); }).length;
     var running = all.filter(function (p) { return p.status === 'active'; }).length;
 
@@ -1309,7 +1366,17 @@
     nodes.statusFilter.set(state.filters.status === 'all' ? 'Wszystkie' : Model.PROJECT_STATUS[state.filters.status], state.filters.status !== 'all');
     nodes.personFilter.set(person ? Team.fullName(person) : 'Wszystkie', state.filters.person !== 'all');
     nodes.clearFilters.hidden = !filtered;
-    nodes.tally.textContent = filtered ? 'Pasuje ' + visible.length + ' z ' + all.length : '';
+    nodes.scopeChip.hidden = !scope;
+    if (scope) {
+      D.render(nodes.scopeChip, [
+        scope.level ? E.Sig.datum(scope.level, { size: 12, label: false }) : E.Icons.icon('calendar', 14),
+        D.el('span', { text: scope.text }),
+        E.Icons.icon('close', 12)
+      ]);
+      nodes.scopeChip.setAttribute('aria-label', 'Zawężenie: ' + scope.text + '. Usuń zawężenie');
+    }
+    nodes.tally.textContent = filtered ? visible.length + ' z ' + all.length : '';
+    nodes.tally.title = filtered ? 'Pasuje ' + visible.length + ' z ' + all.length + ' projektów' : '';
     nodes.sortButton.querySelector('span').textContent = SORT_LABEL[state.filters.sort] || 'Termin';
     nodes.sortButton.setAttribute('aria-label', 'Sortowanie: ' + (Query.SORTS[state.filters.sort] || ''));
     nodes.columnsButton.hidden = state.prefs.view !== 'list';
@@ -1318,7 +1385,7 @@
     nodes.groupButton.setAttribute('aria-label', 'Grupowanie: ' + { health: 'stan projektu', status: 'status', none: 'bez grupowania' }[state.prefs.groupBy]);
 
     nodes.portfolio.hidden = !all.length;
-    if (all.length) D.render(nodes.portfolio, E.ProjectList.cockpit(all, { state: state, people: people(), actions: actions }));
+    if (all.length) D.patch(nodes.portfolio, E.ProjectList.cockpit(all, { state: state, people: people(), actions: actions }));
     nodes.view.set(state.prefs.view);
     nodes.filters.hidden = !all.length;
     nodes.newProject.hidden = !all.length;
@@ -1351,15 +1418,12 @@
 
     var content;
     if (!all.length) {
-      content = D.el('div', { class: 'card' }, [UI.emptyState({
-        icon: 'folder',
-        title: 'Nie ma jeszcze żadnego projektu',
-        text: 'Projekt łączy umowę, etapy ze standardu ETROM, zadania i zespół. Załóż pierwszy albo dodaj dane przykładowe, żeby zobaczyć program w działaniu.',
-        actions: [
-          UI.button({ label: 'Nowy projekt', icon: 'plus', variant: 'primary', onClick: openCreate }),
-          UI.button({ label: 'Dodaj dane przykładowe', icon: 'sparkle', variant: 'secondary', attrs: { id: 'empty-demo' }, onClick: loadDemo })
-        ]
-      })]);
+      content = E.ProjectList.onboarding({
+        create: openCreate,
+        demo: loadDemo,
+        importCopy: function () { nodes.fileInput.click(); },
+        people: people().length
+      });
     } else if (!visible.length) {
       content = D.el('div', { class: 'card' }, [UI.emptyState({
         icon: 'search',
@@ -1401,7 +1465,8 @@
         + (team.late ? '. Po terminie: ' + F.count(team.late, 'zadanie', 'zadania', 'zadań') : '') + '.'
       : 'Katalog osób biura: role w organizacji, obciążenie i funkcje w projektach.';
     nodes.roleFilter.set(state.teamFilters.role === 'all' ? 'Wszystkie' : Team.ORG_ROLES[state.teamFilters.role], state.teamFilters.role !== 'all');
-    nodes.teamTally.textContent = filtered ? 'Pasuje ' + visible.length + ' z ' + roster.length : '';
+    nodes.teamTally.textContent = filtered ? visible.length + ' z ' + roster.length : '';
+    nodes.teamTally.title = filtered ? 'Pasuje ' + visible.length + ' z ' + roster.length + ' osób' : '';
     nodes.teamFilters.hidden = !roster.length;
     nodes.newPerson.hidden = !roster.length;
 

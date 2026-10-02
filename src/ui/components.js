@@ -472,6 +472,41 @@
     ]);
   }
 
+  /**
+   * Pierwsze uruchomienie ekranu: co tu będzie, jak do tego dojść (kroki),
+   * jedna główna czynność i podgląd tego, jak ekran wygląda z danymi.
+   * @param {{title: string, text: string, steps: Array<{title: string, text: string}>,
+   *          actions: Array, note?: Node|string, preview?: Node, previewLabel?: string, id?: string}} o
+   */
+  function onboarding(o) {
+    return D.el('section', { class: cx('onboard', o.class), attrs: { 'aria-labelledby': o.id || 'onboard-title' } }, [
+      D.el('div', { class: 'onboard__intro' }, [
+        D.el('h2', { class: 'onboard__title', text: o.title, attrs: { id: o.id || 'onboard-title' } }),
+        D.el('p', { class: 'onboard__text', text: o.text }),
+        D.el('ol', { class: 'onboard__steps' }, o.steps.map(function (step, index) {
+          return D.el('li', { class: 'onboard__step' }, [
+            D.el('span', { class: 'onboard__no t-num', text: String(index + 1), attrs: { 'aria-hidden': 'true' } }),
+            D.el('span', { class: 'onboard__step-text' }, [
+              D.el('span', { class: 'onboard__step-title', text: step.title }),
+              D.el('span', { class: 'onboard__step-body', text: step.text })
+            ])
+          ]);
+        })),
+        D.el('div', { class: 'onboard__actions' }, o.actions),
+        o.note ? D.el('p', { class: 'onboard__note' }, typeof o.note === 'string' ? [o.note] : [o.note]) : null
+      ]),
+      o.preview ? D.el('figure', { class: 'onboard__preview', attrs: { 'aria-hidden': 'true' } }, [
+        o.preview,
+        o.previewLabel ? D.el('figcaption', { class: 'onboard__caption', text: o.previewLabel }) : null
+      ]) : null
+    ]);
+  }
+
+  /** Pasek-zaślepka do podglądów: tekst, którego jeszcze nie ma. */
+  function ghost(width) {
+    return D.el('span', { class: 'ghost', style: { width: width } });
+  }
+
   var ALERT_ICON = { info: 'info', warning: 'alert', danger: 'alertCircle', success: 'checkCircle' };
 
   function alert(o) {
@@ -536,6 +571,8 @@
     breadcrumb: breadcrumb,
     pageHeader: pageHeader,
     emptyState: emptyState,
+    onboarding: onboarding,
+    ghost: ghost,
     alert: alert,
     skeleton: skeleton,
     pagination: pagination

@@ -144,3 +144,35 @@ test('filtr osoby łączy się z filtrem statusu', () => {
     ['T-4']
   );
 });
+
+/* ---------- filtry z przeglądu portfela ---------- */
+
+test('filtr stanu: „wymaga uwagi” to alarm i ostrzeżenie, pozostałe dokładnie', () => {
+  const NOW_Q = new Date(2026, 9, 2, 12, 0);
+  const projects = [
+    { id: 1, code: 'A', name: 'Po terminie', status: 'active', deadline: '2026-09-20', stages: [], team: {} },
+    { id: 2, code: 'B', name: 'W normie', status: 'active', deadline: '2026-12-31', stages: [], team: {} },
+    { id: 3, code: 'C', name: 'Zamknięty', status: 'done', deadline: '2026-01-01', stages: [], team: {} }
+  ];
+  const codes = (health) => Query.filterAndSort(projects, { health, now: NOW_Q }).map((p) => p.code).join(',');
+  assert.equal(codes('attention'), 'A');
+  assert.equal(codes('alarm'), 'A');
+  assert.equal(codes('normal'), 'B');
+  assert.equal(codes('closed'), 'C');
+  assert.equal(codes('all'), 'A,B,C');
+  assert.equal(codes('wymyślony'), 'A,B,C', 'nieznana wartość nie filtruje');
+});
+
+test('filtr terminów: projekty z terminem umowy lub etapu w oknie dni', () => {
+  const NOW_Q = new Date(2026, 9, 2, 12, 0);
+  const projects = [
+    { id: 1, code: 'A', name: 'Umowa za 10 dni', status: 'active', deadline: '2026-10-12', stages: [], team: {} },
+    { id: 2, code: 'B', name: 'Etap za 20 dni', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'todo', hours: 1, deadline: '2026-10-22' }], team: {} },
+    { id: 3, code: 'C', name: 'Etap zakończony', status: 'active', deadline: '2027-06-01', stages: [{ id: 'preparation', status: 'done', hours: 1, deadline: '2026-10-05' }], team: {} },
+    { id: 4, code: 'D', name: 'Daleko', status: 'active', deadline: '2027-06-01', stages: [], team: {} }
+  ];
+  const codes = (horizon) => Query.filterAndSort(projects, { horizon, now: NOW_Q, sort: 'code' }).map((p) => p.code).join(',');
+  assert.equal(codes(14), 'A');
+  assert.equal(codes(30), 'A,B');
+  assert.equal(codes(0), 'A,B,C,D');
+});

@@ -319,37 +319,65 @@
 
   /* ---------- Kokpit portfela ---------- */
 
+  var HORIZON = 60;
+
+  /** Przycisk przeglądu: przełącza zawężenie listy; stan wciśnięcia widać i słychać. */
+  function scopeButton(className, pressed, label, onClick, children, fk) {
+    return D.el('button', {
+      class: className + (pressed ? ' is-active' : ''),
+      attrs: { type: 'button', 'aria-pressed': String(pressed), 'aria-label': label, 'data-fk': fk },
+      on: { click: onClick }
+    }, children);
+  }
+
   function cockpit(projects, ctx) {
     var now = new Date();
-    var view = Insight.portfolio(projects, now, 60);
+    var view = Insight.portfolio(projects, now, HORIZON);
     var attention = view.byLevel.alarm.concat(view.byLevel.warning);
     var open = view.total - view.counts.closed;
+    var filters = ctx.state.filters || {};
+    var act = ctx.actions;
 
     // A — wymaga uwagi (największa waga)
     var zoneA;
     if (attention.length) {
+      var leadPressed = filters.health === 'attention';
+      var titleText = attention.length === 1 ? 'projekt wymaga uwagi' : (F.plural(attention.length, 'projekt wymaga', 'projekty wymagają', 'projektów wymaga') + ' uwagi');
       zoneA = D.el('div', { class: 'cockpit__zone cockpit__attention' }, [
-        D.el('div', { class: 'cockpit__lead' }, [
-          D.el('span', { class: 'cockpit__number t-num', text: String(attention.length) }),
-          D.el('span', { class: 'cockpit__lead-text' }, [
-            D.el('span', { class: 'cockpit__title', text: attention.length === 1 ? 'projekt wymaga uwagi' : (F.plural(attention.length, 'projekt wymaga', 'projekty wymagają', 'projektów wymaga') + ' uwagi') }),
-            D.el('span', { class: 'cockpit__sub', text: 'z ' + F.count(open, 'czynnego', 'czynnych', 'czynnych') })
-          ])
-        ]),
+        scopeButton('cockpit__lead cockpit__hit', leadPressed,
+          (leadPressed ? 'Pokaż wszystkie projekty' : 'Pokaż tylko projekty wymagające uwagi') + ' (' + attention.length + ')',
+          function () { act.filterPortfolio({ health: 'attention' }); }, [
+            D.el('span', { class: 'cockpit__number t-num', text: String(attention.length) }),
+            D.el('span', { class: 'cockpit__lead-text' }, [
+              D.el('span', { class: 'cockpit__title', text: titleText }),
+              D.el('span', { class: 'cockpit__sub' }, [
+                D.el('span', { text: 'z ' + F.count(open, 'czynnego', 'czynnych', 'czynnych') }),
+                D.el('span', { class: 'cockpit__action', text: leadPressed ? 'Pokaż wszystkie' : 'Pokaż na liście' })
+              ])
+            ])
+          ], 'cockpit-attention'),
         D.el('ul', { class: 'attention' }, attention.slice(0, 3).map(function (entry) {
           return D.el('li', null, [D.el('a', {
             class: 'attention__item',
-            attrs: { href: projectHref(entry.project) },
+            attrs: { href: projectHref(entry.project), 'data-fk': 'attention-' + entry.project.id },
             dataset: { projectTitle: entry.project.id }
           }, [
             Sig.datum(entry.health.level),
             D.el('span', { class: 'attention__text' }, [
               D.el('span', { class: 'attention__name truncate', text: entry.project.name }),
               D.el('span', { class: 'attention__reason reason--' + entry.health.level, text: entry.health.reasons[0].text })
-            ])
+            ]),
+            D.el('span', { class: 'attention__go', attrs: { 'aria-hidden': 'true' } }, [E.Icons.icon('chevronRight', 14)])
           ])]);
         })),
-        attention.length > 3 ? D.el('p', { class: 't-meta', text: 'i ' + (attention.length - 3) + ' więcej w grupach poniżej' }) : null
+        attention.length > 3
+          ? D.el('button', {
+              class: 'cockpit__more',
+              attrs: { type: 'button' },
+              text: 'i ' + (attention.length - 3) + ' więcej — pokaż wszystkie',
+              on: { click: function () { act.filterPortfolio({ health: 'attention' }); } }
+            })
+          : null
       ]);
     } else {
       zoneA = D.el('div', { class: 'cockpit__zone cockpit__attention cockpit__attention--calm' }, [
@@ -363,61 +391,151 @@
       ]);
     }
 
-    // B — stan portfela: proporcje i godziny
+    // B — stan portfela: każdy stan zawęża listę
     var levels = ['alarm', 'warning', 'normal', 'closed'];
     var zoneB = D.el('div', { class: 'cockpit__zone cockpit__mix' }, [
       D.el('p', { class: 'cockpit__label', text: 'Stan portfela' }),
       D.el('div', { class: 'mixbar', attrs: { role: 'img', 'aria-label': levels.map(function (l) { return Insight.LEVELS[l].label + ': ' + view.counts[l]; }).join(', ') } },
         levels.filter(function (l) { return view.counts[l]; }).map(function (l) {
-          return D.el('span', { class: 'mixbar__seg mixbar__seg--' + l, style: { 'flex-grow': String(view.counts[l]) } });
+          var on = filters.health === l || (filters.health === 'attention' && (l === 'alarm' || l === 'warning'));
+          return D.el('span', {
+            class: 'mixbar__seg mixbar__seg--' + l + (filters.health && filters.health !== 'all' && !on ? ' is-dim' : ''),
+            style: { 'flex-grow': String(view.counts[l]) }
+          });
         })),
       D.el('ul', { class: 'mixlegend' }, levels.map(function (l) {
-        return D.el('li', { class: view.counts[l] ? '' : 'is-zero' }, [
-          Sig.datum(l, { label: false }),
-          D.el('span', { class: 'mixlegend__label', text: Insight.LEVELS[l].label }),
-          D.el('span', { class: 'mixlegend__value t-num', text: String(view.counts[l]) })
-        ]);
+        var pressed = filters.health === l;
+        var count = view.counts[l];
+        return D.el('li', null, [scopeButton('mixlegend__item cockpit__hit' + (count ? '' : ' is-zero'), pressed,
+          Insight.LEVELS[l].label + ': ' + count + (pressed ? '. Pokaż wszystkie projekty' : '. Pokaż na liście'),
+          function () { act.filterPortfolio({ health: l }); }, [
+            Sig.datum(l, { label: false }),
+            D.el('span', { class: 'mixlegend__label', text: Insight.LEVELS[l].label }),
+            D.el('span', { class: 'mixlegend__value t-num', text: String(count) })
+          ], 'mix-' + l)]);
       })),
       view.hoursTotal ? D.el('p', { class: 'cockpit__hours' }, [
         D.el('span', { class: 't-num cockpit__hours-value', text: F.number(view.hoursDone) }),
-        D.el('span', { class: 't-muted t-num', text: ' z ' + F.hours(view.hoursTotal) + ' wykonane w czynnych projektach' })
+        D.el('span', { class: 'cockpit__hours-of t-num', text: ' z ' + F.hours(view.hoursTotal) }),
+        D.el('span', { class: 'cockpit__hours-label', text: 'wykonane w czynnych projektach' })
       ]) : null
     ]);
 
-    // C — oś najbliższych terminów
+    // C — oś najbliższych terminów: znaczniki i pozycje prowadzą do etapu albo projektu
+    function goTo(u) {
+      if (u.kind === 'stage') act.openStage(u.project.id, u.stage.id);
+      else act.openProject(u.project.id);
+    }
+    function whatOf(u) { return u.kind === 'project' ? 'Termin umowy' : Model.describeStage(u.stage).name; }
+
     var ahead = view.upcoming.filter(function (u) { return u.days >= 0; });
-    var axis = D.el('div', { class: 'timeline', attrs: { role: 'img', 'aria-label': 'Terminy w najbliższych 60 dniach: ' + ahead.length } }, [
+    var horizonOn = filters.horizon === HORIZON;
+    var aheadProjects = ahead.reduce(function (set, u) { set[u.project.id] = true; return set; }, {});
+    var aheadCount = Object.keys(aheadProjects).length;
+    var axis = D.el('div', { class: 'timeline', attrs: { role: 'group', 'aria-label': 'Terminy w najbliższych ' + HORIZON + ' dniach' } }, [
       D.el('div', { class: 'timeline__axis' }, [0, 15, 30, 45, 60].map(function (d) {
-        return D.el('span', { class: 'timeline__tick', style: { left: (d / 60 * 100) + '%' } });
-      }).concat(ahead.map(function (u) {
-        var label = (u.kind === 'project' ? 'Termin umowy' : Model.describeStage(u.stage).name) + ' — ' + u.project.code + ', ' + F.date(u.date);
-        return u.kind === 'project'
-          ? D.el('span', { class: 'timeline__mark timeline__mark--project datum--' + u.level, style: { left: (u.days / 60 * 100) + '%' }, attrs: { 'data-tooltip': label } }, [Sig.datum(u.level, { size: 12, label: false })])
-          : D.el('span', { class: 'timeline__mark timeline__mark--stage', style: { left: (u.days / 60 * 100) + '%' }, attrs: { 'data-tooltip': label } });
+        return D.el('span', { class: 'timeline__tick', style: { left: (d / HORIZON * 100) + '%' }, attrs: { 'aria-hidden': 'true' } });
+      }).concat(ahead.map(function (u, index) {
+        var label = whatOf(u) + ' — ' + u.project.code + ', ' + F.date(u.date) + (u.days === 0 ? ' (dziś)' : ' (za ' + F.count(u.days, 'dzień', 'dni', 'dni') + ')');
+        return D.el('button', {
+          class: 'timeline__mark ' + (u.kind === 'project' ? 'timeline__mark--project datum--' + u.level : 'timeline__mark--stage'),
+          style: { left: (u.days / HORIZON * 100) + '%' },
+          attrs: { type: 'button', 'data-tooltip': label, 'aria-label': 'Otwórz: ' + label, tabindex: index < 6 ? null : '-1' },
+          on: { click: function () { goTo(u); } }
+        }, u.kind === 'project' ? [Sig.datum(u.level, { size: 12, label: false })] : null);
       }))),
-      D.el('div', { class: 'timeline__scale' }, [D.el('span', { text: 'dziś' }), D.el('span', { text: '30 dni' }), D.el('span', { text: '60 dni' })])
+      D.el('div', { class: 'timeline__scale', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { text: 'dziś' }), D.el('span', { text: '30 dni' }), D.el('span', { text: '60 dni' })])
     ]);
     var zoneC = D.el('div', { class: 'cockpit__zone cockpit__upcoming' }, [
-      D.el('p', { class: 'cockpit__label', text: 'Najbliższe terminy' }),
+      D.el('div', { class: 'cockpit__label-row' }, [
+        D.el('p', { class: 'cockpit__label', text: 'Najbliższe terminy' }),
+        ahead.length ? scopeButton('cockpit__link', horizonOn,
+          horizonOn ? 'Pokaż wszystkie projekty' : 'Pokaż na liście projekty z terminem w ' + HORIZON + ' dniach',
+          function () { act.filterPortfolio({ horizon: HORIZON }); },
+          [D.el('span', { text: horizonOn ? 'Pokaż wszystkie' : 'Pokaż ' + F.count(aheadCount, 'projekt', 'projekty', 'projektów') })], 'cockpit-horizon') : null
+      ]),
       axis,
       ahead.length
         ? D.el('ol', { class: 'upcoming' }, ahead.slice(0, 3).map(function (u) {
-            return D.el('li', null, [D.el('a', { class: 'upcoming__item', attrs: { href: projectHref(u.project) } }, [
+            return D.el('li', null, [D.el('button', {
+              class: 'upcoming__item',
+              attrs: { type: 'button', 'aria-label': 'Otwórz: ' + whatOf(u) + ', ' + u.project.code + ', ' + F.date(u.date), 'data-fk': 'up-' + u.project.id + '-' + (u.kind === 'stage' ? u.stage.id : 'p') },
+              on: { click: function () { goTo(u); } }
+            }, [
               D.el('span', { class: 'upcoming__date t-num', text: F.date(u.date) }),
               D.el('span', { class: 'upcoming__what' }, [
-                D.el('span', { class: 'truncate', text: u.kind === 'project' ? 'Termin umowy' : Model.describeStage(u.stage).name }),
+                D.el('span', { class: 'upcoming__name truncate', text: whatOf(u) }),
                 D.el('span', { class: 'code', text: u.project.code })
               ]),
-              D.el('span', { class: 'upcoming__in t-num', text: u.days === 0 ? 'dziś' : 'za ' + u.days + ' d' })
+              D.el('span', { class: 'upcoming__in t-num' + (u.days <= 7 ? ' is-soon' : ''), text: u.days === 0 ? 'dziś' : (u.days === 1 ? 'jutro' : 'za ' + u.days + ' dni') })
             ])]);
           }))
-        : D.el('p', { class: 't-meta', text: 'Brak terminów w najbliższych 60 dniach.' })
+        : D.el('p', { class: 'cockpit__empty', text: 'Brak terminów w najbliższych ' + HORIZON + ' dniach.' })
     ]);
 
     return [zoneA, zoneB, zoneC];
   }
 
+  /* ---------- Pierwsze uruchomienie ---------- */
+
+  function projectsPreview() {
+    // Profil z zaślepek: zakończone, w toku, przed nami — język ekranu przed pierwszymi danymi.
+    function track(done, working, todo) {
+      var segs = [];
+      for (var i = 0; i < done; i += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--done', style: { 'flex-grow': String(2 + (i % 3)) } }));
+      for (var j = 0; j < working; j += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--working profile__seg--current', style: { 'flex-grow': '3' } }));
+      for (var k = 0; k < todo; k += 1) segs.push(D.el('span', { class: 'profile__seg profile__seg--todo', style: { 'flex-grow': String(2 + (k % 2)) } }));
+      return D.el('div', { class: 'profile profile--micro' }, [D.el('div', { class: 'profile__track' }, segs)]);
+    }
+    var rows = [
+      { level: 'alarm', w: ['11rem', '7rem'], t: [6, 1, 4], d: '3.5rem' },
+      { level: 'warning', w: ['9rem', '8.5rem'], t: [3, 1, 7], d: '3rem' },
+      { level: 'normal', w: ['12rem', '6rem'], t: [8, 1, 2], d: '4rem' },
+      { level: 'closed', w: ['8rem', '7.5rem'], t: [11, 0, 0], d: '3.25rem' }
+    ];
+    return D.el('div', { class: 'preview preview--projects' }, [
+      D.el('div', { class: 'preview__head' }, [D.el('span', { text: 'Projekt' }), D.el('span', { text: 'Przebieg' }), D.el('span', { text: 'Termin' })])
+    ].concat(rows.map(function (r, index) {
+      return D.el('div', { class: 'preview__row' + (index === 0 ? ' preview__row--lit' : '') }, [
+        D.el('span', { class: 'preview__person' }, [
+          Sig.datum(r.level, { size: 14, label: false }),
+          D.el('span', { class: 'preview__lines' }, [UI.ghost(r.w[0]), UI.ghost(r.w[1])])
+        ]),
+        track(r.t[0], r.t[1], r.t[2]),
+        UI.ghost(r.d)
+      ]);
+    })));
+  }
+
+  /**
+   * @param {{create: Function, demo: Function, importCopy: Function, people: number}} o
+   */
+  function onboarding(o) {
+    return UI.onboarding({
+      id: 'projects-onboard-title',
+      class: 'onboard--projects',
+      title: 'Załóż pierwszy projekt',
+      text: 'Projekt łączy umowę, etapy ze standardu ETROM, zadania i zespół. Z tych danych ETROM sam liczy postęp, pilnuje terminów i ostrzega, gdy coś jest zagrożone.',
+      steps: [
+        { title: 'Dane umowy', text: 'Kod, nazwa, zamawiający i termin umowy.' },
+        { title: 'Etapy ze standardu', text: 'Wybierasz tylko te, które dotyczą projektu; budżet godzin waży postęp.' },
+        { title: 'Zespół i zadania', text: o.people ? 'Przypisujesz osoby z katalogu i rozpisujesz pracę w etapach.' : 'Najpierw dodaj osoby na ekranie Zespół, potem rozpisz pracę w etapach.' }
+      ],
+      actions: [
+        UI.button({ label: 'Nowy projekt', icon: 'plus', variant: 'primary', kbd: 'N', attrs: { id: 'empty-new' }, onClick: o.create }),
+        UI.button({ label: 'Dodaj dane przykładowe', icon: 'sparkle', variant: 'secondary', attrs: { id: 'empty-demo' }, onClick: o.demo })
+      ],
+      note: D.el('span', null, [
+        D.el('span', { text: 'Masz kopię z innego komputera? ' }),
+        D.el('button', { class: 'link-btn', text: 'Wczytaj kopię zapasową', attrs: { type: 'button' }, on: { click: o.importCopy } })
+      ]),
+      preview: projectsPreview(),
+      previewLabel: 'Tak wygląda portfel z danymi: stan, przebieg etapów i termin każdego projektu w jednym wierszu.'
+    });
+  }
+
   root.ETROM.ProjectList = {
+    onboarding: onboarding,
     table: table,
     cards: cards,
     cockpit: cockpit,

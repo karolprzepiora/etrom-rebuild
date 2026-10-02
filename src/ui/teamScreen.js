@@ -138,19 +138,60 @@
     { key: 'off', label: 'Wyłączeni z obiegu', test: function (p) { return p.active === false; } }
   ];
 
+  /** Podgląd katalogu z danymi: prawdziwe składniki, w miejscu tekstu zaślepki. */
+  function teamPreview() {
+    var rows = [
+      { load: { open: 3, overdue: 0 }, fns: ['alarm', 'normal'], w: ['7.5rem', '10rem'] },
+      { load: { open: 6, overdue: 1 }, fns: ['warning', 'normal'], w: ['6rem', '8.5rem'] },
+      { load: { open: 1, overdue: 0 }, fns: ['normal'], w: ['8.5rem', '6.5rem'] },
+      { load: { open: 0, overdue: 0 }, fns: [], w: ['6.5rem', '9rem'] }
+    ];
+    return D.el('div', { class: 'preview preview--team' }, [
+      D.el('div', { class: 'preview__head' }, [D.el('span', { text: 'Osoba' }), D.el('span', { text: 'Otwarte zadania' }), D.el('span', { text: 'Funkcje' })]),
+      D.el('div', { class: 'preview__group', text: 'Zarządzający' })
+    ].concat(rows.map(function (r, index) {
+      return D.el('div', { class: 'preview__row' + (index === 1 ? ' preview__row--lit' : '') }, [
+        D.el('span', { class: 'preview__person' }, [
+          D.el('span', { class: 'preview__avatar', style: { '--avatar-h': String([210, 150, 30, 280][index]) } }),
+          D.el('span', { class: 'preview__lines' }, [UI.ghost(r.w[0]), UI.ghost(r.w[1])])
+        ]),
+        loadMeter(r.load),
+        D.el('span', { class: 'preview__chips' }, r.fns.map(function (level) {
+          return D.el('span', { class: 'preview__chip' }, [Sig.datum(level, { size: 10, label: false }), UI.ghost('3.25rem')]);
+        }))
+      ]);
+    })));
+  }
+
+  function emptyTeam(projects, actions) {
+    var count = (projects || []).length;
+    return UI.onboarding({
+      id: 'team-onboard-title',
+      class: 'onboard--team',
+      title: 'Zbuduj katalog zespołu',
+      text: count
+        ? 'W portfelu jest już ' + F.count(count, 'projekt', 'projekty', 'projektów') + ' bez przypisanego zespołu. Dodaj osoby biura — potem wskażesz je jako Lidera, Koordynatora czy realizatorów zadań.'
+        : 'Osoby z katalogu pełnią funkcje w projektach i realizują zadania. Tu zobaczysz, ile pracy ma każda z nich i w których projektach.',
+      steps: [
+        { title: 'Dodaj osoby', text: 'Imię, stanowisko, rola w biurze i forma współpracy.' },
+        { title: 'Przypisz funkcje w projektach', text: 'Lider, Koordynator i Pełnomocnicy — w edycji projektu.' },
+        { title: 'Rozdzielaj zadania', text: 'Obciążenie każdej osoby policzy się samo.' }
+      ],
+      actions: [
+        UI.button({ label: 'Dodaj pierwszą osobę', icon: 'plus', variant: 'primary', kbd: 'N', attrs: { id: 'team-empty-new' }, onClick: actions.newPerson }),
+        actions.loadDemo ? UI.button({ label: 'Dodaj dane przykładowe', icon: 'sparkle', variant: 'secondary', onClick: actions.loadDemo }) : null
+      ].filter(Boolean),
+      preview: teamPreview(),
+      previewLabel: 'Tak wygląda katalog z danymi: obciążenie i funkcje każdej osoby w jednym wierszu.'
+    });
+  }
+
   function teamList(people, projects, filters, actions) {
     var all = people || [];
     var visible = visiblePeople(all, filters);
     var now = new Date();
 
-    if (!all.length) {
-      return D.el('div', { class: 'card' }, [UI.emptyState({
-        icon: 'people',
-        title: 'Katalog osób jest pusty',
-        text: 'Dodaj osoby, żeby przypisywać im funkcje w projektach — Lidera, Koordynatora, Pełnomocników — i wskazywać realizatorów zadań.',
-        actions: [UI.button({ label: 'Nowa osoba', icon: 'plus', variant: 'primary', onClick: actions.newPerson })]
-      })]);
-    }
+    if (!all.length) return emptyTeam(projects, actions);
     if (!visible.length) {
       return D.el('div', { class: 'card' }, [UI.emptyState({
         icon: 'search', compact: true,

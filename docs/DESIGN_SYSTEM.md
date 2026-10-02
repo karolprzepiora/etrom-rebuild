@@ -1,4 +1,4 @@
-# ETROM — UI/UX Standard v2.0
+# ETROM — UI/UX Standard v2.1
 
 Obowiązujący standard interfejsu ETROM. Każdy nowy ekran i każda nowa funkcja
 korzysta z tych tokenów, komponentów i elementów charakterystycznych.
@@ -8,6 +8,9 @@ Odstępstwo wymaga zmiany tego dokumentu, a nie lokalnego wyjątku w CSS.
 - **Jak to stosować** — ten dokument.
 - Wersja 1.0 ustaliła fundamenty i komponenty; wersja 2.0 nadała im tożsamość
   (kroje, warstwy, kolor „teraz / ryzyko”, rzędna, profil, inspektor).
+- Wersja 2.1 (szlif produktu) nie zmienia kierunku: kokpit portfela stał się narzędziem
+  filtrującym, puste ekrany prowadzą przez pierwsze kroki, tekst pomocniczy urósł do
+  rozmiarów wygodnych przy całodziennej pracy.
 
 Kolejność priorytetów przy każdej decyzji:
 **czytelność → intuicyjność → szybkość pracy → hierarchia → spójność → dostępność → estetyka → wrażenie premium.**
@@ -64,14 +67,16 @@ Linia jest wyjątkiem: najpierw ton, odstęp i typografia.
 | Liczba kluczowa | Display, cyfry tabelaryczne | `--fs-5xl`–`--fs-6xl` 44–56 | kokpit, postęp w nagłówku |
 | Tytuł sekcji | Text 600 | `--fs-lg` 16 | sekcje, formularze |
 | Nazwa w wierszu | Text 600 | `--fs-row` 14 | projekty, osoby, etapy |
-| Tekst roboczy | Text 400 | `--fs-md` 13,5 | wiersze, menu, formularze |
-| Pomocniczy | Text | `--fs-sm` 13 | opisy, powody |
-| Metadane | Text | `--fs-meta` 11,5, `--ink-3` | kody, podpisy w tabelce |
+| Tekst roboczy | Text 400 | `--fs-md` 14 | wiersze, menu, formularze |
+| Pomocniczy | Text | `--fs-sm` 13 | opisy, powody, drugi wiersz w tabeli |
+| Metadane | Text | `--fs-meta` 12, `--ink-3` | kody, podpisy w tabelce |
 | Kod projektu | Text, `.code` | `--fs-meta`, tnum, przekreślone zero | wszędzie, gdzie stoi kod |
 
 `--font-display` = ETROM Display (Instrument Sans), `--font-text` = ETROM Text (Inter);
 oba osadzone w `styles/fonts.css` (generuje `tools/build-fonts.py`, licencje w `docs/licenses/`).
 Nagłówki zdaniem, nie wersalikami. Liczby przez `ETROM.Format` (polska odmiana).
+**Dolna granica: 12 px** dla każdego tekstu, który trzeba przeczytać (wyjątek: inicjały
+w awatarze). Elegancji nie osiąga się zmniejszaniem — tylko odstępem, grubością i tonem.
 
 ### Odstępy, promienie, elewacja, ruch
 
@@ -93,6 +98,21 @@ Nagłówki zdaniem, nie wersalikami. Liczby przez `ETROM.Format` (polska odmiana
 | Linijka czasu | `Sig.timeRuler(project)` | ta sama skala co profil; kreska „dziś”, bursztyn przy opóźnieniu, czerwień po terminie |
 | Oś etapów | klasy `.rail`, `.rail__node--*` | węzły: tusz/ptaszek, nurt/pierścień, pusty, czerwony pierścień |
 | Inspektor | `ETROM.Inspector.render` | zadanie, osoba, projekt; Escape zamyka i oddaje fokus |
+| Kokpit portfela | `ProjectList.cockpit(projects, ctx)` | każda liczba, stan i termin jest przyciskiem: filtruje listę albo otwiera projekt / etap |
+
+#### Kokpit jako narzędzie
+
+| Element kokpitu | Działanie |
+|---|---|
+| Liczba „wymagają uwagi” | filtr `health: attention` (stan ostrzegawczy + alarmowy); ponownie — zdejmuje |
+| Pozycja projektu z powodem | otwiera projekt |
+| Pozycja legendy „Stan portfela” | filtr `health: <poziom>`; pozostałe odcinki paska bledną |
+| „Pokaż N projektów” przy terminach | filtr `horizon: 60` (termin umowy lub etapu w 60 dniach), sortowanie po terminie |
+| Znacznik na osi, pozycja terminu | otwiera projekt, a dla etapu — przewija do etapu i go rozwija |
+
+Zawężenie z kokpitu pojawia się w pasku filtrów jako zdejmowalny znacznik (`#tb-scope`)
+i jest zwykłym filtrem `Query.filterAndSort` (`health`, `horizon`, testy w `tests/query.test.js`).
+Stan aktywny: `aria-pressed="true"` i obrys tuszem.
 
 Wnioski liczy `src/core/insight.js` (testy w `tests/insight.test.js`): stan projektu i powody,
 profil, harmonogram (opóźnienie wobec czasu), najbliższe zdarzenie, przegląd portfela,
@@ -113,6 +133,7 @@ Widoki nie składają klas ręcznie — wołają `ETROM.UI.*`:
 | Termin | `UI.due(value, info)` | kolor i ikona tylko przy przekroczeniu lub pilnym terminie |
 | Segmented, Tabs, Breadcrumb | `UI.segmented`, `UI.tabs`, `UI.breadcrumb` | zakładki to linki z adresem; wskaźnik przesuwa się przejściem |
 | PageHeader, EmptyState, Alert, Skeleton, Pagination | `UI.pageHeader`, `UI.emptyState`, `UI.alert`, `UI.skeleton`, `UI.pagination` | pusty stan: co tu będzie, dlaczego pusto, następny krok |
+| Onboarding | `UI.onboarding({title, text, steps, actions, note, preview})`, `UI.ghost(width)` | pierwszy start ekranu: tytuł, trzy kroki, przycisk główny ze skrótem, dane przykładowe, podgląd „tak to będzie wyglądać” z prawdziwych komponentów |
 | Menu i popover | `ETROM.Menu.bind` / `open` | strzałki, Home/End, pierwsza litera, Escape oddaje fokus |
 | Tooltip | atrybut `data-tooltip` | fokus klawiatury pokazuje od razu |
 | Okna | `Dialog.confirm`, `Dialog.prompt`, `Dialog.openDrawer` + `Dialog.drawerForm` | formularze w panelu z przyklejoną stopką, `Ctrl+Enter` zapisuje |
@@ -160,7 +181,8 @@ przerysowanie nie gubi fokusu (`data-fk`, `Dom.patch`).
 | Odmowa reguły | toast `danger` z powodem i wyjściem |
 | Błąd pola | pod polem, fokus na pierwszym błędnym |
 | Ryzyko w projekcie | rzędna + powód w wierszu, w kokpicie i w panelu stanu projektu |
-| Pusto / brak wyników | `EmptyState` z następnym krokiem |
+| Pierwszy start ekranu | `UI.onboarding` (Projekty, Zespół) |
+| Brak wyników filtra | `EmptyState` z „Wyczyść filtry” |
 
 ## 7. Responsywność
 

@@ -107,6 +107,18 @@ Nad listą projektów — kompozycja zamiast siatki jednakowych kafli:
 dominuje liczba projektów wymagających uwagi z powodami, obok rozkład
 stanów i oś najbliższych terminów. Wzrok idzie od problemu do szczegółu.
 
+Kokpit nie tylko informuje — **prowadzi do pracy**. Kliknięcie liczby projektów
+wymagających uwagi, stanu w legendzie albo „Pokaż N projektów” przy terminach
+zawęża listę poniżej; kliknięcie terminu otwiera projekt na właściwym etapie.
+Zawężenie widać w pasku filtrów i zdejmuje się je jednym kliknięciem.
+
+### Pierwszy start
+
+Pusty ekran to pierwsze wrażenie, nie wyjątek. Projekty i Zespół na starcie
+pokazują ten sam układ: co tu będzie, trzy kroki, jedno główne działanie ze skrótem,
+dane przykładowe — i obok cichy podgląd zbudowany z prawdziwych elementów
+(rzędnych, profilu, miernika obciążenia), żeby było widać, do czego to prowadzi.
+
 ### Inspektor
 
 Drugi, pływający arkusz po prawej. Otwiera **zadanie** (z historią zmian

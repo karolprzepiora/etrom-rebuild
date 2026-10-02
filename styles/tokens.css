@@ -79,11 +79,11 @@
   /* Inter: cyfry tabelaryczne, wyraźne 1/l/I, proste a — czytelność danych. */
   --features: "cv05", "cv08", "cv11", "calt";
 
-  --fs-meta: 0.71875rem;  /* 11,5 — opisy w tabelce, metadane */
+  --fs-meta: 0.75rem;     /* 12 — opisy w tabelce, kody (nic mniejszego w treści roboczej) */
   --fs-xs: 0.75rem;       /* 12 */
   --fs-sm: 0.8125rem;     /* 13 */
   --fs-row: 0.875rem;     /* 14 — nazwa w wierszu */
-  --fs-md: 0.84375rem;    /* 13,5 — tekst roboczy */
+  --fs-md: 0.875rem;      /* 14 — tekst roboczy */
   --fs-lg: 1rem;          /* 16 — tytuł sekcji */
   --fs-xl: 1.125rem;      /* 18 */
   --fs-2xl: 1.375rem;     /* 22 */

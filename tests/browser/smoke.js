@@ -208,8 +208,13 @@ async function main() {
     /* 1. Start na czystym profilu */
     check('start bez danych pokazuje pusty stan z następnym krokiem',
       (await cardCount()) === 0
-      && (await evaluate('return document.querySelector(".empty-state__title").textContent;')) === 'Nie ma jeszcze żadnego projektu'
-      && (await evaluate('return !!document.getElementById("empty-demo");')));
+      && (await evaluate('return document.getElementById("projects-onboard-title").textContent;')) === 'Załóż pierwszy projekt'
+      && (await evaluate('return !!document.getElementById("empty-new") && !!document.getElementById("empty-demo");')));
+
+    await go('#/zespol');
+    check('pusty Zespół prowadzi do pierwszej osoby i danych przykładowych',
+      await evaluate('const b = document.getElementById("team-empty-new"); return !!b && !!document.querySelector(".onboard") && /Dodaj dane przykładowe/.test(document.querySelector(".onboard").textContent);'));
+    await go('#/projekty');
 
     check('skrypty wczytały się z file:// (bez serwera)',
       (await evaluate('return location.protocol;')) === 'file:' &&
@@ -239,7 +244,7 @@ async function main() {
     await evaluate('const input = document.getElementById("tb-search"); input.value = "Lipnica"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     check('szukanie po nazwie zawęża listę do jednego projektu', (await cardCount()) === 1, 'było ' + (await cardCount()));
     check('przy aktywnym filtrze widać licznik i przycisk czyszczenia',
-      await evaluate('return /Pasuje 1 z 5/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
+      await evaluate('return /^1 z 5$/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
     await click('#tb-clear');
     await sleep(150);
     check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 5 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
@@ -263,6 +268,38 @@ async function main() {
       && (await evaluate('return document.querySelector(\'th[aria-sort] .table__sort\').dataset.sort;')) === 'name');
     await openMenu('#tb-sort', 'deadline');
     check('menu sortowania wraca do terminu', (await state('s.filters.sort')) === 'deadline');
+
+    /* 7a. Przegląd portfela jako narzędzie: kliknięcie zawęża listę */
+    await click('[data-fk="cockpit-attention"]');
+    await sleep(250);
+    const attention = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(r => r.dataset.projectCode);');
+    check('„Wymagają uwagi” w kokpicie zawęża listę do projektów w stanie ostrzegawczym i alarmowym',
+      (await state('s.filters.health')) === 'attention' && attention.length > 0 && attention.length < 5
+      && (await state('s.workspace.projects.filter(p => ' + JSON.stringify(attention) + '.includes(p.code)).every(p => ["alarm","warning"].includes(window.ETROM.Insight.health(p, new Date()).level))')),
+      'kody: ' + attention.join(','));
+    check('zawężenie widać w pasku filtrów jako zdejmowalny znacznik',
+      await evaluate('const b = document.getElementById("tb-scope"); return !!b && !b.hidden && /Wymaga uwagi/.test(b.textContent) && document.querySelector(\'[data-fk="cockpit-attention"]\').getAttribute("aria-pressed") === "true";'));
+    await click('#tb-scope');
+    await sleep(200);
+    check('zdjęcie znacznika przywraca pełną listę', (await cardCount()) === 5 && (await state('s.filters.health')) === 'all');
+    await click('[data-fk="mix-alarm"]');
+    await sleep(200);
+    check('pozycja legendy stanu portfela filtruje listę po stanie', (await state('s.filters.health')) === 'alarm' && (await cardCount()) === 1);
+    await click('[data-fk="mix-alarm"]');
+    await sleep(200);
+    check('ponowne kliknięcie legendy zdejmuje filtr', (await cardCount()) === 5);
+    await click('[data-fk="cockpit-horizon"]');
+    await sleep(200);
+    check('„Najbliższe terminy” pokazują na liście projekty z terminem w 60 dniach',
+      (await state('s.filters.horizon')) === 60 && (await cardCount()) >= 1 && (await cardCount()) <= 5
+      && (await evaluate('return /Pokaż \\d+/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent) || /Pokaż wszystkie/.test(document.querySelector(\'[data-fk="cockpit-horizon"]\').textContent);')));
+    await click('#tb-scope');
+    await sleep(200);
+    await evaluate('document.querySelector(".upcoming__item").click(); return true;');
+    await sleep(800);
+    check('termin z kokpitu otwiera projekt na właściwym etapie',
+      /^#\/projekty\/\d+/.test(await evaluate('return location.hash;')));
+    await go('#/projekty');
 
     /* 8. Szczegóły projektu pod własnym adresem */
     await evaluate('document.querySelector(\'[data-project-code="DEMO-002"] .project-link\').click(); return true;');

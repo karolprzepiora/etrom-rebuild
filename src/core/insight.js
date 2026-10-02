@@ -243,6 +243,26 @@
    * Przegląd portfela: liczba projektów w każdym stanie i terminy w najbliższym horyzoncie.
    * @param {number} [horizon] dni do przodu (domyślnie 60)
    */
+  /**
+   * Terminy projektu w oknie [0, limit] dni: termin umowy i niezakończone etapy.
+   * Ta sama definicja zasila oś terminów i filtr „terminy w najbliższych dniach”.
+   */
+  function upcomingFor(project, now, limit, level) {
+    var reference = now instanceof Date ? now : new Date();
+    var result = [];
+    if (!project || project.status === 'done') return result;
+    var d = Progress.daysUntil(project.deadline, reference);
+    if (d !== null && d >= 0 && d <= limit) result.push({ project: project, kind: 'project', date: project.deadline, days: d, level: level });
+    (project.stages || []).forEach(function (stage) {
+      if (stage.status === 'done') return;
+      var sd = Progress.daysUntil(stage.deadline, reference);
+      if (sd !== null && sd >= 0 && sd <= limit) {
+        result.push({ project: project, kind: 'stage', stage: stage, date: stage.deadline, days: sd, level: level });
+      }
+    });
+    return result;
+  }
+
   function portfolio(projects, now, horizon) {
     var reference = now instanceof Date ? now : new Date();
     var limit = horizon || 60;
@@ -260,15 +280,7 @@
         var stats = Progress.projectProgress(project);
         hoursDone += stats.hoursDone;
         hoursTotal += stats.hoursTotal;
-        var d = Progress.daysUntil(project.deadline, reference);
-        if (d !== null && d <= limit) upcoming.push({ project: project, kind: 'project', date: project.deadline, days: d, level: state.level });
-        (project.stages || []).forEach(function (stage) {
-          if (stage.status === 'done') return;
-          var sd = Progress.daysUntil(stage.deadline, reference);
-          if (sd !== null && sd >= 0 && sd <= limit) {
-            upcoming.push({ project: project, kind: 'stage', stage: stage, date: stage.deadline, days: sd, level: state.level });
-          }
-        });
+        upcoming = upcoming.concat(upcomingFor(project, reference, limit, state.level));
       }
     });
 
@@ -308,6 +320,7 @@
 
   var api = {
     LEVELS: LEVELS,
+    upcomingFor: upcomingFor,
     health: health,
     profile: profile,
     schedule: schedule,
