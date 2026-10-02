@@ -37,6 +37,7 @@
     form: null,
     personForm: null,
     stageForm: null,
+    timeForm: null,
     taskForm: null,
     expandedStages: {},
     showDone: {},
@@ -639,6 +640,177 @@
     mapTask(projectId, stageId, taskId, function () { return result.task; });
   }
 
+  /* =========================================================
+     Zegar rejestracji czasu
+     ========================================================= */
+
+  var TL = E.TimeLog;
+
+  function entries() {
+    return store.getState().workspace.entries || [];
+  }
+
+  function setEntries(producer) {
+    updateWorkspace(function (workspace) {
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, entries: producer(workspace.entries || []) });
+    });
+  }
+
+  function currentMe() {
+    var id = store.getState().prefs.me;
+    return Team.findPerson(people(), id) ? id : null;
+  }
+
+  function runningTimer() {
+    var me = currentMe();
+    return me ? TL.running(entries(), me) : null;
+  }
+
+  function isTiming(projectId, stageId, taskId) {
+    var run = runningTimer();
+    return !!run && run.projectId === projectId && run.stageId === stageId && run.taskId === taskId;
+  }
+
+  /** Projekt, etap i zadanie wpisu; null dla elementów, które już usunięto. */
+  function locateEntry(entry) {
+    var project = findProject(entry.projectId);
+    var stage = project && project.stages.filter(function (st) { return st.id === entry.stageId; })[0];
+    var task = stage && (stage.tasks || []).filter(function (t) { return t.id === entry.taskId; })[0];
+    return { project: project, stage: stage || null, task: task || null };
+  }
+
+  function requireMe() {
+    var me = currentMe();
+    if (me) return me;
+    Toast.show({ message: 'Najpierw wybierz, kim jesteś — czas zapisuje się na osobę.', tone: 'info', timeout: 5000 });
+    goTo('mywork');
+    return null;
+  }
+
+  function toggleTimer(projectId, stageId, taskId) {
+    if (isTiming(projectId, stageId, taskId)) { stopTimer(); return; }
+    var me = requireMe();
+    if (!me) return;
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    if (task.status === 'done') {
+      Toast.show({ message: 'Zadanie jest zakończone. Cofnij je do „Do wykonania”, żeby dalej zapisywać czas.', tone: 'info', timeout: 5000 });
+      return;
+    }
+    var result = TL.start(entries(), { personId: me, projectId: projectId, stageId: stageId, taskId: taskId, label: task.name }, new Date());
+    setEntries(function () { return result.entries; });
+    // Praca nad zadaniem oznacza, że jest w toku.
+    if (task.status === 'todo' || task.status === 'changes') applyTaskMove(projectId, stageId, taskId, 'working', '');
+    if (result.stopped) {
+      var before = locateEntry(result.stopped);
+      Toast.show({ message: 'Poprzedni zegar zatrzymany: ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (before.task ? before.task.name : result.stopped.label) + '”.', tone: 'info', timeout: 4000 });
+    }
+  }
+
+  function stopTimer() {
+    var me = currentMe();
+    var run = me && TL.running(entries(), me);
+    if (!run) return;
+    if (TL.isForgotten(run)) { openTimeForm({ mode: 'stop', entryId: run.id }); return; }
+    var result = TL.stop(entries(), me, new Date());
+    setEntries(function () { return result.entries; });
+    var where = locateEntry(result.stopped);
+    Toast.show({ message: 'Zapisano ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (where.task ? where.task.name : result.stopped.label) + '”.', tone: 'success', timeout: 4000 });
+  }
+
+  function openTimeForm(spec) {
+    var me = currentMe();
+    var draft;
+    var title = '';
+    var hint = '';
+    if (spec.mode === 'stop') {
+      var run = entries().filter(function (e) { return e.id === spec.entryId; })[0];
+      if (!run) return;
+      var elapsed = TL.minutes(run);
+      draft = { hours: String(Math.min(8, TL.hoursOf(elapsed))).replace('.', ','), note: '' };
+      hint = 'Zegar chodzi od ' + F.dateTime(run.start.slice(0, 16)) + ' (' + TL.duration(elapsed) + '). Wpisz, ile godzin z tego naprawdę dotyczyło zadania.';
+      store.set({ timeForm: { mode: 'stop', entryId: run.id, projectId: run.projectId, stageId: run.stageId, taskId: run.taskId, draft: draft, errors: {}, hint: hint } });
+      return;
+    }
+    if (spec.mode === 'edit') {
+      var entry = entries().filter(function (e) { return e.id === spec.entryId; })[0];
+      if (!entry) return;
+      draft = { hours: String(TL.hoursOf(TL.minutes(entry))).replace('.', ','), note: entry.note || '' };
+      store.set({ timeForm: { mode: 'edit', entryId: entry.id, projectId: entry.projectId, stageId: entry.stageId, taskId: entry.taskId, draft: draft, errors: {} } });
+      return;
+    }
+    if (!me && !requireMe()) return;
+    var now = new Date();
+    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    store.set({ timeForm: { mode: 'manual', projectId: spec.projectId, stageId: spec.stageId, taskId: spec.taskId, draft: { date: today, hours: '', note: '' }, errors: {} } });
+  }
+
+  function submitTime(values) {
+    var form = store.getState().timeForm;
+    if (!form) return;
+    var now = new Date();
+    var me = currentMe();
+    var fail = function (errors) { store.set({ timeForm: Object.assign({}, form, { draft: values, errors: errors }) }); };
+
+    if (form.mode === 'stop') {
+      var hours = Number(String(values.hours).replace(',', '.'));
+      if (!Number.isFinite(hours) || hours < 0) { fail({ hours: 'Podaj liczbę godzin (może być 0).' }); return; }
+      var result = TL.stop(entries(), me, now, { minutes: Math.round(hours * 60) });
+      var noted = values.note ? TL.update(result.entries, result.stopped.id, { note: values.note }, now) : null;
+      setEntries(function () { return noted && noted.valid ? noted.entries : result.entries; });
+      store.set({ timeForm: null });
+      Toast.show({ message: 'Zapisano ' + TL.duration(Math.round(hours * 60)) + '.', tone: 'success', timeout: 4000 });
+      return;
+    }
+    if (form.mode === 'edit') {
+      var upd = TL.update(entries(), form.entryId, { hours: values.hours, note: values.note }, now);
+      if (!upd.valid) { fail(upd.errors); return; }
+      setEntries(function () { return upd.entries; });
+      store.set({ timeForm: null });
+      return;
+    }
+    var task = taskOf(form.projectId, form.stageId, form.taskId);
+    var added = TL.addManual(entries(), {
+      personId: me, projectId: form.projectId, stageId: form.stageId, taskId: form.taskId,
+      label: task ? task.name : '', date: values.date, hours: values.hours, note: values.note
+    }, now);
+    if (!added.valid) { fail(added.errors); return; }
+    setEntries(function () { return added.entries; });
+    store.set({ timeForm: null });
+    Toast.show({ message: 'Dopisano ' + TL.duration(TL.minutes(added.entry)) + '.', tone: 'success', timeout: 3500 });
+  }
+
+  function deleteEntry(entryId) {
+    var list = entries();
+    var index = list.findIndex(function (e) { return e.id === entryId; });
+    if (index < 0) return;
+    var removed = list[index];
+    setEntries(function (current) { return TL.remove(current, entryId); });
+    Toast.show({
+      message: 'Usunięto wpis ' + TL.duration(TL.minutes(removed)) + '.',
+      actionLabel: 'Cofnij',
+      onAction: function () {
+        setEntries(function (current) {
+          var copy = current.slice();
+          copy.splice(Math.min(index, copy.length), 0, removed);
+          return copy;
+        });
+      }
+    });
+  }
+
+  /** Zegar zapomniany przy komputerze: przy starcie i powrocie do karty proponujemy rozliczenie. */
+  var forgottenAsked = null;
+  function checkForgotten() {
+    var run = runningTimer();
+    if (!run || !TL.isForgotten(run) || forgottenAsked === run.id) return;
+    forgottenAsked = run.id;
+    Toast.show({
+      message: 'Zegar chodzi od ' + TL.duration(TL.minutes(run)) + '. Rozlicz go, zanim zaburzy budżet.',
+      tone: 'warning', actionLabel: 'Rozlicz', onAction: function () { openTimeForm({ mode: 'stop', entryId: run.id }); }, timeout: 15000
+    });
+  }
+
   function moveTaskStatus(projectId, stageId, taskId, next) {
     var task = taskOf(projectId, stageId, taskId);
     if (!task) return;
@@ -1191,6 +1363,12 @@
     editTask: openEditTask,
     deleteTask: deleteTask,
     moveTask: moveTaskStatus,
+    toggleTimer: toggleTimer,
+    stopTimer: stopTimer,
+    isTiming: isTiming,
+    logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
+    editEntry: function (id) { openTimeForm({ mode: 'edit', entryId: id }); },
+    deleteEntry: deleteEntry,
     cyclePart: cycleTaskPart,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
     editPerson: openEditPerson,
@@ -1522,7 +1700,7 @@
   }
 
   function renderMyWork(state) {
-    var screen = E.MyWork.view(state, { actions: actions });
+    var screen = E.MyWork.view(state, { actions: actions, find: locateEntry });
     nodes.myworkSummary.textContent = screen.summary;
     D.render(nodes.myworkWho, screen.who ? [screen.who] : []);
     D.patch(nodes.myworkBody, [screen.body]);
@@ -1540,7 +1718,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -1563,6 +1741,13 @@
       settings.title = current.draft.id != null ? 'Edytuj zadanie' : 'Nowe zadanie';
       settings.subtitle = (project ? project.code : '') + (stage ? ' · ' + Model.describeStage(stage).name : '');
       settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster);
+    } else if (current === state.timeForm) {
+      var logged = findProject(current.projectId);
+      var loggedTask = taskOf(current.projectId, current.stageId, current.taskId);
+      settings.title = current.mode === 'stop' ? 'Rozlicz zegar' : (current.mode === 'edit' ? 'Zmień wpis czasu' : 'Dopisz czas');
+      settings.subtitle = (logged ? logged.code + ' · ' : '') + (loggedTask ? loggedTask.name : 'Zadanie');
+      settings.content = E.Timer.timeForm({ mode: current.mode, draft: current.draft, errors: current.errors, hint: current.hint },
+        { onSubmit: submitTime, onCancel: function () { store.set({ timeForm: null }); } });
     } else if (current === state.stageForm) {
       var owner = findProject(current.projectId);
       var editingStage = !!current.stageId;
@@ -1587,8 +1772,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null });
         }
       }
     }));
@@ -1608,6 +1793,7 @@
 
     nodes.app.classList.toggle('app--collapsed', !!state.prefs.sidebarCollapsed);
     if (route.name !== 'project') D.clear(nodes.topbarActions);
+    D.render(nodes.timerSlot, [E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })]);
 
     if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
@@ -1634,6 +1820,8 @@
     E.Inspector.render(nodes.inspector, state.inspector, {
       people: people(),
       projects: state.workspace.projects,
+      entries: state.workspace.entries || [],
+      me: state.prefs.me,
       findProject: findProject,
       actions: actions
     });
@@ -1744,6 +1932,7 @@
     nodes.teamFilters = D.byId('team-filters');
     nodes.teamList = D.byId('team-list');
     nodes.teamSummary = D.byId('team-summary');
+    nodes.timerSlot = D.byId('timer-slot');
     nodes.myworkSummary = D.byId('mywork-summary');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
@@ -1818,6 +2007,13 @@
     });
     renderAll(store.getState());
     E.Shell.setSaved(true);
+
+    // Zegar tyka bez przerysowywania aplikacji; po powrocie do karty sprawdzamy zapomniany zegar.
+    window.setInterval(E.Timer.tick, 500);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') { E.Timer.tick(); checkForgotten(); }
+    });
+    window.setTimeout(checkForgotten, 600);
     document.documentElement.classList.add('is-ready');
   }
 

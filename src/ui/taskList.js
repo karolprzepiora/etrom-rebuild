@@ -70,6 +70,7 @@
         label: 'Działania zadania', align: 'end',
         items: [
           { label: 'Szczegóły', icon: 'inspector', onSelect: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } },
+          { label: 'Dopisz czas…', icon: 'clock', hint: 'ręcznie', onSelect: function () { actions.logTime(project.id, stage.id, task.id); } },
           { label: 'Edytuj zadanie', icon: 'edit', onSelect: function () { actions.editTask(project.id, stage.id, task.id); } },
           { type: 'separator' },
           { label: 'Usuń zadanie', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteTask(project.id, stage.id, task.id); } }
@@ -118,6 +119,7 @@
           ? UI.due(task.deadline, info, { done: task.status === 'done', relativeOnly: info.tone === 'overdue' || info.tone === 'urgent' })
           : D.el('span', { class: 'due due--none', text: 'Bez terminu' })
       ]),
+      E.Timer.timerButton(project, stage, task, actions),
       taskMenu(project, stage, task, actions)
     ]);
   }

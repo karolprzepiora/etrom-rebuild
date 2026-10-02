@@ -20,6 +20,37 @@
 
   var KIND = { task: 'Zadanie', person: 'Osoba', project: 'Podgląd projektu' };
 
+  /** Czas pracy zapisany na zadaniu: razem i na osoby, plus start zegara i wpis ręczny. */
+  function timeBlock(project, stage, task, assigned, ctx) {
+    var TL = E.TimeLog;
+    var totals = TL.byPerson(ctx.entries || [], project.id, task.id);
+    var ids = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; });
+    var total = ids.reduce(function (sum, id) { return sum + totals[id]; }, 0);
+    var on = ctx.actions.isTiming(project.id, stage.id, task.id);
+    return block('Czas pracy', [
+      total
+        ? D.el('div', { class: 'insp-time' }, [
+            D.el('p', { class: 'insp-time__total t-num', text: TL.duration(total) }),
+            D.el('ul', { class: 'insp-time__list' }, ids.map(function (id) {
+              var person = Team.findPerson(ctx.people, id);
+              return D.el('li', null, [
+                D.el('span', { class: 'truncate', text: person ? Team.fullName(person) : 'Usunięta osoba' }),
+                D.el('span', { class: 't-num', text: TL.duration(totals[id]) })
+              ]);
+            }))
+          ])
+        : D.el('p', { class: 't-meta', text: 'Nie zapisano jeszcze czasu na tym zadaniu.' }),
+      D.el('div', { class: 'insp-time__actions' }, [
+        UI.button({
+          label: on ? 'Zatrzymaj zegar' : 'Włącz zegar', icon: on ? 'stop' : 'play', variant: 'secondary', size: 'sm',
+          attrs: { 'data-fk': 'insp-timer' }, disabled: task.status === 'done' && !on,
+          onClick: function () { ctx.actions.toggleTimer(project.id, stage.id, task.id); }
+        }),
+        UI.button({ label: 'Dopisz czas', icon: 'plus', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.logTime(project.id, stage.id, task.id); } })
+      ])
+    ]);
+  }
+
   function prop(label, value) {
     return D.el('div', { class: 'prop' }, [
       D.el('dt', { class: 'prop__label', text: label }),
@@ -88,6 +119,7 @@
               ])]);
             }))
           : D.el('p', { class: 't-meta', text: 'Bez realizatora. Wskaż osoby w edycji zadania.' })]),
+        timeBlock(project, stage, task, people, ctx),
         task.description ? block('Opis', [D.el('p', { class: 'insp-text', text: task.description })]) : null,
         block('Historia', [history.length
           ? D.el('ol', { class: 'history' }, history.map(function (entry) {

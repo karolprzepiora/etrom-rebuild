@@ -551,6 +551,51 @@ async function main() {
       await evaluate('return document.querySelectorAll("[role=menuitem]").length > 1;'));
     await pressKey('escape');
 
+    /* 21c. Zegar rejestracji czasu */
+    check('wiersz zadania w Mojej pracy ma przycisk zegara',
+      await evaluate('return document.querySelectorAll(".mrow .timer-btn").length > 0;'));
+    const firstTimer = await evaluate('const b = document.querySelector(".mrow:not(.mrow--approve) .timer-btn"); return b ? b.dataset.fk : null;');
+    await click('[data-fk="' + firstTimer + '"]');
+    await sleep(300);
+    check('włączenie zegara pokazuje pływający zegar w pasku górnym i oznacza przycisk',
+      await evaluate('return !!document.querySelector(".timer-pill") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__time").textContent);'));
+    check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
+      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+    await sleep(1700);
+    check('zegar tyka bez przerysowania aplikacji',
+      await evaluate('return document.querySelector(".timer-pill__time").textContent !== "0:00:00";'));
+    await evaluate('const all = [...document.querySelectorAll(".mrow:not(.mrow--approve) .timer-btn")]; const other = all.find(b => !b.classList.contains("is-running")); if (other) other.click(); return !!other;');
+    await sleep(300);
+    check('włączenie drugiego zegara zatrzymuje pierwszy: nadal jeden chodzący wpis',
+      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+    await click('[data-fk="timer-stop"]');
+    await sleep(300);
+    check('stop zamyka wpis i chowa pływający zegar',
+      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
+    check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
+      await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
+    await click('.erow .row-actions');
+    await sleep(200);
+    await evaluate('const item = [...document.querySelectorAll("[role=menuitem]")].find(x => /Zmień godziny/.test(x.textContent)); item.click(); return true;');
+    await sleep(300);
+    await evaluate('document.getElementById("tm-hours").value = "2,5"; document.getElementById("time-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('edycja wpisu zmienia czas trwania na 2,5 h',
+      await evaluate('return [...document.querySelectorAll(".erow__dur")].some(n => /2 h 30 min/.test(n.textContent));'));
+    await click('.mrow:not(.mrow--approve) .trow__name');
+    await sleep(300);
+    await evaluate('const b = [...document.querySelectorAll("#inspector button")].find(x => /Dopisz czas/.test(x.textContent)); b.click(); return true;');
+    await sleep(300);
+    await evaluate('document.getElementById("tm-hours").value = "0"; document.getElementById("time-form").requestSubmit(); return true;');
+    await sleep(200);
+    check('wpis ręczny z zerowymi godzinami nie przechodzi walidacji', await evaluate('return !!document.querySelector("#time-form .field__error");'));
+    await evaluate('document.getElementById("tm-hours").value = "1,5"; document.getElementById("tm-note").value = "Kolizja z gazem"; document.getElementById("time-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('wpis ręczny trafia do rejestru z notatką i do bloku czasu w inspektorze',
+      (await state('(s.workspace.entries || []).filter(e => e.source === "manual" && e.note === "Kolizja z gazem").length')) === 1
+      && await evaluate('return /1 h 30 min|4 h/.test(document.querySelector("#inspector .insp-time__total").textContent);'));
+    await pressKey('escape');
+
     /* 22. Wybór etapów przy zakładaniu projektu */
     await go('#/projekty');
     await pressKey('n');

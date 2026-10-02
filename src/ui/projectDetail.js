@@ -110,14 +110,15 @@
     }, body);
   }
 
-  function facts(project, now) {
+  function facts(project, now, entries) {
     var stats = Progress.projectProgress(project);
+    var loggedMinutes = E.TimeLog.projectMinutes(entries || [], project.id);
     var tasks = Tasks.projectTaskStats(project, now);
     var active = Progress.activeStage(project);
     var info = Progress.deadlineInfo(project.deadline, now);
     var done = project.status === 'done';
     return D.el('dl', { class: 'facts' }, [
-      fact('Godziny', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], stats.done + ' z ' + stats.total + ' etapów'),
+      fact('Godziny', [D.el('span', { class: 't-num', text: F.number(stats.hoursDone) }), D.el('span', { class: 'fact__of t-num', text: ' / ' + F.hours(stats.hoursTotal) })], (loggedMinutes ? 'zapisano ' + String(E.TimeLog.hoursOf(loggedMinutes)).replace('.', ',') + ' h' : stats.done + ' z ' + stats.total + ' etapów')),
       fact('Zadania otwarte', [D.el('span', { class: 't-num', text: String(tasks.open) })],
         tasks.overdue ? 'w tym ' + tasks.overdue + ' po terminie' : (tasks.total ? 'z ' + tasks.total + ' w projekcie' : 'brak zadań'),
         tasks.overdue ? 'alarm' : ''),
@@ -182,7 +183,7 @@
             stageNow(project, ctx),
             Flow.flowTrack(project, { now: now, onSegment: reveal }),
             Flow.timeline(project, now),
-            facts(project, now),
+            facts(project, now, ctx.state && ctx.state.workspace.entries),
             signatures(project, ctx)
           ])
         ]),

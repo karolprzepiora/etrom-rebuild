@@ -17,6 +17,7 @@
   var Insight = E.Insight;
   var Sig = E.Sig;
   var F = E.Format;
+  var TL = E.TimeLog;
 
   var GROUPS = [
     { key: 'overdue', label: 'Po terminie', tone: 'alarm' },
@@ -77,7 +78,8 @@
       settings.approve ? UI.status('task', task.status) : E.TaskList.statusControl(row.project, row.stage, task, ctx.actions),
       D.el('div', { class: 'mrow__body' }, body),
       D.el('span', { class: 'mrow__load t-meta', text: Tasks.WORKLOAD[task.workload] || '' }),
-      last
+      last,
+      settings.approve ? null : E.Timer.timerButton(row.project, row.stage, task, ctx.actions)
     ]);
   }
 
@@ -202,9 +204,12 @@
       who: whoButton(me, people, ctx.actions),
       body: D.el('div', { class: 'mywork' }, [
         D.el('div', { class: 'mywork__main' }, main),
-        D.el('aside', { class: 'mywork__aside', attrs: { 'aria-label': 'Moje projekty' } }, [
-          D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
-          projectsAside(work, now)
+        D.el('aside', { class: 'mywork__aside', attrs: { 'aria-label': 'Czas i projekty' } }, [
+          E.Timer.todayBlock(TL.forDay(state.workspace.entries || [], me.id, now), { find: ctx.find, actions: ctx.actions }),
+          D.el('div', { class: 'maside__projects' }, [
+            D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
+            projectsAside(work, now)
+          ])
         ])
       ]),
       work: work

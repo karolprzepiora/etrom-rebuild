@@ -377,3 +377,11 @@ test('normalizeWorkspace uzupełnia rodzaj etapu własnego z dawnych danych', ()
   ] }] });
   assert.deepEqual(ws.projects[0].stages.map((s) => s.kind), ['docs', 'decision', 'docs']);
 });
+
+test('normalizeWorkspace zachowuje wpisy czasu istniejących projektów i odrzuca osierocone', () => {
+  const entry = (id, projectId) => ({ id, personId: 'p-1', projectId, stageId: 'concept', taskId: 't-1', start: '2026-10-01T08:00:00.000Z', end: '2026-10-01T09:00:00.000Z' });
+  const ws = Model.normalizeWorkspace({ projects: [{ id: 3, code: 'A-1', name: 'N', stages: [] }], entries: [entry('e-1', 3), entry('e-2', 99)] });
+  assert.deepEqual(ws.entries.map((e) => e.id), ['e-1']);
+  assert.deepEqual(Model.emptyWorkspace().entries, []);
+  assert.deepEqual(Model.normalizeWorkspace({}).entries, []);
+});

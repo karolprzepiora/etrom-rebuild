@@ -12,7 +12,11 @@
     ? require('./tasks.js')
     : root.ETROM.Tasks;
 
-  var WORKSPACE_VERSION = 5;
+  var TimeLog = (typeof module !== 'undefined' && module.exports)
+    ? require('./timelog.js')
+    : root.ETROM.TimeLog;
+
+  var WORKSPACE_VERSION = 6;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -372,11 +376,12 @@
       seenIds[project.id] = true;
     });
 
-    return { version: WORKSPACE_VERSION, projects: projects, people: people };
+    var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [] };
   }
 
   var api = {

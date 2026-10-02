@@ -73,6 +73,20 @@
     return Progress.activeStage(project) === stage && stage.status === 'working';
   }
 
+  /** Budżet godzin etapu; gdy zapisano czas, także ile z niego już zużyto. */
+  function hoursCell(stage, loggedMinutes) {
+    if (!loggedMinutes) return D.el('span', { class: 'srow__hours t-num', text: F.hours(stage.hours) });
+    var used = E.TimeLog.hoursOf(loggedMinutes);
+    var over = used > Number(stage.hours);
+    return D.el('span', {
+      class: 'srow__hours srow__hours--logged t-num' + (over ? ' is-over' : ''),
+      attrs: { 'data-tooltip': 'Zapisano ' + E.TimeLog.duration(loggedMinutes) + ' z budżetu ' + F.hours(stage.hours) + (over ? ' — budżet przekroczony' : '') }
+    }, [
+      D.el('span', { class: 'srow__used', text: String(used).replace('.', ',') }),
+      D.el('span', { class: 'srow__budget', text: ' / ' + F.hours(stage.hours) })
+    ]);
+  }
+
   function stageRow(project, stage, position, count, ctx, segment) {
     var actions = ctx.actions;
     var info = Model.describeStage(stage);
@@ -103,7 +117,7 @@
         D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
       ]),
       taskCell(stage),
-      D.el('span', { class: 'srow__hours t-num', text: F.hours(stage.hours) }),
+      hoursCell(stage, ctx.logged && ctx.logged[stage.id]),
       D.el('span', { class: 'srow__deadline' }, [
         UI.due(stage.deadline, Progress.deadlineInfo(stage.deadline), { done: stage.status === 'done', label: 'Termin etapu' })
       ]),
@@ -192,6 +206,7 @@
       })])]);
     }
 
+    ctx = Object.assign({}, ctx, { logged: E.TimeLog.byStage(ctx.state.workspace.entries || [], project.id) });
     var done = leadingDone(project);
     var showDone = !!(ctx.state.showDone && ctx.state.showDone[project.id]);
     var collapse = !ctx.state.stageGroup && done >= COLLAPSE_FROM && done < count && !showDone;
