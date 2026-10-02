@@ -6,6 +6,7 @@
 
   var node = typeof module !== 'undefined' && module.exports;
   var Model = node ? require('./model.js') : root.ETROM.Model;
+  var Catalog = node ? require('./catalog.js') : root.ETROM.Catalog;
   var Progress = node ? require('./progress.js') : root.ETROM.Progress;
   var Tasks = node ? require('./tasks.js') : root.ETROM.Tasks;
   var Team = node ? require('./team.js') : root.ETROM.Team;
@@ -333,6 +334,32 @@
     return result;
   }
 
+  /**
+   * Budżet godzin projektu według rodzaju pracy (materiały, dokumentacja,
+   * decyzje). Zawsze trzy pozycje w stałej kolejności; udział liczony od
+   * budżetu całego projektu. `doneHours` to godziny etapów zakończonych.
+   */
+  function budgetByKind(project) {
+    var rows = {};
+    Catalog.KIND_ORDER.forEach(function (id) {
+      rows[id] = { kind: id, label: Catalog.kind(id).label, hours: 0, doneHours: 0, count: 0, share: 0 };
+    });
+    var total = 0;
+    ((project && project.stages) || []).forEach(function (stage) {
+      var info = Model.describeStage(stage);
+      var hours = Number(stage.hours) || 0;
+      var row = rows[info.kind];
+      row.hours += hours;
+      row.count += 1;
+      if (stage.status === 'done') row.doneHours += hours;
+      total += hours;
+    });
+    return Catalog.KIND_ORDER.map(function (id) {
+      rows[id].share = total > 0 ? rows[id].hours / total : 0;
+      return rows[id];
+    });
+  }
+
   function portfolio(projects, now, horizon) {
     var reference = now instanceof Date ? now : new Date();
     var limit = horizon || 60;
@@ -399,6 +426,7 @@
     ladder: ladder,
     schedule: schedule,
     nextEvent: nextEvent,
+    budgetByKind: budgetByKind,
     portfolio: portfolio,
     workload: workload
   };

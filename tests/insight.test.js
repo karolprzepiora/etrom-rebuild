@@ -203,3 +203,21 @@ test('drabinka stanu: aktywny szczebel niesie powody, a każdy powód ma identyf
   assert.ok(l.reasons.every((r) => typeof r.rule === 'string' && r.rule));
   assert.equal(Insight.ladder(project({ status: 'done' }), NOW).closed, true);
 });
+
+test('budgetByKind liczy godziny i udziały trzech rodzajów pracy', () => {
+  const p = { stages: [
+    stage('preparation', 'done', 40), stage('concept', 'working', 60),
+    stage('water-docs', 'todo', 100), stage('water-process', 'todo', 100),
+    Object.assign(stage('concept', 'todo', 0), { id: 'custom-1', source: 'custom', name: 'Opinia', domain: 'water', kind: 'decision', hours: 100 })
+  ] };
+  const rows = Insight.budgetByKind(p);
+  assert.deepEqual(rows.map((r) => r.kind), ['materials', 'docs', 'decision']);
+  assert.deepEqual(rows.map((r) => r.hours), [40, 160, 200]);
+  assert.deepEqual(rows.map((r) => r.count), [1, 2, 2]);
+  assert.equal(rows[0].doneHours, 40);
+  assert.equal(rows[2].doneHours, 0);
+  assert.ok(Math.abs(rows.reduce((sum, r) => sum + r.share, 0) - 1) < 1e-9);
+  const empty = Insight.budgetByKind({ stages: [] });
+  assert.equal(empty.length, 3);
+  assert.equal(empty[1].share, 0);
+});

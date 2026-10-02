@@ -226,8 +226,8 @@ async function main() {
     check('dane przykładowe dodają 5 projektów', (await cardCount()) === 5, 'było ' + (await cardCount()));
     check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 5);
 
-    check('każdy projekt przykładowy ma 14 etapów w katalogowej kolejności',
-      await state('s.workspace.projects.every(p => p.stages.length === 14)'));
+    check('każdy projekt przykładowy ma komplet etapów ze standardu w katalogowej kolejności',
+      await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.all.length)'));
 
     /* 3. Zapis lokalny */
     const stored = await evaluate('const raw = localStorage.getItem("etrom.v3"); return raw ? JSON.parse(raw).projects.length : -1;');
@@ -313,16 +313,16 @@ async function main() {
       (await evaluate('return document.activeElement && document.activeElement.id;')) === 'project-title');
 
     check('zakończone etapy z początku zwinięte w jedną linię z liczbą',
-      await evaluate('const b = document.getElementById("show-done"); return !!b && /9\\u00a0etapów zakończonych/.test(b.textContent);'));
+      await evaluate('const b = document.getElementById("show-done"); return !!b && /11\\u00a0etapów zakończonych/.test(b.textContent);'));
     await click('#show-done');
     await sleep(200);
-    check('po rozwinięciu przebieg pokazuje wszystkie 14 etapów', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === 14);
+    check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".srow-wrap[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
     /* 9. Zmiana statusu etapu przelicza postęp */
     const progressNow = () => evaluate('return document.querySelector(".gauge__number").dataset.count;');
     const before = await progressNow();
     await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
-    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'working');
+    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[15].status')) === 'working');
     await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
     const after = await progressNow();
@@ -332,7 +332,7 @@ async function main() {
     await pressKey('enter');
     check('fokus klawiatury zostaje na przycisku statusu po przerysowaniu',
       await evaluate('const rows = document.querySelectorAll(".srow-wrap[data-stage-id] > .srow"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
-      && (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'todo');
+      && (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[15].status')) === 'todo');
 
     /* 10. Wstecz w przeglądarce */
     await evaluate('history.back(); return true;');
@@ -519,7 +519,7 @@ async function main() {
     await go('#/projekty');
     await pressKey('n');
     check('formularz pokazuje listę etapów do wyboru, domyślnie pustą',
-      await evaluate('const boxes = [...document.querySelectorAll("#pf-stage-picker input[type=checkbox]")]; return boxes.length === 14 && boxes.every(b => !b.checked);'));
+      await evaluate('const boxes = [...document.querySelectorAll("#pf-stage-picker input[type=checkbox]")]; return boxes.length === window.ETROM.Catalog.all.length && boxes.every(b => !b.checked);'));
     await evaluate(
       'document.getElementById("pf-code").value = "PICK-1";' +
       'document.getElementById("pf-name").value = "Projekt z wyborem etapów";' +
@@ -552,7 +552,23 @@ async function main() {
     check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
       custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location', JSON.stringify(custom));
     check('wiersz etapu własnego jest oznaczony w podpisie',
-      await evaluate('const metas = [...document.querySelectorAll(".srow__meta")].map(n => n.textContent); return metas.some(m => m.indexOf("własny") === 0) && metas.some(m => m.indexOf("standard 07") === 0);'));
+      await evaluate('const metas = [...document.querySelectorAll(".srow__meta")].map(n => n.textContent); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m));'));
+
+    /* 23b. Rodzaj pracy: ikony, plakietka decyzji, pasek budżetu, grupowanie */
+    check('projekt pokazuje budżet godzin według trzech rodzajów pracy',
+      await evaluate('return document.querySelectorAll(".kindbar__item").length === 3 && !!document.querySelector(".kindbar__track");'));
+    const decisionIds = await state('s.workspace.projects.find(x => x.code === "PICK-1").stages.filter(st => window.ETROM.Model.describeStage(st).decision).map(st => st.id)');
+    const badgedIds = await evaluate('return [...document.querySelectorAll(".srow-wrap[data-stage-id]")].filter(li => li.querySelector(".stageicon--decision")).map(li => li.dataset.stageId);');
+    check('plakietka decyzji pokrywa się z etapami o rodzaju „Decyzje”', JSON.stringify(decisionIds) === JSON.stringify(badgedIds), JSON.stringify(decisionIds) + ' vs ' + JSON.stringify(badgedIds));
+    const kindCount = await state('new Set(s.workspace.projects.find(x => x.code === "PICK-1").stages.map(st => window.ETROM.Model.describeStage(st).kind)).size');
+    await click('[data-fk="stage-group"]');
+    await sleep(200);
+    check('„Grupuj wg rodzaju” dodaje nagłówki rodzajów, a numeracja zostaje chronologiczna',
+      (await evaluate('return document.querySelectorAll(".srow-group").length;')) === kindCount
+      && (await evaluate('return document.querySelector("[data-fk=stage-group]").getAttribute("aria-pressed");')) === 'true');
+    await click('[data-fk="stage-group"]');
+    await sleep(200);
+    check('ponowny klik wraca do kolejności chronologicznej', (await evaluate('return document.querySelectorAll(".srow-group").length;')) === 0);
 
     /* 23a. Edycja istniejącego etapu: godziny i termin */
     const pctBefore = await state('window.ETROM.Progress.projectProgress(s.workspace.projects.find(x => x.code === "PICK-1")).hoursTotal');

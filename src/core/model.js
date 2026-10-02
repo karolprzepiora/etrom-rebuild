@@ -12,7 +12,7 @@
     ? require('./tasks.js')
     : root.ETROM.Tasks;
 
-  var WORKSPACE_VERSION = 4;
+  var WORKSPACE_VERSION = 5;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -127,8 +127,10 @@
     var errors = {};
     var name = text(data.name);
     var domain = text(data.domain) || 'general';
+    var kind = text(data.kind) || 'docs';
     var hours = Number(data.hours);
 
+    if (!Object.prototype.hasOwnProperty.call(Catalog.KINDS, kind)) errors.kind = 'Wybierz rodzaj pracy.';
     if (!name) errors.name = 'Podaj nazwę etapu.';
     else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
     if (!Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain)) errors.domain = 'Wybierz dziedzinę.';
@@ -145,6 +147,7 @@
         source: 'custom',
         name: name,
         domain: domain,
+        kind: kind,
         status: 'todo',
         hours: hours,
         deadline: isDate(data.deadline) ? data.deadline : '',
@@ -168,7 +171,9 @@
     if (!stage) return { valid: false, errors: { hours: 'Nie znaleziono etapu.' }, stage: null };
     var name = text(data.name);
     var domain = text(data.domain) || stage.domain || 'general';
+    var kind = text(data.kind) || stage.kind || 'docs';
     if (custom) {
+      if (!Object.prototype.hasOwnProperty.call(Catalog.KINDS, kind)) errors.kind = 'Wybierz rodzaj pracy.';
       if (!name) errors.name = 'Podaj nazwę etapu.';
       else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
       if (!Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain)) errors.domain = 'Wybierz dziedzinę.';
@@ -184,6 +189,7 @@
     if (custom) {
       next.name = name;
       next.domain = domain;
+      next.kind = kind;
     }
     return { valid: true, errors: {}, stage: next };
   }
@@ -200,16 +206,25 @@
         domain: entry.domain,
         domainLabel: Catalog.domain(entry.domain).label,
         color: Catalog.domain(entry.domain).color,
+        kind: entry.kind,
+        kindLabel: Catalog.kind(entry.kind).label,
+        icon: entry.icon,
+        decision: entry.kind === 'decision',
         catalogNumber: entry.number,
         isCustom: false
       };
     }
     var domain = Catalog.domain(stage && stage.domain);
+    var kind = Catalog.kind(stage && stage.kind);
     return {
       name: (stage && stage.name) || 'Etap bez nazwy',
       domain: domain.id,
       domainLabel: domain.label,
       color: domain.color,
+      kind: kind.id,
+      kindLabel: kind.label,
+      icon: domain.id,
+      decision: kind.id === 'decision',
       catalogNumber: null,
       isCustom: true
     };
@@ -325,7 +340,8 @@
             id: String(stage.id),
             source: 'custom',
             name: text(stage.name) || 'Etap bez nazwy',
-            domain: Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain) ? domain : 'general'
+            domain: Object.prototype.hasOwnProperty.call(Catalog.DOMAINS, domain) ? domain : 'general',
+            kind: Catalog.kind(text(stage.kind)).id
           }, common));
         } else {
           acc.push(Object.assign({ id: entry.id, source: 'catalog' }, common));

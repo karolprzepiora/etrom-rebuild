@@ -162,7 +162,7 @@ test('createCustomStage tworzy etap z własną nazwą i dziedziną', () => {
   assert.equal(made.valid, true);
   assert.deepEqual(made.stage, {
     id: 'custom-1', source: 'custom', name: 'Uzgodnienie z PKP',
-    domain: 'location', status: 'todo', hours: 12, deadline: '2026-07-01', tasks: []
+    domain: 'location', kind: 'docs', status: 'todo', hours: 12, deadline: '2026-07-01', tasks: []
   });
 });
 
@@ -176,7 +176,7 @@ test('identyfikatory etapów własnych nie powtarzają się w projekcie', () => 
 
 test('describeStage daje jednolity opis dla obu rodzajów etapów', () => {
   const fromCatalog = Model.describeStage(Model.createStage('water-docs'));
-  assert.equal(fromCatalog.catalogNumber, '07');
+  assert.equal(fromCatalog.catalogNumber, '09');
   assert.equal(fromCatalog.isCustom, false);
   assert.equal(fromCatalog.name, 'Dokumentacja wodnoprawna');
 
@@ -259,7 +259,7 @@ test('starsze dane bez oznaczenia źródła są traktowane jako katalogowe', () 
     }]
   });
   assert.equal(result.projects[0].stages[0].source, 'catalog');
-  assert.equal(Model.describeStage(result.projects[0].stages[0]).catalogNumber, '07');
+  assert.equal(Model.describeStage(result.projects[0].stages[0]).catalogNumber, '09');
 });
 
 test('etap spoza katalogu i bez nazwy nadal jest odrzucany', () => {
@@ -331,4 +331,49 @@ test('updateStage odrzuca puste godziny, złą datę i pustą nazwę etapu włas
   assert.ok(catalog.errors.hours);
   assert.equal(catalog.errors.name, undefined);
   assert.equal(Model.updateStage(null, { hours: 5 }).valid, false);
+});
+
+test('katalog: każdy etap ma rodzaj pracy i ikonę, a postępowania są decyzjami', () => {
+  const Catalog = require('../src/core/catalog.js');
+  Catalog.all.forEach((entry) => {
+    assert.ok(Catalog.KINDS[entry.kind], 'rodzaj ' + entry.id);
+    assert.ok(entry.icon, 'ikona ' + entry.id);
+  });
+  Catalog.all.filter((e) => /-process$/.test(e.id) || e.id === 'land').forEach((e) => assert.equal(e.kind, 'decision', e.id));
+  assert.deepEqual(Catalog.all.filter((e) => e.kind === 'materials').map((e) => e.id), ['preparation', 'survey', 'studies']);
+  assert.equal(Catalog.all.find((e) => e.id === 'handover').kind, 'docs');
+  assert.equal(Catalog.kind('nic').id, 'docs');
+  const numbers = Catalog.all.map((e) => e.number);
+  assert.equal(new Set(numbers).size, numbers.length);
+});
+
+test('describeStage podaje rodzaj pracy; etap własny bierze rodzaj ze swoich danych', () => {
+  const decision = Model.describeStage(Model.createStage('water-process'));
+  assert.equal(decision.kind, 'decision');
+  assert.equal(decision.decision, true);
+  assert.equal(decision.kindLabel, 'Decyzje');
+  assert.equal(Model.describeStage(Model.createStage('water-docs')).decision, false);
+  const own = Model.describeStage({ id: 'custom-1', source: 'custom', name: 'X', domain: 'water', kind: 'materials' });
+  assert.equal(own.kind, 'materials');
+  assert.equal(own.icon, 'water');
+  assert.equal(Model.describeStage({ id: 'custom-2', source: 'custom', name: 'Y' }).kind, 'docs');
+});
+
+test('etap własny: rodzaj pracy jest walidowany, zapisywany i edytowalny', () => {
+  const made = Model.createCustomStage({ name: 'Uzgodnienie', domain: 'general', kind: 'decision', hours: 8 }, []);
+  assert.equal(made.valid, true);
+  assert.equal(made.stage.kind, 'decision');
+  assert.equal(Model.createCustomStage({ name: 'A', kind: 'bzdura', hours: 8 }, []).errors.kind, 'Wybierz rodzaj pracy.');
+  const edited = Model.updateStage(made.stage, { name: 'Uzgodnienie', domain: 'general', kind: 'materials', hours: 8 });
+  assert.equal(edited.stage.kind, 'materials');
+  assert.equal(Model.updateStage(Model.createStage('concept'), { hours: 5, kind: 'decision' }).stage.kind, undefined);
+});
+
+test('normalizeWorkspace uzupełnia rodzaj etapu własnego z dawnych danych', () => {
+  const ws = Model.normalizeWorkspace({ version: 4, projects: [{ id: 'p', code: 'A-1', name: 'N', stages: [
+    { id: 'custom-1', source: 'custom', name: 'Stary', domain: 'water', hours: 5 },
+    { id: 'custom-2', source: 'custom', name: 'Nowy', hours: 5, kind: 'decision' },
+    { id: 'custom-3', source: 'custom', name: 'Zły', hours: 5, kind: '???' }
+  ] }] });
+  assert.deepEqual(ws.projects[0].stages.map((s) => s.kind), ['docs', 'decision', 'docs']);
 });

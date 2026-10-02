@@ -16,6 +16,21 @@
     location: ['M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z', 'M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z'],
     building: ['M4 21V6.5L12 3l8 3.5V21', 'M4 21h16', 'M9 21v-5h6v5', 'M8.5 9h2', 'M13.5 9h2', 'M8.5 12.5h2', 'M13.5 12.5h2'],
 
+    // Rodzaje pracy
+    kindMaterials: ['M4 13l2-7h12l2 7', 'M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13', 'M4 13h4.5a3.5 3.5 0 0 0 7 0H20'],
+    kindDocs: ['M6 3.5h8l4 4v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z', 'M14 3.5v4h4', 'M8.5 12h7', 'M8.5 15.5h5'],
+    kindDecision: ['M12 4a2.8 2.8 0 0 0-1.6 5.1c.4.3.6.7.6 1.2V12h2v-1.7c0-.5.2-.9.6-1.2A2.8 2.8 0 0 0 12 4Z', 'M6.5 12h11a1.5 1.5 0 0 1 1.5 1.5V16H5v-2.5A1.5 1.5 0 0 1 6.5 12Z', 'M4.5 20h15'],
+
+    // Etapy standardu, które mają własny rysunek (reszta używa symbolu tematu)
+    stagePreparation: ['M9 4h6v3H9z', 'M7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17', 'M8 12h8', 'M8 16h5'],
+    stageSurvey: ['M12 3v4', 'M12 17v4', 'M3 12h4', 'M17 12h4', 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z'],
+    stageStudies: ['M9 3.5h6', 'M10 3.5v6.2L5.2 18a1.8 1.8 0 0 0 1.6 2.7h10.4a1.8 1.8 0 0 0 1.6-2.7L14 9.7V3.5', 'M7.8 15h8.4'],
+    stageConcept: ['M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3Z', 'M10 19h4', 'M10.5 21.5h3'],
+    stageLand: ['M4 6l5.5-2 5 2L20 4v14l-5.5 2-5-2L4 20V6Z', 'M9.5 4v14', 'M14.5 6v14'],
+    stageTechnical: ['M4.5 4.5v15h15Z', 'M4.5 8.5h2.5', 'M4.5 12h2.5', 'M4.5 15.5h2.5'],
+    stageEstimates: ['M6 3.5h12a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z', 'M8.5 7.5h7', 'M9 12h.01', 'M12 12h.01', 'M15 12h.01', 'M9 16h.01', 'M12 16h.01', 'M15 16h.01'],
+    stageHandover: ['M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16V8Z', 'M3.5 8 12 12.5 20.5 8', 'M12 12.5v8'],
+
     // Nawigacja i obiekty
     folder: ['M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5v8.5a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V7Z'],
     people: ['M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z', 'M2.5 20c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5', 'M16 4.6a3.5 3.5 0 0 1 0 6.8', 'M17.5 14.9c2.4.6 4 2.4 4 5.1'],
@@ -105,8 +120,26 @@
     }, paths.map(function (d) { return D.svg('path', { d: d }); }));
   }
 
+  /**
+   * Ikona etapu: rysunek etapu (albo symbol tematu) na kafelku. Etap
+   * decyzyjny dostaje plakietkę ✓ w rogu — ten sam temat widać wtedy
+   * od razu jako dokumentację albo postępowanie.
+   * @param {{icon: string, decision: boolean, kindLabel: string}} info z Model.describeStage
+   */
+  function stageIcon(info, size) {
+    var side = size || 15;
+    return D.el('span', { class: 'stageicon' + (info.decision ? ' stageicon--decision' : '') }, [
+      icon(info.icon, side),
+      info.decision ? D.el('span', { class: 'stageicon__badge' }, [D.svg('svg', {
+        viewBox: '0 0 24 24', width: 8, height: 8, fill: 'none', stroke: 'currentColor',
+        'stroke-width': '3.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false'
+      }, [D.svg('path', { d: 'm5 12.5 4.5 4.5L19 7.5' })])]) : null
+    ]);
+  }
+
   root.ETROM.Icons = {
     icon: icon,
+    stageIcon: stageIcon,
     has: function (name) { return !!PATHS[ALIASES[name] || name]; },
     names: function () { return Object.keys(PATHS); }
   };

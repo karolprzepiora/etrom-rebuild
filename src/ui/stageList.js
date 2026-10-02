@@ -79,7 +79,7 @@
     var open = isOpen(ctx.state.expandedStages, project, stage);
     var flash = ctx.motion && ctx.motion.flashStage === stage.id;
     var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
-    var meta = info.isCustom ? 'własny, ' + info.domainLabel.toLowerCase() : 'standard ' + info.catalogNumber + ', ' + info.domainLabel.toLowerCase();
+    var meta = info.kindLabel + ' · ' + info.domainLabel.toLowerCase() + ' · ' + (info.isCustom ? 'własny' : 'standard ' + info.catalogNumber);
     var nextStatus = Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)];
 
     var row = D.el('div', {
@@ -94,12 +94,10 @@
         attrs: { type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': panelId, 'data-fk': 'stage-expand-' + stage.id }
       }, [
         D.el('span', { class: 'srow__no t-num', text: String(position + 1) }),
+        Icons.stageIcon(info, 15),
         D.el('span', { class: 'srow__text' }, [
           D.el('span', { class: 'srow__name', text: info.name }),
-          D.el('span', { class: 'srow__meta' }, [
-            D.el('span', { class: 'srow__icon', style: { color: info.color } }, [Icons.icon(info.domain, 13)]),
-            D.el('span', { text: meta })
-          ])
+          D.el('span', { class: 'srow__meta' }, [D.el('span', { text: meta })])
         ]),
         D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronDown', 14)]),
         D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
@@ -157,6 +155,27 @@
     return n;
   }
 
+  /** Budżet godzin projektu według rodzaju pracy: pasek i legenda. */
+  function kindBudget(rows) {
+    var total = rows.reduce(function (sum, r) { return sum + r.hours; }, 0);
+    if (!total) return null;
+    return D.el('div', { class: 'kindbar', attrs: { role: 'group', 'aria-label': 'Budżet godzin według rodzaju pracy' } }, [
+      D.el('div', { class: 'kindbar__track', attrs: { 'aria-hidden': 'true' } }, rows.filter(function (r) { return r.hours > 0; }).map(function (r) {
+        return D.el('span', {
+          class: 'kindbar__seg kindbar__seg--' + r.kind,
+          style: { '--hours': String(r.hours), '--done': (r.hours ? Math.round(r.doneHours / r.hours * 100) : 0) + '%' }
+        });
+      })),
+      D.el('ul', { class: 'kindbar__legend' }, rows.map(function (r) {
+        return D.el('li', { class: 'kindbar__item' + (r.hours ? '' : ' is-zero') }, [
+          D.el('span', { class: 'kindbar__swatch kindbar__swatch--' + r.kind, attrs: { 'aria-hidden': 'true' } }),
+          D.el('span', { class: 'kindbar__label', text: r.label }),
+          D.el('span', { class: 'kindbar__value t-num', text: r.hours ? F.hours(r.hours) + ' · ' + Math.round(r.share * 100) + '%' : 'brak' })
+        ]);
+      }))
+    ]);
+  }
+
   function stageList(project, ctx) {
     var count = project.stages.length;
     var stats = Progress.projectProgress(project);
@@ -175,7 +194,7 @@
 
     var done = leadingDone(project);
     var showDone = !!(ctx.state.showDone && ctx.state.showDone[project.id]);
-    var collapse = done >= COLLAPSE_FROM && done < count && !showDone;
+    var collapse = !ctx.state.stageGroup && done >= COLLAPSE_FROM && done < count && !showDone;
     var items = [];
 
     if (collapse) {
@@ -197,9 +216,30 @@
       ])]));
     }
 
-    project.stages.forEach(function (stage, index) {
-      if (collapse && index < done) return;
-      items.push(stageRow(project, stage, index, count, ctx, segments[stage.id]));
+    var grouped = !!ctx.state.stageGroup;
+    var order = project.stages.map(function (stage, index) { return { stage: stage, index: index }; })
+      .filter(function (entry) { return !(collapse && entry.index < done); });
+    if (grouped) {
+      var ranks = {};
+      Catalog.KIND_ORDER.forEach(function (id, rank) { ranks[id] = rank; });
+      order.sort(function (a, b) {
+        return (ranks[Model.describeStage(a.stage).kind] - ranks[Model.describeStage(b.stage).kind]) || (a.index - b.index);
+      });
+    }
+    var lastKind = null;
+    var budget = Insight.budgetByKind(project);
+    order.forEach(function (entry) {
+      var kind = Model.describeStage(entry.stage).kind;
+      if (grouped && kind !== lastKind) {
+        var row = budget.filter(function (b) { return b.kind === kind; })[0];
+        items.push(D.el('li', { class: 'srow-group', attrs: { role: 'presentation' } }, [
+          Icons.icon(Catalog.kind(kind).icon, 14),
+          D.el('span', { class: 'srow-group__label', text: Catalog.kind(kind).label }),
+          D.el('span', { class: 'srow-group__meta t-num', text: F.hours(row.hours) + ' · ' + Math.round(row.share * 100) + '%' })
+        ]));
+        lastKind = kind;
+      }
+      items.push(stageRow(project, entry.stage, entry.index, count, ctx, segments[entry.stage.id]));
     });
 
     var late = prof.segments.filter(function (s) { return s.overdue; }).length;
@@ -215,9 +255,15 @@
           !collapse && done >= COLLAPSE_FROM && done < count
             ? UI.button({ label: 'Zwiń zakończone', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.toggleDone(project.id); } })
             : null,
+          UI.button({
+            label: 'Grupuj wg rodzaju', icon: 'layers', variant: 'ghost', size: 'sm',
+            attrs: { 'aria-pressed': grouped ? 'true' : 'false', 'data-fk': 'stage-group' },
+            onClick: function () { ctx.actions.toggleStageGroup(); }
+          }),
           addStageButton(project, ctx.actions)
         ])
       ]),
+      kindBudget(budget),
       D.el('div', { class: 'srow srow--head', attrs: { 'aria-hidden': 'true' } }, [
         D.el('span'), D.el('span', { text: 'Etap' }), D.el('span', { class: 'srow__tasks', text: 'Zadania' }),
         D.el('span', { class: 'srow__hours', text: 'Godziny' }), D.el('span', { class: 'srow__deadline', text: 'Termin' }),

@@ -40,6 +40,7 @@
     taskForm: null,
     expandedStages: {},
     showDone: {},
+    stageGroup: false,
     inspector: null,
     navOpen: false,
     notice: ''
@@ -474,7 +475,7 @@
   }
 
   function openCustomStage(projectId) {
-    store.set({ stageForm: { projectId: projectId, stageId: null, custom: true, draft: { domain: 'general', hours: '8' }, errors: {} } });
+    store.set({ stageForm: { projectId: projectId, stageId: null, custom: true, draft: { domain: 'general', kind: 'docs', hours: '8' }, errors: {} } });
   }
 
   /** Zmiana nazwy (etap własny), godzin i terminu istniejącego etapu. */
@@ -484,7 +485,7 @@
     var info = Model.describeStage(stage);
     store.set({ stageForm: {
       projectId: projectId, stageId: stageId, custom: info.isCustom,
-      draft: { name: info.name, domain: info.domain, hours: String(stage.hours), deadline: stage.deadline || '' },
+      draft: { name: info.name, domain: info.domain, kind: info.kind, hours: String(stage.hours), deadline: stage.deadline || '' },
       errors: {}
     } });
   }
@@ -727,6 +728,10 @@
     Motion.withTransition(function () { setPref({ sidebarCollapsed: !store.getState().prefs.sidebarCollapsed }); });
   }
 
+  function toggleStageGroup() {
+    store.update(function (state) { return Object.assign({}, state, { stageGroup: !state.stageGroup }); });
+  }
+
   function toggleDone(projectId) {
     store.update(function (state) {
       var showDone = Object.assign({}, state.showDone);
@@ -940,14 +945,17 @@
   };
 
   // Krótkie ścieżki przejść — dane przykładowe przechodzą przez model, a nie podstawiają statusu wprost.
+  // Liczby w DEMO_TASKS to numery etapów w dawnym, 14-etapowym standardzie.
+  var DEMO_STAGE_IDS = ['preparation', 'concept', 'environment-docs', 'environment-process', 'location-docs', 'location-process',
+    'water-docs', 'water-process', 'land', 'building-docs', 'building-process', 'technical', 'estimates', 'handover'];
   var DEMO_PATHS = { todo: [], working: ['working'], review: ['review'], changes: ['review', 'changes'], done: ['done'] };
 
   var DEMO = [
-    { code: 'DEMO-001', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 5, working: 2 },
-    { code: 'DEMO-002', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 9, working: 1 },
+    { code: 'DEMO-001', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 7, working: 2 },
+    { code: 'DEMO-002', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
     { code: 'DEMO-003', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
-    { code: 'DEMO-004', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 3, working: 0 },
-    { code: 'DEMO-005', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: 14, working: 0 }
+    { code: 'DEMO-004', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
+    { code: 'DEMO-005', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 }
   ];
 
   function loadDemo() {
@@ -976,8 +984,8 @@
     function demoTasksFor(code, stages, team) {
       var allowed = Team.projectPeople(team);
       (DEMO_TASKS[code] || []).forEach(function (spec) {
-        var entry = Catalog.all[spec.stage];
-        var stage = entry && stages.filter(function (s) { return s.id === entry.id; })[0];
+        var stageId = DEMO_STAGE_IDS[spec.stage];
+        var stage = stageId && stages.filter(function (s) { return s.id === stageId; })[0];
         if (!stage) return;
         var assignees = (spec.people || []).map(demoPersonId).filter(function (id) { return id && allowed.indexOf(id) >= 0; });
         var task = Tasks.createTask({
@@ -1189,6 +1197,7 @@
     isPinned: isPinned,
     togglePin: togglePin,
     toggleDone: toggleDone,
+    toggleStageGroup: toggleStageGroup,
     revealStage: revealStage,
     openStage: openStage,
     loadDemo: function () { loadDemo(); },

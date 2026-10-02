@@ -356,6 +356,27 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .srow__name { font-size: var(--fs-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .srow__meta { display: flex; align-items: center; gap: var(--space-1-5); font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; }
 .srow__icon { display: grid; }
+.stageicon { position: relative; flex: none; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: var(--radius-sm); background: var(--wash-2); color: var(--ink-2); }
+.stageicon__badge { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; box-sizing: content-box; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--sheet); background: var(--ink-2); color: var(--sheet); }
+.srow--current .stageicon__badge { border-color: var(--flow-wash); }
+.srow:hover:not(.srow--current) .stageicon__badge, .srow--open:not(.srow--current) .stageicon__badge { border-color: var(--wash); }
+.srow--done .stageicon { color: var(--ink-3); }
+
+.srow-group { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 var(--space-1); padding: 0 var(--space-2) 0 var(--space-3); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.srow-group__meta { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+.kindbar { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.kindbar__track { display: flex; width: 100%; gap: 2px; height: 0.625rem; }
+.kindbar__seg { position: relative; flex: var(--hours, 1) 1 0; min-width: 6px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--seg) 28%, transparent); }
+.kindbar__seg::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--done, 0%); background: var(--seg); transition: width var(--motion-measure); }
+.kindbar__seg--materials, .kindbar__swatch--materials { --seg: var(--kind-materials); }
+.kindbar__seg--docs, .kindbar__swatch--docs { --seg: var(--kind-docs); }
+.kindbar__seg--decision, .kindbar__swatch--decision { --seg: var(--kind-decision); }
+.kindbar__legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); margin: 0; padding: 0; list-style: none; font-size: var(--fs-xs); color: var(--ink-2); }
+.kindbar__item { display: flex; align-items: center; gap: var(--space-1-5); }
+.kindbar__item.is-zero { color: var(--ink-3); }
+.kindbar__swatch { width: 0.625rem; height: 0.625rem; border-radius: 2px; background: var(--seg); }
+.kindbar__value { color: var(--ink-3); }
 .srow--done .srow__name { font-weight: 500; color: var(--ink-2); }
 .srow__chevron { display: grid; color: var(--ink-3); opacity: 0; transition: opacity var(--duration-fast), transform var(--duration-base) var(--ease-out); }
 .srow:hover .srow__chevron, .srow__expand:focus-visible .srow__chevron, .srow__expand[aria-expanded="true"] .srow__chevron { opacity: 1; }

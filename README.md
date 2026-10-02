@@ -42,7 +42,7 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - panel boczny zwijany klawiszem `[`, projekty przypięte i ostatnio otwierane,
 - dodawanie, edycja i usuwanie projektu, z walidacją przy polach
   (kod projektu musi być niepowtarzalny),
-- 14 standardowych etapów jako **szablon do wyboru** — projekt bierze tylko te, które go dotyczą,
+- 16 standardowych etapów jako **szablon do wyboru** — projekt bierze tylko te, które go dotyczą,
 - **etapy spoza standardu** z własną nazwą, dziedziną, budżetem i terminem,
 - kolejność etapów ustawiana w projekcie, więc własny etap może stanąć pomiędzy standardowymi,
 - status etapu przełączany kliknięciem: *Do wykonania → W toku → Zakończony*,
@@ -109,7 +109,7 @@ docs/
   licenses/             licencje osadzonych krojów (SIL OFL 1.1)
   UI_AUDIT.md           audyt interfejsu przed przebudową
 src/core/               logika, zero kodu dotykającego DOM
-  catalog.js            14 etapów i dziedziny
+  catalog.js            16 etapów, tematy i rodzaje pracy
   team.js               katalog osób i funkcje w projektach
   tasks.js              zadania, przepływ statusów i udziały realizatorów
   model.js              fabryki i walidacja
@@ -148,8 +148,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 200 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 123 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 205 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 127 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

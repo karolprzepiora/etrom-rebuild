@@ -229,6 +229,16 @@ nigdy sam kolor. Fokus: ring nurtu. Kontrast par pilnuje `tests/tokens.test.js`.
 `--gauge-scale-h`, `--gauge-bar`, `--flow-seg-h`, `--flow-gap`, `--level-rung-h`, `--motion-measure`
 (`styles/tokens.css`). Kolory wyłącznie semantyczne: `--flow`, `--done`, `--warn`, `--alarm`, `--track`, `--brand`.
 
+## 2b. Etap: rodzaj pracy i ikona
+
+Każdy etap ma trzy niezależne cechy: **rodzaj pracy** (`kind`), **temat** (`domain`: środowisko, wody, lokalizacja…) i **kolejność** w projekcie. Kolejność jest chronologiczna i nie zależy od rodzaju.
+
+- **Rodzaje:** *Materiały* (dane wyjściowe, pomiary, badania), *Dokumentacja* (opracowania projektowe), *Decyzje* (postępowania i uzgodnienia, czyli czekanie na urząd). Etap własny wybiera rodzaj sam; dawne etapy własne dostają „Dokumentacja”.
+- **Ikona (`Icons.stageIcon`)** to rysunek etapu na kafelku, siatka 24×24, kontur 1,6. Etap decyzyjny ma plakietkę ✓ w rogu, więc ten sam temat (np. woda) widać od razu jako dokumentację albo postępowanie. Etap własny używa symbolu swojego tematu.
+- **Kolor nie koduje rodzaju w wierszu.** Kolor jest zarezerwowany dla stanu. Rodzaj pokazują ikona i podpis („Dokumentacja · wodnoprawne · standard 09”). Jedyny kolor rodzaju to pasek budżetu (`--kind-materials/docs/decision`, trzy odcienie jednego błękitu), w którym wypełnienie oznacza godziny już wykonane.
+- **Grupuj wg rodzaju** to przełącznik widoku listy: dodaje nagłówki rodzajów z sumą godzin, numeracja pozostaje chronologiczna.
+- Dane: `Catalog.KINDS`, `Insight.budgetByKind(project)`.
+
 ## 3. Komponenty — `src/ui/components.js` + `styles/components.css`
 
 Widoki nie składają klas ręcznie — wołają `ETROM.UI.*`:

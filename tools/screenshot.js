@@ -149,11 +149,11 @@ async function main() {
       await run('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
       const cases = [
         ['zero', { code: 'EDGE-00', name: 'Projekt bez postępu (0%)', done: 0, deadline: '2027-03-01' }],
-        ['jeden', { code: 'EDGE-01', name: 'Projekt z postępem 1%', done: 1, hours: [12, 600, 60, 30, 40, 24, 70, 32, 48, 90, 32, 120, 56, 24], deadline: '2027-03-01' }],
+        ['jeden', { code: 'EDGE-01', name: 'Projekt z postępem 1%', done: 1, hours: [12, 40, 48, 600, 60, 30, 40, 24, 70, 32, 48, 90, 32, 120, 56, 24], deadline: '2027-03-01' }],
         ['polowa', { code: 'EDGE-50', name: 'Projekt w połowie, plan zgodny', done: 7, deadline: '2026-11-20', createdAt: '2026-08-01T08:00:00.000Z' }],
-        ['dziewiecdziewiec', { code: 'EDGE-99', name: 'Projekt z postępem 99%', done: 13, hours: [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 4], deadline: '2026-10-20', createdAt: '2026-06-01T08:00:00.000Z' }],
-        ['sto', { code: 'EDGE-100', name: 'Projekt wykonany w 100%, jeszcze nie zamknięty', done: 14, deadline: '2026-10-20' }],
-        ['zakonczony', { code: 'EDGE-DONE', name: 'Projekt zakończony', status: 'done', done: 14, deadline: '2026-09-01' }],
+        ['dziewiecdziewiec', { code: 'EDGE-99', name: 'Projekt z postępem 99%', done: 15, hours: [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 4], deadline: '2026-10-20', createdAt: '2026-06-01T08:00:00.000Z' }],
+        ['sto', { code: 'EDGE-100', name: 'Projekt wykonany w 100%, jeszcze nie zamknięty', done: 16, deadline: '2026-10-20' }],
+        ['zakonczony', { code: 'EDGE-DONE', name: 'Projekt zakończony', status: 'done', done: 16, deadline: '2026-09-01' }],
         ['wstrzymany', { code: 'EDGE-PAUSE', name: 'Projekt wstrzymany przez zamawiającego', status: 'paused', done: 4, deadline: '2026-12-01', createdAt: '2026-07-01T08:00:00.000Z' }],
         ['po-terminie', { code: 'EDGE-LATE', name: 'Projekt po terminie z etapem opóźnionym', done: 3, deadline: '2026-09-20', lateStage: 3 }],
         ['bez-zespolu', { code: 'EDGE-NOTEAM', name: 'Projekt bez zespołu i bez terminu', done: 2, deadline: '', noTeam: true }],
@@ -219,6 +219,9 @@ async function main() {
     await theme('dark');
     await shoot('projekt-ciemny', { full: true });
     await theme('light');
+    await click('[data-fk="stage-group"]');
+    await shoot('projekt-grupy', { full: true, wait: 250 });
+    await click('[data-fk="stage-group"]');
 
     await viewport(1440, 900);
     await go('#/projekty/' + id2 + '/zadania');
