@@ -1,18 +1,18 @@
-/* ETROM — okna aplikacji: potwierdzenia i panel boczny.
-   Oparte na natywnym <dialog>, więc uwięzienie fokusa, tło i zamykanie
-   klawiszem Escape działają bez dopisywania własnej obsługi. */
+/* ETROM — okna: potwierdzenie, pytanie z polem i panel boczny (drawer).
+   Natywny <dialog>: uwięzienie fokusa, tło i Escape działają bez własnej
+   obsługi. Panel boczny służy formularzom — kontekst strony zostaje widoczny. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Icons = root.ETROM.Icons;
+  var E = root.ETROM;
+  var D = E.Dom;
+  var Icons = E.Icons;
 
   var openDrawerEl = null;
   var openCount = 0;
   var savedOverflow = '';
 
   function lockScroll() {
-    // Natywne okno modalne nie blokuje przewijania strony pod spodem.
     if (openCount === 0) {
       savedOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -26,15 +26,26 @@
   }
 
   function mount(dialog) {
+    var returnFocus = document.activeElement;
     document.body.appendChild(dialog);
     lockScroll();
-    dialog.addEventListener('close', unlockScroll);
+    dialog.addEventListener('close', function () {
+      unlockScroll();
+      // Fokus wraca tam, skąd przyszedł — o ile ten element jeszcze istnieje.
+      if (returnFocus && document.contains(returnFocus) && typeof returnFocus.focus === 'function') {
+        returnFocus.focus({ preventScroll: true });
+      }
+    });
     dialog.showModal();
   }
 
+  function button(label, variant, attrs, onClick) {
+    return E.UI.button({ label: label, variant: variant, attrs: attrs, onClick: onClick });
+  }
+
   /**
-   * Pytanie o potwierdzenie.
-   * @param {{title: string, message: string, confirm?: string, cancel?: string, tone?: string}} options
+   * Pytanie o potwierdzenie czynności nieodwracalnej.
+   * @param {{title: string, message: string, confirm?: string, cancel?: string, tone?: 'danger'}} options
    * @returns {Promise<boolean>}
    */
   function confirm(options) {
@@ -42,27 +53,20 @@
     return new Promise(function (resolve) {
       var dialog = D.el('dialog', {
         class: 'dialog',
-        attrs: { 'aria-labelledby': 'dialog-title' }
+        attrs: { 'aria-labelledby': 'dialog-title', 'aria-describedby': 'dialog-text' }
       });
 
-      var cancelBtn = D.el('button', {
-        class: 'btn',
-        text: settings.cancel || 'Anuluj',
-        attrs: { type: 'button', 'data-dialog-cancel': '' },
-        on: { click: function () { dialog.close('cancel'); } }
-      });
-
-      var confirmBtn = D.el('button', {
-        class: 'btn ' + (settings.tone === 'danger' ? 'btn--solidDanger' : 'btn--primary'),
-        text: settings.confirm || 'Potwierdź',
-        attrs: { type: 'button', 'data-dialog-confirm': '' },
-        on: { click: function () { dialog.close('ok'); } }
-      });
+      var cancelBtn = button(settings.cancel || 'Anuluj', 'secondary', { 'data-dialog-cancel': '' },
+        function () { dialog.close('cancel'); });
+      var confirmBtn = button(settings.confirm || 'Potwierdź', settings.tone === 'danger' ? 'danger-solid' : 'primary',
+        { 'data-dialog-confirm': '' }, function () { dialog.close('ok'); });
 
       D.append(dialog, [
         D.el('div', { class: 'dialog__card' }, [
-          D.el('h2', { class: 'dialog__title', text: settings.title || 'Potwierdź', attrs: { id: 'dialog-title' } }),
-          D.el('p', { class: 'dialog__text', text: settings.message || '' }),
+          D.el('div', { class: 'dialog__head' }, [
+            D.el('h2', { class: 'dialog__title', text: settings.title || 'Potwierdź', attrs: { id: 'dialog-title' } }),
+            D.el('p', { class: 'dialog__text', text: settings.message || '', attrs: { id: 'dialog-text' } })
+          ]),
           D.el('div', { class: 'dialog__actions' }, [cancelBtn, confirmBtn])
         ])
       ]);
@@ -80,7 +84,7 @@
   }
 
   /**
-   * Pytanie z polem tekstowym. Zwraca wpisany tekst albo null przy anulowaniu.
+   * Pytanie z polem tekstowym. Zwraca tekst albo null przy anulowaniu.
    * @param {{title: string, message?: string, label: string, placeholder?: string,
    *          confirm?: string, required?: boolean}} options
    * @returns {Promise<string|null>}
@@ -89,54 +93,43 @@
     var settings = options || {};
     return new Promise(function (resolve) {
       var dialog = D.el('dialog', { class: 'dialog', attrs: { 'aria-labelledby': 'dialog-title' } });
-      var error = D.el('p', { class: 'field__error', attrs: { role: 'alert' } });
-      var input = D.el('textarea', {
-        class: 'input',
-        attrs: {
-          id: 'dialog-input', rows: '3',
-          placeholder: settings.placeholder || '',
-          'data-dialog-input': ''
-        }
+      var input = E.UI.textarea({
+        id: 'dialog-input', rows: 3, placeholder: settings.placeholder || '',
+        attrs: { 'data-dialog-input': '' }
       });
+      var fieldWrap = D.el('div');
+
+      function drawField(error) {
+        D.render(fieldWrap, [E.UI.field({
+          id: 'dialog-input', label: settings.label || 'Treść', control: input,
+          required: settings.required !== false, error: error,
+          hint: 'Ctrl + Enter zatwierdza.'
+        })]);
+      }
+      drawField('');
 
       function accept() {
         var value = input.value.trim();
         if (settings.required !== false && !value) {
-          error.textContent = 'To pole nie może zostać puste.';
-          input.setAttribute('aria-invalid', 'true');
+          drawField('Wpisz powód — trafi do osoby, która poprawia zadanie.');
           input.focus();
           return;
         }
-        dialog.returnValue = 'ok';
         dialog.dataset.value = value;
         dialog.close('ok');
       }
 
-      var body = [
-        D.el('h2', { class: 'dialog__title', text: settings.title || 'Podaj szczegóły', attrs: { id: 'dialog-title' } })
-      ];
-      if (settings.message) body.push(D.el('p', { class: 'dialog__text', text: settings.message }));
-      body.push(
-        D.el('div', { class: 'field', style: { 'margin-top': 'var(--space-4)' } }, [
-          D.el('label', { class: 'field__label', text: settings.label || 'Treść', attrs: { for: 'dialog-input' } }),
-          input,
-          error
+      D.append(dialog, [D.el('div', { class: 'dialog__card' }, [
+        D.el('div', { class: 'dialog__head' }, [
+          D.el('h2', { class: 'dialog__title', text: settings.title || 'Podaj szczegóły', attrs: { id: 'dialog-title' } }),
+          settings.message ? D.el('p', { class: 'dialog__text', text: settings.message }) : null
         ]),
+        fieldWrap,
         D.el('div', { class: 'dialog__actions' }, [
-          D.el('button', {
-            class: 'btn', text: 'Anuluj',
-            attrs: { type: 'button', 'data-dialog-cancel': '' },
-            on: { click: function () { dialog.close('cancel'); } }
-          }),
-          D.el('button', {
-            class: 'btn btn--primary', text: settings.confirm || 'Zapisz',
-            attrs: { type: 'button', 'data-dialog-confirm': '' },
-            on: { click: accept }
-          })
+          button('Anuluj', 'secondary', { 'data-dialog-cancel': '' }, function () { dialog.close('cancel'); }),
+          button(settings.confirm || 'Zapisz', 'primary', { 'data-dialog-confirm': '' }, accept)
         ])
-      );
-
-      D.append(dialog, [D.el('div', { class: 'dialog__card' }, body)]);
+      ])]);
 
       input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
@@ -158,8 +151,40 @@
   }
 
   /**
-   * Panel wysuwany z prawej krawędzi. Zwraca uchwyt z metodą close().
-   * @param {{title: string, content: Node, onClose?: Function}} options
+   * Układ formularza w panelu: przewijana treść i przyklejona stopka z akcjami.
+   * Ctrl+Enter zapisuje z dowolnego pola.
+   * @param {{id: string, body: Array, submitLabel: string, onSubmit: Function, onCancel: Function, collect?: Function}} o
+   */
+  function drawerForm(o) {
+    var form = D.el('form', {
+      class: 'drawer__form',
+      attrs: { id: o.id, novalidate: true },
+      on: {
+        submit: function (event) {
+          event.preventDefault();
+          o.onSubmit();
+        },
+        keydown: function (event) {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            form.requestSubmit();
+          }
+        }
+      }
+    }, [
+      D.el('div', { class: 'drawer__body' }, [D.el('div', { class: 'form' }, o.body)]),
+      D.el('div', { class: 'drawer__foot' }, [
+        D.el('span', { class: 'drawer__foot-hint' }, [E.UI.kbd('Ctrl'), E.UI.kbd('Enter'), D.el('span', { text: 'zapisuje' })]),
+        E.UI.button({ label: 'Anuluj', variant: 'secondary', onClick: o.onCancel }),
+        E.UI.button({ label: o.submitLabel, variant: 'primary', type: 'submit' })
+      ])
+    ]);
+    return form;
+  }
+
+  /**
+   * Panel wysuwany z prawej krawędzi.
+   * @param {{title: string, subtitle?: string, content: Node, onClose?: Function}} options
    */
   function openDrawer(options) {
     var settings = options || {};
@@ -167,22 +192,23 @@
 
     var dialog = D.el('dialog', {
       class: 'drawer',
-      attrs: { 'aria-label': settings.title || 'Panel' }
+      attrs: { 'aria-labelledby': 'drawer-title' }
     });
 
-    var closeBtn = D.el('button', {
-      class: 'drawer__close',
-      attrs: { type: 'button', 'aria-label': 'Zamknij panel', 'data-drawer-close': '' },
-      on: { click: function () { dialog.close('cancel'); } }
-    }, [Icons.icon('close', 18)]);
-
     D.append(dialog, [
-      D.el('div', { class: 'drawer__inner' }, [
-        D.el('div', { class: 'drawer__bar' }, [
-          D.el('p', { class: 'drawer__title', text: settings.title || '' }),
-          closeBtn
+      D.el('div', { class: 'drawer__panel' }, [
+        D.el('div', { class: 'drawer__head' }, [
+          D.el('div', { class: 'drawer__titles' }, [
+            D.el('h2', { class: 'drawer__title', text: settings.title || '', attrs: { id: 'drawer-title' } }),
+            D.el('p', { class: 'drawer__subtitle', text: settings.subtitle || '', attrs: { hidden: !settings.subtitle } })
+          ]),
+          E.UI.iconButton({
+            icon: 'close', label: 'Zamknij panel', kbd: 'Esc',
+            attrs: { 'data-drawer-close': '' },
+            onClick: function () { dialog.close('cancel'); }
+          })
         ]),
-        D.el('div', { class: 'drawer__body' }, [settings.content])
+        D.el('div', { class: 'drawer__content' }, [settings.content])
       ])
     ]);
 
@@ -202,6 +228,15 @@
     return dialog;
   }
 
+  /** Podmienia treść otwartego panelu bez animacji wejścia. */
+  function updateDrawer(dialog, settings) {
+    dialog.querySelector('.drawer__title').textContent = settings.title || '';
+    var sub = dialog.querySelector('.drawer__subtitle');
+    sub.textContent = settings.subtitle || '';
+    sub.hidden = !settings.subtitle;
+    D.render(dialog.querySelector('.drawer__content'), [settings.content]);
+  }
+
   function closeDrawer() {
     if (openDrawerEl) openDrawerEl.close('cancel');
   }
@@ -217,7 +252,9 @@
   root.ETROM.Dialog = {
     confirm: confirm,
     prompt: prompt,
+    drawerForm: drawerForm,
     openDrawer: openDrawer,
+    updateDrawer: updateDrawer,
     closeDrawer: closeDrawer,
     isDrawerOpen: isDrawerOpen,
     anyOpen: anyOpen

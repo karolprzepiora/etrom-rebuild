@@ -1,38 +1,14 @@
-/* ETROM — formularz osoby. Mieszka w panelu bocznym. */
+/* ETROM — formularz osoby w panelu bocznym. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Team = root.ETROM.Team;
+  var E = root.ETROM;
+  var D = E.Dom;
+  var UI = E.UI;
+  var Team = E.Team;
 
-  function field(id, label, control, error, hint) {
-    var children = [
-      D.el('label', { class: 'field__label', text: label, attrs: { for: id } }),
-      control
-    ];
-    if (hint) children.push(D.el('p', { class: 'field__hint', text: hint }));
-    if (error) children.push(D.el('p', { class: 'field__error', text: error, attrs: { role: 'alert' } }));
-    return D.el('div', { class: 'field' }, children);
-  }
-
-  function input(id, value, error, extra) {
-    return D.el('input', {
-      class: 'input',
-      attrs: Object.assign({
-        id: id, type: 'text', value: value || '',
-        'aria-invalid': error ? 'true' : 'false'
-      }, extra || {})
-    });
-  }
-
-  function select(id, options, value) {
-    return D.el('select', { class: 'select', attrs: { id: id } },
-      Object.keys(options).map(function (key) {
-        return D.el('option', {
-          text: options[key],
-          attrs: { value: key, selected: value === key }
-        });
-      }));
+  function options(map) {
+    return Object.keys(map).map(function (key) { return { value: key, label: map[key] }; });
   }
 
   /**
@@ -45,55 +21,44 @@
     var problems = errors || {};
     var editing = values.id != null;
 
-    var firstName = input('pe-first', values.firstName, problems.firstName, { maxlength: '80', placeholder: 'np. Anna' });
-    var lastName = input('pe-last', values.lastName, problems.lastName, { maxlength: '80', placeholder: 'np. Kowalska' });
-    var position = input('pe-position', values.position, problems.position, { maxlength: '120', placeholder: 'np. Projektantka hydrotechniczna' });
-    var orgRole = select('pe-role', Team.ORG_ROLES, values.orgRole || 'member');
-    var cooperation = select('pe-coop', Team.COOPERATION, values.cooperation || 'internal');
+    var firstName = UI.input({ id: 'pe-first', value: values.firstName, error: problems.firstName, maxlength: 80, placeholder: 'np. Anna', autocomplete: 'given-name' });
+    var lastName = UI.input({ id: 'pe-last', value: values.lastName, error: problems.lastName, maxlength: 80, placeholder: 'np. Kowalska', autocomplete: 'family-name' });
+    var position = UI.input({ id: 'pe-position', value: values.position, error: problems.position, maxlength: 120, placeholder: 'np. Projektantka hydrotechniczna' });
+    var orgRole = UI.select({ id: 'pe-role', options: options(Team.ORG_ROLES), value: values.orgRole || 'member' });
+    var cooperation = UI.select({ id: 'pe-coop', options: options(Team.COOPERATION), value: values.cooperation || 'internal' });
 
-    function collect() {
-      return {
-        id: values.id,
-        firstName: firstName.value,
-        lastName: lastName.value,
-        position: position.value,
-        orgRole: orgRole.value,
-        cooperation: cooperation.value
-      };
-    }
+    var form = E.Dialog.drawerForm({
+      id: 'person-form',
+      submitLabel: editing ? 'Zapisz zmiany' : 'Dodaj osobę',
+      onCancel: handlers.onCancel,
+      onSubmit: function () {
+        handlers.onSubmit({
+          id: values.id,
+          firstName: firstName.value,
+          lastName: lastName.value,
+          position: position.value,
+          orgRole: orgRole.value,
+          cooperation: cooperation.value
+        });
+      },
+      body: [
+        D.el('section', { class: 'form__section' }, [
+          D.el('div', { class: 'form__row' }, [
+            UI.field({ id: 'pe-first', label: 'Imię', required: true, control: firstName, error: problems.firstName }),
+            UI.field({ id: 'pe-last', label: 'Nazwisko', required: true, control: lastName, error: problems.lastName })
+          ]),
+          UI.field({ id: 'pe-position', label: 'Stanowisko', optional: true, control: position, error: problems.position })
+        ]),
+        D.el('hr', { class: 'form__divider' }),
+        D.el('section', { class: 'form__section' }, [
+          UI.field({ id: 'pe-role', label: 'Rola w organizacji', control: orgRole, error: problems.orgRole, hint: 'Zarządzający widzi wszystkie projekty i nadzór.' }),
+          UI.field({ id: 'pe-coop', label: 'Forma współpracy', control: cooperation, error: problems.cooperation })
+        ])
+      ]
+    });
 
-    var form = D.el('form', {
-      class: 'form',
-      attrs: { id: 'person-form', novalidate: true },
-      on: {
-        submit: function (event) {
-          event.preventDefault();
-          handlers.onSubmit(collect());
-        }
-      }
-    }, [
-      D.el('div', { class: 'form__grid' }, [
-        field('pe-first', 'Imię', firstName, problems.firstName),
-        field('pe-last', 'Nazwisko', lastName, problems.lastName),
-        field('pe-position', 'Stanowisko', position, problems.position, 'Pole opcjonalne.'),
-        field('pe-role', 'Rola w organizacji', orgRole, problems.orgRole,
-          'Zarządzający widzi wszystkie projekty i nadzór.'),
-        field('pe-coop', 'Forma współpracy', cooperation, problems.cooperation)
-      ]),
-      D.el('div', { class: 'form__actions' }, [
-        D.el('button', {
-          class: 'btn', text: 'Anuluj', attrs: { type: 'button' },
-          on: { click: function () { handlers.onCancel(); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--primary',
-          text: editing ? 'Zapisz zmiany' : 'Dodaj osobę',
-          attrs: { type: 'submit' }
-        })
-      ])
-    ]);
-
-    window.setTimeout(function () { firstName.focus(); }, 0);
+    var target = problems.lastName && !problems.firstName ? lastName : firstName;
+    window.setTimeout(function () { target.focus(); }, 0);
     return form;
   }
 

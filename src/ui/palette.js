@@ -22,6 +22,7 @@
     };
   }
 
+
   function buildEntries(options, query) {
     var projects = Search.rank(
       options.projects || [],
@@ -74,27 +75,36 @@
       class: 'palette__input',
       attrs: {
         type: 'text',
-        placeholder: 'Szukaj projektu albo wpisz działanie',
-        'aria-label': 'Szukaj projektu albo działania',
+        placeholder: 'Szukaj projektu, osoby albo działania…',
+        'aria-label': 'Szukaj projektu, osoby albo działania',
+        role: 'combobox',
+        'aria-expanded': 'true',
+        'aria-controls': 'palette-list',
+        'aria-autocomplete': 'list',
         autocomplete: 'off',
         spellcheck: 'false'
       }
     });
 
-    var list = D.el('div', { class: 'palette__list', attrs: { role: 'listbox' } });
-    var empty = D.el('p', { class: 'palette__empty', text: 'Nic nie pasuje do tego, co wpisałeś.' });
+    var list = D.el('div', { class: 'palette__list', attrs: { role: 'listbox', id: 'palette-list', 'aria-label': 'Wyniki' } });
+    var empty = D.el('p', { class: 'palette__empty', text: 'Brak wyników. Spróbuj kodu projektu, nazwiska albo słowa „motyw”.' });
+
+    function hint(keys, text) {
+      return D.el('span', null, keys.map(function (k) { return D.el('kbd', { class: 'kbd', text: k }); }).concat([D.el('span', { text: text })]));
+    }
 
     var dialog = D.el('dialog', {
       class: 'palette',
-      attrs: { 'aria-label': 'Paleta poleceń' }
+      attrs: { 'aria-label': 'Szukaj i działaj' }
     }, [
       D.el('div', { class: 'palette__card' }, [
-        D.el('div', { class: 'palette__bar' }, [
-          D.el('span', { class: 'palette__icon' }, [Icons.icon('search', 18)]),
-          input,
-          D.el('kbd', { class: 'kbd', text: 'Esc' })
-        ]),
-        list
+        D.el('div', { class: 'palette__bar' }, [Icons.icon('search', 18), input, D.el('kbd', { class: 'kbd', text: 'Esc' })]),
+        list,
+        D.el('div', { class: 'palette__foot', attrs: { 'aria-hidden': 'true' } }, [
+          hint(['↑', '↓'], 'wybór'),
+          hint(['Enter'], 'otwórz'),
+          hint(['Esc'], 'zamknij')
+        ])
       ])
     ]);
 
@@ -105,7 +115,10 @@
         var on = i === active;
         rows[i].classList.toggle('palette__row--active', on);
         rows[i].setAttribute('aria-selected', String(on));
-        if (on && rows[i].scrollIntoView) rows[i].scrollIntoView({ block: 'nearest' });
+        if (on) {
+          input.setAttribute('aria-activedescendant', rows[i].id);
+          if (rows[i].scrollIntoView) rows[i].scrollIntoView({ block: 'nearest' });
+        }
       }
     }
 
@@ -115,23 +128,24 @@
       var children = [];
 
       groups.forEach(function (group) {
-        children.push(D.el('p', { class: 'palette__group', text: group.title }));
+        children.push(D.el('p', { class: 'palette__group', text: group.title, attrs: { role: 'presentation' } }));
         group.entries.forEach(function (entry) {
           var index = entries.length;
           entries.push(entry);
           children.push(D.el('div', {
             class: 'palette__row',
-            attrs: { role: 'option', 'aria-selected': 'false' },
+            attrs: { role: 'option', 'aria-selected': 'false', id: 'palette-opt-' + index },
             on: {
               mousemove: function () { setActive(index); },
               click: function () { run(index); }
             }
           }, [
-            D.el('span', { class: 'palette__rowIcon' }, [Icons.icon(entry.icon, 16)]),
+            Icons.icon(entry.icon, 16),
             D.el('span', { class: 'palette__rowBody' }, [
               D.el('span', { class: 'palette__rowLabel', text: entry.label }),
               entry.meta ? D.el('span', { class: 'palette__rowMeta', text: entry.meta }) : null
-            ].filter(Boolean))
+            ].filter(Boolean)),
+            D.el('span', { class: 'palette__rowEnter' }, [Icons.icon('enter', 14)])
           ]));
         });
       });

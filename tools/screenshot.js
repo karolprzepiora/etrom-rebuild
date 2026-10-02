@@ -1,7 +1,9 @@
 'use strict';
 /**
- * Zrzuty ekranu aplikacji w motywie jasnym i ciemnym, z danymi testowymi.
- * Uruchomienie:  node tools/screenshot.js [katalog-wyjściowy]
+ * Zrzuty ekranu do przeglądu wizualnego: różne ekrany, motywy, szerokości
+ * i stany (pusto, dużo danych, otwarte menu, panel, zaznaczenie).
+ * Uruchomienie:  node tools/screenshot.js [katalog] [filtr-nazw]
+ * Błędy konsoli strony są wypisywane — zrzut z błędem nie przechodzi po cichu.
  */
 
 const { spawn } = require('node:child_process');
@@ -17,6 +19,7 @@ const CHROME = [
 
 const PORT = 9334;
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'docs', 'screenshots'));
+const ONLY = process.argv[3] ? new RegExp(process.argv[3]) : null;
 const APP_URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -33,7 +36,7 @@ async function target() {
   throw new Error('Brak połączenia z przeglądarką.');
 }
 
-function connect(url) {
+function connect(url, onEvent) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
     const pending = new Map();
@@ -45,7 +48,7 @@ function connect(url) {
         pending.delete(message.id);
         if (message.error) entry.reject(new Error(message.error.message));
         else entry.resolve(message.result);
-      }
+      } else if (message.method) onEvent(message);
     });
     socket.addEventListener('error', () => reject(new Error('Błąd DevTools.')));
     socket.addEventListener('open', () => resolve({
@@ -66,112 +69,164 @@ async function main() {
 
   const child = spawn(CHROME, [
     '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
-    '--allow-file-access-from-files',
-    '--window-size=1440,1100',
-    '--force-device-scale-factor=1',
-    '--remote-debugging-port=' + PORT,
-    '--user-data-dir=' + profile,
+    '--allow-file-access-from-files', '--hide-scrollbars',
+    '--window-size=1440,900', '--force-device-scale-factor=1',
+    '--remote-debugging-port=' + PORT, '--user-data-dir=' + profile,
     APP_URL
   ], { stdio: 'ignore' });
 
-  const client = await connect((await target()).webSocketDebuggerUrl);
+  const errors = [];
+  const client = await connect((await target()).webSocketDebuggerUrl, (event) => {
+    if (event.method === 'Runtime.exceptionThrown') {
+      const d = event.params.exceptionDetails || {};
+      errors.push((d.exception && d.exception.description) || d.text);
+    }
+    if (event.method === 'Runtime.consoleAPICalled' && event.params.type === 'error') {
+      errors.push(event.params.args.map((a) => a.value || a.description).join(' '));
+    }
+  });
+
   try {
     await client.send('Runtime.enable');
+    await client.send('Page.enable');
     const run = async (expression) => {
       const result = await client.send('Runtime.evaluate', {
-        expression: '(() => { ' + expression + ' })()',
-        returnByValue: true
+        expression: '(() => { ' + expression + ' })()', returnByValue: true, awaitPromise: true
       });
-      if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
+      if (result.exceptionDetails) {
+        throw new Error((result.exceptionDetails.exception && result.exceptionDetails.exception.description) || result.exceptionDetails.text);
+      }
       return result.result.value;
     };
+    const ready = async () => {
+      for (let i = 0; i < 40; i += 1) {
+        if (await run('return !!(window.ETROM && window.ETROM.app);').catch(() => false)) return;
+        await sleep(200);
+      }
+    };
+    await ready();
 
-    for (let i = 0; i < 40; i += 1) {
-      if (await run('return !!(window.ETROM && window.ETROM.app);')) break;
+    let width = 1440;
+    let height = 900;
+    async function viewport(w, h) {
+      width = w; height = h || 900;
+      await client.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: w < 600 });
       await sleep(200);
     }
-
-    await run('document.getElementById("action-demo").click(); return true;');
-    await sleep(300);
-
-    async function shoot(name) {
-      await sleep(350);
-      const shot = await client.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+    async function shoot(name, options) {
+      if (ONLY && !ONLY.test(name)) return;
+      const settings = options || {};
+      await sleep(settings.wait || 400);
+      const shot = await client.send('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: !!settings.full
+      });
       const file = path.join(OUT, 'etrom-' + name + '.png');
       fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
-      process.stdout.write('zapisano ' + file + '\n');
+      process.stdout.write('zapisano ' + path.basename(file) + (errors.length ? '  BŁĘDY: ' + errors.join(' | ') : '') + '\n');
+      errors.length = 0;
     }
     const theme = (value) => run('document.documentElement.setAttribute("data-theme", "' + value + '"); return true;');
-    const pick = (label) => run('document.querySelector(\'.segmented__btn[aria-label="' + label + '"]\').click(); return true;');
+    const go = async (hash) => { await run('location.hash = ' + JSON.stringify(hash) + '; return true;'); await sleep(450); };
+    const click = (selector) => run('const n = document.querySelector(' + JSON.stringify(selector) + '); if (!n) throw new Error("brak: ' + selector.replace(/"/g, '') + '"); n.click(); return true;');
+    const escape = async () => {
+      await client.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+      await client.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+      await sleep(250);
+    };
+    const projectId = (code) => run('return window.ETROM.app.store.getState().workspace.projects.find(p => p.code === "' + code + '").id;');
 
-    // Karty z rozwiniętymi etapami
-    await run(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'card.querySelectorAll(".btn--small")[0].click(); return true;'
-    );
+    await viewport(1440, 900);
     await theme('light');
-    await shoot('light');
+    await shoot('pusty');
+
+    await run('window.ETROM.app.loadDemo(); return true;');
+    await sleep(300);
+    await run('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
+    await shoot('projekty');
+
     await theme('dark');
-    await shoot('dark');
-
-    // Widok listy
+    await shoot('projekty-ciemny');
     await theme('light');
-    await run(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'card.querySelectorAll(".btn--small")[0].click(); return true;'
-    );
-    await pick('Widok listy');
-    await shoot('lista');
 
-    // Panel nowego projektu
-    await pick('Widok kart');
-    await run('document.getElementById("action-new").click(); return true;');
-    await shoot('panel');
-    await run('document.querySelector("[data-drawer-close]").click(); return true;');
-    await sleep(300);
+    await click('.segmented__btn[aria-label="Widok kart"]');
+    await shoot('karty');
+    await click('.segmented__btn[aria-label="Widok tabeli"]');
 
-    // Paleta poleceń
+    await click('#tb-status');
+    await shoot('menu-filtr', { wait: 250 });
+    await escape();
+
+    await run('document.querySelectorAll("#select-' + (await projectId('DEMO-001')) + ', #select-' + (await projectId('DEMO-004')) + '").forEach(b => b.click()); return true;');
+    await shoot('zaznaczenie');
+    await run('window.ETROM.app.store.set({ selection: {} }); return true;');
+
+    const id2 = await projectId('DEMO-002');
+    await go('#/projekty/' + id2);
+    await run('const w = [...document.querySelectorAll(".srow-wrap")].find(w => w.querySelector(".srow__tasks").textContent !== "—"); w.querySelector(".srow__expand").click(); return true;');
+    await shoot('projekt', { full: true });
+    await theme('dark');
+    await shoot('projekt-ciemny', { full: true });
+    await theme('light');
+
+    await go('#/projekty/' + id2 + '/zadania');
+    await shoot('projekt-zadania');
+    await click('.trow__status');
+    await shoot('menu-status', { wait: 250 });
+    await escape();
+
+    await go('#/projekty/' + id2 + '/zespol');
+    await shoot('projekt-zespol');
+
+    await click('#action-edit-project');
+    await shoot('panel', { wait: 500 });
+    await run('document.getElementById("pf-code").value = ""; document.getElementById("project-form").requestSubmit(); return true;');
+    await shoot('panel-blad', { wait: 300 });
+    await escape();
+
+    await go('#/zespol');
+    await shoot('zespol');
+
+    await click('#action-settings');
+    await shoot('ustawienia', { wait: 250 });
+    await escape();
+
     await run('window.ETROM.app.openPalette(); return true;');
-    await sleep(200);
-    await run(
-      'const i = document.querySelector(".palette__input");' +
-      'i.value = "do"; i.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
-    await shoot('paleta');
-    await run('document.querySelector("dialog.palette").close(); return true;');
-    await sleep(300);
+    await run('const i = document.querySelector(".palette__input"); i.value = "re"; i.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    await shoot('paleta', { wait: 250 });
+    await escape();
 
-    // Wariant barw hydro
     await run('document.documentElement.setAttribute("data-accent", "hydro"); return true;');
+    await go('#/projekty');
     await shoot('hydro');
     await run('document.documentElement.removeAttribute("data-accent"); return true;');
 
-    // Zadania w etapie
-    await run('window.ETROM.app.goTo("projects"); return true;');
-    await sleep(300);
-    // Najpierw rozwinięcie etapów karty, inaczej nie ma czego rozwijać.
+    // Długie wartości: nazwa, zamawiający, kod — sprawdzenie skracania i zawijania.
     await run(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'if (!card.querySelector(".srow-wrap")) card.querySelectorAll(".btn--small")[0].click();' +
-      'return true;'
+      'const E = window.ETROM; const s = E.app.store; const ws = s.getState().workspace;' +
+      'const p = E.Model.createProject({ code: "W-2026-0142/KONC/II", name: "Przebudowa i rozbudowa systemu ochrony przeciwpowodziowej doliny rzeki Wisłoki wraz z modernizacją wałów, przepompowni i zbiornika retencyjnego", client: "Państwowe Gospodarstwo Wodne Wody Polskie, Regionalny Zarząd Gospodarki Wodnej w Krakowie", status: "active", deadline: "2026-10-03", stages: E.Catalog.all.slice(0, 4).map(e => E.Model.createStage(e.id)) }, ws.projects);' +
+      's.update(st => Object.assign({}, st, { workspace: Object.assign({}, ws, { projects: ws.projects.concat([p]) }) })); return true;'
     );
-    await sleep(350);
-    await run(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const wrap = [...card.querySelectorAll(".srow-wrap")].find(w => {' +
-      '  const c = w.querySelector(".srow__tasks");' +
-      '  return c && c.textContent !== "—";' +
-      '});' +
-      'wrap.querySelector(".srow__expand").click(); return true;'
-    );
-    await sleep(400);
-    await shoot('zadania');
+    await go('#/projekty');
+    await shoot('dlugie');
+    await go('#/projekty/' + (await projectId('W-2026-0142/KONC/II')));
+    await shoot('dlugie-projekt');
 
-    // Ekran Zespołu
-    await run('window.ETROM.app.goTo("team"); return true;');
-    await sleep(500);
-    await shoot('zespol');
+    await viewport(1024, 800);
+    await shoot('projekty-1024');
+    await go('#/projekty/' + id2);
+    await shoot('projekt-1024');
 
+    await viewport(390, 844);
+    await go('#/projekty');
+    await shoot('projekty-390');
+    await go('#/projekty/' + id2);
+    await shoot('projekt-390', { full: true });
+    await click('#action-nav');
+    await shoot('nawigacja-390', { wait: 400 });
+    await run('window.ETROM.app.store.set({ navOpen: false }); return true;');
+    await go('#/zespol');
+    await shoot('zespol-390');
   } finally {
     client.close();
     child.kill('SIGKILL');

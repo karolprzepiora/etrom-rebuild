@@ -21,7 +21,7 @@
       style: { '--avatar-h': String(Identity.hue(person ? person.id : '')) },
       text: Identity.initials(name),
       attrs: {
-        title: settings.title || (name + (inactive ? ' — wyłączona' : '')),
+        'data-tooltip': settings.tooltip === false ? null : (settings.title || (name + (inactive ? ' — wyłączona z obiegu' : ''))),
         'aria-hidden': settings.decorative === false ? null : 'true'
       }
     });
@@ -48,14 +48,14 @@
         class: 'avatar avatar--' + (settings.size || 'sm') + ' avatar--rest',
         text: '+' + rest,
         attrs: {
-          title: list.slice(max).map(function (p) { return Team.fullName(p); }).join(', ')
+          'data-tooltip': list.slice(max).map(function (p) { return Team.fullName(p); }).join(', ')
         }
       }));
     }
 
     return D.el('span', {
       class: 'avatars',
-      attrs: { 'aria-label': list.length ? 'Zespół: ' + list.map(function (p) { return Team.fullName(p); }).join(', ') : 'Brak przypisanych osób' }
+      attrs: { role: 'img', 'aria-label': list.length ? 'Zespół: ' + list.map(function (p) { return Team.fullName(p); }).join(', ') : 'Brak przypisanych osób' }
     }, children);
   }
 

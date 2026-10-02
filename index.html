@@ -3,70 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ETROM — projekty i etapy</title>
-  <meta name="description" content="ETROM — prowadzenie projektów, etapów, terminów i zespołu w biurze projektowym.">
+  <meta name="color-scheme" content="light dark">
+  <title>ETROM</title>
+  <meta name="description" content="ETROM — projekty, etapy, zadania i zespół biura projektowego.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c0266a'/%3E%3Cpath d='M11 9h10M11 16h8M11 23h10M11 9v14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles/tokens.css">
-  <link rel="stylesheet" href="styles/app.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/views.css">
 </head>
 <body>
-  <div class="shell">
-    <aside class="rail" id="rail"></aside>
+  <a class="skip-link" href="#main">Przejdź do treści</a>
 
-    <div class="content">
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Nawigacja"></aside>
+    <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
+
+    <div class="main">
       <header class="topbar">
-        <p class="topbar__path">ETROM / <strong id="crumb">Projekty</strong></p>
+        <button class="icon-btn topbar__menu" type="button" id="action-nav" aria-label="Otwórz nawigację" aria-controls="sidebar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <nav class="topbar__crumb" id="crumb" aria-label="Ścieżka"></nav>
         <span class="topbar__spacer"></span>
-        <button class="btn" type="button" id="action-demo">Dane testowe</button>
-        <button class="btn" type="button" id="action-export">Pobierz kopię</button>
-        <button class="btn" type="button" id="action-import">Wczytaj kopię</button>
-        <button class="btn btn--danger" type="button" id="action-clear">Wyczyść</button>
-        <input type="file" id="import-file" accept="application/json,.json" class="sr-only" tabindex="-1">
+        <span class="save-state" id="save-state" role="status" tabindex="0"></span>
       </header>
 
-      <main class="screen">
-        <p class="notice notice--hidden" id="notice" role="status" aria-live="polite"></p>
+      <main class="page" id="main" tabindex="-1">
+        <div id="notice"></div>
 
-        <section class="view" id="view-projects">
-          <div class="screen__head">
-            <div>
-              <h1 class="screen__title">Projekty</h1>
-              <p class="screen__lede">Terminy umów, postęp rzeczowy i stan etapów w jednym miejscu.</p>
+        <section class="view" id="view-projects" aria-labelledby="projects-title">
+          <header class="page-header">
+            <div class="page-header__main">
+              <h1 class="t-page-title" id="projects-title">Projekty</h1>
+              <p class="page-header__description" id="projects-summary"></p>
             </div>
-            <div class="screen__headActions">
-              <button class="btn btn--primary" type="button" id="action-new">
-                Nowy projekt <kbd class="kbd">N</kbd>
+            <div class="page-header__actions">
+              <button class="btn btn--primary" type="button" id="action-new" aria-keyshortcuts="N">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Nowy projekt</span><kbd class="kbd">N</kbd>
               </button>
             </div>
-          </div>
-          <div class="filters" id="filters"></div>
+          </header>
+          <div class="toolbar" id="filters" role="search" aria-label="Filtry projektów"></div>
+          <div id="bulk-bar" class="bulk-slot"></div>
           <div id="project-list"></div>
         </section>
 
-        <section class="view" id="view-team" hidden>
-          <div class="screen__head">
-            <div>
-              <h1 class="screen__title">Zespół</h1>
-              <p class="screen__lede">Katalog osób, role w organizacji i funkcje pełnione w projektach.</p>
+        <section class="view" id="view-project" hidden aria-labelledby="project-title">
+          <div class="detail" id="project-view"></div>
+        </section>
+
+        <section class="view" id="view-team" hidden aria-labelledby="team-title">
+          <header class="page-header">
+            <div class="page-header__main">
+              <h1 class="t-page-title" id="team-title">Zespół</h1>
+              <p class="page-header__description" id="team-summary"></p>
             </div>
-            <div class="screen__headActions">
-              <button class="btn btn--primary" type="button" id="action-new-person">
-                Nowa osoba <kbd class="kbd">N</kbd>
+            <div class="page-header__actions">
+              <button class="btn btn--primary" type="button" id="action-new-person" aria-keyshortcuts="N">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Nowa osoba</span><kbd class="kbd">N</kbd>
               </button>
             </div>
-          </div>
-          <div class="filters" id="team-filters"></div>
+          </header>
+          <div class="toolbar" id="team-filters" role="search" aria-label="Filtry osób"></div>
           <div id="team-list"></div>
         </section>
       </main>
-
-      <footer class="statusbar">
-        <span id="summary"></span>
-        <span id="save-state">Zapis lokalny</span>
-        <span class="statusbar__spacer"></span>
-        <span>Dane zostają na tym urządzeniu. Przed przeniesieniem folderu pobierz kopię JSON.</span>
-      </footer>
     </div>
   </div>
+
+  <input type="file" id="import-file" accept="application/json,.json" class="sr-only" tabindex="-1" aria-hidden="true">
 
   <!-- Klasyczne skrypty w kolejności zależności: działa po dwukliku z dysku (file://),
        bez serwera i bez kompilacji. Moduły ES nie zadziałałyby z file:// (CORS). -->
@@ -81,21 +90,27 @@
   <script src="src/core/identity.js"></script>
   <script src="src/core/prefs.js"></script>
   <script src="src/core/search.js"></script>
+  <script src="src/core/format.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
+  <script src="src/ui/components.js"></script>
   <script src="src/ui/avatar.js"></script>
   <script src="src/ui/motion.js"></script>
+  <script src="src/ui/tooltip.js"></script>
+  <script src="src/ui/menu.js"></script>
   <script src="src/ui/dialog.js"></script>
   <script src="src/ui/toast.js"></script>
   <script src="src/ui/palette.js"></script>
   <script src="src/ui/taskList.js"></script>
   <script src="src/ui/stageList.js"></script>
-  <script src="src/ui/projectCard.js"></script>
-  <script src="src/ui/projectTable.js"></script>
+  <script src="src/ui/projectList.js"></script>
+  <script src="src/ui/projectDetail.js"></script>
   <script src="src/ui/projectForm.js"></script>
   <script src="src/ui/personForm.js"></script>
   <script src="src/ui/taskForm.js"></script>
+  <script src="src/ui/stageForm.js"></script>
   <script src="src/ui/teamScreen.js"></script>
+  <script src="src/ui/shell.js"></script>
   <script src="src/ui/app.js"></script>
 </body>
 </html>

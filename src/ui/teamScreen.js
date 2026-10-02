@@ -1,14 +1,18 @@
-/* ETROM — ekran Zespołu: katalog osób z rolami i funkcjami w projektach. */
+/* ETROM — ekran Zespołu: katalog osób w tabeli.
+   Osoba, stanowisko, rola, forma współpracy, funkcje w projektach (linki)
+   i stan. Rzadkie działania (wyłączenie, usunięcie) siedzą w menu wiersza. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Team = root.ETROM.Team;
-  var Icons = root.ETROM.Icons;
-  var Avatar = root.ETROM.Avatar;
-  var Search = root.ETROM.Search;
+  var E = root.ETROM;
+  var D = E.Dom;
+  var UI = E.UI;
+  var Menu = E.Menu;
+  var Team = E.Team;
+  var Avatar = E.Avatar;
+  var Search = E.Search;
 
-  var MAX_ROLE_CHIPS = 2;
+  var MAX_ROLE_BADGES = 2;
 
   /** Filtruje i porządkuje katalog osób. Czysta funkcja. */
   function visiblePeople(people, filters) {
@@ -31,7 +35,7 @@
     });
   }
 
-  function roleChips(person, projects, handlers) {
+  function roleBadges(person, projects) {
     var entries = [];
     (projects || []).forEach(function (project) {
       Team.functionsOf(person.id, project.team).forEach(function (fn) {
@@ -39,79 +43,99 @@
       });
     });
 
-    if (!entries.length) {
-      return D.el('span', { class: 'prow__quiet', text: 'bez przypisań' });
-    }
+    if (!entries.length) return D.el('span', { class: 't-muted', text: 'Bez przypisań' });
 
-    var shown = entries.slice(0, MAX_ROLE_CHIPS);
+    var shown = entries.slice(0, MAX_ROLE_BADGES);
     var rest = entries.length - shown.length;
-
     var children = shown.map(function (entry) {
-      return D.el('button', {
-        class: 'chip chip--link',
-        text: entry.project.code + ' · ' + entry.fn.short,
+      return D.el('a', {
+        class: 'badge badge--outline role-link',
         attrs: {
-          type: 'button',
-          title: entry.fn.label + ' w projekcie ' + entry.project.name
-        },
-        on: { click: function () { handlers.onOpenProject(entry.project); } }
-      });
+          href: E.ProjectList.projectHref(entry.project, 'zespol'),
+          'data-tooltip': entry.fn.label + ' — ' + entry.project.name,
+          'aria-label': entry.fn.label + ' w projekcie ' + entry.project.code + ' ' + entry.project.name
+        }
+      }, [
+        D.el('span', { class: 't-mono', text: entry.project.code }),
+        D.el('span', { text: '· ' + entry.fn.short })
+      ]);
     });
-
     if (rest > 0) {
       children.push(D.el('span', {
-        class: 'prow__quiet',
+        class: 'badge',
         text: '+' + rest,
         attrs: {
-          title: entries.slice(MAX_ROLE_CHIPS).map(function (e) {
-            return e.project.code + ' — ' + e.fn.label;
-          }).join('\n')
+          'data-tooltip': entries.slice(MAX_ROLE_BADGES).map(function (e) { return e.project.code + ' — ' + e.fn.label; }).join(', '),
+          tabindex: '0'
         }
       }));
     }
-
-    return D.el('div', { class: 'prow__roles' }, children);
+    return D.el('div', { class: 'role-list' }, children);
   }
 
-  function personRow(person, projects, handlers) {
+  function personMenu(person, actions) {
     var inactive = person.active === false;
-    var meta = [person.position, Team.COOPERATION[person.cooperation]].filter(Boolean).join(' · ');
-
-    return D.el('li', { class: 'prow' + (inactive ? ' prow--off' : ''), dataset: { personId: person.id } }, [
-      Avatar.avatar(person, { size: 'md' }),
-      D.el('div', { class: 'prow__body' }, [
-        D.el('p', { class: 'prow__name' }, [
-          D.el('span', { text: Team.fullName(person) }),
-          inactive ? D.el('span', { class: 'chip', text: 'wyłączona' }) : null
-        ].filter(Boolean)),
-        D.el('p', { class: 'prow__meta', text: meta || 'Bez stanowiska' })
-      ]),
-      D.el('span', {
-        class: 'chip ' + (person.orgRole === 'managing' ? 'chip--accent' : ''),
-        text: Team.ORG_ROLES[person.orgRole]
-      }),
-      roleChips(person, projects, handlers),
-      D.el('div', { class: 'prow__tools' }, [
-        D.el('button', {
-          class: 'btn btn--small btn--ghost', text: 'Edytuj',
-          attrs: { type: 'button' },
-          on: { click: function () { handlers.onEditPerson(person.id); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--small btn--ghost',
-          text: inactive ? 'Włącz' : 'Wyłącz',
-          attrs: {
-            type: 'button',
-            title: inactive ? 'Przywróć osobę do obiegu' : 'Wyłącz osobę z obiegu, zachowując historię'
+    var btn = UI.iconButton({
+      icon: 'more', label: 'Działania: ' + Team.fullName(person), size: 'sm', class: 'row-actions',
+      attrs: { 'data-fk': 'person-more-' + person.id }
+    });
+    Menu.bind(btn, function () {
+      return {
+        label: 'Działania osoby', align: 'end',
+        items: [
+          { label: 'Edytuj dane', icon: 'edit', onSelect: function () { actions.editPerson(person.id); } },
+          {
+            label: inactive ? 'Przywróć do obiegu' : 'Wyłącz z obiegu', icon: 'power', value: 'toggle',
+            hint: inactive ? '' : 'historia zostaje',
+            onSelect: function () { actions.togglePerson(person.id); }
           },
-          on: { click: function () { handlers.onTogglePerson(person.id); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--icon',
-          attrs: { type: 'button', title: 'Usuń z katalogu', 'aria-label': 'Usuń ' + Team.fullName(person) + ' z katalogu' },
-          on: { click: function () { handlers.onDeletePerson(person.id); } }
-        }, [Icons.icon('close', 15)])
-      ])
+          { type: 'separator' },
+          { label: 'Usuń z katalogu', icon: 'trash', tone: 'danger', onSelect: function () { actions.deletePerson(person.id); } }
+        ]
+      };
+    });
+    return btn;
+  }
+
+  function personRow(person, projects, actions) {
+    var inactive = person.active === false;
+    return D.el('tr', {
+      class: 'prow table__row' + (inactive ? ' prow--off' : ''),
+      dataset: { personId: person.id },
+      on: {
+        click: function (event) {
+          if (event.target.closest('a, button, input, label')) return;
+          actions.editPerson(person.id);
+        }
+      }
+    }, [
+      D.el('td', null, [D.el('span', { class: 'person' }, [
+        Avatar.avatar(person, { size: 'md', tooltip: false }),
+        D.el('span', { class: 'person__text' }, [
+          D.el('button', {
+            class: 'person__name person__link',
+            text: Team.fullName(person),
+            attrs: { type: 'button', 'aria-label': 'Edytuj: ' + Team.fullName(person), 'data-fk': 'person-' + person.id },
+            on: { click: function () { actions.editPerson(person.id); } }
+          }),
+          D.el('span', {
+            class: 'person__meta',
+            text: [person.position || 'Bez stanowiska', Team.COOPERATION[person.cooperation]].filter(Boolean).join(' · ')
+          })
+        ])
+      ])]),
+      D.el('td', { class: 'col-role' }, [
+        person.orgRole === 'managing'
+          ? UI.badge(Team.ORG_ROLES[person.orgRole])
+          : D.el('span', { class: 't-secondary-cell', text: Team.ORG_ROLES[person.orgRole] })
+      ]),
+      D.el('td', { class: 'col-functions' }, [roleBadges(person, projects)]),
+      D.el('td', { class: 'col-state' }, [
+        inactive
+          ? D.el('span', { class: 'status status--neutral' }, [UI.statusIcon('paused'), D.el('span', { text: 'Wyłączona' })])
+          : D.el('span', { class: 'status status--success' }, [UI.statusIcon('done'), D.el('span', { text: 'Aktywna' })])
+      ]),
+      D.el('td', { class: 'cell--actions' }, [personMenu(person, actions)])
     ]);
   }
 
@@ -119,36 +143,44 @@
    * @param {Array} people katalog osób
    * @param {Array} projects projekty (do wyliczenia funkcji)
    * @param {Object} filters {query, role, showInactive}
-   * @param {Object} handlers onEditPerson, onTogglePerson, onDeletePerson, onOpenProject, onNewPerson
+   * @param {Object} actions editPerson, togglePerson, deletePerson, newPerson, clearTeamFilters
    */
-  function teamList(people, projects, filters, handlers) {
+  function teamList(people, projects, filters, actions) {
     var all = people || [];
     var visible = visiblePeople(all, filters);
 
     if (!all.length) {
-      return D.el('div', { class: 'empty' }, [
-        D.el('p', { class: 'empty__title', text: 'Katalog osób jest pusty' }),
-        D.el('p', {
-          class: 'empty__text',
-          text: 'Dodaj osoby, żeby przypisywać im funkcje w projektach: Lidera, Koordynatora i Pełnomocników.'
-        }),
-        D.el('button', {
-          class: 'btn btn--primary', text: 'Nowa osoba',
-          attrs: { type: 'button' }, on: { click: handlers.onNewPerson }
-        })
-      ]);
+      return D.el('div', { class: 'card' }, [UI.emptyState({
+        icon: 'people',
+        title: 'Katalog osób jest pusty',
+        text: 'Dodaj osoby, żeby przypisywać im funkcje w projektach — Lidera, Koordynatora, Pełnomocników — i wskazywać realizatorów zadań.',
+        actions: [UI.button({ label: 'Nowa osoba', icon: 'plus', variant: 'primary', onClick: actions.newPerson })]
+      })]);
     }
 
     if (!visible.length) {
-      return D.el('div', { class: 'empty' }, [
-        D.el('p', { class: 'empty__title', text: 'Nikt nie pasuje do filtrów' }),
-        D.el('p', { class: 'empty__text', text: 'Zmień wyszukiwaną frazę albo pokaż osoby wyłączone.' })
-      ]);
+      return D.el('div', { class: 'card' }, [UI.emptyState({
+        icon: 'search',
+        title: 'Nikt nie pasuje do filtrów',
+        text: 'Zmień frazę, wybierz inną rolę albo pokaż także osoby wyłączone z obiegu.',
+        actions: [UI.button({ label: 'Wyczyść filtry', variant: 'secondary', onClick: actions.clearTeamFilters })]
+      })]);
     }
 
-    return D.el('ul', { class: 'prows' }, visible.map(function (person) {
-      return personRow(person, projects, handlers);
-    }));
+    var head = D.el('thead', null, [D.el('tr', null, [
+      D.el('th', { attrs: { scope: 'col' }, text: 'Osoba' }),
+      D.el('th', { class: 'col-role', attrs: { scope: 'col' }, text: 'Rola' }),
+      D.el('th', { class: 'col-functions', attrs: { scope: 'col' }, text: 'Funkcje w projektach' }),
+      D.el('th', { class: 'col-state', attrs: { scope: 'col' }, text: 'Stan' }),
+      D.el('th', { class: 'cell--actions', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Działania' })])
+    ])]);
+
+    return D.el('div', { class: 'table-wrap team-table' }, [
+      D.el('table', { class: 'table', attrs: { 'aria-label': 'Katalog osób' } }, [
+        head,
+        D.el('tbody', null, visible.map(function (person) { return personRow(person, projects, actions); }))
+      ])
+    ]);
   }
 
   root.ETROM.TeamScreen = { teamList: teamList, visiblePeople: visiblePeople };

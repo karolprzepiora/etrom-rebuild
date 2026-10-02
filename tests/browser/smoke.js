@@ -147,20 +147,43 @@ async function main() {
       throw new Error('Aplikacja nie wystartowała.');
     }
 
-    const cardCount = () => evaluate('return document.querySelectorAll(".project").length;');
+    // Wiersz tabeli albo karta — każdy widoczny projekt na liście ma data-project-code.
+    const cardCount = () => evaluate('return document.querySelectorAll("#project-list [data-project-code]").length;');
     const click = (selector) => evaluate(
       'const node = document.querySelector(' + JSON.stringify(selector) + ');' +
-      'if (!node) throw new Error("brak elementu: ' + selector + '");' +
+      'if (!node) throw new Error("brak elementu: ' + selector.replace(/"/g, "'") + '");' +
       'node.click(); return true;'
     );
+    const go = async (hash) => { await evaluate('location.hash = ' + JSON.stringify(hash) + '; return true;'); await sleep(450); };
+    const projectId = (code) => evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "' + code + '"); return p ? p.id : null;');
+    const state = (expr) => evaluate('const s = window.ETROM.app.store.getState(); return ' + expr + ';');
+
+    /** Wybiera pozycję z otwartego menu po wartości albo po początku etykiety. */
+    async function pickMenu(match) {
+      await evaluate(
+        'const items = [...document.querySelectorAll(".popover [role^=menuitem]")];' +
+        'const m = ' + JSON.stringify(match) + ';' +
+        'const item = items.find(i => i.dataset.value === m) || items.find(i => i.textContent.trim().indexOf(m) === 0);' +
+        'if (!item) throw new Error("brak pozycji menu: " + m + " w [" + items.map(i => i.textContent.trim()).join(", ") + "]");' +
+        'item.click(); return true;'
+      );
+      await sleep(250);
+    }
+    async function openMenu(selector, match) {
+      await click(selector);
+      await sleep(150);
+      await pickMenu(match);
+    }
 
     // Prawdziwe zdarzenia klawiatury — inaczej natywny <dialog> nie zareaguje na Escape.
     const KEYS = {
       n: { key: 'n', code: 'KeyN', vk: 78, text: 'n' },
+      e: { key: 'e', code: 'KeyE', vk: 69, text: 'e' },
       slash: { key: '/', code: 'Slash', vk: 191, text: '/' },
       k: { key: 'k', code: 'KeyK', vk: 75, text: 'k' },
-      enter: { key: 'Enter', code: 'Enter', vk: 13, text: '' },
-      escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' }
+      enter: { key: 'Enter', code: 'Enter', vk: 13, text: '\r' },
+      escape: { key: 'Escape', code: 'Escape', vk: 27, text: '' },
+      down: { key: 'ArrowDown', code: 'ArrowDown', vk: 40, text: '' }
     };
     async function pressKey(name, modifiers) {
       const spec = KEYS[name];
@@ -182,32 +205,29 @@ async function main() {
     await waitForApp();
 
     /* 1. Start na czystym profilu */
-    check('start bez danych pokazuje stan pusty',
-      (await cardCount()) === 0 && (await evaluate('return document.querySelector(".empty__title").textContent;')) === 'Nie ma jeszcze żadnego projektu');
+    check('start bez danych pokazuje pusty stan z następnym krokiem',
+      (await cardCount()) === 0
+      && (await evaluate('return document.querySelector(".empty-state__title").textContent;')) === 'Nie ma jeszcze żadnego projektu'
+      && (await evaluate('return !!document.getElementById("empty-demo");')));
 
     check('skrypty wczytały się z file:// (bez serwera)',
       (await evaluate('return location.protocol;')) === 'file:' &&
       (await evaluate('return Object.keys(window.ETROM).sort().join(",");')).includes('Model'));
 
-    /* 2. Dane testowe */
-    await click('#action-demo');
-    check('dane testowe dodają 5 projektów', (await cardCount()) === 5, 'było ' + (await cardCount()));
+    /* 2. Dane przykładowe */
+    await click('#empty-demo');
+    await sleep(200);
+    check('dane przykładowe dodają 5 projektów', (await cardCount()) === 5, 'było ' + (await cardCount()));
+    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 5);
 
-    check('każdy projekt testowy ma 14 etapów w katalogowej kolejności',
-      await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'return ws.projects.every(p => p.stages.length === 14);'
-      ));
+    check('każdy projekt przykładowy ma 14 etapów w katalogowej kolejności',
+      await state('s.workspace.projects.every(p => p.stages.length === 14)'));
 
     /* 3. Zapis lokalny */
-    const stored = await evaluate(
-      'const raw = localStorage.getItem("etrom.v3");' +
-      'return raw ? JSON.parse(raw).projects.length : -1;'
-    );
+    const stored = await evaluate('const raw = localStorage.getItem("etrom.v3"); return raw ? JSON.parse(raw).projects.length : -1;');
     check('dane trafiają do localStorage na file://', stored === 5, 'zapisano: ' + stored);
 
-    /* 4. Trwałość po przeładowaniu — od tego momentu liczymy błędy strony
-          od czystego wczytania, razem z fazą startu aplikacji. */
+    /* 4. Trwałość po przeładowaniu — od tego momentu liczymy błędy strony */
     pageErrors = [];
     await evaluate('location.reload(); return true;');
     await sleep(600);
@@ -215,87 +235,72 @@ async function main() {
     check('po przeładowaniu projekty nadal są', (await cardCount()) === 5, 'było ' + (await cardCount()));
 
     /* 5. Wyszukiwanie */
-    await evaluate(
-      'const input = document.getElementById("tb-search");' +
-      'input.value = "Lipnica";' +
-      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
+    await evaluate('const input = document.getElementById("tb-search"); input.value = "Lipnica"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     check('szukanie po nazwie zawęża listę do jednego projektu', (await cardCount()) === 1, 'było ' + (await cardCount()));
+    check('przy aktywnym filtrze widać licznik i przycisk czyszczenia',
+      await evaluate('return /Pasuje 1 z 5/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
+    await click('#tb-clear');
+    await sleep(150);
+    check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 5 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
 
-    await evaluate(
-      'const input = document.getElementById("tb-search");' +
-      'input.value = "";' +
-      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
-    check('wyczyszczenie szukania przywraca pełną listę', (await cardCount()) === 5);
-
-    /* 6. Filtr statusu */
-    await evaluate(
-      'const select = document.getElementById("tb-status");' +
-      'select.value = "done";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
+    /* 6. Filtr statusu przez menu */
+    await openMenu('#tb-status', 'done');
     check('filtr statusu „Zakończony” pokazuje 1 projekt', (await cardCount()) === 1, 'było ' + (await cardCount()));
-    await evaluate(
-      'const select = document.getElementById("tb-status");' +
-      'select.value = "all";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
+    check('przycisk filtra pokazuje wybraną wartość',
+      await evaluate('const b = document.getElementById("tb-status"); return b.classList.contains("filter-btn--active") && /Zakończony/.test(b.textContent);'));
+    await openMenu('#tb-status', 'all');
+    check('powrót do wszystkich statusów', (await cardCount()) === 5);
 
     /* 7. Sortowanie po terminie — projekt po terminie na początku */
-    await evaluate(
-      'const select = document.getElementById("tb-sort");' +
-      'select.value = "deadline";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
-    const order = await evaluate(
-      'return [...document.querySelectorAll(".project")].map(c => c.dataset.projectCode).join(",");'
-    );
+    const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
     check('sortowanie po terminie: czynny projekt po terminie na czele, zakończony na końcu',
       order.split(',')[0] === 'DEMO-002' && order.split(',').pop() === 'DEMO-005', 'kolejność: ' + order);
 
-    /* 8. Rozwinięcie etapów */
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'card.querySelectorAll(".btn--small")[0].click(); return true;'
-    );
-    const stageRows = await evaluate(
-      'return document.querySelector(\'[data-project-code="DEMO-002"]\').querySelectorAll(".srow").length;'
-    );
-    check('rozwinięcie karty pokazuje listę 14 etapów', stageRows === 14, 'wierszy: ' + stageRows);
+    check('sortowanie z nagłówka kolumny',
+      await evaluate('document.querySelector(\'.table__sort[data-sort="name"]\').click(); return true;')
+      && (await state('s.filters.sort')) === 'name'
+      && (await evaluate('return document.querySelector(\'th[aria-sort] .table__sort\').dataset.sort;')) === 'name');
+    await openMenu('#tb-sort', 'deadline');
+    check('menu sortowania wraca do terminu', (await state('s.filters.sort')) === 'deadline');
+
+    /* 8. Szczegóły projektu pod własnym adresem */
+    await evaluate('document.querySelector(\'[data-project-code="DEMO-002"] .project-link\').click(); return true;');
+    await sleep(500);
+    const id2 = await projectId('DEMO-002');
+    check('klik w projekt otwiera jego szczegóły pod własnym adresem',
+      (await evaluate('return location.hash;')) === '#/projekty/' + id2 && !(await evaluate('return document.getElementById("view-project").hidden;')));
+    check('szczegóły pokazują listę 14 etapów', (await evaluate('return document.querySelectorAll(".srow").length;')) === 14);
+    check('ścieżka w pasku górnym prowadzi z powrotem do listy',
+      await evaluate('const a = document.querySelector("#crumb a"); return !!a && a.getAttribute("href") === "#/projekty";'));
+    check('fokus po zmianie ekranu trafia na nagłówek strony',
+      (await evaluate('return document.activeElement && document.activeElement.id;')) === 'project-title');
 
     /* 9. Zmiana statusu etapu przelicza postęp */
-    const before = await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'return card.querySelector(".meter__track").getAttribute("aria-valuenow");'
-    );
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const rows = card.querySelectorAll(".srow");' +
-      'const last = rows[rows.length - 1];' +
-      'last.querySelector(".srow__status").click(); return true;'
-    );
-    const statusAfter = await evaluate(
-      'const ws = window.ETROM.app.store.getState().workspace;' +
-      'const p = ws.projects.find(x => x.code === "DEMO-002");' +
-      'return p.stages[13].status;'
-    );
-    check('klik na status etapu przechodzi todo → W toku', statusAfter === 'working', 'status: ' + statusAfter);
+    const progressNow = () => evaluate('return document.querySelector(".summary [role=progressbar]").getAttribute("aria-valuenow");');
+    const before = await progressNow();
+    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    await sleep(150);
+    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'working');
+    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
+    await sleep(150);
+    const after = await progressNow();
+    check('oznaczenie etapu jako zakończony podnosi postęp', Number(after) > Number(before), 'przed ' + before + '%, po ' + after + '%');
+    // Enter z klawiatury na przycisku statusu: po przerysowaniu fokus musi zostać w tym samym miejscu.
+    await evaluate('const rows = document.querySelectorAll(".srow"); rows[rows.length - 1].querySelector(".srow__status").focus(); return true;');
+    await pressKey('enter');
+    check('fokus klawiatury zostaje na przycisku statusu po przerysowaniu',
+      await evaluate('const rows = document.querySelectorAll(".srow"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
+      && (await state('s.workspace.projects.find(x => x.code === "DEMO-002").stages[13].status')) === 'todo');
 
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const rows = card.querySelectorAll(".srow");' +
-      'rows[rows.length - 1].querySelector(".srow__status").click(); return true;'
-    );
-    const after = await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'return card.querySelector(".meter__track").getAttribute("aria-valuenow");'
-    );
-    check('oznaczenie etapu jako zakończony podnosi postęp',
-      Number(after) > Number(before), 'przed ' + before + '%, po ' + after + '%');
+    /* 10. Wstecz w przeglądarce */
+    await evaluate('history.back(); return true;');
+    await sleep(500);
+    check('przycisk Wstecz wraca z projektu na listę',
+      (await evaluate('return location.hash;')) === '#/projekty' || (await evaluate('return location.hash;')) === '');
 
-    /* 10. Walidacja formularza: powtórzony kod */
+    /* 11. Walidacja formularza: powtórzony kod */
     await click('#action-new');
+    await sleep(200);
     await evaluate(
       'document.getElementById("pf-code").value = "DEMO-001";' +
       'document.getElementById("pf-name").value = "Próba duplikatu";' +
@@ -303,27 +308,27 @@ async function main() {
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(150);
-    const duplicateError = await evaluate(
-      'const node = document.querySelector("#project-form .field__error");' +
-      'return node ? node.textContent : "";'
-    );
+    const duplicateError = await evaluate('const node = document.querySelector("#project-form .field__error"); return node ? node.textContent : "";');
     check('formularz blokuje powtórzony kod projektu',
       /już istnieje/i.test(duplicateError) && (await cardCount()) === 5, 'komunikat: "' + duplicateError + '"');
+    check('pole z błędem jest oznaczone i opisane dla czytnika ekranu',
+      await evaluate('const i = document.getElementById("pf-code"); return i.getAttribute("aria-invalid") === "true" && (i.getAttribute("aria-describedby") || "").indexOf("pf-code-error") >= 0;'));
 
-    /* 11. Poprawne dodanie projektu */
+    /* 12. Poprawne dodanie projektu */
     await evaluate(
       'document.getElementById("pf-code").value = "NOWY-9";' +
       'document.getElementById("pf-name").value = "Projekt z testu";' +
       'document.getElementById("pf-client").value = "Klient testowy";' +
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
-    await sleep(150);
+    await sleep(200);
     check('poprawny formularz dodaje projekt i zamyka panel',
       (await cardCount()) === 6 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
-      'kart: ' + (await cardCount()));
+      'pozycji: ' + (await cardCount()));
 
-    /* 12. Dane użytkownika nie są wykonywane jako HTML */
+    /* 13. Dane użytkownika nie są wykonywane jako HTML */
     await click('#action-new');
+    await sleep(200);
     await evaluate(
       'document.getElementById("pf-code").value = "XSS-1";' +
       'document.getElementById("pf-name").value = \'<img src=x onerror="window.__xss=1">\';' +
@@ -331,212 +336,168 @@ async function main() {
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(250);
-    const xss = await evaluate('return { flag: !!window.__xss, imgs: document.querySelectorAll(".project img").length };');
-    const xssText = await evaluate(
-      'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
-      'return card ? card.querySelector(".project__name").textContent : "";'
-    );
+    const xss = await evaluate('return { flag: !!window.__xss, imgs: document.querySelectorAll("#project-list img").length };');
+    const xssText = await evaluate('const row = document.querySelector(\'[data-project-code="XSS-1"]\'); return row ? row.querySelector(".project-link").textContent : "";');
     check('nazwa ze znacznikami HTML wyświetla się jako tekst, nie wykonuje się',
-      xss.flag === false && xss.imgs === 0 && xssText.indexOf('<img') === 0,
-      JSON.stringify(xss) + ' tekst: ' + xssText);
+      xss.flag === false && xss.imgs === 0 && xssText.indexOf('<img') === 0, JSON.stringify(xss) + ' tekst: ' + xssText);
 
-    /* 13. Usuwanie z możliwością cofnięcia */
-    const codesBefore = await evaluate(
-      'return window.ETROM.app.store.getState().workspace.projects.map(p => p.code).join(",");'
-    );
-
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
-      'card.querySelector(".project__remove").click(); return true;'
-    );
-    await sleep(500);
-
+    /* 14. Usuwanie z menu wiersza, z możliwością cofnięcia */
+    await evaluate('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
+    await sleep(200);
+    const codesBefore = await state('s.workspace.projects.map(p => p.code).join(",")');
+    await openMenu('[data-project-code="XSS-1"] .row-actions', 'Usuń projekt');
+    await sleep(300);
     check('usunięcie działa od razu, bez pytania w osobnym oknie',
-      await evaluate(
-        'return !document.querySelector(\'[data-project-code="XSS-1"]\') && !document.querySelector("dialog[open]");'
-      ));
-
-    check('pojawia się pasek z możliwością cofnięcia',
-      await evaluate('return !!document.querySelector("[data-toast-action]");'));
-
-    await evaluate('document.querySelector("[data-toast-action]").click(); return true;');
+      await evaluate('return !document.querySelector(\'[data-project-code="XSS-1"]\') && !document.querySelector("dialog[open]");'));
+    check('pojawia się powiadomienie z możliwością cofnięcia', await evaluate('return !!document.querySelector("[data-toast-action]");'));
+    await click('[data-toast-action]');
     await sleep(300);
+    const codesAfterUndo = await state('s.workspace.projects.map(p => p.code).join(",")');
+    check('cofnięcie przywraca projekt na to samo miejsce listy', codesAfterUndo === codesBefore, 'przed: ' + codesBefore + ' | po: ' + codesAfterUndo);
 
-    const codesAfterUndo = await evaluate(
-      'return window.ETROM.app.store.getState().workspace.projects.map(p => p.code).join(",");'
-    );
-    check('cofnięcie przywraca projekt na to samo miejsce listy',
-      codesAfterUndo === codesBefore, 'przed: ' + codesBefore + ' | po cofnięciu: ' + codesAfterUndo);
-
-    // Usuwamy ponownie i tym razem zostawiamy, zamykając pasek.
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="XSS-1"]\');' +
-      'card.querySelector(".project__remove").click(); return true;'
-    );
-    await sleep(500);
-    await evaluate('document.querySelector(".toast__close").click(); return true;');
+    await openMenu('[data-project-code="XSS-1"] .row-actions', 'Usuń projekt');
     await sleep(300);
-    check('po zamknięciu paska usunięcie zostaje w mocy',
+    await click('.toast__close');
+    await sleep(300);
+    check('po zamknięciu powiadomienia usunięcie zostaje w mocy',
       await evaluate('return !document.querySelector(\'[data-project-code="XSS-1"]\');'));
 
-    /* 14. Dane testowe nie duplikują się */
-    await click('#action-demo');
-    check('powtórne dodanie danych testowych nie tworzy duplikatów',
-      (await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'const codes = ws.projects.map(p => p.code);' +
-        'return codes.length === new Set(codes).size;'
-      )));
+    /* 15. Zaznaczanie i akcje zbiorcze */
+    const nid = await projectId('NOWY-9');
+    const did = await projectId('DEMO-003');
+    await click('#select-' + nid);
+    await sleep(100);
+    await click('#select-' + did);
+    await sleep(150);
+    check('zaznaczenie dwóch wierszy pokazuje pasek akcji zbiorczych',
+      await evaluate('const b = document.querySelector(".bulkbar"); return !!b && /Zaznaczono 2/.test(b.textContent) && document.querySelectorAll(\'tr[aria-selected="true"]\').length === 2;'));
+    check('pole „zaznacz wszystkie” jest w stanie pośrednim', await evaluate('return document.getElementById("select-all").indeterminate;'));
+    await click('#bulk-delete');
+    await sleep(300);
+    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 4 && !(await evaluate('return !!document.querySelector(".bulkbar");')));
+    await click('[data-toast-action]');
+    await sleep(300);
+    check('cofnięcie przywraca oba projekty', (await cardCount()) === 6);
 
-    /* 15. Klawiatura */
-    await pressKey('n');
-    check('klawisz N otwiera panel nowego projektu',
-      await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form");'));
-
+    /* 16. Wybór kolumn (zapamiętany) */
+    await click('#tb-columns');
+    await sleep(150);
+    await pickMenu('team');
     await pressKey('escape');
-    check('Escape zamyka panel',
-      await evaluate('return !document.querySelector("dialog.drawer[open]");'));
+    check('ukrycie kolumny „Zespół” usuwa ją z tabeli',
+      await evaluate('return !document.querySelector("#project-list th.col-team") && !!document.querySelector("#project-list th.col-status");')
+      && (await state('s.prefs.hiddenColumns.join(",")')) === 'team');
+    check('Escape zamyka menu i oddaje fokus przyciskowi', await evaluate('return !document.querySelector(".popover") && document.activeElement.id === "tb-columns";'));
 
+    /* 17. Dane przykładowe nie duplikują się */
+    await evaluate('window.ETROM.app.loadDemo(); return true;');
+    await sleep(200);
+    check('powtórne dodanie danych przykładowych nie tworzy duplikatów',
+      await state('(() => { const c = s.workspace.projects.map(p => p.code); return c.length === new Set(c).size; })()'));
+
+    /* 18. Klawiatura */
+    await evaluate('document.activeElement && document.activeElement.blur(); return true;');
+    await pressKey('n');
+    check('klawisz N otwiera panel nowego projektu', await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form");'));
+    await pressKey('escape');
+    check('Escape zamyka panel', await evaluate('return !document.querySelector("dialog.drawer[open]");'));
     await pressKey('slash');
-    check('ukośnik przenosi kursor do wyszukiwarki',
-      (await evaluate('return document.activeElement ? document.activeElement.id : "";')) === 'tb-search');
+    check('ukośnik przenosi kursor do wyszukiwarki', (await evaluate('return document.activeElement ? document.activeElement.id : "";')) === 'tb-search');
     await evaluate('document.activeElement.blur(); return true;');
 
-    /* 16. Widok listy */
-    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok listy"]\').click(); return true;');
-    await sleep(500);
-    const listCheck = await evaluate(
-      'return { rows: document.querySelectorAll(".table__row").length,' +
-      ' projects: window.ETROM.app.store.getState().workspace.projects.length };'
-    );
-    check('przełącznik pokazuje listę z wierszem na każdy projekt',
-      listCheck.rows === listCheck.projects && listCheck.rows > 0, JSON.stringify(listCheck));
+    await evaluate('document.getElementById("tb-status").focus(); return true;');
+    await pressKey('down');
+    check('strzałka w dół na przycisku filtra otwiera menu z fokusem w środku',
+      await evaluate('const m = document.querySelector(".popover[role=menu]"); return !!m && m.contains(document.activeElement);'));
+    await pressKey('down');
+    check('strzałki przesuwają fokus po pozycjach menu',
+      await evaluate('const items = [...document.querySelectorAll(".popover [role^=menuitem]")]; return items.indexOf(document.activeElement) === 1;'));
+    await pressKey('escape');
+    check('Escape zamyka menu filtra', await evaluate('return !document.querySelector(".popover");'));
 
-    check('sortowanie z nagłówka kolumny działa w widoku listy',
-      await evaluate(
-        'const headers = [...document.querySelectorAll(".table__sort")];' +
-        'const byName = headers.find(h => h.textContent.indexOf("Projekt") === 0);' +
-        'byName.click();' +
-        'return document.getElementById("tb-sort").value === "name";'
-      ));
+    /* 19. Widok kart, motyw, zapamiętanie */
+    await click('.segmented__btn[aria-label="Widok kart"]');
+    await sleep(450);
+    const cardsCheck = await evaluate('return { cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length, bars: document.querySelectorAll(".pcard [role=progressbar]").length };');
+    check('widok kart: karta i pasek postępu na każdy projekt',
+      cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === cardsCheck.cards, JSON.stringify(cardsCheck));
 
-    /* 17. Zapamiętanie widoku i motywu */
-    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Motyw ciemny"]\').click(); return true;');
+    await click('#action-settings');
     await sleep(150);
-    check('przełącznik motywu ustawia motyw ciemny',
-      (await evaluate('return document.documentElement.getAttribute("data-theme");')) === 'dark');
+    await evaluate('document.querySelector(\'.settings .segmented__btn[data-value="dark"]\').click(); return true;');
+    await sleep(150);
+    check('ustawienia: przełącznik motywu ustawia motyw ciemny', (await evaluate('return document.documentElement.getAttribute("data-theme");')) === 'dark');
+    await pressKey('escape');
 
     await evaluate('location.reload(); return true;');
     await sleep(600);
     await waitForApp();
-    const kept = await evaluate(
-      'return { theme: document.documentElement.getAttribute("data-theme"),' +
-      ' rows: document.querySelectorAll(".table__row").length,' +
-      ' projects: window.ETROM.app.store.getState().workspace.projects.length };'
-    );
-    check('po przeładowaniu zostają wybrany motyw i widok listy',
-      kept.theme === 'dark' && kept.rows === kept.projects && kept.rows > 0, JSON.stringify(kept));
+    const kept = await evaluate('return { theme: document.documentElement.getAttribute("data-theme"), cards: document.querySelectorAll(".pcard").length, projects: window.ETROM.app.store.getState().workspace.projects.length };');
+    check('po przeładowaniu zostają motyw i widok kart', kept.theme === 'dark' && kept.cards === kept.projects && kept.cards > 0, JSON.stringify(kept));
+    await click('.segmented__btn[aria-label="Widok tabeli"]');
+    await sleep(450);
 
-    await evaluate('document.querySelector(\'.segmented__btn[aria-label="Widok kart"]\').click(); return true;');
+    /* 20. Paleta poleceń */
+    await pressKey('k', CTRL);
+    check('Ctrl+K otwiera paletę poleceń', await evaluate('return !!document.querySelector("dialog.palette[open]");'));
+    await evaluate('const input = document.querySelector(".palette__input"); input.value = "lipnic"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    await sleep(200);
+    const firstRow = await evaluate('const row = document.querySelector(".palette__row--active .palette__rowLabel"); return row ? row.textContent : "";');
+    check('wpisanie fragmentu nazwy podnosi właściwy projekt na pierwsze miejsce', firstRow.indexOf('Lipnic') >= 0, 'pierwszy wynik: "' + firstRow + '"');
+    await pressKey('enter');
     await sleep(500);
-
-    /* 18. Pasek etapów na karcie */
-    check('karta pokazuje po jednym segmencie na każdy etap',
-      await evaluate(
-        'const card = document.querySelector(\'[data-project-code="DEMO-001"]\');' +
-        'return card.querySelectorAll(".strip__seg").length === 14;'
-      ));
-
-    /* 19. Paleta poleceń */
-    await pressKey('k', CTRL);
-    check('Ctrl+K otwiera paletę poleceń',
-      await evaluate('return !!document.querySelector("dialog.palette[open]");'));
-
-    await evaluate(
-      'const input = document.querySelector(".palette__input");' +
-      'input.value = "lipnic";' +
-      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
-    await sleep(200);
-    const firstRow = await evaluate(
-      'const row = document.querySelector(".palette__row--active .palette__rowLabel");' +
-      'return row ? row.textContent : "";'
-    );
-    check('wpisanie fragmentu nazwy podnosi właściwy projekt na pierwsze miejsce',
-      firstRow.indexOf('Lipnic') >= 0, 'pierwszy wynik: "' + firstRow + '"');
-
-    await pressKey('enter');
-    await sleep(300);
-    check('Enter zamyka paletę i rozwija wybrany projekt',
-      await evaluate(
-        'return !document.querySelector("dialog.palette[open]") &&' +
-        ' !!document.querySelector(\'[data-project-code="DEMO-001"] .srow\');'
-      ));
+    const id1 = await projectId('DEMO-001');
+    check('Enter zamyka paletę i otwiera wybrany projekt',
+      (await evaluate('return !document.querySelector("dialog.palette[open]");')) && (await evaluate('return location.hash;')) === '#/projekty/' + id1);
 
     await pressKey('k', CTRL);
-    await evaluate(
-      'const input = document.querySelector(".palette__input");' +
-      'input.value = "barwy hydro";' +
-      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
+    await evaluate('const input = document.querySelector(".palette__input"); input.value = "akcent morski"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     await sleep(200);
     await pressKey('enter');
     await sleep(300);
-    check('polecenie z palety zmienia wariant barw',
-      (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'hydro');
+    check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'hydro');
 
     await pressKey('k', CTRL);
     await pressKey('escape');
-    check('Escape zamyka paletę',
-      await evaluate('return !document.querySelector("dialog.palette[open]");'));
+    check('Escape zamyka paletę', await evaluate('return !document.querySelector("dialog.palette[open]");'));
 
-    /* 20. Wybór etapów przy zakładaniu projektu */
+    /* 21. Zespół projektu i skrót E */
+    await go('#/projekty/' + id1 + '/zespol');
+    check('zakładka Zespół pokazuje Lidera z awatarem',
+      await evaluate('const row = [...document.querySelectorAll(".kv")].find(r => /Lider/.test(r.textContent)); return !!row && !!row.querySelector(".avatar");'));
+    check('aktywna zakładka jest oznaczona dla czytnika ekranu',
+      await evaluate('const t = document.querySelector(\'.tabs__tab[aria-current="page"]\'); return !!t && t.dataset.tab === "zespol";'));
+    await evaluate('document.activeElement && document.activeElement.blur(); return true;');
+    await pressKey('e');
+    check('klawisz E w projekcie otwiera jego edycję', await evaluate('return !!document.querySelector("dialog.drawer[open] #project-form") && document.getElementById("pf-code").value === "DEMO-001";'));
+    await pressKey('escape');
+
+    /* 22. Wybór etapów przy zakładaniu projektu */
+    await go('#/projekty');
     await pressKey('n');
     check('formularz pokazuje listę etapów do wyboru, domyślnie pustą',
-      await evaluate(
-        'const boxes = [...document.querySelectorAll("#pf-stage-picker .picker__item input")];' +
-        'return boxes.length === 14 && boxes.every(b => !b.checked);'
-      ));
-
+      await evaluate('const boxes = [...document.querySelectorAll("#pf-stage-picker input[type=checkbox]")]; return boxes.length === 14 && boxes.every(b => !b.checked);'));
     await evaluate(
       'document.getElementById("pf-code").value = "PICK-1";' +
       'document.getElementById("pf-name").value = "Projekt z wyborem etapów";' +
       'document.getElementById("pf-client").value = "Gmina Testowa";' +
-      '["preparation", "water-docs", "handover"].forEach(function (id) {' +
-      '  document.getElementById("pf-stage-" + id).checked = true;' +
-      '});' +
+      '["preparation", "water-docs", "handover"].forEach(function (id) { document.getElementById("pf-stage-" + id).checked = true; });' +
       'document.getElementById("project-form").requestSubmit(); return true;'
     );
     await sleep(300);
-
-    const picked = await evaluate(
-      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
-      'return p ? p.stages.map(s => s.id).join(",") : "";'
-    );
     check('projekt dostaje tylko wybrane etapy, w kolejności standardu',
-      picked === 'preparation,water-docs,handover', 'etapy: ' + picked);
+      (await state('(s.workspace.projects.find(x => x.code === "PICK-1") || { stages: [] }).stages.map(st => st.id).join(",")')) === 'preparation,water-docs,handover');
+    await click('[data-toast-action]');
+    await sleep(500);
+    const pid = await projectId('PICK-1');
+    check('„Otwórz” w powiadomieniu prowadzi do nowego projektu', (await evaluate('return location.hash;')) === '#/projekty/' + pid);
 
-    /* 21. Etap spoza standardu */
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
-      'card.querySelectorAll(".btn--small")[0].click(); return true;'
-    );
+    /* 23. Etap spoza standardu */
+    await openMenu('[data-fk="add-stage"]', 'Etap własny');
     await sleep(250);
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
-      'const btn = [...card.querySelectorAll("button")].find(b => b.textContent.indexOf("Dopisz") === 0);' +
-      'btn.click(); return true;'
-    );
-    await sleep(250);
-
-    await evaluate(
-      'document.getElementById("cs-name").value = "";' +
-      'document.getElementById("custom-stage-form").requestSubmit(); return true;'
-    );
+    await evaluate('document.getElementById("cs-name").value = ""; document.getElementById("custom-stage-form").requestSubmit(); return true;');
     await sleep(200);
-    check('etap własny bez nazwy nie przechodzi',
-      await evaluate('return !!document.querySelector("#custom-stage-form .field__error");'));
-
+    check('etap własny bez nazwy nie przechodzi', await evaluate('return !!document.querySelector("#custom-stage-form .field__error");'));
     await evaluate(
       'document.getElementById("cs-name").value = "Uzgodnienie z PKP";' +
       'document.getElementById("cs-domain").value = "location";' +
@@ -544,68 +505,46 @@ async function main() {
       'document.getElementById("custom-stage-form").requestSubmit(); return true;'
     );
     await sleep(300);
-
-    const custom = await evaluate(
-      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
-      'const last = p.stages[p.stages.length - 1];' +
-      'return { count: p.stages.length, source: last.source, name: last.name, domain: last.domain };'
-    );
+    const custom = await state('(() => { const p = s.workspace.projects.find(x => x.code === "PICK-1"); const l = p.stages[p.stages.length - 1]; return { count: p.stages.length, source: l.source, name: l.name, domain: l.domain }; })()');
     check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
-      custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location',
-      JSON.stringify(custom));
-
+      custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location', JSON.stringify(custom));
     check('wiersz etapu własnego jest oznaczony w podpisie',
-      await evaluate(
-        'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
-        'const metas = [...card.querySelectorAll(".srow__meta")].map(n => n.textContent);' +
-        'return metas.some(m => m.indexOf("własny") >= 0) && metas.some(m => m.indexOf("standard 07") >= 0);'
-      ));
+      await evaluate('const metas = [...document.querySelectorAll(".srow__meta")].map(n => n.textContent); return metas.some(m => m.indexOf("własny") === 0) && metas.some(m => m.indexOf("standard 07") === 0);'));
 
-    /* 22. Przesuwanie etapu */
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="PICK-1"]\');' +
-      'const rows = card.querySelectorAll(".srow");' +
-      'rows[rows.length - 1].querySelector(".srow__up").click(); return true;'
-    );
-    await sleep(250);
-    const stageOrder = await evaluate(
-      'const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "PICK-1");' +
-      'return p.stages.map(s => s.id).join(",");'
-    );
+    /* 24. Przesuwanie etapu z menu wiersza */
+    await openMenu('.srow-wrap:last-child .srow__more', 'Przesuń wyżej');
     check('etap własny daje się przesunąć pomiędzy standardowe',
-      stageOrder === 'preparation,water-docs,custom-1,handover', 'kolejność: ' + stageOrder);
+      (await state('s.workspace.projects.find(x => x.code === "PICK-1").stages.map(st => st.id).join(",")')) === 'preparation,water-docs,custom-1,handover');
+    check('pozycja „Przesuń wyżej” jest nieaktywna dla pierwszego etapu',
+      await evaluate('document.querySelector(".srow-wrap:first-child .srow__more").click(); return true;')
+      && (await evaluate('const i = [...document.querySelectorAll(".popover [role=menuitem]")].find(n => /Przesuń wyżej/.test(n.textContent)); return !!i && i.getAttribute("aria-disabled") === "true";')));
+    await pressKey('escape');
+    check('Escape zamyka menu wiersza bez skutków ubocznych', await evaluate('return !document.querySelector(".popover") && !document.querySelector("dialog[open]");'));
 
-    /* 23. Ekran Zespołu */
-    check('dane testowe zakładają katalog osób',
-      (await evaluate('return (window.ETROM.app.store.getState().workspace.people || []).length;')) === 6);
+    /* 25. Ekran Zespołu */
+    check('dane przykładowe zakładają katalog osób', (await state('(s.workspace.people || []).length')) === 6);
+    await go('#/projekty');
+    await click('#tb-columns');
+    await sleep(150);
+    await pickMenu('team');
+    await pressKey('escape');
+    check('przywrócona kolumna „Zespół” pokazuje awatary osób projektu',
+      await evaluate('return !!document.querySelector(\'[data-project-code="DEMO-001"] .col-team .avatar\');')
+      && (await state('s.prefs.hiddenColumns.length')) === 0);
 
-    check('karta projektu pokazuje awatary i osobę pełniącą funkcję',
-      await evaluate(
-        'const card = document.querySelector(\'[data-project-code="DEMO-001"]\');' +
-        'const roles = card.querySelector(".project__teamRoles");' +
-        'return card.querySelectorAll(".avatar").length > 0 && /Lider:/.test(roles.textContent);'
-      ));
-
-    await evaluate('document.querySelector(\'.rail__item--nav[data-screen="team"]\').click(); return true;');
+    await click('.nav__item[data-screen="team"]');
     await sleep(500);
-    check('pasek boczny przełącza na ekran Zespołu',
-      await evaluate(
-        'return !document.getElementById("view-team").hidden &&' +
-        ' document.getElementById("view-projects").hidden &&' +
-        ' document.querySelectorAll(".prow").length === 6;'
-      ));
+    check('panel boczny przełącza na ekran Zespołu',
+      await evaluate('return !document.getElementById("view-team").hidden && document.getElementById("view-projects").hidden && document.querySelectorAll(".prow").length === 6;'));
+    check('aktywna pozycja nawigacji ma aria-current',
+      (await evaluate('return document.querySelector(\'.nav__item[data-screen="team"]\').getAttribute("aria-current");')) === 'page');
+    check('wiersz osoby pokazuje funkcje pełnione w projektach jako odnośniki',
+      await evaluate('const links = [...document.querySelectorAll(".prow .role-link")]; return links.some(l => l.textContent.indexOf("DEMO-") === 0 && /Lider/.test(l.textContent) && /^#\\/projekty\\/\\d+\\/zespol$/.test(l.getAttribute("href")));'));
 
-    check('wiersz osoby pokazuje funkcje pełnione w projektach',
-      await evaluate(
-        'const chips = [...document.querySelectorAll(".prow .chip--link")].map(c => c.textContent);' +
-        'return chips.some(t => t.indexOf("DEMO-") === 0 && t.indexOf("Lider") > 0);'
-      ));
-
-    /* 24. Dodawanie i walidacja osoby */
+    /* 26. Dodawanie i walidacja osoby */
+    await evaluate('document.activeElement && document.activeElement.blur(); return true;');
     await pressKey('n');
-    check('na ekranie Zespołu klawisz N otwiera formularz osoby',
-      await evaluate('return !!document.querySelector("dialog.drawer[open] #person-form");'));
-
+    check('na ekranie Zespołu klawisz N otwiera formularz osoby', await evaluate('return !!document.querySelector("dialog.drawer[open] #person-form");'));
     await evaluate(
       'document.getElementById("pe-first").value = "Zofia";' +
       'document.getElementById("pe-last").value = "Nowakowa";' +
@@ -614,8 +553,7 @@ async function main() {
       'document.getElementById("person-form").requestSubmit(); return true;'
     );
     await sleep(300);
-    check('nowa osoba trafia do katalogu',
-      (await evaluate('return window.ETROM.app.store.getState().workspace.people.length;')) === 7);
+    check('nowa osoba trafia do katalogu', (await state('s.workspace.people.length')) === 7);
 
     await pressKey('n');
     await evaluate(
@@ -625,259 +563,124 @@ async function main() {
     );
     await sleep(250);
     check('druga osoba o tym samym imieniu i nazwisku nie przechodzi',
-      await evaluate(
-        'const err = document.querySelector("#person-form .field__error");' +
-        'return !!err && /już jest/i.test(err.textContent);'
-      ));
+      await evaluate('const err = document.querySelector("#person-form .field__error"); return !!err && /już jest/i.test(err.textContent);'));
     await pressKey('escape');
     await sleep(250);
 
-    /* 25. Wyłączanie osoby i jego blokada */
-    const anna = await evaluate(
-      'const p = window.ETROM.app.store.getState().workspace.people' +
-      '  .find(x => x.firstName === "Anna");' +
-      'return p ? p.id : "";'
-    );
-    await evaluate(
-      'const row = document.querySelector(\'[data-person-id="' + anna + '"]\');' +
-      'const btn = [...row.querySelectorAll("button")].find(b => b.textContent === "Wyłącz");' +
-      'btn.click(); return true;'
-    );
-    await sleep(300);
+    /* 27. Wyłączanie osoby i jego blokada */
+    const anna = await state('s.workspace.people.find(x => x.firstName === "Anna").id');
+    await evaluate('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
+    await openMenu('[data-person-id="' + anna + '"] .row-actions', 'toggle');
     check('nie da się wyłączyć osoby pełniącej funkcję w czynnym projekcie',
-      await evaluate(
-        'const toast = document.querySelector(".toast__text");' +
-        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + anna + '");' +
-        'return p.active === true && !!toast && /niezakończonych/i.test(toast.textContent);'
-      ));
+      await evaluate('const t = document.querySelector(".toast__text"); const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + anna + '"); return p.active === true && !!t && /niezakończonych/i.test(t.textContent);'));
 
-    const zofia = await evaluate(
-      'const p = window.ETROM.app.store.getState().workspace.people' +
-      '  .find(x => x.firstName === "Zofia");' +
-      'return p ? p.id : "";'
-    );
-    await evaluate(
-      'const row = document.querySelector(\'[data-person-id="' + zofia + '"]\');' +
-      'const btn = [...row.querySelectorAll("button")].find(b => b.textContent === "Wyłącz");' +
-      'btn.click(); return true;'
-    );
+    const zofia = await state('s.workspace.people.find(x => x.firstName === "Zofia").id');
+    await openMenu('[data-person-id="' + zofia + '"] .row-actions', 'toggle');
+    check('osobę bez przypisań da się wyłączyć z obiegu', (await state('s.workspace.people.find(x => x.id === "' + zofia + '").active')) === false);
+    check('wyłączona osoba znika z listy, gdy filtr jej nie pokazuje', !(await evaluate('return !!document.querySelector(\'[data-person-id="' + zofia + '"]\');')));
+    await click('[data-toast-action]');
     await sleep(300);
-    check('osobę bez przypisań da się wyłączyć z obiegu',
-      await evaluate(
-        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + zofia + '");' +
-        'return p.active === false;'
-      ));
+    check('po cofnięciu osoba wraca do obiegu', (await state('s.workspace.people.find(x => x.id === "' + zofia + '").active')) === true);
 
-    check('wyłączenie można cofnąć z paska',
-      await evaluate(
-        'const action = document.querySelector("[data-toast-action]");' +
-        'if (!action) return false;' +
-        'action.click();' +
-        'return true;'
-      ));
-    await sleep(300);
-    check('po cofnięciu osoba wraca do obiegu',
-      await evaluate(
-        'const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "' + zofia + '");' +
-        'return p.active === true;'
-      ));
+    /* 28. Filtr osoby na ekranie projektów */
+    await go('#/projekty');
+    const expected = await state('s.workspace.projects.filter(p => window.ETROM.Team.projectPeople(p.team).indexOf("' + anna + '") >= 0).length');
+    await openMenu('#tb-person', anna);
+    const shown = await cardCount();
+    check('filtr osoby zawęża listę do jej projektów', shown === expected && shown > 0, 'pokazano ' + shown + ', oczekiwano ' + expected);
+    await openMenu('#tb-person', 'all');
 
-    /* 26. Filtr osoby na ekranie projektów */
-    await evaluate('window.ETROM.app.goTo("projects"); return true;');
-    await sleep(500);
-    const expected = await evaluate(
-      'const ws = window.ETROM.app.store.getState().workspace;' +
-      'return ws.projects.filter(p => window.ETROM.Team.projectPeople(p.team).indexOf("' + anna + '") >= 0).length;'
-    );
-    await evaluate(
-      'const select = document.getElementById("tb-person");' +
-      'select.value = "' + anna + '";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
-    await sleep(300);
-    const shown = await evaluate('return document.querySelectorAll(".project").length;');
-    check('filtr osoby zawęża listę do jej projektów',
-      shown === expected && shown > 0, 'pokazano ' + shown + ', oczekiwano ' + expected);
-
-    await evaluate(
-      'const select = document.getElementById("tb-person");' +
-      'select.value = "all";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
-    await sleep(250);
-
-    /* 27. Paleta znajduje osoby */
+    /* 29. Paleta znajduje osoby */
     await pressKey('k', CTRL);
-    await evaluate(
-      'const input = document.querySelector(".palette__input");' +
-      'input.value = "zofia";' +
-      'input.dispatchEvent(new Event("input", { bubbles: true })); return true;'
-    );
+    await evaluate('const input = document.querySelector(".palette__input"); input.value = "zofia"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     await sleep(250);
     check('paleta pokazuje osoby w osobnej grupie',
-      await evaluate(
-        'const groups = [...document.querySelectorAll(".palette__group")].map(g => g.textContent);' +
-        'const labels = [...document.querySelectorAll(".palette__rowLabel")].map(l => l.textContent);' +
-        'return groups.indexOf("Osoby") >= 0 && labels.some(l => l.indexOf("Zofia") === 0);'
-      ));
+      await evaluate('const g = [...document.querySelectorAll(".palette__group")].map(x => x.textContent); const l = [...document.querySelectorAll(".palette__rowLabel")].map(x => x.textContent); return g.indexOf("Osoby") >= 0 && l.some(x => x.indexOf("Zofia") === 0);'));
     await pressKey('escape');
     await sleep(200);
 
-    /* 28. Zadania w etapach */
-    check('dane testowe zawierają zadania w etapach',
-      (await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
-      )) >= 6);
-
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'card.querySelectorAll(".btn--small")[0].click(); return true;'
-    );
-    await sleep(300);
-
+    /* 30. Zadania w etapach */
+    check('dane przykładowe zawierają zadania w etapach', (await state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).length')) >= 6);
+    await go('#/projekty/' + id2);
     check('wiersz etapu pokazuje licznik otwartych zadań',
-      await evaluate(
-        'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-        'const cells = [...card.querySelectorAll(".srow__tasks")].map(c => c.textContent);' +
-        'return cells.some(t => /^\\d+\\/\\d+$/.test(t));'
-      ));
+      await evaluate('return [...document.querySelectorAll(".srow__tasks")].some(c => /^\\d+\\/\\d+$/.test(c.textContent));'));
+    await evaluate('const w = [...document.querySelectorAll(".srow-wrap")].find(w => w.querySelector(".srow__tasks").textContent !== "—"); w.querySelector(".srow__expand").click(); return true;');
+    await sleep(300);
+    check('rozwinięcie etapu pokazuje jego zadania', (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
+    check('przycisk rozwinięcia ogłasza stan', await evaluate('return document.querySelectorAll(\'.srow__expand[aria-expanded="true"]\').length === 1;'));
 
-    await evaluate(
-      'const card = document.querySelector(\'[data-project-code="DEMO-002"]\');' +
-      'const wrap = [...card.querySelectorAll(".srow-wrap")].find(w => {' +
-      '  const c = w.querySelector(".srow__tasks");' +
-      '  return c && c.textContent !== "—";' +
-      '});' +
-      'wrap.querySelector(".srow__expand").click(); return true;'
-    );
-    await sleep(350);
-    check('rozwinięcie etapu pokazuje jego zadania',
-      (await evaluate('return document.querySelectorAll(".trow").length;')) > 0);
-
-    /* 29. Nowe zadanie */
-    await evaluate(
-      'const panel = document.querySelector(".srow__panel");' +
-      'const btn = [...panel.querySelectorAll("button")].find(b => b.textContent === "Nowe zadanie");' +
-      'btn.click(); return true;'
-    );
+    /* 31. Nowe zadanie */
+    await click('.srow__panel [data-action="add-task"]');
     await sleep(300);
     check('formularz zadania proponuje wyłącznie osoby z zespołu projektu',
-      await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'const project = ws.projects.find(p => p.code === "DEMO-002");' +
-        'const allowed = window.ETROM.Team.projectPeople(project.team);' +
-        'const boxes = [...document.querySelectorAll("#tk-assignees input")].map(b => b.value);' +
-        'return boxes.length === allowed.length && boxes.every(id => allowed.indexOf(id) >= 0);'
-      ));
-
-    const beforeTasks = await evaluate(
-      'const ws = window.ETROM.app.store.getState().workspace;' +
-      'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
-    );
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.code === "DEMO-002"); const allowed = window.ETROM.Team.projectPeople(p.team); const boxes = [...document.querySelectorAll("#tk-assignees input")].map(b => b.value); return boxes.length === allowed.length && boxes.every(id => allowed.indexOf(id) >= 0);'));
+    const taskCount = () => state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).length');
+    const beforeTasks = await taskCount();
     await evaluate(
       'document.getElementById("tk-name").value = "Sprawdzić zestawienie stali";' +
       'document.querySelectorAll("#tk-assignees input")[0].checked = true;' +
       'document.getElementById("task-form").requestSubmit(); return true;'
     );
     await sleep(350);
-    check('nowe zadanie trafia do etapu',
-      (await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
-      )) === beforeTasks + 1);
+    check('nowe zadanie trafia do etapu', (await taskCount()) === beforeTasks + 1);
 
-    /* 30. Przepływ statusów */
-    check('lista statusów zawiera tylko dozwolone przejścia',
-      await evaluate(
-        'const row = [...document.querySelectorAll(".trow")]' +
-        '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
-        'const values = [...row.querySelector(".trow__status").options].map(o => o.value);' +
-        'return values.join(",") === "todo,working,review,done";'
-      ));
-
-    await evaluate(
-      'const row = [...document.querySelectorAll(".trow")]' +
-      '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
-      'const select = row.querySelector(".trow__status");' +
-      'select.value = "working";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
-    await sleep(300);
+    /* 32. Przepływ statusów przez menu */
+    const taskRowSel = (name) => 'const row = [...document.querySelectorAll(".trow")].find(r => r.textContent.indexOf(' + JSON.stringify(name) + ') >= 0);';
+    await evaluate(taskRowSel('Sprawdzić zestawienie stali') + 'row.querySelector(".trow__status").click(); return true;');
+    await sleep(150);
+    check('menu statusu zawiera tylko dozwolone przejścia',
+      (await evaluate('return [...document.querySelectorAll(".popover [role=menuitem]")].map(i => i.dataset.value).join(",");')) === 'working,review,done');
+    await pickMenu('working');
     check('zmiana statusu zapisuje się razem z wpisem w historii',
-      await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'const t = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || [])' +
-        '  .find(x => x.name === "Sprawdzić zestawienie stali");' +
-        'return t.status === "working" && t.history.length === 1 && t.history[0].to === "working";'
-      ));
+      await state('(() => { const t = s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).find(x => x.name === "Sprawdzić zestawienie stali"); return t.status === "working" && t.history.length === 1 && t.history[0].to === "working"; })()'));
 
-    /* 31. Zwrot do poprawy wymaga powodu */
-    await evaluate(
-      'const row = [...document.querySelectorAll(".trow")]' +
-      '  .find(r => r.textContent.indexOf("Uzgodnić kolizję") >= 0);' +
-      'const select = row.querySelector(".trow__status");' +
-      'select.value = "changes";' +
-      'select.dispatchEvent(new Event("change", { bubbles: true })); return true;'
-    );
-    await sleep(300);
-    check('zwrot do poprawy pyta o powód',
-      await evaluate('return !!document.querySelector("dialog.dialog[open] [data-dialog-input]");'));
-
-    await evaluate('document.querySelector("[data-dialog-confirm]").click(); return true;');
+    /* 33. Zwrot do poprawy wymaga powodu */
+    await evaluate(taskRowSel('Uzgodnić kolizję') + 'row.querySelector(".trow__status").click(); return true;');
+    await sleep(150);
+    await pickMenu('changes');
     await sleep(200);
-    check('pusty powód nie przechodzi',
-      await evaluate('return !!document.querySelector("dialog.dialog[open] .field__error");'));
-
-    await evaluate(
-      'document.querySelector("[data-dialog-input]").value = "Brakuje przekroju A-A.";' +
-      'document.querySelector("[data-dialog-confirm]").click(); return true;'
-    );
+    check('zwrot do poprawy pyta o powód', await evaluate('return !!document.querySelector("dialog.dialog[open] [data-dialog-input]");'));
+    await click('[data-dialog-confirm]');
+    await sleep(200);
+    check('pusty powód nie przechodzi', await evaluate('return !!document.querySelector("dialog.dialog[open] .field__error");'));
+    await evaluate('document.querySelector("[data-dialog-input]").value = "Brakuje przekroju A-A."; document.querySelector("[data-dialog-confirm]").click(); return true;');
     await sleep(350);
     check('po podaniu powodu zadanie wraca do poprawy z notatką',
-      await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'const t = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || [])' +
-        '  .find(x => x.name.indexOf("Uzgodnić kolizję") >= 0);' +
-        'return t.status === "changes" && t.feedback === "Brakuje przekroju A-A.";'
-      ));
+      await state('(() => { const t = s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).find(x => x.name.indexOf("Uzgodnić kolizję") >= 0); return t.status === "changes" && t.feedback === "Brakuje przekroju A-A."; })()'));
+    check('notatka do poprawy jest widoczna w wierszu zadania',
+      await evaluate(taskRowSel('Uzgodnić kolizję') + 'return !!row && /Brakuje przekroju A-A/.test(row.querySelector(".trow__feedback").textContent);'));
 
-    /* 32. Udział pojedynczego realizatora */
-    await evaluate(
-      'const row = [...document.querySelectorAll(".trow")]' +
-      '  .find(r => r.querySelector(".part"));' +
-      'row.querySelector(".part").click(); return true;'
-    );
+    /* 34. Udział pojedynczego realizatora */
+    await evaluate('const row = [...document.querySelectorAll(".trow")].find(r => r.querySelector(".part")); row.querySelector(".part").click(); return true;');
     await sleep(300);
     check('kliknięcie realizatora przestawia jego udział',
-      await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'const tasks = ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []);' +
-        'return tasks.some(t => Object.keys(t.parts || {}).some(k => t.parts[k] === "working" || t.parts[k] === "done"));'
-      ));
+      await state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).some(t => Object.keys(t.parts || {}).some(k => t.parts[k] === "working" || t.parts[k] === "done"))'));
 
-    /* 33. Usuwanie zadania z cofnięciem */
-    const tasksBeforeDelete = await evaluate(
-      'const ws = window.ETROM.app.store.getState().workspace;' +
-      'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
-    );
-    await evaluate(
-      'const row = [...document.querySelectorAll(".trow")]' +
-      '  .find(r => r.textContent.indexOf("Sprawdzić zestawienie stali") >= 0);' +
-      'row.querySelector(".btn--icon").click(); return true;'
-    );
+    /* 35. Usuwanie zadania z cofnięciem */
+    const tasksBeforeDelete = await taskCount();
+    await evaluate('document.querySelectorAll(".toast__close").forEach(b => b.click()); return true;');
+    await evaluate(taskRowSel('Sprawdzić zestawienie stali') + 'row.querySelector(".row-actions").click(); return true;');
+    await sleep(150);
+    await pickMenu('Usuń zadanie');
+    check('usunięcie zadania działa od razu', (await taskCount()) === tasksBeforeDelete - 1);
+    await click('[data-toast-action]');
     await sleep(300);
-    await evaluate('document.querySelector("[data-toast-action]").click(); return true;');
-    await sleep(300);
-    check('usunięte zadanie wraca po cofnięciu',
-      (await evaluate(
-        'const ws = window.ETROM.app.store.getState().workspace;' +
-        'return ws.projects.flatMap(p => p.stages).flatMap(s => s.tasks || []).length;'
-      )) === tasksBeforeDelete);
+    check('usunięte zadanie wraca po cofnięciu', (await taskCount()) === tasksBeforeDelete);
 
-    /* 34. Brak błędów i wyjątków w konsoli przez cały scenariusz */
-    check('brak wyjątków i błędów konsoli w całym scenariuszu',
-      pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
+    /* 36. Zakładka Zadania grupuje po etapach */
+    await click('.tabs__tab[data-tab="zadania"]');
+    await sleep(450);
+    check('zakładka Zadania grupuje otwarte zadania według etapów',
+      (await evaluate('return location.hash;')) === '#/projekty/' + id2 + '/zadania'
+      && (await evaluate('return document.querySelectorAll(".task-group").length;')) >= 2);
+
+    /* 37. Projekt bez danych i zły adres */
+    await go('#/projekty/99999');
+    check('nieistniejący projekt pokazuje pusty stan z drogą powrotu',
+      await evaluate('return /Nie znaleziono projektu/.test(document.getElementById("project-view").textContent);'));
+
+    /* 38. Brak błędów i wyjątków w konsoli przez cały scenariusz */
+    check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
   } finally {
     if (client) client.close();

@@ -1,25 +1,19 @@
-/* ETROM — formularz zadania. Mieszka w panelu bocznym. */
+/* ETROM — formularz zadania w panelu bocznym. Realizatorami mogą być
+   wyłącznie osoby z zespołu projektu. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Tasks = root.ETROM.Tasks;
-  var Team = root.ETROM.Team;
-
-  function field(id, label, control, error, hint) {
-    var children = [
-      D.el('label', { class: 'field__label', text: label, attrs: { for: id } }),
-      control
-    ];
-    if (hint) children.push(D.el('p', { class: 'field__hint', text: hint }));
-    if (error) children.push(D.el('p', { class: 'field__error', text: error, attrs: { role: 'alert' } }));
-    return D.el('div', { class: 'field' }, children);
-  }
+  var E = root.ETROM;
+  var D = E.Dom;
+  var UI = E.UI;
+  var Tasks = E.Tasks;
+  var Team = E.Team;
+  var Avatar = E.Avatar;
 
   /**
    * @param {Object} draft wartości pól
    * @param {Object} errors mapa pole → komunikat
-   * @param {{onSubmit: Function, onCancel: Function}} handlers
+   * @param {{onSubmit: Function, onCancel: Function, onEditTeam?: Function}} handlers
    * @param {Array} roster osoby z zespołu projektu
    */
   function taskForm(draft, errors, handlers, roster) {
@@ -27,127 +21,75 @@
     var problems = errors || {};
     var editing = values.id != null;
     var people = roster || [];
-
-    var nameInput = D.el('input', {
-      class: 'input',
-      attrs: {
-        id: 'tk-name', type: 'text', maxlength: '200',
-        value: values.name || '', placeholder: 'np. Opracować rysunki wykonawcze',
-        'aria-invalid': problems.name ? 'true' : 'false'
-      }
-    });
-
-    var deadlineInput = D.el('input', {
-      class: 'input',
-      attrs: {
-        id: 'tk-deadline', type: 'datetime-local',
-        value: values.deadline || '',
-        'aria-invalid': problems.deadline ? 'true' : 'false'
-      }
-    });
-
-    var workloadSelect = D.el('select', { class: 'select', attrs: { id: 'tk-workload' } },
-      Object.keys(Tasks.WORKLOAD).map(function (key) {
-        return D.el('option', {
-          text: Tasks.WORKLOAD[key],
-          attrs: { value: key, selected: (values.workload || 'medium') === key }
-        });
-      }));
-
-    var importantBox = D.el('input', {
-      attrs: Object.assign({ id: 'tk-important', type: 'checkbox' }, values.important ? { checked: true } : {})
-    });
-
-    var descriptionInput = D.el('textarea', {
-      class: 'input',
-      attrs: { id: 'tk-description', rows: '3', placeholder: 'Opcjonalny opis, ustalenia, zakres.' },
-      text: values.description || ''
-    });
-
-    var assigneeBoxes = {};
     var picked = values.assignees || [];
 
-    var assigneeSection = people.length
-      ? D.el('div', { class: 'picker', attrs: { id: 'tk-assignees' } }, [
-          D.el('div', { class: 'picker__head' }, [
-            D.el('span', { class: 'label', text: 'Realizatorzy' })
-          ]),
-          D.el('ul', { class: 'picker__list' }, people.map(function (person) {
+    var name = UI.input({ id: 'tk-name', value: values.name, error: problems.name, maxlength: 200, placeholder: 'np. Opracować rysunki wykonawcze' });
+    var deadline = UI.input({ id: 'tk-deadline', type: 'datetime-local', value: values.deadline, error: problems.deadline });
+    var workload = UI.select({
+      id: 'tk-workload', value: values.workload || 'medium',
+      options: Object.keys(Tasks.WORKLOAD).map(function (key) { return { value: key, label: Tasks.WORKLOAD[key] }; })
+    });
+    var description = UI.textarea({ id: 'tk-description', value: values.description, placeholder: 'Zakres, ustalenia, odnośniki do rysunków…' });
+    var important = UI.checkbox({ id: 'tk-important', checked: !!values.important, label: 'Zadanie ważne', hint: 'Wyróżnia zadanie na liście etapu.' });
+
+    var boxes = {};
+    var assignees = people.length
+      ? D.el('div', { class: 'choice-list', attrs: { id: 'tk-assignees' } }, [
+          D.el('div', { class: 'choice-list__items', attrs: { role: 'group', 'aria-label': 'Realizatorzy' } }, people.map(function (person) {
             var id = 'tk-person-' + person.id;
-            var box = D.el('input', {
-              attrs: Object.assign(
-                { id: id, type: 'checkbox', value: person.id },
-                picked.indexOf(person.id) >= 0 ? { checked: true } : {}
-              )
-            });
-            assigneeBoxes[person.id] = box;
-            return D.el('li', { class: 'picker__item' }, [
+            var box = UI.checkbox({ id: id, value: person.id, checked: picked.indexOf(person.id) >= 0 });
+            boxes[person.id] = box;
+            return D.el('label', { class: 'choice-list__item', attrs: { for: id } }, [
               box,
-              D.el('label', { attrs: { for: id } }, [
-                D.el('span', { class: 'picker__name', text: Team.fullName(person) }),
-                D.el('span', { class: 'picker__hours', text: person.position || '' })
-              ])
+              D.el('span', { class: 'person' }, [
+                Avatar.avatar(person, { size: 'sm', tooltip: false }),
+                D.el('span', { class: 'truncate', text: Team.fullName(person) })
+              ]),
+              D.el('span', { class: 'choice-list__meta', text: person.position || '' })
             ]);
-          })),
-          problems.assignees
-            ? D.el('p', { class: 'field__error', text: problems.assignees, attrs: { role: 'alert' } })
-            : D.el('p', {
-                class: 'field__hint',
-                text: 'Zespół etapu wyznacza pulę osób; realizatorzy zadania to jawny podzbiór.'
-              })
+          }))
         ])
-      : D.el('p', {
-          class: 'field__hint',
-          text: 'Projekt nie ma jeszcze zespołu. Przypisz osoby w edycji projektu, żeby wskazać realizatorów.'
+      : UI.alert({ tone: 'info', text: 'Projekt nie ma jeszcze zespołu. Przypisz osoby w edycji projektu, żeby wskazać realizatorów.' });
+
+    var form = E.Dialog.drawerForm({
+      id: 'task-form',
+      submitLabel: editing ? 'Zapisz zmiany' : 'Dodaj zadanie',
+      onCancel: handlers.onCancel,
+      onSubmit: function () {
+        handlers.onSubmit({
+          id: values.id,
+          name: name.value,
+          deadline: deadline.value,
+          workload: workload.value,
+          important: important.querySelector('input').checked,
+          description: description.value,
+          assignees: Object.keys(boxes).filter(function (id) { return boxes[id].checked; })
         });
+      },
+      body: [
+        D.el('section', { class: 'form__section' }, [
+          UI.field({ id: 'tk-name', label: 'Nazwa zadania', required: true, control: name, error: problems.name }),
+          D.el('div', { class: 'form__row' }, [
+            UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline }),
+            UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload })
+          ]),
+          important
+        ]),
+        D.el('hr', { class: 'form__divider' }),
+        D.el('section', { class: 'form__section' }, [
+          D.el('div', { class: 'form__section-head' }, [
+            D.el('h3', { class: 'form__section-title', text: 'Realizatorzy' }),
+            D.el('p', { class: 'form__section-text', text: 'Każdy realizator domyka własną część; zadanie zamyka się dopiero przez zmianę statusu.' })
+          ]),
+          assignees,
+          problems.assignees ? D.el('p', { class: 'field__error', attrs: { role: 'alert' } }, [E.Icons.icon('alertCircle', 14), D.el('span', { text: problems.assignees })]) : null
+        ]),
+        D.el('hr', { class: 'form__divider' }),
+        UI.field({ id: 'tk-description', label: 'Opis', optional: true, control: description })
+      ]
+    });
 
-    function collect() {
-      return {
-        id: values.id,
-        name: nameInput.value,
-        deadline: deadlineInput.value,
-        workload: workloadSelect.value,
-        important: importantBox.checked,
-        description: descriptionInput.value,
-        assignees: Object.keys(assigneeBoxes).filter(function (id) { return assigneeBoxes[id].checked; })
-      };
-    }
-
-    var form = D.el('form', {
-      class: 'form',
-      attrs: { id: 'task-form', novalidate: true },
-      on: {
-        submit: function (event) {
-          event.preventDefault();
-          handlers.onSubmit(collect());
-        }
-      }
-    }, [
-      D.el('div', { class: 'form__grid' }, [
-        field('tk-name', 'Nazwa zadania', nameInput, problems.name),
-        field('tk-deadline', 'Termin', deadlineInput, problems.deadline, 'Data i godzina. Pole opcjonalne.'),
-        field('tk-workload', 'Nakład pracy', workloadSelect, problems.workload),
-        field('tk-description', 'Opis', descriptionInput)
-      ]),
-      D.el('div', { class: 'field field--check' }, [
-        importantBox,
-        D.el('label', { text: 'Zadanie ważne', attrs: { for: 'tk-important' } })
-      ]),
-      assigneeSection,
-      D.el('div', { class: 'form__actions' }, [
-        D.el('button', {
-          class: 'btn', text: 'Anuluj', attrs: { type: 'button' },
-          on: { click: function () { handlers.onCancel(); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--primary',
-          text: editing ? 'Zapisz zmiany' : 'Dodaj zadanie',
-          attrs: { type: 'submit' }
-        })
-      ])
-    ]);
-
-    window.setTimeout(function () { nameInput.focus(); }, 0);
+    window.setTimeout(function () { name.focus(); }, 0);
     return form;
   }
 

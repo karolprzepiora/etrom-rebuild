@@ -13,31 +13,40 @@ function fakeBackend(initial) {
   };
 }
 
-test('domyślnie motyw idzie za systemem, a lista pokazuje karty', () => {
-  assert.deepEqual(Prefs.defaults(), { theme: 'system', view: 'cards', accent: 'standard' });
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [] };
+const withBase = (patch) => Object.assign({}, BASE, patch);
+
+test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
+  assert.deepEqual(Prefs.defaults(), BASE);
 });
 
-test('wariant barw przyjmuje tylko znane nazwy', () => {
+test('wariant akcentu przyjmuje tylko znane nazwy, dawny „topo” przechodzi na grafit', () => {
   assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'hydro');
-  assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'topo');
+  assert.equal(Prefs.normalize({ accent: 'graphite' }).accent, 'graphite');
+  assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'neonowy' }).accent, 'standard');
 });
 
 test('normalize odrzuca nieznane wartości', () => {
-  assert.deepEqual(Prefs.normalize({ theme: 'neon', view: 'kafelki' }), { theme: 'system', view: 'cards', accent: 'standard' });
-  assert.deepEqual(Prefs.normalize(null), { theme: 'system', view: 'cards', accent: 'standard' });
-  assert.deepEqual(Prefs.normalize({ theme: 'dark', view: 'list' }), { theme: 'dark', view: 'list', accent: 'standard' });
+  assert.deepEqual(Prefs.normalize({ theme: 'neon', view: 'kafelki' }), BASE);
+  assert.deepEqual(Prefs.normalize(null), BASE);
+  assert.deepEqual(Prefs.normalize({ theme: 'dark', view: 'cards' }), withBase({ theme: 'dark', view: 'cards' }));
 });
 
 test('normalize uzupełnia brakujące pole, zachowując podane', () => {
-  assert.deepEqual(Prefs.normalize({ theme: 'light' }), { theme: 'light', view: 'cards', accent: 'standard' });
-  assert.deepEqual(Prefs.normalize({ view: 'list' }), { theme: 'system', view: 'list', accent: 'standard' });
+  assert.deepEqual(Prefs.normalize({ theme: 'light' }), withBase({ theme: 'light' }));
+  assert.deepEqual(Prefs.normalize({ view: 'cards' }), withBase({ view: 'cards' }));
+});
+
+test('ukryte kolumny: tylko znane, bez powtórzeń, w stałej kolejności', () => {
+  assert.deepEqual(Prefs.normalize({ hiddenColumns: ['team', 'nieznana', 'client', 'team'] }).hiddenColumns, ['client', 'team']);
+  assert.deepEqual(Prefs.normalize({ hiddenColumns: 'client' }).hiddenColumns, []);
 });
 
 test('zapis i odczyt przenoszą ustawienia', () => {
   const prefs = Prefs.createPrefs(fakeBackend());
-  assert.equal(prefs.save({ theme: 'dark', view: 'list' }), true);
-  assert.deepEqual(prefs.load(), { theme: 'dark', view: 'list', accent: 'standard' });
+  assert.equal(prefs.save({ theme: 'dark', view: 'cards', hiddenColumns: ['team'] }), true);
+  assert.deepEqual(prefs.load(), withBase({ theme: 'dark', view: 'cards', hiddenColumns: ['team'] }));
 });
 
 test('uszkodzony zapis ustawień nie wywraca aplikacji', () => {

@@ -1,275 +1,175 @@
-/* ETROM — etapy projektu jako wyrównane wiersze.
-   Kolor dziedziny niesie tylko kafelek ikony; ciężar wizualny należy
-   do stanu etapu, a barwa semantyczna wyłącznie do terminów, które
-   naprawdę tego wymagają. */
+/* ETROM — etapy projektu.
+   Jeden wiersz na etap: rozwinięcie (zadania), status (klik przestawia),
+   nazwa z dziedziną, zadania, godziny, termin i menu działań.
+   Barwa należy do stanu i do terminów wymagających reakcji — dziedzina
+   ma tylko drobną ikonę. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Catalog = root.ETROM.Catalog;
-  var Model = root.ETROM.Model;
-  var Progress = root.ETROM.Progress;
-  var Icons = root.ETROM.Icons;
-  var Tasks = root.ETROM.Tasks;
-
-  var STATUS_TONE = { todo: '', working: 'srow__status--working', done: 'srow__status--done' };
-  // Kolor tylko dla terminów, na które trzeba zareagować. Reszta zwykłym
-  // tekstem — przy czternastu wierszach bursztyn dla miesięcznego zapasu
-  // robił szum, a nie informację.
-  var DEADLINE_CHIP = { overdue: 'chip--danger', urgent: 'chip--danger' };
-
-  function deadlineCell(stage) {
-    if (!stage.deadline) {
-      return D.el('span', { class: 'srow__quiet', text: 'bez terminu' });
-    }
-    var info = Progress.deadlineInfo(stage.deadline);
-    var chipClass = DEADLINE_CHIP[info.tone];
-    // Spokojne terminy zostają zwykłym tekstem — kolor rezerwujemy dla pilnych.
-    return chipClass
-      ? D.el('span', { class: 'chip ' + chipClass, text: info.text })
-      : D.el('span', { class: 'srow__quiet', text: info.text });
-  }
+  var E = root.ETROM;
+  var D = E.Dom;
+  var UI = E.UI;
+  var Menu = E.Menu;
+  var Catalog = E.Catalog;
+  var Model = E.Model;
+  var Progress = E.Progress;
+  var Icons = E.Icons;
+  var Tasks = E.Tasks;
+  var F = E.Format;
 
   function taskCell(stage) {
     var stats = Tasks.taskStats(stage.tasks || []);
     if (!stats.total) {
-      return D.el('span', { class: 'srow__tasks srow__quiet', text: '—', attrs: { title: 'Brak zadań' } });
+      return D.el('span', { class: 'srow__tasks t-muted', text: '—', attrs: { 'aria-label': 'Brak zadań' } });
     }
     return D.el('span', {
       class: 'srow__tasks' + (stats.overdue ? ' srow__tasks--alert' : ''),
-      text: stats.open + '/' + stats.total,
       attrs: {
-        title: 'Zadania otwarte: ' + stats.open + ' z ' + stats.total
-          + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
+        'data-tooltip': 'Otwarte ' + stats.open + ' z ' + stats.total + (stats.overdue ? ' · po terminie ' + stats.overdue : ''),
+        'aria-label': 'Zadania otwarte: ' + stats.open + ' z ' + stats.total + (stats.overdue ? ', po terminie: ' + stats.overdue : '')
       }
-    });
+    }, [stats.open + '/' + stats.total]);
   }
 
-  function stageRow(project, stage, position, handlers, motion, count, ctx) {
+  function stageMenu(project, stage, position, count, actions) {
     var info = Model.describeStage(stage);
-    var flash = motion && motion.flashStage === stage.id;
-    var key = project.id + ':' + stage.id;
-    var open = !!(ctx && ctx.expandedStages && ctx.expandedStages[key]);
-    var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
+    var btn = UI.iconButton({
+      icon: 'more', label: 'Działania etapu: ' + info.name, size: 'sm', class: 'row-actions srow__more',
+      attrs: { 'data-fk': 'stage-more-' + stage.id }
+    });
+    Menu.bind(btn, function () {
+      return {
+        label: 'Działania etapu', align: 'end',
+        items: [
+          { label: 'Dodaj zadanie', icon: 'plus', onSelect: function () { actions.addTask(project.id, stage.id); } },
+          { type: 'separator' },
+          { label: 'Przesuń wyżej', icon: 'arrowUp', disabled: position === 0, onSelect: function () { actions.moveStage(project.id, stage.id, -1); } },
+          { label: 'Przesuń niżej', icon: 'arrowDown', disabled: position === count - 1, onSelect: function () { actions.moveStage(project.id, stage.id, 1); } },
+          { type: 'separator' },
+          { label: 'Usuń etap z projektu', icon: 'trash', tone: 'danger', onSelect: function () { actions.removeStage(project.id, stage.id); } }
+        ]
+      };
+    });
+    return btn;
+  }
 
-    var meta = info.domainLabel + (info.isCustom ? ' · własny' : ' · standard ' + info.catalogNumber);
+  function stageRow(project, stage, position, count, ctx) {
+    var actions = ctx.actions;
+    var info = Model.describeStage(stage);
+    var key = project.id + ':' + stage.id;
+    var open = !!(ctx.state.expandedStages && ctx.state.expandedStages[key]);
+    var flash = ctx.motion && ctx.motion.flashStage === stage.id;
+    var panelId = 'tasks-' + project.id + '-' + String(stage.id).replace(/[^a-zA-Z0-9_-]/g, '-');
+    var meta = info.isCustom ? 'własny · ' + info.domainLabel : 'standard ' + info.catalogNumber + ' · ' + info.domainLabel;
 
     var row = D.el('div', {
-      class: 'srow srow--' + stage.status + (flash ? ' srow--flash' : '') + (open ? ' srow--open' : ''),
-      style: { '--stage-color': info.color }
+      class: 'srow row srow--' + stage.status + (flash ? ' is-flash' : '') + (open ? ' srow--open' : '')
     }, [
-      D.el('span', { class: 'srow__no', text: String(position + 1) }),
-      D.el('span', { class: 'srow__icon' }, [Icons.icon(info.domain, 16)]),
-      D.el('div', { class: 'srow__body' }, [
-        D.el('p', { class: 'srow__name', text: info.name }),
-        D.el('p', { class: 'srow__meta', text: meta })
-      ]),
-      D.el('span', { class: 'srow__hours', text: stage.hours + ' h' }),
-      taskCell(stage),
-      D.el('span', { class: 'srow__deadline' }, [deadlineCell(stage)]),
       D.el('button', {
-        class: 'srow__status ' + (STATUS_TONE[stage.status] || ''),
-        text: Model.STAGE_STATUS[stage.status],
+        class: 'srow__expand',
         attrs: {
           type: 'button',
-          title: 'Zmień status etapu',
-          'aria-label': info.name + ' — status ' + Model.STAGE_STATUS[stage.status] + '. Kliknij, aby zmienić.'
+          'aria-expanded': open ? 'true' : 'false',
+          'aria-controls': panelId,
+          'data-fk': 'stage-expand-' + stage.id
         },
-        on: { click: function () { handlers.onCycleStage(project.id, stage.id); } }
+        on: { click: function () { actions.toggleStage(project.id, stage.id); } }
+      }, [
+        D.el('span', { class: 'srow__chevron' }, [Icons.icon('chevronRight', 14)]),
+        D.el('span', { class: 'srow__no', text: String(position + 1) }),
+        D.el('span', { class: 'srow__icon', style: { color: info.color }, attrs: { 'data-tooltip': info.domainLabel } }, [Icons.icon(info.domain, 16)]),
+        D.el('span', { class: 'srow__text' }, [
+          D.el('span', { class: 'srow__name', text: info.name }),
+          D.el('span', { class: 'srow__meta', text: meta })
+        ]),
+        D.el('span', { class: 'sr-only', text: open ? ', zwiń zadania' : ', pokaż zadania' })
+      ]),
+      UI.statusButton('stage', stage.status, {
+        subject: info.name,
+        class: 'srow__status',
+        hint: 'Kliknij, aby przestawić na „' + Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)] + '”',
+        attrs: {
+          'data-fk': 'stage-status-' + stage.id,
+          'data-tooltip': 'Przestaw na „' + Model.STAGE_STATUS[Model.cycleStageStatus(stage.status)] + '”'
+        },
+        onClick: function () { actions.cycleStage(project.id, stage.id); }
       }),
-      D.el('div', { class: 'srow__tools' }, [
-        D.el('button', {
-          class: 'btn btn--icon btn--quiet srow__expand' + (open ? ' srow__expand--open' : ''),
-          attrs: {
-            type: 'button',
-            title: open ? 'Ukryj zadania' : 'Pokaż zadania',
-            'aria-expanded': open ? 'true' : 'false',
-            'aria-controls': panelId
-          },
-          on: { click: function () { handlers.onToggleStage(project.id, stage.id); } }
-        }, [Icons.icon('chevron', 14)]),
-        D.el('button', {
-          class: 'btn btn--icon btn--quiet srow__up',
-          attrs: {
-            type: 'button', title: 'Przesuń wyżej',
-            'aria-label': 'Przesuń etap ' + info.name + ' wyżej',
-            disabled: position === 0
-          },
-          on: { click: function () { handlers.onMoveStage(project.id, stage.id, -1); } }
-        }, [Icons.icon('chevron', 14)]),
-        D.el('button', {
-          class: 'btn btn--icon btn--quiet srow__down',
-          attrs: {
-            type: 'button', title: 'Przesuń niżej',
-            'aria-label': 'Przesuń etap ' + info.name + ' niżej',
-            disabled: position === count - 1
-          },
-          on: { click: function () { handlers.onMoveStage(project.id, stage.id, 1); } }
-        }, [Icons.icon('chevron', 14)]),
-        D.el('button', {
-          class: 'btn btn--icon',
-          attrs: { type: 'button', title: 'Usuń etap', 'aria-label': 'Usuń etap ' + info.name },
-          on: { click: function () { handlers.onRemoveStage(project.id, stage.id); } }
-        }, [Icons.icon('close', 14)])
-      ])
+      taskCell(stage),
+      D.el('span', { class: 'srow__hours t-num', text: F.hours(stage.hours) }),
+      D.el('span', { class: 'srow__deadline' }, [
+        UI.due(stage.deadline, Progress.deadlineInfo(stage.deadline), { done: stage.status === 'done', label: 'Termin etapu' })
+      ]),
+      stageMenu(project, stage, position, count, actions)
     ]);
 
     var children = [row];
     if (open) {
       children.push(D.el('div', { class: 'srow__panel', attrs: { id: panelId } }, [
-        root.ETROM.TaskList.taskList(project, stage, handlers, (ctx && ctx.people) || [], motion)
+        E.TaskList.taskList(project, stage, actions, ctx.people, ctx.motion)
       ]));
     }
-
     return D.el('li', { class: 'srow-wrap', dataset: { stageId: stage.id } }, children);
   }
 
-  function field(id, label, control, error) {
-    var children = [
-      D.el('label', { class: 'label', text: label, attrs: { for: id } }),
-      control
-    ];
-    if (error) children.push(D.el('p', { class: 'field__error', text: error, attrs: { role: 'alert' } }));
-    return D.el('div', { class: 'filters__field' }, children);
-  }
-
-  function customStageForm(project, handlers, ui) {
-    var values = (ui && ui.values) || {};
-    var errors = (ui && ui.errors) || {};
-
-    var name = D.el('input', {
-      class: 'input',
-      attrs: {
-        id: 'cs-name', type: 'text', maxlength: '200',
-        value: values.name || '', placeholder: 'np. Uzgodnienie z PKP',
-        'aria-invalid': errors.name ? 'true' : 'false'
-      }
-    });
-    var domain = D.el('select', { class: 'select', attrs: { id: 'cs-domain' } },
-      Object.keys(Catalog.DOMAINS).map(function (key) {
-        return D.el('option', {
-          text: Catalog.DOMAINS[key].label,
-          attrs: { value: key, selected: (values.domain || 'general') === key }
+  /** Menu „Dodaj etap”: etapy ze standardu, których jeszcze nie ma, i etap własny. */
+  function addStageButton(project, actions, variant) {
+    var btn = UI.button({ label: 'Dodaj etap', icon: 'plus', variant: variant || 'secondary', size: 'sm', iconRight: 'chevronDown', attrs: { 'data-fk': 'add-stage' } });
+    Menu.bind(btn, function () {
+      var used = {};
+      project.stages.forEach(function (stage) { used[stage.id] = true; });
+      var available = Catalog.all.filter(function (entry) { return !used[entry.id]; });
+      var items = [{ label: 'Etap własny…', icon: 'edit', hint: 'spoza standardu', onSelect: function () { actions.openCustomStage(project.id); } }];
+      items.push({ type: 'separator' });
+      if (available.length) {
+        items.push({ type: 'label', label: 'Ze standardu ETROM' });
+        available.forEach(function (entry) {
+          items.push({
+            label: entry.number + '. ' + entry.name,
+            hint: F.hours(entry.defaultHours),
+            value: entry.id,
+            onSelect: function () { actions.addStage(project.id, entry.id); }
+          });
         });
-      }));
-    var hours = D.el('input', {
-      class: 'input',
-      attrs: {
-        id: 'cs-hours', type: 'number', min: '1', step: '1',
-        value: values.hours || '8',
-        'aria-invalid': errors.hours ? 'true' : 'false'
+      } else {
+        items.push({ type: 'note', label: 'Wszystkie etapy ze standardu są już w projekcie.' });
       }
+      return { label: 'Dodaj etap', items: items, minWidth: '22rem' };
     });
-    var deadline = D.el('input', {
-      class: 'input',
-      attrs: { id: 'cs-deadline', type: 'date', value: values.deadline || '' }
-    });
-
-    return D.el('form', {
-      class: 'stage-add stage-add--custom',
-      attrs: { id: 'custom-stage-form', novalidate: true },
-      on: {
-        submit: function (event) {
-          event.preventDefault();
-          handlers.onSubmitCustomStage(project.id, {
-            name: name.value, domain: domain.value,
-            hours: hours.value, deadline: deadline.value
-          });
-        }
-      }
-    }, [
-      field('cs-name', 'Nazwa etapu', name, errors.name),
-      field('cs-domain', 'Dziedzina', domain, errors.domain),
-      field('cs-hours', 'Budżet godzin', hours, errors.hours),
-      field('cs-deadline', 'Termin', deadline, errors.deadline),
-      D.el('div', { class: 'stage-add__buttons' }, [
-        D.el('button', {
-          class: 'btn', text: 'Anuluj', attrs: { type: 'button' },
-          on: { click: handlers.onCancelCustomStage }
-        }),
-        D.el('button', { class: 'btn btn--primary', text: 'Dodaj etap', attrs: { type: 'submit' } })
-      ])
-    ]);
-  }
-
-  function catalogPicker(project, handlers) {
-    var used = {};
-    project.stages.forEach(function (stage) { used[stage.id] = true; });
-    var available = Catalog.all.filter(function (entry) { return !used[entry.id]; });
-
-    var children = [];
-
-    if (available.length) {
-      var select = D.el('select', { class: 'select', attrs: { id: 'add-stage-' + project.id } },
-        available.map(function (entry) {
-          return D.el('option', {
-            text: entry.number + '. ' + entry.name + ' (' + entry.defaultHours + ' h)',
-            attrs: { value: entry.id }
-          });
-        }));
-      children.push(
-        D.el('div', { class: 'filters__field', style: { flex: '1 1 260px' } }, [
-          D.el('label', { class: 'label', text: 'Dodaj etap ze standardu', attrs: { for: 'add-stage-' + project.id } }),
-          select
-        ]),
-        D.el('button', {
-          class: 'btn', text: 'Dodaj', attrs: { type: 'button' },
-          on: { click: function () { handlers.onAddStage(project.id, select.value); } }
-        })
-      );
-    } else {
-      children.push(D.el('p', {
-        class: 'stages__note',
-        text: 'Wszystkie etapy ze standardu są już w projekcie.'
-      }));
-    }
-
-    children.push(D.el('button', {
-      class: 'btn btn--ghost btn--small',
-      text: 'Dopisz własny etap',
-      attrs: { type: 'button' },
-      on: { click: function () { handlers.onOpenCustomStage(project.id); } }
-    }));
-
-    return D.el('div', { class: 'stage-add' }, children);
+    return btn;
   }
 
   /**
    * @param {Object} project
-   * @param {Object} handlers
-   * @param {Object} [motion]
-   * @param {{values: Object, errors: Object}} [ui] otwarty formularz etapu własnego
+   * @param {{state, people, actions, motion}} ctx
    */
-  function stageList(project, handlers, motion, ctx) {
-    var stats = Progress.projectProgress(project);
+  function stageList(project, ctx) {
     var count = project.stages.length;
-    var ui = ctx && ctx.stageForm;
+    var stats = Progress.projectProgress(project);
 
-    var body = count
-      ? D.el('ul', { class: 'srows' }, project.stages.map(function (stage, index) {
-          return stageRow(project, stage, index, handlers, motion, count, ctx);
-        }))
-      : D.el('p', {
-          class: 'stages__note',
-          text: 'Ten projekt nie ma jeszcze etapów. Wybierz je ze standardu albo dopisz własne.'
-        });
+    if (!count) {
+      return D.el('section', { class: 'section' }, [
+        D.el('div', { class: 'card' }, [UI.emptyState({
+          icon: 'layers',
+          title: 'Projekt nie ma jeszcze etapów',
+          text: 'Etapy porządkują pracę i liczą postęp. Wybierz je ze standardu ETROM albo dopisz własne, gdy projekt wymaga czegoś nietypowego.',
+          actions: [addStageButton(project, ctx.actions, 'primary')]
+        })])
+      ]);
+    }
 
-    var custom = ui ? customStageForm(project, handlers, ui) : catalogPicker(project, handlers);
-
-    return D.el('section', { class: 'stages' }, [
-      D.el('div', { class: 'stages__title' }, [
-        D.el('h4', { text: 'Etapy projektu' }),
-        D.el('span', {
-          class: 'stages__note',
-          text: count
-            ? stats.done + ' z ' + count + ' zakończonych, ' + stats.hoursTotal + ' h w budżecie'
-            : 'Brak etapów'
-        })
+    return D.el('section', { class: 'section', attrs: { 'aria-labelledby': 'stages-title' } }, [
+      D.el('div', { class: 'section__head' }, [
+        D.el('div', { class: 'section__titles' }, [
+          D.el('h2', { class: 'section__title', text: 'Etapy', attrs: { id: 'stages-title' } }),
+          D.el('span', { class: 'section__meta', text: stats.done + ' z ' + count + ' zakończonych · ' + F.hours(stats.hoursTotal) + ' w budżecie' })
+        ]),
+        addStageButton(project, ctx.actions)
       ]),
-      body,
-      custom
+      D.el('ul', { class: 'srows list' }, project.stages.map(function (stage, index) {
+        return stageRow(project, stage, index, count, ctx);
+      }))
     ]);
   }
 
-  root.ETROM.StageList = { stageList: stageList };
+  root.ETROM.StageList = { stageList: stageList, addStageButton: addStageButton };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

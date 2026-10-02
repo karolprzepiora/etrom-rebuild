@@ -69,6 +69,21 @@
     return container;
   }
 
+  /**
+   * Jak render, ale zachowuje fokus klawiatury: element z tym samym
+   * data-fk dostaje fokus po przerysowaniu. Bez tego każda zmiana stanu
+   * zrzucałaby fokus na <body> i osoba pracująca klawiaturą traciłaby miejsce.
+   */
+  function patch(container, children) {
+    var active = document.activeElement;
+    var key = active && container.contains(active) && active.getAttribute ? active.getAttribute('data-fk') : null;
+    render(container, children);
+    if (!key) return container;
+    var next = container.querySelector('[data-fk="' + key.replace(/["\\]/g, '\\$&') + '"]');
+    if (next && typeof next.focus === 'function') next.focus({ preventScroll: true });
+    return container;
+  }
+
   function byId(id) {
     var node = document.getElementById(id);
     if (!node) throw new Error('Brak elementu #' + id + ' w dokumencie.');
@@ -90,7 +105,7 @@
     return node;
   }
 
-  var api = { el: el, append: append, clear: clear, render: render, byId: byId, svg: svg };
+  var api = { el: el, append: append, clear: clear, render: render, patch: patch, byId: byId, svg: svg };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Dom = api; }

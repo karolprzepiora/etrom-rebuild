@@ -1,156 +1,163 @@
-/* ETROM — lista zadań wewnątrz etapu.
-   Status zmienia się przez listę dozwolonych przejść, a nie dowolnie:
-   przepływ pilnuje modelu, nie interfejs. */
+/* ETROM — zadania etapu.
+   Status zmienia się przez menu z dozwolonymi przejściami: przepływ pilnuje
+   modelu, interfejs pokazuje tylko to, co wolno zrobić. Udział realizatora
+   to awatar z kształtem stanu — klik przestawia jego część pracy. */
 (function (root) {
   'use strict';
 
-  var D = root.ETROM.Dom;
-  var Tasks = root.ETROM.Tasks;
-  var Team = root.ETROM.Team;
-  var Icons = root.ETROM.Icons;
-  var Avatar = root.ETROM.Avatar;
+  var E = root.ETROM;
+  var D = E.Dom;
+  var UI = E.UI;
+  var Menu = E.Menu;
+  var Tasks = E.Tasks;
+  var Team = E.Team;
+  var Avatar = E.Avatar;
+  var Icons = E.Icons;
 
-  var STATUS_TONE = {
-    todo: '',
-    working: 'trow__status--working',
-    review: 'trow__status--review',
-    changes: 'trow__status--changes',
-    done: 'trow__status--done'
-  };
+  var PART_SHAPE = { todo: 'empty', working: 'half', done: 'done' };
+  var PART_TONE = { todo: 'neutral', working: 'info', done: 'success' };
 
-  var DEADLINE_CHIP = { overdue: 'chip--danger', urgent: 'chip--danger' };
-
-  function statusControl(project, stage, task, handlers) {
-    var options = [task.status].concat(Tasks.nextStatuses(task.status));
-    var select = D.el('select', {
-      class: 'trow__status ' + (STATUS_TONE[task.status] || ''),
-      attrs: {
-        'aria-label': 'Status zadania: ' + task.name,
-        title: 'Status zadania'
-      },
-      on: {
-        change: function () {
-          var next = select.value;
-          select.value = task.status;
-          if (next !== task.status) handlers.onMoveTask(project.id, stage.id, task.id, next);
-        }
-      }
-    }, options.map(function (key) {
-      return D.el('option', {
-        text: Tasks.TASK_STATUS[key],
-        attrs: { value: key, selected: key === task.status }
-      });
-    }));
-    return select;
+  function statusControl(project, stage, task, actions) {
+    var btn = UI.statusButton('task', task.status, {
+      subject: task.name,
+      menu: true,
+      class: 'trow__status',
+      attrs: { 'data-fk': 'task-status-' + task.id }
+    });
+    Menu.bind(btn, function () {
+      var next = Tasks.nextStatuses(task.status);
+      return {
+        label: 'Zmień status zadania',
+        items: [{ type: 'label', label: 'Przenieś do' }].concat(next.map(function (key) {
+          return {
+            label: Tasks.TASK_STATUS[key],
+            value: key,
+            leading: UI.statusGlyph('task', key),
+            hint: key === 'changes' ? 'wymaga powodu' : '',
+            onSelect: function () { actions.moveTask(project.id, stage.id, task.id, key); }
+          };
+        })).concat(next.length ? [] : [{ type: 'note', label: 'Brak dozwolonych przejść.' }])
+      };
+    });
+    return btn;
   }
 
-  function partButton(project, stage, task, person, handlers) {
+  function partButton(project, stage, task, person, actions) {
     var state = Tasks.partStatus(task, person.id);
+    var label = Team.fullName(person) + ': ' + Tasks.PART_STATUS[state].toLowerCase();
     return D.el('button', {
       class: 'part part--' + state,
       attrs: {
         type: 'button',
-        title: Team.fullName(person) + ' — ' + Tasks.PART_STATUS[state] + '. Kliknij, aby zmienić.',
-        'aria-label': 'Udział: ' + Team.fullName(person) + ', ' + Tasks.PART_STATUS[state]
+        'aria-label': 'Udział: ' + label + '. Kliknij, aby przestawić.',
+        'data-tooltip': label + ' — kliknij, aby przestawić',
+        'data-fk': 'part-' + task.id + '-' + person.id
       },
-      on: { click: function () { handlers.onCyclePart(project.id, stage.id, task.id, person.id); } }
+      on: { click: function () { actions.cyclePart(project.id, stage.id, task.id, person.id); } }
     }, [
-      Avatar.avatar(person, { size: 'sm' }),
-      D.el('span', { class: 'part__name', text: Team.fullName(person) })
+      Avatar.avatar(person, { size: 'sm', tooltip: false }),
+      D.el('span', { class: 'part__state status status--' + PART_TONE[state] }, [UI.statusIcon(PART_SHAPE[state])])
     ]);
   }
 
-  function taskRow(project, stage, task, handlers, people, motion) {
-    var deadline = Tasks.deadlineInfo(task);
+  function taskMenu(project, stage, task, actions) {
+    var btn = UI.iconButton({
+      icon: 'more', label: 'Działania zadania: ' + task.name, size: 'sm', class: 'row-actions',
+      attrs: { 'data-fk': 'task-more-' + task.id }
+    });
+    Menu.bind(btn, function () {
+      return {
+        label: 'Działania zadania', align: 'end',
+        items: [
+          { label: 'Edytuj zadanie', icon: 'edit', onSelect: function () { actions.editTask(project.id, stage.id, task.id); } },
+          { type: 'separator' },
+          { label: 'Usuń zadanie', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteTask(project.id, stage.id, task.id); } }
+        ]
+      };
+    });
+    return btn;
+  }
+
+  function taskRow(project, stage, task, actions, people, motion) {
+    var info = Tasks.deadlineInfo(task);
     var assigned = (task.assignees || [])
       .map(function (id) { return Team.findPerson(people, id); })
       .filter(Boolean);
 
-    var head = [D.el('span', { class: 'trow__name', text: task.name })];
-    if (task.important) {
-      head.push(D.el('span', { class: 'chip chip--warn', text: 'ważne' }));
-    }
+    var title = D.el('div', { class: 'trow__title' }, [
+      D.el('button', {
+        class: 'trow__name',
+        text: task.name,
+        attrs: { type: 'button', 'aria-label': 'Edytuj zadanie: ' + task.name, 'data-fk': 'task-name-' + task.id },
+        on: { click: function () { actions.editTask(project.id, stage.id, task.id); } }
+      }),
+      task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null
+    ]);
 
-    var body = [D.el('p', { class: 'trow__head' }, head)];
-
-    if (assigned.length) {
-      body.push(D.el('div', { class: 'trow__people' }, assigned.map(function (person) {
-        return partButton(project, stage, task, person, handlers);
-      })));
-    } else {
-      body.push(D.el('p', { class: 'trow__quiet', text: 'bez realizatora' }));
-    }
-
+    var body = [title];
     if (task.status === 'changes' && task.feedback) {
-      body.push(D.el('p', { class: 'trow__feedback', text: 'Do poprawy: ' + task.feedback }));
+      body.push(D.el('p', { class: 'trow__feedback' }, [
+        Icons.icon('alert', 14),
+        D.el('span', { text: 'Do poprawy: ' + task.feedback })
+      ]));
     }
-
-    var chip = DEADLINE_CHIP[deadline.tone];
 
     return D.el('li', {
-      class: 'trow trow--' + task.status + (motion && motion.flashTask === task.id ? ' trow--flash' : ''),
+      class: 'trow row trow--' + task.status + (motion && motion.flashTask === task.id ? ' is-flash' : ''),
       dataset: { taskId: task.id }
     }, [
-      statusControl(project, stage, task, handlers),
+      statusControl(project, stage, task, actions),
       D.el('div', { class: 'trow__body' }, body),
-      D.el('span', { class: 'trow__load', text: Tasks.WORKLOAD[task.workload] }),
+      D.el('div', { class: 'trow__people' }, assigned.length
+        ? assigned.map(function (person) { return partButton(project, stage, task, person, actions); })
+        : [D.el('span', { class: 't-meta', text: 'Bez realizatora' })]),
+      D.el('span', { class: 'trow__load t-meta', text: Tasks.WORKLOAD[task.workload], attrs: { 'data-tooltip': 'Nakład pracy' } }),
       D.el('span', { class: 'trow__deadline' }, [
-        chip
-          ? D.el('span', { class: 'chip ' + chip, text: deadline.text })
-          : D.el('span', { class: 'trow__quiet', text: deadline.text })
+        task.deadline
+          ? UI.due(task.deadline, info, { done: task.status === 'done', relativeOnly: info.tone === 'overdue' || info.tone === 'urgent' })
+          : D.el('span', { class: 'due due--none', text: 'Bez terminu' })
       ]),
-      D.el('div', { class: 'trow__tools' }, [
-        D.el('button', {
-          class: 'btn btn--small btn--ghost', text: 'Edytuj',
-          attrs: { type: 'button' },
-          on: { click: function () { handlers.onEditTask(project.id, stage.id, task.id); } }
-        }),
-        D.el('button', {
-          class: 'btn btn--icon',
-          attrs: { type: 'button', title: 'Usuń zadanie', 'aria-label': 'Usuń zadanie ' + task.name },
-          on: { click: function () { handlers.onDeleteTask(project.id, stage.id, task.id); } }
-        }, [Icons.icon('close', 14)])
-      ])
+      taskMenu(project, stage, task, actions)
     ]);
   }
 
   /**
-   * @param {Object} project
-   * @param {Object} stage
-   * @param {Object} handlers onAddTask, onEditTask, onDeleteTask, onMoveTask, onCyclePart
-   * @param {Array} people katalog osób
-   * @param {Object} [motion]
+   * Zadania jednego etapu.
+   * @param {{compact?: boolean, filter?: 'open'|'all'}} [options]
    */
-  function taskList(project, stage, handlers, people, motion) {
-    var tasks = stage.tasks || [];
-    var stats = Tasks.taskStats(tasks);
+  function taskList(project, stage, actions, people, motion, options) {
+    var settings = options || {};
+    var tasks = (stage.tasks || []).filter(function (task) {
+      return settings.filter !== 'open' || task.status !== 'done';
+    });
+    var stats = Tasks.taskStats(stage.tasks || []);
 
-    var summary = tasks.length
-      ? 'otwarte: ' + stats.open + ' z ' + stats.total
-        + (stats.overdue ? ' · po terminie: ' + stats.overdue : '')
-        + (stats.review ? ' · do zatwierdzenia: ' + stats.review : '')
-      : 'Brak zadań w tym etapie';
+    var summary = stats.total
+      ? 'Otwarte ' + stats.open + ' z ' + stats.total
+        + (stats.overdue ? ' · po terminie ' + stats.overdue : '')
+        + (stats.review ? ' · do zatwierdzenia ' + stats.review : '')
+      : 'Brak zadań';
+
+    var head = settings.hideHead ? null : D.el('div', { class: 'tasks__head' }, [
+      D.el('span', { class: 'tasks__summary', text: summary }),
+      UI.button({
+        label: 'Dodaj zadanie', icon: 'plus', variant: 'ghost', size: 'sm',
+        attrs: { 'data-fk': 'add-task-' + stage.id },
+        dataset: { action: 'add-task' },
+        onClick: function () { actions.addTask(project.id, stage.id); }
+      })
+    ]);
 
     var body = tasks.length
-      ? D.el('ul', { class: 'trows' }, tasks.map(function (task) {
-          return taskRow(project, stage, task, handlers, people, motion);
+      ? D.el('ul', { class: 'trows', attrs: { 'aria-label': 'Zadania etapu ' + E.Model.describeStage(stage).name } }, tasks.map(function (task) {
+          return taskRow(project, stage, task, actions, people, motion);
         }))
-      : D.el('p', { class: 'stages__note', text: 'Dodaj pierwsze zadanie, żeby rozpisać pracę w tym etapie.' });
+      : (stats.total
+          ? null
+          : D.el('p', { class: 'tasks__empty', text: 'Rozpisz pracę w tym etapie na zadania z realizatorami i terminami.' }));
 
-    return D.el('div', { class: 'tasks' }, [
-      D.el('div', { class: 'tasks__head' }, [
-        D.el('span', { class: 'label', text: 'Zadania' }),
-        D.el('span', { class: 'stages__note', text: summary }),
-        D.el('button', {
-          class: 'btn btn--small',
-          text: 'Nowe zadanie',
-          attrs: { type: 'button' },
-          on: { click: function () { handlers.onAddTask(project.id, stage.id); } }
-        })
-      ]),
-      body
-    ]);
+    return D.el('div', { class: 'tasks' }, [head, body]);
   }
 
-  root.ETROM.TaskList = { taskList: taskList };
+  root.ETROM.TaskList = { taskList: taskList, taskRow: taskRow };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
