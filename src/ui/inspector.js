@@ -263,7 +263,7 @@
       ? varianceRow('Postęp', [
           { label: 'Rzeczywisty', value: p.actual + '%' },
           { label: 'Plan na dziś', value: p.plan + '%' },
-          { label: 'Odchylenie', value: sign(p.variance, 'pp'), strong: true }
+          { label: 'Odchylenie', value: sign(p.variance, 'p.p.'), strong: true }
         ], 'Plan: tyle, ile upłynęło z czasu umowy (liniowo od utworzenia projektu).', p.variance <= -Insight.LAG_ALARM ? 'alarm' : (p.variance <= -Insight.LAG_WARNING ? 'warning' : ''))
       : varianceRow('Postęp', [{ label: 'Rzeczywisty', value: p.actual + '%' }],
           p.reason === 'done' ? 'Projekt zakończony.' : 'Ustaw termin umowy, żeby zobaczyć plan.');

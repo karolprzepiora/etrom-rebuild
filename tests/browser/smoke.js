@@ -141,7 +141,14 @@ async function main() {
     async function waitForApp() {
       for (let i = 0; i < 60; i += 1) {
         const ready = await evaluate('return !!(window.ETROM && window.ETROM.app && document.getElementById("project-list"));');
-        if (ready) return;
+        if (ready) {
+          if (!/^#\/projekty/.test(await evaluate('return location.hash;')) && !waitForApp.startChecked) {
+            waitForApp.startChecked = true;
+            check('start aplikacji to „Moja praca”', !(await evaluate('return document.getElementById("view-mywork").hidden;')));
+            await go('#/projekty');
+          }
+          return;
+        }
         await sleep(200);
       }
       throw new Error('Aplikacja nie wystartowała.');

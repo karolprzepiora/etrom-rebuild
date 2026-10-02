@@ -132,6 +132,8 @@
   --control-sm: 1.75rem;
   --control-md: 2rem;
   --control-lg: 2.25rem;
+  --row-h: 3.25rem;       /* wysokość wiersza listy — Komfortowa */
+  --row-pad: var(--space-3);
 
   /* ---------- Układ ---------- */
   --sidebar-width: 15rem;
@@ -202,3 +204,6 @@
     --duration-slow: 0ms;
   }
 }
+
+/* Gęstość: zwarta skraca wiersze list i tabel (przełącznik w ustawieniach). */
+:root[data-density="compact"] { --row-h: 2.5rem; --row-pad: var(--space-2); --control-md: 1.75rem; --control-lg: 2rem; }

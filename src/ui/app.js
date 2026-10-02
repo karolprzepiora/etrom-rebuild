@@ -71,7 +71,8 @@
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
-    return { name: 'projects' };
+    if (parts[0] === 'projekty') return { name: 'projects' };
+    return { name: 'mywork' };
   }
 
   function screenOf(route) {
@@ -1187,6 +1188,7 @@
     else document.documentElement.setAttribute('data-theme', prefs.theme);
     if (prefs.accent === 'standard') document.documentElement.removeAttribute('data-accent');
     else document.documentElement.setAttribute('data-accent', prefs.accent);
+    document.documentElement.setAttribute('data-density', prefs.density || 'comfortable');
   }
 
   function setPref(patch) {

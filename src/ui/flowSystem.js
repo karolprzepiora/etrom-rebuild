@@ -54,11 +54,11 @@
     var lag = Math.round(g.lag);
     if (lag >= 1) {
       return {
-        text: 'Za planem o ' + lag + ' pp',
+        text: 'Zaległość ' + lag + ' p.p. wobec planu',
         level: lag >= Insight.LAG_ALARM ? 'alarm' : (lag >= Insight.LAG_WARNING ? 'warning' : 'normal')
       };
     }
-    if (lag <= -1) return { text: 'Przed planem o ' + (-lag) + ' pp', level: 'normal' };
+    if (lag <= -1) return { text: 'Przed planem o ' + (-lag) + ' p.p.', level: 'normal' };
     return { text: 'Zgodnie z planem', level: 'normal' };
   }
 

@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [], me: null };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'health', density: 'comfortable', sidebarCollapsed: false, pinned: [], recent: [], me: null };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -97,4 +97,9 @@ test('preferencja „ja” przyjmuje tylko identyfikator osoby', () => {
   assert.equal(Prefs.normalize({ me: 7 }).me, null);
   assert.equal(Prefs.normalize({}).me, null);
   assert.equal(Prefs.defaults().me, null);
+});
+
+test('gęstość: tylko komfortowa lub zwarta', () => {
+  assert.equal(Prefs.normalize({ density: 'compact' }).density, 'compact');
+  assert.equal(Prefs.normalize({ density: 'x' }).density, 'comfortable');
 });

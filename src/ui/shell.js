@@ -53,6 +53,13 @@
       onChange: function (value) { actions.setPref({ theme: value }); theme.set(value); }
     });
 
+    var density = UI.segmented({
+      label: 'Gęstość',
+      value: prefs.density || 'comfortable',
+      items: [{ value: 'comfortable', label: 'Komfortowa' }, { value: 'compact', label: 'Zwarta' }],
+      onChange: function (value) { actions.setPref({ density: value }); density.set(value); }
+    });
+
     var swatches = ACCENTS.map(function (accent) {
       return D.el('button', {
         class: 'accent-swatch',
@@ -82,6 +89,7 @@
         D.el('span', { class: 'brand-sub', text: 'Biuro projektowe · dane w tej przeglądarce' })
       ]),
       D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Motyw' }), theme.node]),
+      D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Gęstość' }), density.node]),
       D.el('div', { class: 'settings__row' }, [
         D.el('span', { class: 'settings__label', text: 'Kolor pracy w toku', attrs: { id: 'accent-label' } }),
         D.el('div', { class: 'accent-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'accent-label' } }, swatches)

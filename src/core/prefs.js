@@ -9,6 +9,7 @@
   var VIEWS = ['list', 'cards'];
   var ACCENTS = ['standard', 'graphite'];
   var GROUPS = ['health', 'status', 'none'];
+  var DENSITIES = ['comfortable', 'compact'];
   // Elementy wiersza projektu, które można ukryć w opcjach widoku.
   var COLUMNS = ['client', 'progress', 'stages', 'tasks', 'deadline', 'team'];
   // Nazwy z wcześniejszych wersji przeniesione na obecne.
@@ -20,7 +21,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'health', sidebarCollapsed: false, pinned: [], recent: [], me: null
+      groupBy: 'health', density: 'comfortable', sidebarCollapsed: false, pinned: [], recent: [], me: null
     };
   }
 
@@ -44,6 +45,7 @@
       accent: ACCENTS.indexOf(accent) >= 0 ? accent : 'standard',
       hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
       groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'health',
+      density: DENSITIES.indexOf(source.density) >= 0 ? source.density : 'comfortable',
       sidebarCollapsed: source.sidebarCollapsed === true,
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
@@ -100,6 +102,7 @@
     ACCENTS: ACCENTS,
     COLUMNS: COLUMNS,
     GROUPS: GROUPS,
+    DENSITIES: DENSITIES,
     touchRecent: touchRecent,
     defaults: defaults,
     normalize: normalize,
