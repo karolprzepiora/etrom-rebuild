@@ -49,6 +49,9 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 - **zegar rejestracji czasu**: ▶ przy zadaniu (włącza je w toku, zatrzymuje poprzedni zegar osoby), pływający zegar w pasku górnym, wpis ręczny, korekta zapomnianego zegara, czas zapisany dziś w *Mojej pracy*, zużycie budżetu godzin przy etapie; dane jako dopisywane rekordy gotowe pod wspólną bazę (`docs/MULTIUSER.md`),
 - terminy z opisem stanu: *po terminie*, *termin dzisiaj*, *pozostało N dni*; termin projektu zawsze z rokiem i licznikiem dni do końca,
 - **Skrzynka** (`#/skrzynka`, skrót `G S`): wszystko, co wymaga reakcji zalogowanej osoby — zadania do zatwierdzenia (lider, koordynator), zadania zwrócone do poprawy, pisma czekające na odpowiedź (3 dni naprzód i po terminie) i projekty w stanie alarmowym (lider). Pozycje wynikają ze stanu pracy, więc znikają same po załatwieniu sprawy; można je odłożyć do jutra („Odłożone” z przywracaniem), filtrować po rodzaju, a licznik jest w pasku bocznym. Logika w `core/inbox.js`.
+- **Aktualności** (`#/aktualnosci`, skrót `G A`): strumień w stylu mediów społecznościowych — karty ze zmianami statusu zadań (z autorem i powodem zwrotu), pismami, czasem pracy i nowymi projektami oraz wpisami ludzi. Pasek projektów z pierścieniem stanu (alarm / uwaga / w normie), kompozytor wpisu (dla całego biura albo projektu, `Ctrl+Enter`), cztery reakcje, komentarze w karcie, zakładki Wszystko / Moje / Pisma / Wpisy, separatory dni i „Pokaż starsze”. Cudzy czas pracy widzi tylko lider projektu i zarząd; autor i zarząd mogą usuwać wpisy i komentarze. Logika w `core/feed.js` i `core/social.js`.
+- **Plan projektu**: tabela etapów (etap · najbliższy termin · budżet etapu · status). Zużycie etapu to suma czasu całego zespołu plus korekty zarządu. Lider i zarząd widzą godziny („47,5 / 90 h”), pozostali tylko procent zużycia budżetu; zarząd może dodać sztuczną korektę zużycia w formularzu etapu (`core/budget.js`). Postęp i podział na rodzaje trafią do osobnej zakładki „Analiza”.
+- **Numery projektów** wg roku: `RRNN` (2601, 2602…), kolejny proponuje formularz; lista domyślnie po numerze rosnąco (klik w nagłówek odwraca), panel szczegółów jest szary i zwijany (`]`).
 - **Moja praca** (`#/moja-praca`, skrót `G M`; zakładki Wszystko / Dziś / Ten tydzień / Do decyzji / Do poprawy, `J`/`K` po wierszach): zadania wybranej osoby w przedziałach czasu (po terminie, dziś, tydzień, później), zadania do zatwierdzenia dla lidera i koordynatora, zwroty do poprawy i moje projekty; kim jest osoba przy urządzeniu, zapamiętuje preferencja „ja”,
 - szukanie po kodzie, nazwie i zamawiającym; filtry statusu i osoby; cztery sortowania,
 - tabela z przyklejonym nagłówkiem, sortowaniem z nagłówka, wyborem kolumn,
@@ -141,6 +144,7 @@ src/ui/                 warstwa widoku
   teamScreen.js         ekran Zespołu
   myWork.js             ekran Moja praca
   inboxScreen.js        ekran Skrzynka
+  feedScreen.js         ekran Aktualności
   timer.js              zegar, lista czasu i formularz wpisu
   *Form.js              formularze w panelu bocznym
   app.js                stan, adresy, działania, rysowanie
@@ -156,8 +160,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 256 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 186 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 277 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 198 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

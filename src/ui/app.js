@@ -42,6 +42,9 @@
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
     inboxFilter: 'all',
+    feedFilter: 'all',
+    feedLimit: 20,
+    feedOpen: [],
     myView: 'all',
     taskForm: null,
     expandedStages: {},
@@ -72,6 +75,7 @@
     if (parts[0] === 'zespol') return { name: 'team' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'inbox' };
+    if (parts[0] === 'aktualnosci') return { name: 'feed' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
@@ -80,13 +84,14 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : 'projects'));
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : 'projects')));
   }
 
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'inbox') return '#/skrzynka';
+    if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
     return '#/projekty';
   }
@@ -159,7 +164,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : 'projects')) });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : (screen === 'feed' ? 'feed' : 'projects'))) });
   }
 
   function openProject(id, tab) {
@@ -652,7 +657,7 @@
   function applyTaskMove(projectId, stageId, taskId, next, reason) {
     var task = taskOf(projectId, stageId, taskId);
     if (!task) return;
-    var result = Tasks.moveTask(task, next, reason);
+    var result = Tasks.moveTask(task, next, reason, currentMe() || '');
     if (!result.ok) {
       Toast.show({ message: result.error, tone: 'danger' });
       return;
@@ -1416,6 +1421,7 @@
       return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':00';
     }
 
+    var demoSeq = 0;
     function demoTasksFor(code, stages, team) {
       var allowed = Team.projectPeople(team);
       (DEMO_TASKS[code] || []).forEach(function (spec) {
@@ -1427,10 +1433,18 @@
           name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload,
           important: spec.important === true, assignees: assignees
         }, stage.tasks || [], allowed);
-        (DEMO_PATHS[spec.status] || []).forEach(function (step) {
-          var moved = Tasks.moveTask(task, step, spec.reason || 'Uzupełnienie');
-          if (moved.ok) task = moved.task;
+        var path = DEMO_PATHS[spec.status] || [];
+        var actor = assignees[0] || team.leader || '';
+        path.forEach(function (step, stepIndex) {
+          var moved = Tasks.moveTask(task, step, spec.reason || 'Uzupełnienie', (step === 'done' || step === 'changes') ? (team.leader || actor) : actor);
+          if (!moved.ok) return;
+          task = moved.task;
+          // Historia rozłożona na ostatnie dni, żeby strumień wyglądał jak prawdziwa praca.
+          var hoursAgo = (demoSeq * 5 + 2) + (path.length - 1 - stepIndex) * 4;
+          var last = task.history[task.history.length - 1];
+          if (last) last.at = new Date(Date.now() - hoursAgo * 3600000).toISOString();
         });
+        demoSeq += 1;
         stage.tasks = (stage.tasks || []).concat([task]);
       });
     }
@@ -1459,10 +1473,12 @@
         });
         var team = demoTeam(row.code);
         demoTasksFor(row.code, stages, team);
-        result = result.concat([Model.createProject({
+        var created = Model.createProject({
           code: row.code, name: row.name, client: row.client, status: row.status,
           deadline: row.deadline, stages: stages, team: team
-        }, result)]);
+        }, result);
+        created.createdAt = new Date(Date.now() - (14 + added * 11) * 86400000).toISOString();
+        result = result.concat([created]);
         added += 1;
       });
       return result;
@@ -1491,10 +1507,35 @@
         if (!rows || list.some(function (e) { return e.projectId === project.id; })) return;
         rows.forEach(function (row) {
           var res = Mail.create(list, project.id, row, { now: new Date() });
-          if (res.valid) list = res.entries;
+          if (res.valid) {
+            list = res.entries;
+            var made = list[list.length - 1];
+            if (made && row.registeredDate) made.createdAt = row.registeredDate + 'T09:00:00.000Z';
+          }
         });
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
+    });
+    updateWorkspace(function (workspace) {
+      var social = workspace.social || E.Social.empty();
+      if (social.posts.length) return workspace;
+      var byCode = {};
+      workspace.projects.forEach(function (project) { byCode[project.code] = project; });
+      var writers = [demoPersonId(0), demoPersonId(1), demoPersonId(2)];
+      var posts = [
+        { who: writers[0], code: '', text: 'W piątek o 14:00 krótkie spotkanie biura — omówimy obłożenie na listopad.', ago: 30 },
+        { who: writers[1], code: '2602', text: 'Mamy decyzję o warunkach zabudowy odcinka III. Można ruszać z przekrojami.', ago: 20 },
+        { who: writers[2], code: '2601', text: 'Mapy z gminy dotarły — wrzuciłam je do folderu projektu.', ago: 6 }
+      ];
+      posts.forEach(function (row) {
+        var project = row.code ? byCode[row.code] : null;
+        var res = E.Social.addPost(social, { personId: row.who, projectId: project ? project.id : null, text: row.text }, new Date());
+        if (!res.valid) return;
+        res.post.at = new Date(Date.now() - row.ago * 3600000).toISOString();
+        social = res.social;
+        social.posts[social.posts.length - 1] = res.post;
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, social: social });
     });
     Toast.show({
       message: added ? 'Dodano ' + F.count(added, 'projekt przykładowy', 'projekty przykładowe', 'projektów przykładowych') : 'Dane przykładowe są już w programie',
@@ -1565,6 +1606,7 @@
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
+      { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
       { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'powiadomienia zatwierdzenia pisma do reakcji', run: function () { goTo('inbox'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
@@ -1652,6 +1694,37 @@
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
     setInboxFilter: function (value) { store.set({ inboxFilter: value }); },
+    setFeedFilter: function (value) { store.set({ feedFilter: value, feedLimit: 20 }); },
+    loadMoreFeed: function () { store.set({ feedLimit: (store.getState().feedLimit || 20) + 20 }); },
+    toggleFeedComments: function (key) {
+      var open = (store.getState().feedOpen || []).slice();
+      var at = open.indexOf(key);
+      if (at >= 0) open.splice(at, 1); else open.push(key);
+      store.set({ feedOpen: open });
+    },
+    toggleReaction: function (key, reactionId) {
+      var me = currentMe();
+      if (!me) { Toast.show({ message: 'Wybierz w „Mojej pracy”, kim jesteś.', tone: 'danger' }); return; }
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.toggleReaction(ws.social, key, reactionId, me) }); });
+    },
+    addComment: function (key, body) {
+      var result = E.Social.addComment(store.getState().workspace.social, key, currentMe(), body, new Date());
+      if (!result.valid) { Toast.show({ message: result.error, tone: 'danger' }); return false; }
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: result.social }); });
+      return true;
+    },
+    removeComment: function (id) {
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.removeComment(ws.social, id) }); });
+    },
+    addPost: function (body, projectId) {
+      var result = E.Social.addPost(store.getState().workspace.social, { personId: currentMe(), projectId: projectId, text: body }, new Date());
+      if (!result.valid) { Toast.show({ message: result.error, tone: 'danger' }); return false; }
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: result.social }); });
+      return true;
+    },
+    removePost: function (id) {
+      updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.removePost(ws.social, id) }); });
+    },
     setMyView: function (value) { store.set({ myView: value }); },
     snoozeInbox: snoozeInbox,
     unsnoozeInbox: unsnoozeInbox,
@@ -2017,6 +2090,12 @@
     D.patch(nodes.myworkBody, [screen.body]);
   }
 
+  function renderFeed(state) {
+    var screen = E.FeedScreen.view(state, { actions: actions });
+    nodes.feedSummary.textContent = screen.summary;
+    D.patch(nodes.feedBody, [screen.body]);
+  }
+
   function renderInbox(state) {
     var screen = E.InboxScreen.view(state, { actions: actions });
     nodes.inboxSummary.textContent = screen.summary;
@@ -2133,6 +2212,7 @@
     nodes.views.team.hidden = route.name !== 'team';
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.inbox.hidden = route.name !== 'inbox';
+    nodes.views.feed.hidden = route.name !== 'feed';
 
     var project = route.name === 'project' ? findProject(route.projectId) : null;
     E.Shell.render(state, project);
@@ -2148,7 +2228,10 @@
       E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
     ]);
 
-    if (route.name === 'inbox') {
+    if (route.name === 'feed') {
+      document.title = 'Aktualności · ETROM';
+      renderFeed(state);
+    } else if (route.name === 'inbox') {
       document.title = 'Skrzynka · ETROM';
       renderInbox(state);
     } else if (route.name === 'mywork') {
@@ -2236,6 +2319,7 @@
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
       if (event.key === 's' || event.key === 'S') { event.preventDefault(); goTo('inbox'); return; }
+      if (event.key === 'a' || event.key === 'A') { event.preventDefault(); goTo('feed'); return; }
     }
     if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {
@@ -2325,8 +2409,10 @@
     nodes.myworkBody = D.byId('mywork-body');
     nodes.inboxSummary = D.byId('inbox-summary');
     nodes.inboxBody = D.byId('inbox-body');
+    nodes.feedSummary = D.byId('feed-summary');
+    nodes.feedBody = D.byId('feed-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

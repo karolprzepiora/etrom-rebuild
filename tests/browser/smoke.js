@@ -1135,6 +1135,34 @@ async function main() {
     await sleep(200);
     await go('#/projekty/' + mailPid);
 
+    /* 38b. Aktualności: strumień, reakcje, komentarze, wpisy */
+    await go('#/aktualnosci');
+    await sleep(300);
+    check('aktualności: ekran ze strumieniem kart, paskiem projektów i kompozytorem',
+      (await evaluate('return location.hash === "#/aktualnosci" && !document.getElementById("view-feed").hidden && document.querySelectorAll(".fd__card").length > 3 && document.querySelectorAll(".fd__story").length > 2 && !!document.querySelector(".fd__textarea");')));
+    const feedKey = await evaluate('return document.querySelector(".fd__card").dataset.feedKey;');
+    await evaluate('window.ETROM.app.actions.toggleReaction(' + JSON.stringify(feedKey) + ', "heart"); return true;');
+    await sleep(250);
+    check('reakcja pojawia się jako wyróżniony chip i znika po ponownym kliku',
+      (await evaluate('return !!document.querySelector(".fd__card[data-feed-key=" + JSON.stringify(' + JSON.stringify(feedKey) + ') + "] .fd__react.is-mine");'))
+      && (await evaluate('window.ETROM.app.actions.toggleReaction(' + JSON.stringify(feedKey) + ', "heart"); return true;'), await sleep(250), await evaluate('return !document.querySelector(".fd__react.is-mine .fd__emoji") || document.querySelector(".fd__react.is-mine .fd__emoji").textContent !== "❤️";')));
+    await evaluate('window.ETROM.app.actions.toggleFeedComments(' + JSON.stringify(feedKey) + '); return true;');
+    await sleep(250);
+    await evaluate('const i = document.querySelector(".fd__cinput"); i.value = "Sprawdzę jutro"; i.dispatchEvent(new Event("input")); i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(300);
+    check('komentarz po Enterze trafia do strumienia',
+      (await evaluate('return [...document.querySelectorAll(".fd__ctext")].some(n => n.textContent === "Sprawdzę jutro");')));
+    await evaluate('const t = document.querySelector(".fd__textarea"); t.value = "Test wpisu z kompozytora"; t.dispatchEvent(new Event("input")); document.querySelector(".fd__composer .btn--primary").click(); return true;');
+    await sleep(500);
+    check('wpis z kompozytora jest pierwszą kartą i czyści pole',
+      (await evaluate('return /Test wpisu z kompozytora/.test(document.querySelector(".fd__card").textContent) && document.querySelector(".fd__textarea").value === "";')));
+    await evaluate('document.querySelector("#view-feed [data-fk=fd-filter-posts]").click(); return true;');
+    await sleep(250);
+    check('filtr „Wpisy” zostawia tylko wpisy ludzi',
+      (await evaluate('const c = [...document.querySelectorAll(".fd__card")]; return c.length > 0 && c.every(n => n.dataset.kind === "post");')));
+    await evaluate('window.ETROM.app.actions.setFeedFilter("all"); return true;');
+    await sleep(200);
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

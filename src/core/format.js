@@ -84,6 +84,43 @@
     return base + ', ' + pad(d.hour) + ':' + pad(d.minute);
   }
 
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  /**
+   * Czas względny jak w mediach społecznościowych: „przed chwilą”, „5 min temu”,
+   * „2 godz. temu”, „wczoraj, 14:05”, a dalej „28 wrz, 14:05”.
+   * @param {string} iso znacznik czasu
+   * @param {Date} [now]
+   */
+  function ago(iso, now) {
+    var at = new Date(iso);
+    if (!Number.isFinite(at.getTime())) return '';
+    var ref = now instanceof Date ? now : new Date();
+    var diff = ref.getTime() - at.getTime();
+    var clock = pad2(at.getHours()) + ':' + pad2(at.getMinutes());
+    if (diff < 0) return date(at.getFullYear() + '-' + pad2(at.getMonth() + 1) + '-' + pad2(at.getDate()), { now: ref }) + ', ' + clock;
+    var minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'przed chwilą';
+    if (minutes < 60) return minutes + ' min temu';
+    var startToday = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+    if (at.getTime() >= startToday) return Math.floor(minutes / 60) + ' godz. temu';
+    if (at.getTime() >= startToday - 86400000) return 'wczoraj, ' + clock;
+    return date(at.getFullYear() + '-' + pad2(at.getMonth() + 1) + '-' + pad2(at.getDate()), { now: ref }) + ', ' + clock;
+  }
+
+  /** Etykieta dnia do separatorów strumienia: „Dziś”, „Wczoraj”, „pon., 28 wrz”. */
+  function dayLabel(iso, now) {
+    var at = new Date(iso);
+    if (!Number.isFinite(at.getTime())) return '';
+    var ref = now instanceof Date ? now : new Date();
+    var day = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime();
+    var today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+    if (day === today) return 'Dziś';
+    if (day === today - 86400000) return 'Wczoraj';
+    var names = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
+    return names[at.getDay()] + ', ' + date(at.getFullYear() + '-' + pad2(at.getMonth() + 1) + '-' + pad2(at.getDate()), { now: ref });
+  }
+
   /** „57%” bez spacji, zgodnie z zapisem w tabelach. */
   function percent(value) {
     var n = Number(value);
@@ -99,6 +136,8 @@
     dateLong: dateLong,
     dateTime: dateTime,
     percent: percent,
+    ago: ago,
+    dayLabel: dayLabel,
     MONTHS: MONTHS
   };
 

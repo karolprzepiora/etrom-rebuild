@@ -134,7 +134,7 @@
    * Przenosi zadanie do nowego statusu.
    * @returns {{ok: boolean, error: string, task: (Object|null)}}
    */
-  function moveTask(task, next, reason) {
+  function moveTask(task, next, reason, by) {
     if (!task) return { ok: false, error: 'Brak zadania.', task: null };
     if (!canMove(task.status, next)) {
       return { ok: false, error: 'Niedozwolona zmiana statusu.', task: null };
@@ -148,7 +148,8 @@
       from: task.status,
       to: next,
       reason: note.slice(0, LIMITS.reason),
-      at: new Date().toISOString()
+      at: new Date().toISOString(),
+      by: text(by)
     };
 
     var moved = Object.assign({}, task, {
@@ -317,7 +318,8 @@
           from: TASK_STATUS[entry.from] ? entry.from : 'todo',
           to: entry.to,
           reason: text(entry.reason).slice(0, LIMITS.reason),
-          at: entry.at
+          at: entry.at,
+          by: text(entry.by)
         };
       });
 

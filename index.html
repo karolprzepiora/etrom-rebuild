@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="styles/portfolio.css">
   <link rel="stylesheet" href="styles/project.css">
   <link rel="stylesheet" href="styles/inbox.css">
+  <link rel="stylesheet" href="styles/feed.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -81,6 +82,16 @@
             <div id="inbox-body"></div>
           </section>
 
+          <section class="view" id="view-feed" hidden aria-labelledby="feed-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="feed-title">Aktualności</h1>
+                <p class="page-header__description" id="feed-summary"></p>
+              </div>
+            </header>
+            <div id="feed-body"></div>
+          </section>
+
           <section class="view" id="view-mywork" hidden aria-labelledby="mywork-title">
             <header class="page-header">
               <div class="page-header__main">
@@ -125,6 +136,7 @@
   <script src="src/core/team.js"></script>
   <script src="src/core/tasks.js"></script>
   <script src="src/core/timelog.js"></script>
+  <script src="src/core/social.js"></script>
   <script src="src/core/budget.js"></script>
   <script src="src/core/board.js"></script>
   <script src="src/core/mail.js"></script>
@@ -139,6 +151,7 @@
   <script src="src/core/format.js"></script>
   <script src="src/core/insight.js"></script>
   <script src="src/core/inbox.js"></script>
+  <script src="src/core/feed.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
   <script src="src/ui/components.js"></script>
@@ -165,6 +178,7 @@
   <script src="src/ui/teamScreen.js"></script>
   <script src="src/ui/myWork.js"></script>
   <script src="src/ui/inboxScreen.js"></script>
+  <script src="src/ui/feedScreen.js"></script>
   <script src="src/ui/inspector.js"></script>
   <script src="src/ui/shell.js"></script>
   <script src="src/ui/app.js"></script>

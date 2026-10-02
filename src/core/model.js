@@ -15,6 +15,9 @@
   var TimeLog = (typeof module !== 'undefined' && module.exports)
     ? require('./timelog.js')
     : root.ETROM.TimeLog;
+  var Social = (typeof module !== 'undefined' && module.exports)
+    ? require('./social.js')
+    : root.ETROM.Social;
   var Budget = (typeof module !== 'undefined' && module.exports)
     ? require('./budget.js')
     : root.ETROM.Budget;
@@ -22,7 +25,7 @@
     ? require('./mail.js')
     : root.ETROM.Mail;
 
-  var WORKSPACE_VERSION = 7;
+  var WORKSPACE_VERSION = 8;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -402,11 +405,11 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social) };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty() };
   }
 
   var api = {

@@ -330,6 +330,14 @@ formularze na całą szerokość.
 - Kolor tylko dla pilnych: lewa kreska i ikona w tonie alarmu przy pozycji po terminie, reszta neutralna.
 - Obie listy używają zakładek z licznikami (`pf-view`), płaskich wierszy z linią zamiast kart z cieniem i gęstości `--row-h`; `J`/`K` przechodzą po wierszach.
 
+## Aktualności
+
+- Jedna wąska kolumna (42 rem) jak strumień społecznościowy: pasek projektów z pierścieniem stanu, kompozytor, zakładki, karty pod separatorami dni.
+- Karta: awatar, autor, czas względny (`Format.ago`), plakietka projektu, treść, reakcje (chipy; własna reakcja z kolorem akcentu), komentarze rozwijane w karcie. Bez płciowych czasowników: „Zadanie «X» — nowy status: W toku”.
+- Kolor tylko dla stanu projektu (pierścień) i własnych reakcji; cytat powodu zwrotu z kreską w tonie alarmu.
+- Szkice wpisu i komentarzy żyją poza przerysowaniem, żeby klik w reakcję nie kasował pisanego tekstu.
+- Czas pracy innych osób pojawia się tylko liderowi projektu i zarządowi.
+
 ## 9. Jak dodać nowy ekran
 
 1. Struktura: tytuł krojem Display → zdanie z liczbami → kokpit lub pasek narzędzi → treść.
