@@ -1,4 +1,4 @@
-# ETROM — UI/UX Standard v2.1
+# ETROM — UI/UX Standard v2.2
 
 Obowiązujący standard interfejsu ETROM. Każdy nowy ekran i każda nowa funkcja
 korzysta z tych tokenów, komponentów i elementów charakterystycznych.
@@ -8,6 +8,8 @@ Odstępstwo wymaga zmiany tego dokumentu, a nie lokalnego wyjątku w CSS.
 - **Jak to stosować** — ten dokument.
 - Wersja 1.0 ustaliła fundamenty i komponenty; wersja 2.0 nadała im tożsamość
   (kroje, warstwy, kolor „teraz / ryzyko”, rzędna, profil, inspektor).
+- Wersja 2.2 przenosi paletę na barwy logo ETROM: łupek `#78909c` (neutralne tło i struktura
+  w odcieniu stali), stalowy błękit jako „teraz”, magenta `#dd5799` wyłącznie jako znak marki.
 - Wersja 2.1 (szlif produktu) nie zmienia kierunku: kokpit portfela stał się narzędziem
   filtrującym, puste ekrany prowadzą przez pierwsze kroki, tekst pomocniczy urósł do
   rozmiarów wygodnych przy całodziennej pracy.
@@ -37,6 +39,14 @@ motyw wybiera `color-scheme` (`data-theme="light|dark"` albo ustawienie systemu)
 `--ink` (tekst główny, przycisk główny, zaznaczenie) · `--ink-2` (opis) ·
 `--ink-3` (metadane, ≥ 4,5:1 na każdej warstwie) · `--ink-4` (tylko dekoracja) ·
 `--ink-hover`, `--on-ink` · `--done` (zakończone odcinki i węzły).
+
+### Znak marki
+
+`--brand` (magenta z logo) **nie oznacza stanu**. Używamy jej tylko do tożsamości: logo,
+wskaźnika aktywnej pozycji nawigacji, zaznaczenia tekstu. Nie wolno jej używać do statusów,
+przycisków ani ostrzeżeń — żeby nie pomylić z czerwienią ryzyka.
+Logo: `docs/brand/etrom-logo.png` → `tools/build-logo.py` → `styles/logo.css`
+(warstwa barwna + napis malowany `--ink`, więc działa w obu motywach).
 
 ### Kolor „teraz” i „ryzyko”
 

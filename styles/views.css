@@ -534,7 +534,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
    Ustawienia, skróty
    ========================================================= */
 .settings { display: grid; gap: var(--space-1); }
-.settings__head { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-1) var(--space-2) var(--space-3); }
+.settings__head .logo { --logo-h: 2rem; }
+.settings__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) var(--space-2) var(--space-3); }
 .settings__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-1) var(--space-2); min-height: 2.5rem; }
 .settings__label { font-size: var(--fs-sm); color: var(--ink-2); }
 .accent-swatches { display: flex; gap: var(--space-2-5); }

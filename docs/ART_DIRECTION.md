@@ -15,13 +15,19 @@ bez ilustracji, wyłącznie formą.
 
 Charakter: **precyzja kreślarska, spokój dobrego narzędzia, odrobina ciepła.**
 
+## Tożsamość z logo
+
+Paleta wychodzi z logo ETROM: **łupek** (`#78909c`) nadaje chłodny odcień kalce, arkuszowi
+i tuszowi; **magenta** (`#dd5799`) jest drobnym znakiem marki i niczego nie oznacza
+(logo, wskaźnik aktywnej pozycji, zaznaczenie tekstu).
+
 ## Trzy decyzje, które robią różnicę
 
 ### 1. Kolor znaczy „teraz” albo „ryzyko” — nic więcej
 
 Interfejs jest pisany **tuszem** (grafit). Kolor ma tylko dwie role:
 
-- **Nurt** (morska zieleń, `--flow`) — to, co dzieje się teraz: etap w toku,
+- **Nurt** (stalowy błękit wywiedziony z łupka logo, `--flow`) — to, co dzieje się teraz: etap w toku,
   zadanie w toku, projekt w realizacji, pierścień bieżącego etapu.
 - **Stany ryzyka** — bursztyn (stan ostrzegawczy) i czerwień (stan alarmowy).
 

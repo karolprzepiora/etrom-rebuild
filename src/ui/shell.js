@@ -17,17 +17,15 @@
   var getState = null;
 
   var ACCENTS = [
-    { value: 'standard', label: 'Nurt', color: '#0E8299' },
+    { value: 'standard', label: 'Stal', color: '#2C7CA0' },
     { value: 'graphite', label: 'Grafit', color: '#3E4B49' },
     { value: 'raspberry', label: 'Malina', color: '#B4245F' }
   ];
 
-  function brandMark() {
-    return D.el('span', { class: 'brand-mark', attrs: { 'aria-hidden': 'true' } }, [
-      D.svg('svg', { viewBox: '0 0 16 16', width: '16', height: '16', fill: 'none', stroke: 'currentColor', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
-        D.svg('path', { d: 'M2.5 3.5h11L8 12Z', fill: 'currentColor', 'stroke-width': '1.2' }),
-        D.svg('path', { d: 'M4.5 14.5h7', 'stroke-width': '1.5' })
-      ])
+  /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
+  function logo(markOnly) {
+    return D.el('span', { class: 'logo' + (markOnly ? ' logo--mark' : ''), attrs: { 'aria-hidden': 'true' } }, [
+      D.el('span', { class: 'logo__color' }), D.el('span', { class: 'logo__ink' })
     ]);
   }
 
@@ -81,11 +79,8 @@
 
     return D.el('div', { class: 'settings' }, [
       D.el('div', { class: 'settings__head' }, [
-        brandMark(),
-        D.el('div', { class: 'brand-text' }, [
-          D.el('span', { class: 'brand-name', text: 'ETROM' }),
-          D.el('span', { class: 'brand-sub', text: 'Biuro projektowe · ta przeglądarka' })
-        ])
+        logo(false),
+        D.el('span', { class: 'brand-sub', text: 'Biuro projektowe · dane w tej przeglądarce' })
       ]),
       D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Motyw' }), theme.node]),
       D.el('div', { class: 'settings__row' }, [
@@ -122,11 +117,8 @@
       class: 'workspace',
       attrs: { type: 'button', id: 'action-settings', 'aria-label': 'ETROM — ustawienia i dane', 'data-tooltip': 'Ustawienia i dane' }
     }, [
-      brandMark(),
-      D.el('span', { class: 'brand-text' }, [
-        D.el('span', { class: 'brand-name', text: 'ETROM' }),
-        D.el('span', { class: 'brand-sub', text: 'Biuro projektowe' })
-      ]),
+      D.el('span', { class: 'brand-full' }, [logo(false)]),
+      D.el('span', { class: 'brand-rail' }, [logo(true)]),
       Icons.icon('chevronsUpDown', 14)
     ]);
     workspace.lastChild.setAttribute('class', 'workspace__chev');

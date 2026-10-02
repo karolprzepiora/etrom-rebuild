@@ -31,24 +31,18 @@
   align-items: center;
   gap: var(--space-2-5);
   min-width: 0;
-  height: 2.75rem;
+  height: 3rem;
   padding: 0 var(--space-2) 0 var(--space-1-5);
   border-radius: var(--radius-sm);
   transition: background-color var(--duration-fast);
 }
 .workspace:hover, .workspace[aria-expanded="true"] { background: var(--hover); }
 .workspace:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.brand-mark {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 30px; height: 30px;
-  border-radius: 9px;
-  background: var(--ink);
-  color: var(--sheet);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px light-dark(rgb(18 26 25 / 0.25), rgb(0 0 0 / 0.5));
-}
-.brand-mark svg { width: 16px; height: 16px; }
+/* Logo ETROM w przełączniku przestrzeni: pełne w panelu, sam znak po zwinięciu. */
+.brand-full, .brand-rail { display: flex; align-items: center; flex: 1; min-width: 0; }
+.brand-rail { display: none; flex: none; }
+.workspace .logo { --logo-h: 2.375rem; }
+.brand-rail .logo { --logo-h: 2rem; }
 .brand-text { display: grid; min-width: 0; flex: 1; line-height: 1.2; }
 .brand-name { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; letter-spacing: 0.04em; }
 .brand-sub { font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -96,11 +90,16 @@
   font-weight: 500;
   transition: background-color var(--duration-instant) linear, color var(--duration-instant) linear, box-shadow var(--duration-fast);
 }
+.nav__item { position: relative; }
 .nav__item > svg { width: 16px; height: 16px; flex: none; }
 .nav__item:hover { background: var(--hover); color: var(--ink); }
 .nav__item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .nav__item[aria-current] { color: var(--ink); }
 .nav__item[aria-current="page"] { background: var(--sheet); box-shadow: var(--elev-lift); }
+/* Magenta z logo: jedyny znak marki w nawigacji — cienki wskaźnik aktywnej pozycji. */
+.nav__item[aria-current="page"]:not(.nav__item--project)::before {
+  content: ""; position: absolute; left: -1px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand);
+}
 .nav__label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .nav__count { margin-left: auto; }
 .nav__alert { display: inline-flex; align-items: center; gap: 3px; color: var(--alarm-ink); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -117,10 +116,11 @@
 
 /* Zwinięty panel: tylko ikony, podpowiedzi zastępują etykiety. */
 .app--collapsed .sidebar { padding-left: var(--space-2); padding-right: var(--space-2); align-items: center; }
-.app--collapsed .brand-text, .app--collapsed .workspace__chev, .app--collapsed .nav__label,
+.app--collapsed .brand-full, .app--collapsed .brand-text, .app--collapsed .workspace__chev, .app--collapsed .nav__label,
 .app--collapsed .nav__count, .app--collapsed .sidebar__label, .app--collapsed .sidebar__search .grow,
 .app--collapsed .sidebar__search .kbd, .app--collapsed .save-state span, .app--collapsed .nav__alert span { display: none; }
-.app--collapsed .workspace { padding: 0 var(--space-1); }
+.app--collapsed .workspace { padding: 0 var(--space-1); justify-content: center; }
+.app--collapsed .brand-rail { display: flex; }
 .app--collapsed .sidebar__tools { flex-direction: column; }
 .app--collapsed .sidebar__search { flex: none; width: var(--control-md); padding: 0; justify-content: center; }
 .app--collapsed .nav__item { width: var(--control-md); padding: 0; justify-content: center; }

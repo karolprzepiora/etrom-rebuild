@@ -1,8 +1,8 @@
-/* ETROM — tokeny języka wizualnego (UI/UX Standard v2.0).
+/* ETROM — tokeny języka wizualnego (UI/UX Standard v2.2).
    Jedno źródło prawdy. Każda barwa ma postać light-dark(jasny, ciemny).
 
    Zasada koloru: grafit („tusz”) dla struktury i rzeczy zakończonych,
-   Nurt dla tego, co dzieje się teraz, bursztyn i czerwień tylko dla ryzyka.
+   Nurt (stalowy błękit z łupka logo) dla tego, co dzieje się teraz, bursztyn i czerwień tylko dla ryzyka.
    Warstwy: kalka (tło okna) → arkusz (obszar pracy) → arkusz pływający
    (inspektor, menu, okna). Tonem, nie ramką.
    Opis: docs/ART_DIRECTION.md, zasady: docs/DESIGN_SYSTEM.md. */
@@ -11,36 +11,42 @@
   color-scheme: light dark;
 
   /* ---------- Warstwy ---------- */
-  --canvas:        light-dark(#e8ebe9, #07090a);   /* kalka: tło okna, panel nawigacji */
-  --sheet:         light-dark(#fdfdfc, #0f1213);   /* arkusz roboczy */
-  --raised:        light-dark(#ffffff, #161a1c);   /* arkusz pływający: inspektor, menu, okna */
-  --wash:          light-dark(#f4f6f5, #14181a);   /* ton wewnątrz arkusza: grupy, wnęki */
-  --wash-2:        light-dark(#eceff0, #1a1f21);   /* mocniejszy ton: nagłówki grup, tory */
-  --hover:         light-dark(#eff2f1, #1c2123);
-  --pressed:       light-dark(#e4e8e7, #252b2d);
-  --inverse:       light-dark(#15191b, #eceeed);
-  --on-inverse:    light-dark(#f2f4f3, #121617);
-  --backdrop:      light-dark(rgb(14 20 19 / 0.26), rgb(0 0 0 / 0.6));
+  --canvas:        light-dark(#e6eaee, #07090b);   /* kalka: tło okna, panel nawigacji */
+  --sheet:         light-dark(#fcfdfd, #0f1215);   /* arkusz roboczy */
+  --raised:        light-dark(#ffffff, #171b1f);   /* arkusz pływający: inspektor, menu, okna */
+  --wash:          light-dark(#f3f6f8, #14181c);   /* ton wewnątrz arkusza: grupy, wnęki */
+  --wash-2:        light-dark(#eaeef2, #1a1f24);   /* mocniejszy ton: nagłówki grup, tory */
+  --hover:         light-dark(#eef2f5, #1d2227);
+  --pressed:       light-dark(#e2e8ec, #262c32);
+  --inverse:       light-dark(#14191d, #ebeef0);
+  --on-inverse:    light-dark(#f1f4f6, #111518);
+  --backdrop:      light-dark(rgb(12 20 28 / 0.26), rgb(0 0 0 / 0.6));
 
   /* ---------- Linie: tylko tam, gdzie niosą strukturę ---------- */
-  --line:          light-dark(#e2e6e4, #1f2527);
-  --line-strong:   light-dark(#c9cfcd, #343c3f);
-  --control-line:  light-dark(#838c8f, #687275);   /* krawędź pól — ≥ 3:1 (WCAG 1.4.11) */
+  --line:          light-dark(#e0e5e9, #20262b);
+  --line-strong:   light-dark(#c8d0d6, #353d44);
+  --control-line:  light-dark(#7f8b93, #6a757d);   /* krawędź pól — ≥ 3:1 (WCAG 1.4.11) */
 
   /* ---------- Tusz: tekst, przycisk główny, rzeczy zakończone ---------- */
-  --ink:           light-dark(#121819, #e8eceb);
-  --ink-2:         light-dark(#465053, #a9b2b3);
-  --ink-3:         light-dark(#5a6467, #8f999b);
-  --ink-4:         light-dark(#9aa3a5, #5a6366);   /* tylko dekoracja: kreski, nieaktywne */
-  --ink-hover:     light-dark(#2b3336, #ffffff);
-  --on-ink:        light-dark(#ffffff, #0f1213);
-  --done:          light-dark(#1e2629, #cfd6d5);
+  --ink:           light-dark(#11171b, #e8ecef);
+  --ink-2:         light-dark(#435058, #a9b4bb);
+  --ink-3:         light-dark(#566269, #8f9ba3);
+  --ink-4:         light-dark(#9aa6ad, #5a656c);   /* tylko dekoracja: kreski, nieaktywne */
+  --ink-hover:     light-dark(#2a343a, #ffffff);
+  --on-ink:        light-dark(#ffffff, #0f1215);
+  --done:          light-dark(#1d262c, #cfd7dc);
 
   /* ---------- Nurt: „teraz” ---------- */
-  --flow:          light-dark(#0e968a, #2fcfbd);   /* znaczniki, odcinki, kropki */
-  --flow-ink:      light-dark(#08665f, #4ad3c2);   /* tekst w barwie nurtu */
-  --flow-wash:     light-dark(#def1ee, #0e2826);
-  --flow-ring:     light-dark(rgb(14 150 138 / 0.34), rgb(47 207 189 / 0.42));
+  --flow:          light-dark(#2c7ca0, #5cb4d9);   /* znaczniki, odcinki, kropki */
+  --flow-ink:      light-dark(#1c5c7b, #86c8e3);   /* tekst w barwie nurtu */
+  --flow-wash:     light-dark(#e0eef5, #10252e);
+  --flow-ring:     light-dark(rgb(44 124 160 / 0.34), rgb(92 180 217 / 0.42));
+
+  /* ---------- Znak marki: magenta z logo ETROM ----------
+   Nie oznacza stanu. Tylko tożsamość: logo, wskaźnik aktywnej pozycji, zaznaczenie tekstu. */
+  --brand:         light-dark(#dd5799, #ee74ae);
+  --brand-wash:    light-dark(#fbeaf2, #2e1824);
+  --slate:         #78909c;                          /* łupek z logo — tło i struktura wywodzą się z tego odcienia */
 
   /* ---------- Ryzyko i pozostałe stany ---------- */
   --alarm:         light-dark(#d63a2e, #f2685c);
@@ -54,11 +60,11 @@
   --success:       light-dark(#17774a, #5ccb90);
 
   /* ---------- Trasa (profil przebiegu) ---------- */
-  --track:         light-dark(#dce1df, #262d30);
+  --track:         light-dark(#dce2e6, #262e34);
   --track-done:    var(--done);
 
   /* Dziedziny etapów — tylko drobny znak przy ikonie. */
-  --domain-general:     light-dark(#5f6b70, #95a3a6);
+  --domain-general:     light-dark(#5f6d75, #95a5ad);
   --domain-design:      light-dark(#6a52c4, #a491ec);
   --domain-environment: light-dark(#2c7f4f, #6cc794);
   --domain-water:       light-dark(#13739a, #66b6d8);
@@ -131,13 +137,13 @@
   --inspector-width: 25rem;
 
   /* ---------- Elewacja: obrys z cienia + miękkie światło ---------- */
-  --shadow-color: light-dark(rgb(18 30 28 / 0.08), rgb(0 0 0 / 0.5));
-  --shadow-tint: light-dark(rgb(18 30 28 / 0.14), rgb(0 0 0 / 0.6));
-  --elev-lift: 0 0 0 1px light-dark(rgb(18 30 28 / 0.07), rgb(255 255 255 / 0.06)), 0 1px 2px light-dark(rgb(18 30 28 / 0.06), rgb(0 0 0 / 0.4));
-  --elev-hover: 0 0 0 1px light-dark(rgb(18 30 28 / 0.08), rgb(255 255 255 / 0.08)), 0 6px 18px -8px var(--shadow-tint);
-  --elev-sheet: 0 0 0 1px light-dark(rgb(18 30 28 / 0.06), rgb(255 255 255 / 0.05)), 0 1px 3px light-dark(rgb(18 30 28 / 0.05), rgb(0 0 0 / 0.4)), 0 16px 40px -24px var(--shadow-tint);
-  --elev-pop: 0 0 0 1px light-dark(rgb(18 30 28 / 0.08), rgb(255 255 255 / 0.08)), 0 12px 32px -8px var(--shadow-tint), 0 2px 6px -2px var(--shadow-color);
-  --elev-float: 0 0 0 1px light-dark(rgb(18 30 28 / 0.08), rgb(255 255 255 / 0.07)), 0 30px 64px -24px light-dark(rgb(18 30 28 / 0.3), rgb(0 0 0 / 0.75)), 0 4px 12px -4px var(--shadow-color);
+  --shadow-color: light-dark(rgb(16 26 34 / 0.08), rgb(0 0 0 / 0.5));
+  --shadow-tint: light-dark(rgb(16 26 34 / 0.14), rgb(0 0 0 / 0.6));
+  --elev-lift: 0 0 0 1px light-dark(rgb(16 26 34 / 0.07), rgb(255 255 255 / 0.06)), 0 1px 2px light-dark(rgb(16 26 34 / 0.06), rgb(0 0 0 / 0.4));
+  --elev-hover: 0 0 0 1px light-dark(rgb(16 26 34 / 0.08), rgb(255 255 255 / 0.08)), 0 6px 18px -8px var(--shadow-tint);
+  --elev-sheet: 0 0 0 1px light-dark(rgb(16 26 34 / 0.06), rgb(255 255 255 / 0.05)), 0 1px 3px light-dark(rgb(16 26 34 / 0.05), rgb(0 0 0 / 0.4)), 0 16px 40px -24px var(--shadow-tint);
+  --elev-pop: 0 0 0 1px light-dark(rgb(16 26 34 / 0.08), rgb(255 255 255 / 0.08)), 0 12px 32px -8px var(--shadow-tint), 0 2px 6px -2px var(--shadow-color);
+  --elev-float: 0 0 0 1px light-dark(rgb(16 26 34 / 0.08), rgb(255 255 255 / 0.07)), 0 30px 64px -24px light-dark(rgb(16 26 34 / 0.3), rgb(0 0 0 / 0.75)), 0 4px 12px -4px var(--shadow-color);
   --elev-floating: var(--elev-float);
   --elev-modal: var(--elev-float);
 

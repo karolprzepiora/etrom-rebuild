@@ -5,7 +5,7 @@ Aplikacja do prowadzenia projektów, etapów i terminów. Działa lokalnie,
 
 Interfejs mówi własnym językiem — rzędna ▽ stanów wód, profil przebiegu etapów,
 tusz i kalka rysunku technicznego — opisanym w **[kierunku artystycznym](docs/ART_DIRECTION.md)**.
-Zasady stosowania: **[UI/UX Standard v2.1](docs/DESIGN_SYSTEM.md)**, obowiązujący
+Zasady stosowania: **[UI/UX Standard v2.2](docs/DESIGN_SYSTEM.md)**, obowiązujący
 dla każdego kolejnego ekranu i każdej nowej funkcji.
 
 ![ETROM — lista projektów](docs/screenshots/etrom-projekty.png)
@@ -104,7 +104,7 @@ styles/
   views.css             układ treści konkretnych ekranów
 docs/
   ART_DIRECTION.md      język wizualny ETROM i jego uzasadnienie
-  DESIGN_SYSTEM.md      UI/UX Standard v2.1 — obowiązujące zasady interfejsu
+  DESIGN_SYSTEM.md      UI/UX Standard v2.2 — obowiązujące zasady interfejsu
   licenses/             licencje osadzonych krojów (SIL OFL 1.1)
   UI_AUDIT.md           audyt interfejsu przed przebudową
 src/core/               logika, zero kodu dotykającego DOM
@@ -135,6 +135,7 @@ src/ui/                 warstwa widoku
   *Form.js              formularze w panelu bocznym
   app.js                stan, adresy, działania, rysowanie
 tests/                  testy logiki (Node) i test przeglądarki
+tools/build-logo.py      logo → styles/logo.css
 tools/screenshot.js     zrzuty ekranu obu motywów
 ```
 
