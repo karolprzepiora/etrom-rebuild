@@ -144,3 +144,33 @@ test('gaps: wykrywa przerwy między zapisami, z pominięciem krótkich i nakład
   assert.equal(T.gaps(live, at(10, 0), 20)[0].minutes, 40, 'chodzący zegar liczy do teraz');
   assert.deepEqual(T.gaps([], at(10, 0)), []);
 });
+
+test('addManual w trybie od–do: zapisuje dokładny przedział, odrzuca przyszłość, odwrócony zakres i nakładanie', () => {
+  const base = T.start([], spec(), at(9, 0));
+  const closed = T.stop(base.entries, 'p-1', at(10, 0)).entries;               // 09:00–10:00
+  const now = at(15, 0);
+  const day = '2026-10-02';
+  const ok = T.addManual(closed, spec({ date: day, from: '10:15', to: '11:45', note: 'x' }), now);
+  assert.equal(ok.valid, true);
+  assert.equal(T.minutes(ok.entry), 90);
+  assert.equal(new Date(ok.entry.start).getHours(), 10);
+  assert.equal(new Date(ok.entry.start).getMinutes(), 15);
+  assert.equal(T.addManual(closed, spec({ date: day, from: '12:00', to: '11:00' }), now).errors.time, 'Koniec musi być później niż początek.');
+  assert.match(T.addManual(closed, spec({ date: day, from: '14:00', to: '16:00' }), now).errors.time, /przyszłości/);
+  assert.match(T.addManual(closed, spec({ date: day, from: '09:30', to: '10:30' }), now).errors.time, /Nakłada się na zapis 09:00–10:00/);
+  assert.match(T.addManual(closed, spec({ date: day, from: '9', to: '10:30' }), now).errors.time, /GG:MM/);
+  assert.equal(T.addManual(closed, spec({ date: day, from: '10:00', to: '10:30' }), now).valid, true, 'styk końca z początkiem nie jest nakładaniem');
+  assert.equal(T.addManual(closed, spec({ date: day, hours: '2' }), now).valid, true, 'tryb godzin działa jak wcześniej');
+});
+
+test('update w trybie od–do przesuwa wpis i nie liczy samego siebie jako nakładania', () => {
+  const now = at(15, 0);
+  const a = T.addManual([], spec({ date: '2026-10-02', from: '09:00', to: '10:00' }), now);
+  const b = T.addManual(a.entries, spec({ date: '2026-10-02', from: '10:00', to: '11:00' }), now);
+  const moved = T.update(b.entries, a.entry.id, { from: '08:30', to: '09:45' }, now);
+  assert.equal(moved.valid, true);
+  assert.equal(T.minutes(moved.entry), 75);
+  const clash = T.update(b.entries, a.entry.id, { from: '09:30', to: '10:30' }, now);
+  assert.match(clash.errors.time, /Nakłada się/);
+  assert.equal(T.update(b.entries, a.entry.id, { from: '09:00', to: '10:00' }, now).valid, true, 'ten sam przedział jest dozwolony');
+});

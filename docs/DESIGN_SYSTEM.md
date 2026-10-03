@@ -454,3 +454,11 @@ Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po pusz
 - **Zegar z datą** (`Timer.nowClock`, `TimeLog.clockLabel`): dzień tygodnia, data, godzina; podpowiedź z pełną datą i numerem tygodnia ISO. Na telefonie zostaje sama godzina.
 - **Panel „Dzisiaj”**: luki bez zapisu (`TimeLog.gaps`, ≥ 20 min) jako prążki na osi dnia z podsumowaniem, pasek tygodnia pon–ndz (`TimeLog.weekDays`, weekend tylko gdy ma zapis) z kreską normy 8 h i podziałem na projekty, prognoza „norma o HH:MM” przy chodzącym zegarze.
 - Belka ustępuje miejsca w kolejności: pasek, potem zegar zadania; okruszki mają minimum 7,5 rem. Poniżej 30 rem znikają suma i pasek.
+
+## Czas: wpis od–do, przypomnienie, budżet i ekran „Czas”
+
+- **Wpis od–do**: formularz czasu przyjmuje zakres godzin (`from`/`to`) albo liczbę godzin; wpisane godziny mają pierwszeństwo przed zakresem. Nakładanie się wpisów jest odrzucane z komunikatem.
+- **Dopisywanie z paska**: kliknięcie luki (kreskowanej) na osi dnia albo przeciągnięcie po pasku otwiera formularz z wypełnionym zakresem.
+- **Przypomnienie o końcu dnia**: gdy zegar chodzi po „Koniec dnia” (Ustawienia → Czas pracy) albo ≥10 h, okno pyta: ostatnia aktywność / koniec dnia / teraz / ręcznie / zostaw.
+- **Budżet przy zegarze**: chip z procentem zużycia budżetu etapu; godziny widzą tylko lider i zarząd.
+- **Ekran „Czas” (`#/czas`)**: karta czasu (tydzień/miesiąc, eksport CSV: BOM, `;`, CRLF) i plan obciążenia (szacunek `task.estimate` lub domyślny wg wielkości, rozłożony na dni robocze do terminu, pojemność = dni × cel dnia; stany ok/tight/over). Zarząd widzi wszystkich, reszta tylko siebie.

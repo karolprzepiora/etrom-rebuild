@@ -61,7 +61,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
     };
   }
 
@@ -108,6 +108,8 @@
       hdr: source.hdr !== false,
       vivid: clampInt(source.vivid, VIVID_MIN, VIVID_MAX, VIVID_DEFAULT),
       contrast: clampInt(source.contrast, 0, 100, CONTRAST_DEFAULT),
+      dayTarget: clampInt(source.dayTarget, 120, 720, 480),
+      dayEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(source.dayEnd) ? source.dayEnd : '17:00',
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
       // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).

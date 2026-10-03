@@ -42,6 +42,12 @@
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
     analysisProject: null,
+    timeTab: 'sheet',
+    timeMode: 'week',
+    timeOffset: 0,
+    timePerson: null,
+    timeOpen: {},
+    planCell: null,
     analysisTab: 'overview',
     feedEditing: null,
     feedFilter: 'all',
@@ -79,6 +85,7 @@
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
     if (parts[0] === 'analiza') return { name: 'analysis' };
+    if (parts[0] === 'czas') return { name: 'time' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
@@ -87,7 +94,7 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')));
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -95,6 +102,7 @@
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
+    if (route.name === 'time') return '#/czas';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
     return '#/projekty';
   }
@@ -173,7 +181,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects'))) });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -628,7 +636,7 @@
       taskForm: {
         projectId: projectId, stageId: stageId,
         draft: {
-          id: task.id, name: task.name, deadline: task.deadline, workload: task.workload,
+          id: task.id, name: task.name, deadline: task.deadline, workload: task.workload, estimate: task.estimate || '',
           important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || ''
         },
         errors: {}
@@ -879,6 +887,7 @@
     // Praca nad zadaniem oznacza, że jest w toku.
     if (task.status === 'todo' || task.status === 'changes') applyTaskMove(projectId, stageId, taskId, 'working', '');
     Toast.show({ message: 'Zegar włączony o ' + E.Timer.hm(new Date()) + ' · „' + task.name + '”.', tone: 'success', timeout: 4000 });
+    window.setTimeout(checkBudget, 300);
     if (result.stopped) {
       var before = locateEntry(result.stopped);
       Toast.show({ message: 'Poprzedni zegar zatrzymany: ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (before.task ? before.task.name : result.stopped.label) + '”.', tone: 'info', timeout: 4000 });
@@ -889,7 +898,7 @@
     var me = currentMe();
     var run = me && TL.running(entries(), me);
     if (!run) return;
-    if (TL.isForgotten(run)) { openTimeForm({ mode: 'stop', entryId: run.id }); return; }
+    if (TL.isForgotten(run)) { reminderSnooze[run.id] = 0; checkTimerReminder(); return; }
     var result = TL.stop(entries(), me, new Date());
     setEntries(function () { return result.entries; });
     var where = locateEntry(result.stopped);
@@ -940,14 +949,39 @@
     if (spec.mode === 'edit') {
       var entry = entries().filter(function (e) { return e.id === spec.entryId; })[0];
       if (!entry) return;
-      draft = { hours: String(TL.hoursOf(TL.minutes(entry))).replace('.', ','), note: entry.note || '' };
+      var sameDay = TL.dayKey(entry.start) === TL.dayKey(entry.end);
+      draft = { hours: sameDay ? '' : String(TL.hoursOf(TL.minutes(entry))).replace('.', ','), from: sameDay ? TL.clockOf(Date.parse(entry.start)) : '', to: sameDay ? TL.clockOf(Date.parse(entry.end)) : '', note: entry.note || '' };
       store.set({ timeForm: { mode: 'edit', entryId: entry.id, projectId: entry.projectId, stageId: entry.stageId, taskId: entry.taskId, draft: draft, errors: {} } });
       return;
     }
     if (!me && !requireMe()) return;
     var now = new Date();
     var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    store.set({ timeForm: { mode: 'manual', projectId: spec.projectId, stageId: spec.stageId, taskId: spec.taskId, draft: { date: today, hours: '', note: '' }, errors: {} } });
+    var day = spec.date || today;
+    store.set({ timeForm: {
+      mode: 'manual', projectId: spec.projectId, stageId: spec.stageId, taskId: spec.taskId,
+      draft: { date: day, hours: '', from: spec.from || '', to: spec.to || '', note: '' }, errors: {},
+      choices: spec.needsTask ? taskChoices(me) : null
+    } });
+  }
+
+  /** Otwarte zadania osoby do listy wyboru: ostatnio używane na górze. */
+  function taskChoices(personId) {
+    var recent = {};
+    entries().filter(function (e) { return e.personId === personId && e.taskId; })
+      .sort(function (a, b) { return Date.parse(b.start) - Date.parse(a.start); })
+      .forEach(function (e, i) { var k = e.projectId + '|' + e.stageId + '|' + e.taskId; if (!(k in recent)) recent[k] = i; });
+    var out = [];
+    (store.getState().workspace.projects || []).forEach(function (project) {
+      (project.stages || []).forEach(function (stage) {
+        (stage.tasks || []).forEach(function (task) {
+          if (task.status === 'done' || (task.assignees || []).indexOf(personId) < 0) return;
+          var key = project.id + '|' + stage.id + '|' + task.id;
+          out.push({ value: key, label: project.code + ' · ' + task.name + ' (' + Model.describeStage(stage).name + ')', rank: key in recent ? recent[key] : 1e6 });
+        });
+      });
+    });
+    return out.sort(function (a, b) { return a.rank - b.rank; });
   }
 
   function submitTime(values) {
@@ -955,7 +989,7 @@
     if (!form) return;
     var now = new Date();
     var me = currentMe();
-    var fail = function (errors) { store.set({ timeForm: Object.assign({}, form, { draft: values, errors: errors }) }); };
+    var fail = function (errors) { store.set({ timeForm: Object.assign({}, form, { draft: Object.assign({}, values, values.task !== undefined ? { task: values.task } : {}), errors: errors }) }); };
 
     if (form.mode === 'stop') {
       var hours = Number(String(values.hours).replace(',', '.'));
@@ -968,16 +1002,23 @@
       return;
     }
     if (form.mode === 'edit') {
-      var upd = TL.update(entries(), form.entryId, { hours: values.hours, note: values.note }, now);
+      var patch = values.from || values.to ? { from: values.from, to: values.to, note: values.note } : { hours: values.hours, note: values.note };
+      var upd = TL.update(entries(), form.entryId, patch, now);
       if (!upd.valid) { fail(upd.errors); return; }
       setEntries(function () { return upd.entries; });
       store.set({ timeForm: null });
       return;
     }
-    var task = taskOf(form.projectId, form.stageId, form.taskId);
+    var target = { projectId: form.projectId, stageId: form.stageId, taskId: form.taskId };
+    if (form.choices) {
+      var parts = String(values.task || '').split('|');
+      if (parts.length !== 3) { fail({ time: 'Wybierz zadanie.' }); return; }
+      target = { projectId: Number(parts[0]), stageId: parts[1], taskId: parts[2] };
+    }
+    var task = taskOf(target.projectId, target.stageId, target.taskId);
     var added = TL.addManual(entries(), {
-      personId: me, projectId: form.projectId, stageId: form.stageId, taskId: form.taskId,
-      label: task ? task.name : '', date: values.date, hours: values.hours, note: values.note
+      personId: me, projectId: target.projectId, stageId: target.stageId, taskId: target.taskId,
+      label: task ? task.name : '', date: values.date, hours: values.hours, from: values.from, to: values.to, note: values.note
     }, now);
     if (!added.valid) { fail(added.errors); return; }
     setEntries(function () { return added.entries; });
@@ -1004,17 +1045,107 @@
     });
   }
 
-  /** Zegar zapomniany przy komputerze: przy starcie i powrocie do karty proponujemy rozliczenie. */
-  var forgottenAsked = null;
-  function checkForgotten() {
+
+  /** Budżet etapu, na którym chodzi zegar (widok zgodny z zasadą: godziny tylko lider i zarząd). */
+  function timerBudget(entry) {
+    var found = entry && locateEntry(entry);
+    if (!found || !found.project || !found.stage || !(Number(found.stage.hours) > 0)) return null;
+    var v = E.Budget.view(found.project, found.stage, entries(), currentMe(), people(), new Date());
+    var stageName = Model.describeStage(found.stage).name;
+    var tip = 'Etap „' + stageName + '”: ' + v.percent + '% budżetu godzin' + (v.exact ? ' (' + String(Math.round(v.used * 10) / 10).replace('.', ',') + ' z ' + String(v.planned).replace('.', ',') + ' h)' : '');
+    return { percent: v.percent, state: v.state, tip: tip, stage: stageName, code: found.project.code, key: found.project.id + '|' + found.stage.id };
+  }
+
+  /** Jednorazowe ostrzeżenie przy 80% i 100% budżetu etapu, na którym pracuje zegar. */
+  var BUDGET_KEY = 'etrom.budgetWarned';
+  function checkBudget() {
     var run = runningTimer();
-    if (!run || !TL.isForgotten(run) || forgottenAsked === run.id) return;
-    forgottenAsked = run.id;
+    var b = run && timerBudget(run);
+    if (!b || b.state === 'ok') return;
+    var map = {};
+    try { map = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}') || {}; } catch (e) { map = {}; }
+    var mark = b.key + '|' + b.state;
+    if (map[mark]) return;
+    map[mark] = Date.now();
+    try { localStorage.setItem(BUDGET_KEY, JSON.stringify(map)); } catch (e) { /* tryb prywatny */ }
     Toast.show({
-      message: 'Zegar chodzi od ' + TL.duration(TL.minutes(run)) + '. Rozlicz go, zanim zaburzy budżet.',
-      tone: 'warning', actionLabel: 'Rozlicz', onAction: function () { openTimeForm({ mode: 'stop', entryId: run.id }); }, timeout: 15000
+      message: b.state === 'over'
+        ? b.code + ' · etap „' + b.stage + '” przekroczył budżet godzin (' + b.percent + '%).'
+        : b.code + ' · etap „' + b.stage + '” zużył już ' + b.percent + '% budżetu godzin.',
+      tone: 'warning', timeout: 9000
     });
   }
+
+  /* Ostatnia aktywność przy komputerze: do propozycji „zatrzymaj o…”. Zapisywana lokalnie,
+     żeby po powrocie następnego dnia było wiadomo, kiedy człowiek faktycznie skończył. */
+  var ACTIVE_KEY = 'etrom.lastActive';
+  var lastActiveAt = Date.now();
+  var previousActiveAt = 0;
+  var sessionTouched = false;
+  try { previousActiveAt = Number(localStorage.getItem(ACTIVE_KEY)) || 0; } catch (e) { previousActiveAt = 0; }
+  function noteActivity() {
+    var n = Date.now();
+    sessionTouched = true;
+    if (n - lastActiveAt < 15000) return;
+    lastActiveAt = n;
+    try { localStorage.setItem(ACTIVE_KEY, String(n)); } catch (e) { /* tryb prywatny */ }
+  }
+  function effectiveActivity() { return sessionTouched ? lastActiveAt : (previousActiveAt || lastActiveAt); }
+
+  /**
+   * Zegar, który chodzi po końcu dnia pracy albo od zbyt dawna: pytamy, kiedy faktycznie skończyła się praca.
+   * Propozycje: ostatnia aktywność przy komputerze, koniec dnia, teraz, zostaw (ponów za 30 min).
+   */
+  var reminderSnooze = {};
+  var reminderOpen = false;
+  function checkTimerReminder() {
+    var run = runningTimer();
+    if (!run || reminderOpen || Dialog.anyOpen()) return;
+    var now = Date.now();
+    if (reminderSnooze[run.id] && reminderSnooze[run.id] > now) return;
+    var prefs = store.getState().prefs;
+    var endMin = TL.parseClock(prefs.dayEnd);
+    var d = new Date(now);
+    var nowMin = d.getHours() * 60 + d.getMinutes();
+    var startMs = Date.parse(run.start);
+    var sameDay = TL.dayKey(startMs) === TL.dayKey(now);
+    var pastEnd = sameDay ? (endMin !== null && nowMin >= endMin && startMs < new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() + endMin * 60000) : true;
+    var forgotten = TL.isForgotten(run);
+    if (!pastEnd && !forgotten) return;
+
+    var found = locateEntry(run);
+    var name = (found.task && found.task.name) || run.label || 'zadanie';
+    var dayEndMs = endMin !== null ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() + endMin * 60000 : null;
+    var activity = effectiveActivity();
+    var idle = now - activity >= 10 * 60000;
+    var options = [];
+    if (idle && activity > startMs + 60000) options.push({ value: 'activity', label: 'Zatrzymaj o ' + E.Timer.hm(activity) + ' (ostatnia aktywność)', at: activity });
+    if (sameDay && dayEndMs && dayEndMs > startMs + 60000 && dayEndMs < now && !(options.length && options[0].at <= dayEndMs)) options.push({ value: 'dayend', label: 'Zatrzymaj o ' + prefs.dayEnd + ' (koniec dnia)', at: dayEndMs });
+    options.push({ value: 'now', label: 'Zatrzymaj teraz (' + E.Timer.hm(now) + ')', at: now });
+    if (forgotten) options.push({ value: 'manual', label: 'Rozlicz ręcznie…' });
+    options.push({ value: 'keep', label: 'Zostaw włączony', variant: 'secondary' });
+    options.forEach(function (o, i) { if (!o.variant) o.variant = i === 0 ? 'primary' : 'secondary'; });
+
+    reminderOpen = true;
+    Dialog.choose({
+      title: sameDay ? 'Koniec dnia pracy — zegar nadal chodzi' : 'Zegar chodzi od wczoraj',
+      message: (found.project ? found.project.code + ' · ' : '') + name + ' · od ' + (sameDay ? '' : F.dateTime(run.start.slice(0, 16)).split(',')[0] + ' ') + E.Timer.hm(startMs) + ' (' + TL.duration(TL.minutes(run)) + '). Kiedy naprawdę skończyłeś pracę?',
+      options: options
+    }).then(function (value) {
+      reminderOpen = false;
+      var live = runningTimer();
+      if (!live || live.id !== run.id) return;
+      var picked = options.filter(function (o) { return o.value === value; })[0];
+      if (!picked || picked.value === 'keep') { reminderSnooze[run.id] = Date.now() + 30 * 60000; return; }
+      if (picked.value === 'manual') { openTimeForm({ mode: 'stop', entryId: run.id }); return; }
+      var minutes = Math.max(0, Math.round((picked.at - startMs) / 60000));
+      var result = TL.stop(entries(), currentMe(), new Date(), { minutes: minutes });
+      setEntries(function () { return result.entries; });
+      Toast.show({ message: 'Zakończono o ' + E.Timer.hm(picked.at) + ' · ' + TL.duration(minutes) + ' na „' + name + '”.', tone: 'success', timeout: 5000 });
+    });
+  }
+
+  function checkForgotten() { checkTimerReminder(); }
 
   function moveTaskStatus(projectId, stageId, taskId, next) {
     var task = taskOf(projectId, stageId, taskId);
@@ -1390,6 +1521,7 @@
     else document.documentElement.setAttribute('data-accent', prefs.accent);
     document.documentElement.setAttribute('data-density', prefs.density || 'comfortable');
     applyLook(prefs);
+    if (E.Timer && E.Timer.setTarget) E.Timer.setTarget(prefs.dayTarget);
   }
 
   /** Wygląd: paleta, HDR, intensywność i kontrast jako atrybuty i zmienne CSS (podgląd na żywo bez zapisu). */
@@ -1998,6 +2130,30 @@
     Toast.show({ message: 'Pobrano kopię zapasową', tone: 'success', timeout: 4000 });
   }
 
+  /** Eksport karty czasu do CSV: podsumowanie okresu albo lista wpisów. */
+  function exportTime(kind, personId) {
+    var state = store.getState();
+    var now = new Date();
+    var pid = personId || state.prefs.me;
+    var options = { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget };
+    var projectOf = function (id) { var p = findProject(id); return p ? { code: p.code, name: p.name } : { code: String(id), name: '' }; };
+    var rows = kind === 'entries'
+      ? E.Timesheet.entryRows(state.workspace.entries || [], pid, now, options, function (entry) {
+          var found = locateEntry(entry);
+          return { project: projectOf(entry.projectId), stage: found.stage ? Model.describeStage(found.stage).name : '', task: (found.task && found.task.name) || entry.label || '' };
+        })
+      : E.Timesheet.summaryRows(E.Timesheet.build(state.workspace.entries || [], pid, now, options), projectOf);
+    var period = E.Timesheet.period(now, state.timeMode, state.timeOffset);
+    var name = (kind === 'entries' ? 'wpisy-czasu-' : 'karta-czasu-') + TL.dayKey(period.from.getTime()) + '_' + TL.dayKey(period.to.getTime()) + '.csv';
+    var url = URL.createObjectURL(new Blob([E.Timesheet.csv(rows)], { type: 'text/csv;charset=utf-8' }));
+    var link = D.el('a', { attrs: { href: url, download: name } });
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    Toast.show({ message: 'Pobrano ' + name, tone: 'success', timeout: 4000 });
+  }
+
   function importJson(file) {
     var reader = new FileReader();
     reader.onload = function () {
@@ -2034,6 +2190,7 @@
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
+      { label: 'Przejdź do karty czasu', icon: 'clock', meta: now(state.route.name === 'time'), keywords: 'czas godziny tydzień miesiąc eksport csv plan obciążenia', run: function () { goTo('time'); } },
       { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia pisma skrzynka reakcje dziś', run: function () { goTo('mywork'); } },
@@ -2121,6 +2278,13 @@
     toggleTimer: toggleTimer,
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
+    setTime: function (patch) { store.set(patch); },
+    toggleTimeProject: function (id) {
+      var open = Object.assign({}, store.getState().timeOpen || {});
+      if (open[id]) delete open[id]; else open[id] = true;
+      store.set({ timeOpen: open });
+    },
+    exportTime: exportTime,
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
     setAnalysisTab: function (tab) { store.set({ analysisTab: tab }); },
     openAnalysisProject: function (id) { store.set({ analysisProject: id, analysisTab: 'projects' }); },
@@ -2185,6 +2349,10 @@
     isTiming: isTiming,
     logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
     editEntry: function (id) { openTimeForm({ mode: 'edit', entryId: id }); },
+    addTimeEntry: function () { openTimeForm({ mode: 'manual', needsTask: true }); },
+    logTimeRange: function (fromMs, toMs) {
+      openTimeForm({ mode: 'manual', needsTask: true, date: TL.dayKey(fromMs), from: TL.clockOf(fromMs), to: TL.clockOf(toMs) });
+    },
     deleteEntry: deleteEntry,
     addMail: openAddMail,
     editMail: openEditMail,
@@ -2565,6 +2733,13 @@
     D.patch(nodes.feedBody, [screen.body]);
   }
 
+  function renderTime(state) {
+    var screen = E.TimeScreen.view(state, { actions: actions, find: locateEntry });
+    nodes.timeSummary.textContent = screen.summary;
+    D.render(nodes.timeTools, screen.tools ? [screen.tools] : []);
+    D.patch(nodes.timeBody, [screen.body]);
+  }
+
   function renderAnalysis(state) {
     var screen = E.AnalysisScreen.view(state, { actions: actions });
     nodes.analysisSummary.textContent = screen.summary;
@@ -2625,8 +2800,8 @@
       var logged = findProject(current.projectId);
       var loggedTask = taskOf(current.projectId, current.stageId, current.taskId);
       settings.title = current.mode === 'stop' ? 'Rozlicz zegar' : (current.mode === 'edit' ? 'Zmień wpis czasu' : 'Dopisz czas');
-      settings.subtitle = (logged ? logged.code + ' · ' : '') + (loggedTask ? loggedTask.name : 'Zadanie');
-      settings.content = E.Timer.timeForm({ mode: current.mode, draft: current.draft, errors: current.errors, hint: current.hint },
+      settings.subtitle = current.choices ? 'Wybierz zadanie, na które pracowałeś' : (logged ? logged.code + ' · ' : '') + (loggedTask ? loggedTask.name : 'Zadanie');
+      settings.content = E.Timer.timeForm({ mode: current.mode, draft: current.draft, errors: current.errors, hint: current.hint, choices: current.choices },
         { onSubmit: submitTime, onCancel: function () { store.set({ timeForm: null }); } });
     } else if (current === state.mailForm) {
       var mailProject = findProject(current.projectId);
@@ -2683,6 +2858,7 @@
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.feed.hidden = route.name !== 'feed';
     nodes.views.analysis.hidden = route.name !== 'analysis';
+    nodes.views.time.hidden = route.name !== 'time';
 
     var project = route.name === 'project' ? findProject(route.projectId) : null;
     E.Shell.render(state, project);
@@ -2696,10 +2872,13 @@
     D.render(nodes.timerSlot, [
       E.Timer.nowClock(),
       meCurrent ? E.Timer.dayMeter(todays, { find: locateEntry, actions: actions }) : null,
-      E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
+      E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions, budget: timerBudget })
     ]);
 
-    if (route.name === 'analysis') {
+    if (route.name === 'time') {
+      document.title = 'Czas · ETROM';
+      renderTime(state);
+    } else if (route.name === 'analysis') {
       document.title = 'Analiza · ETROM';
       renderAnalysis(state);
     } else if (route.name === 'feed') {
@@ -2885,8 +3064,11 @@
     nodes.analysisSummary = D.byId('analysis-summary');
     nodes.analysisTools = D.byId('analysis-tools');
     nodes.analysisBody = D.byId('analysis-body');
+    nodes.timeSummary = D.byId('time-summary');
+    nodes.timeTools = D.byId('time-tools');
+    nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');
@@ -2971,6 +3153,9 @@
       if (document.visibilityState === 'visible') { E.Timer.tick(); checkForgotten(); }
     });
     window.setTimeout(checkForgotten, 600);
+    window.setInterval(function () { checkTimerReminder(); checkBudget(); }, 60000);
+    window.setTimeout(checkBudget, 900);
+    ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (name) { document.addEventListener(name, noteActivity, { passive: true, capture: true }); });
     document.documentElement.classList.add('is-ready');
   }
 

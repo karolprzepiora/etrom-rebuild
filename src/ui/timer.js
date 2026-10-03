@@ -35,7 +35,9 @@
     });
   }
 
-  var DAY_TARGET = 480; // minut: cel dnia pracy (8 h)
+  function hoursLabel(minutes) { return String(Math.round(minutes / 6) / 10).replace('.', ',') + ' h'; }
+  var DAY_TARGET = 480; // minut: cel dnia pracy (domyślnie 8 h; z ustawień przez Timer.setTarget)
+  function setTarget(minutes) { if (Number(minutes) >= 60) DAY_TARGET = Math.round(Number(minutes)); }
 
   /** Czas dnia podzielony na projekty: zamknięte wpisy (base) + chodzący zegar (liveStart). */
   function dayParts(entries, ctx) {
@@ -142,11 +144,75 @@
     });
     var marker = nowMin >= range.from && nowMin <= range.to
       ? [D.el('i', { class: 'dribbon__now', style: { left: ribbonPct(range, nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [];
+    var trackEl = D.el('span', { class: 'dribbon__track', attrs: { 'data-from': String(range.from), 'data-to': String(range.to), 'data-base': String(range.base), 'data-tooltip': 'Przeciągnij po osi, żeby dopisać czas wstecz' } }, ticks.concat(segs, marker));
+    attachRangePick(trackEl, ctx);
     return D.el('span', { class: 'dribbon', attrs: { 'aria-hidden': 'true', 'data-from': String(range.from), 'data-to': String(range.to), 'data-base': String(range.base) } }, [
       D.el('span', { class: 'dribbon__h t-num', text: String(range.from / 60) }),
-      D.el('span', { class: 'dribbon__track' }, ticks.concat(segs, marker)),
+      trackEl,
       D.el('span', { class: 'dribbon__h t-num', text: String(range.to / 60) })
     ]);
+  }
+
+
+  /**
+   * Zaznaczanie przedziału przeciągnięciem po osi: po puszczeniu otwiera wpis „od–do”
+   * z wybranym zakresem (przyciągany do 5 minut, nie dalej niż „teraz”).
+   * Oś niesie `data-from`, `data-to` (minuty od północy) i `data-base` (północ w ms).
+   */
+  function attachRangePick(track, ctx, skipSelector) {
+    var from = Number(track.getAttribute('data-from'));
+    var to = Number(track.getAttribute('data-to'));
+    var base = Number(track.getAttribute('data-base'));
+    if (!Number.isFinite(from) || !Number.isFinite(to) || !Number.isFinite(base) || !ctx.actions || !ctx.actions.logTimeRange) return;
+    var anchor = null;
+    var box = null;
+    var moved = false;
+    var minuteAt = function (event) {
+      var r = track.getBoundingClientRect();
+      var x = Math.max(0, Math.min(1, (event.clientX - r.left) / Math.max(1, r.width)));
+      return Math.round((from + x * (to - from)) / 5) * 5;
+    };
+    var nowMinute = function () { return Math.floor((Date.now() - base) / 300000) * 5; };
+    var paint = function (a, b) {
+      var lo = Math.max(from, Math.min(a, b));
+      var hi = Math.min(to, Math.max(a, b));
+      box.style.left = ((lo - from) / (to - from) * 100) + '%';
+      box.style.width = ((hi - lo) / (to - from) * 100) + '%';
+      box.setAttribute('data-label', TL.clockOf(base + lo * 60000) + '–' + TL.clockOf(base + hi * 60000) + ' · ' + TL.duration(hi - lo));
+    };
+    track.addEventListener('pointerdown', function (event) {
+      if (event.button !== 0 || (skipSelector && event.target.closest(skipSelector))) return;
+      anchor = minuteAt(event);
+      moved = false;
+      box = D.el('i', { class: 'rangepick', attrs: { 'aria-hidden': 'true' } });
+      track.appendChild(box);
+      paint(anchor, anchor);
+      try { track.setPointerCapture(event.pointerId); } catch (e) { /* starsze przeglądarki */ }
+      event.preventDefault();
+    });
+    track.addEventListener('pointermove', function (event) {
+      if (anchor === null) return;
+      var m = Math.min(minuteAt(event), nowMinute());
+      if (Math.abs(m - anchor) >= 5) moved = true;
+      paint(anchor, m);
+    });
+    var finish = function (event, cancel) {
+      if (anchor === null) return;
+      var m = Math.min(minuteAt(event), nowMinute());
+      var a = Math.min(anchor, m);
+      var b = Math.max(anchor, m);
+      anchor = null;
+      if (box && box.parentNode) box.parentNode.removeChild(box);
+      box = null;
+      if (!moved) return;
+      var swallow = function (e) { e.stopPropagation(); e.preventDefault(); };
+      document.addEventListener('click', swallow, true);
+      window.setTimeout(function () { document.removeEventListener('click', swallow, true); }, 0);
+      if (cancel || b - a < 5) return;
+      ctx.actions.logTimeRange(base + a * 60000, base + b * 60000);
+    };
+    track.addEventListener('pointerup', function (event) { finish(event, false); });
+    track.addEventListener('pointercancel', function (event) { finish(event, true); });
   }
 
   /** Zegar w belce: dzień tygodnia, data i godzina, odświeżany co minutę. */
@@ -170,9 +236,19 @@
     }, [
       D.el('span', { class: 'daymeter__label t-num' }, [
         D.el('span', { class: 'daymeter__total', text: total ? TL.duration(total) : '0 min', attrs: { 'data-dm-total': '1' } }),
-        D.el('span', { class: 'daymeter__of', text: ' / ' + Math.round(DAY_TARGET / 60) + ' h' })
+        D.el('span', { class: 'daymeter__of', text: ' / ' + hoursLabel(DAY_TARGET) })
       ]),
       dayRibbon(entries, ctx, now)
+    ]);
+  }
+
+  /** Wskaźnik budżetu godzin etapu przy zegarze: tylko, gdy etap ma budżet. */
+  function budgetChip(b) {
+    if (!b) return null;
+    var cls = 'timer-pill__budget' + (b.state === 'over' ? ' is-over' : (b.state === 'warn' ? ' is-warn' : ''));
+    return D.el('span', { class: cls, attrs: { 'data-tooltip': b.tip, 'aria-label': b.tip, role: 'img', 'data-budget': String(b.percent) } }, [
+      D.el('span', { class: 'timer-pill__budgetbar', style: { '--p': String(Math.min(100, b.percent)) + '%' }, attrs: { 'aria-hidden': 'true' } }),
+      D.el('span', { class: 't-num', text: b.percent + '%' })
     ]);
   }
 
@@ -191,6 +267,7 @@
         attrs: { 'data-timer-start': String(startMs), 'aria-hidden': 'true' }
       }),
       D.el('span', { class: 'timer-pill__since t-num', text: 'od ' + hm(startMs), attrs: { 'data-tooltip': 'Zegar włączony o ' + hm(startMs) } }),
+      budgetChip(ctx.budget && ctx.budget(entry)),
       D.el('button', {
         class: 'timer-pill__what',
         attrs: { type: 'button', 'data-tooltip': 'Pokaż zadanie', 'data-fk': 'timer-open' },
@@ -278,17 +355,24 @@
       var code = found && found.project ? found.project.code : 'x';
       var name = (found && found.task && found.task.name) || entry.label || 'Zadanie';
       var label = name + ' — ' + (found && found.project ? found.project.code + ', ' : '') + hm(entry.start) + '–' + (entry.end ? hm(entry.end) : 'teraz') + ' (' + TL.duration(TL.minutes(entry)) + ')';
+      var editable = !!entry.end && ctx.actions && ctx.actions.editEntry;
       return D.el('span', {
-        class: 'dayaxis__seg' + (entry.end ? '' : ' is-live'),
+        class: 'dayaxis__seg' + (entry.end ? '' : ' is-live') + (editable ? ' is-editable' : ''),
         style: { left: pct(begin) + '%', width: width + '%', '--seg-h': String(Identity.tileHue(code)) },
-        attrs: { 'data-tooltip': label, role: 'img', 'aria-label': label }
+        attrs: Object.assign({ 'data-tooltip': label + (editable ? ' — kliknij, żeby zmienić' : ''), role: editable ? 'button' : 'img', 'aria-label': label }, editable ? { tabindex: '0' } : {}),
+        on: editable ? { click: function () { ctx.actions.editEntry(entry.id); }, keydown: function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ctx.actions.editEntry(entry.id); } } } : null
       });
     });
 
     var gapList = TL.gaps(list, now, 20);
     var gapEls = gapList.map(function (g) {
       var label = 'Luka bez zapisu ' + hm(g.from) + '–' + hm(g.to) + ' (' + TL.duration(g.minutes) + ')';
-      return D.el('span', { class: 'dayaxis__gap', style: { left: pct(minutesOf(g.from)) + '%', width: Math.max(0.6, pct(minutesOf(g.to)) - pct(minutesOf(g.from))) + '%' }, attrs: { 'data-tooltip': label, role: 'img', 'aria-label': label } });
+      var openGap = function () { if (ctx.actions && ctx.actions.logTimeRange) ctx.actions.logTimeRange(g.from, g.to); };
+      return D.el('span', {
+        class: 'dayaxis__gap', style: { left: pct(minutesOf(g.from)) + '%', width: Math.max(0.6, pct(minutesOf(g.to)) - pct(minutesOf(g.from))) + '%' },
+        attrs: { 'data-tooltip': label + ' — kliknij, żeby uzupełnić', role: 'button', tabindex: '0', 'aria-label': label + '. Uzupełnij wpisem czasu.', 'data-fk': 'gap-fill' },
+        on: { click: openGap, keydown: function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openGap(); } } }
+      });
     });
     var gapTotal = gapList.reduce(function (sum, g) { return sum + g.minutes; }, 0);
     var gapWord = gapList.length === 1 ? 'luka' : (gapList.length % 10 >= 2 && gapList.length % 10 <= 4 && (gapList.length % 100 < 12 || gapList.length % 100 > 14) ? 'luki' : 'luk');
@@ -302,9 +386,11 @@
       ? 'Dziś jeszcze nic nie zapisano.'
       : 'Start dnia ' + hm(first.start) + (live ? ' · zegar chodzi od ' + hm(live.start) : (last ? ' · ostatni zapis zakończony o ' + hm(last.end) : ''));
 
+    var axisTrack = D.el('div', { class: 'dayaxis__track', attrs: { 'data-from': String(from), 'data-to': String(to), 'data-base': String(dayStartMs(now.getTime())), 'data-tooltip': 'Przeciągnij po osi, żeby dopisać czas' } }, gapEls.concat(segs, showNow ? [D.el('span', { class: 'dayaxis__now', style: { left: pct(nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : []));
+    attachRangePick(axisTrack, ctx, '.dayaxis__seg, .dayaxis__gap');
     return D.el('div', { class: 'dayaxis', attrs: { 'aria-label': 'Oś dnia pracy' } }, [
       D.el('p', { class: 'dayaxis__summary t-num', text: summary }),
-      D.el('div', { class: 'dayaxis__track' }, gapEls.concat(segs, showNow ? [D.el('span', { class: 'dayaxis__now', style: { left: pct(nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [])),
+      axisTrack,
       D.el('div', { class: 'dayaxis__ticks', attrs: { 'aria-hidden': 'true' } }, ticks),
       gapList.length ? D.el('p', { class: 'dayaxis__gaps t-num', text: 'Bez zapisu ' + TL.duration(gapTotal) + ' · ' + gapList.length + ' ' + gapWord }) : null
     ]);
@@ -317,7 +403,7 @@
     var days = TL.weekDays(ctx.entries, ctx.meId, new Date(nowMs));
     var shown = days.filter(function (d) { return !d.weekend || d.minutes > 0 || d.today; });
     var total = days.reduce(function (sum, d) { return sum + d.minutes; }, 0);
-    var cap = 600;
+    var cap = Math.max(600, Math.round(DAY_TARGET * 1.25));
     var cols = shown.map(function (day) {
       var tip = new Date(day.date).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' }) + ': ' + (day.minutes ? TL.duration(day.minutes) : 'brak zapisu');
       var segs = day.projects.map(function (p) {
@@ -327,7 +413,7 @@
         return D.el('span', { class: 'eweek__seg', style: { height: Math.min(100, p.minutes / cap * 100) + '%', '--seg-h': String(Identity.tileHue(code)) } });
       });
       return D.el('li', { class: 'eweek__day' + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : ''), attrs: { 'data-tooltip': tip, 'aria-label': tip } }, [
-        D.el('span', { class: 'eweek__bar' }, segs.concat([D.el('i', { class: 'eweek__goal', attrs: { 'aria-hidden': 'true' } })])),
+        D.el('span', { class: 'eweek__bar' }, segs.concat([D.el('i', { class: 'eweek__goal', style: { bottom: (DAY_TARGET / cap * 100) + '%' }, attrs: { 'aria-hidden': 'true' } })])),
         D.el('span', { class: 'eweek__h t-num', text: day.minutes ? String(TL.hoursOf(day.minutes)).replace('.', ',') : '–' }),
         D.el('span', { class: 'eweek__label', text: day.label })
       ]);
@@ -335,7 +421,7 @@
     return D.el('div', { class: 'eweek' }, [
       D.el('div', { class: 'eweek__head' }, [
         D.el('h3', { class: 'eweek__title', text: 'Ten tydzień' }),
-        D.el('span', { class: 'eweek__sum t-num', text: TL.duration(total) + ' / 40 h' })
+        D.el('span', { class: 'eweek__sum t-num', text: TL.duration(total) + ' / ' + hoursLabel(DAY_TARGET * 5) })
       ]),
       D.el('ul', { class: 'eweek__days' }, cols)
     ]);
@@ -385,13 +471,14 @@
     return D.el('section', { class: 'etoday', attrs: { 'aria-label': 'Czas zapisany dziś' } }, [
       D.el('div', { class: 'etoday__head' }, [
         D.el('h2', { class: 'msec__title', text: 'Dzisiaj' }),
+        ctx.actions && ctx.actions.addTimeEntry ? UI.iconButton({ icon: 'plus', label: 'Dopisz czas wstecz', size: 'sm', tooltip: 'Dopisz czas wstecz', attrs: { 'data-fk': 'time-add' }, onClick: function () { ctx.actions.addTimeEntry(); } }) : null,
         D.el('span', { class: 'etoday__total t-num', attrs: { 'data-total': '1' } }, [
           D.el('span', { text: total ? TL.duration(total) : '0 min', attrs: { 'data-dm-total': '1' } }),
-          D.el('span', { class: 'etoday__goal', text: ' / ' + Math.round(DAY_TARGET / 60) + ' h' })
+          D.el('span', { class: 'etoday__goal', text: ' / ' + hoursLabel(DAY_TARGET) })
         ])
       ]),
       meterTrack(parts, now, 'dmtrack--big'),
-      D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + Math.round(DAY_TARGET / 60) + ' h') }),
+      D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + hoursLabel(DAY_TARGET)) }),
       parts.length ? projectShares(parts) : null,
       dayAxis(entries, ctx, new Date()),
       weekStrip(ctx, now),
@@ -413,21 +500,56 @@
     var d = spec.draft || {};
     var errors = spec.errors || {};
     var manual = spec.mode === 'manual';
+    var edit = spec.mode === 'edit';
+    var ranged = manual || edit;
     var date = manual ? UI.input({ id: 'tm-date', type: 'date', value: d.date, error: errors.date }) : null;
+    var task = spec.choices && spec.choices.length
+      ? UI.select({ id: 'tm-task', value: d.task || spec.choices[0].value, options: spec.choices })
+      : null;
+    var from = ranged ? UI.input({ id: 'tm-from', type: 'time', value: d.from || '', error: errors.time, attrs: { 'aria-label': 'Od' } }) : null;
+    var to = ranged ? UI.input({ id: 'tm-to', type: 'time', value: d.to || '', error: errors.time, attrs: { 'aria-label': 'Do' } }) : null;
+    var computed = ranged ? D.el('span', { class: 'tm-range__len t-num', attrs: { 'aria-live': 'polite' } }) : null;
     var hours = UI.input({
       id: 'tm-hours', value: d.hours, error: errors.hours, placeholder: 'np. 1,5',
       attrs: { inputmode: 'decimal', autocomplete: 'off' }
     });
     var note = UI.textarea({ id: 'tm-note', value: d.note, placeholder: 'Co zostało zrobione (nieobowiązkowe)', attrs: { maxlength: '300' } });
+
+    if (ranged) {
+      // Przedział „od–do” i liczba godzin to dwa sposoby na to samo: wpisanie jednego czyści drugie.
+      var refreshLen = function () {
+        var a = TL.parseClock(from.value);
+        var b = TL.parseClock(to.value);
+        computed.textContent = a !== null && b !== null && b > a ? '= ' + TL.duration(b - a) : '';
+      };
+      var onRange = function () { if (from.value || to.value) hours.value = ''; refreshLen(); };
+      from.addEventListener('input', onRange);
+      to.addEventListener('input', onRange);
+      hours.addEventListener('input', function () { if (hours.value) { from.value = ''; to.value = ''; refreshLen(); } });
+      refreshLen();
+    }
+
     return E.Dialog.drawerForm({
       id: 'time-form',
-      submitLabel: spec.mode === 'stop' ? 'Zakończ i zapisz' : (spec.mode === 'edit' ? 'Zapisz zmiany' : 'Dodaj wpis'),
+      submitLabel: spec.mode === 'stop' ? 'Zakończ i zapisz' : (edit ? 'Zapisz zmiany' : 'Dodaj wpis'),
       onCancel: handlers.onCancel,
-      onSubmit: function () { handlers.onSubmit({ date: date ? date.value : undefined, hours: hours.value, note: note.value }); },
+      onSubmit: function () {
+        // Wpisane ręcznie godziny wygrywają z przedziałem, który formularz tylko podpowiada.
+        var useHours = ranged && hours.value && hours.value !== (d.hours || '');
+        handlers.onSubmit({
+          date: date ? date.value : undefined, hours: hours.value, note: note.value,
+          from: from && !useHours ? from.value : '', to: to && !useHours ? to.value : '', task: task ? task.value : undefined
+        });
+      },
       body: [
         spec.hint ? UI.alert({ tone: 'warning', text: spec.hint }) : null,
+        task ? UI.field({ id: 'tm-task', label: 'Zadanie', required: true, control: task, hint: 'Twoje otwarte zadania; ostatnio używane są na górze.' }) : null,
         manual ? UI.field({ id: 'tm-date', label: 'Dzień', required: true, control: date, error: errors.date }) : null,
-        UI.field({ id: 'tm-hours', label: 'Godziny', required: true, control: hours, error: errors.hours, hint: 'Liczba z przecinkiem: 1,5 to godzina i pół.' }),
+        ranged ? UI.field({
+          id: 'tm-from', label: 'Od – do', control: D.el('div', { class: 'tm-range' }, [from, D.el('span', { class: 'tm-range__dash', text: '–', attrs: { 'aria-hidden': 'true' } }), to, computed]),
+          error: errors.time, hint: 'Dokładne godziny pracy. Zamiast tego możesz wpisać same godziny poniżej.'
+        }) : null,
+        UI.field({ id: 'tm-hours', label: ranged ? 'Albo same godziny' : 'Godziny', required: !ranged, control: hours, error: errors.hours, hint: 'Liczba z przecinkiem: 1,5 to godzina i pół.' }),
         UI.field({ id: 'tm-note', label: 'Notatka', optional: true, control: note, error: errors.note })
       ]
     });
@@ -517,5 +639,5 @@
     for (var b = 0; b < bigs.length; b += 1) refreshMeter(bigs[b], now);
   }
 
-  E.Timer = { nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
+  E.Timer = { setTarget: setTarget, nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

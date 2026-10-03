@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -146,4 +146,15 @@ test('wygląd: paleta tylko ze znanych, HDR domyślnie włączony, intensywnoś�
   assert.equal(Prefs.normalize({ contrast: -5 }).contrast, 0);
   assert.equal(Prefs.normalize({ contrast: 130 }).contrast, 100);
   assert.equal(Prefs.normalize({ contrast: 70 }).contrast, 70);
+});
+
+test('cel dnia i koniec dnia pracy: granice i format', () => {
+  assert.equal(Prefs.normalize({}).dayTarget, 480);
+  assert.equal(Prefs.normalize({ dayTarget: 30 }).dayTarget, 120);
+  assert.equal(Prefs.normalize({ dayTarget: 5000 }).dayTarget, 720);
+  assert.equal(Prefs.normalize({ dayTarget: 450 }).dayTarget, 450);
+  assert.equal(Prefs.normalize({}).dayEnd, '17:00');
+  assert.equal(Prefs.normalize({ dayEnd: '18:30' }).dayEnd, '18:30');
+  assert.equal(Prefs.normalize({ dayEnd: '25:00' }).dayEnd, '17:00');
+  assert.equal(Prefs.normalize({ dayEnd: 'koniec' }).dayEnd, '17:00');
 });

@@ -43,6 +43,59 @@
     return Math.max(0, Math.round((end - start) / 60000));
   }
 
+
+  /** „HH:MM” → minuty od północy (albo null). */
+  function parseClock(value) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(text(value));
+    if (!m) return null;
+    var h = Number(m[1]);
+    var mi = Number(m[2]);
+    return h > 23 || mi > 59 ? null : h * 60 + mi;
+  }
+
+  function clockOf(ms) {
+    var d = new Date(ms);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  /** Wpis tej samej osoby, który nakłada się na przedział (chodzący zegar liczy się do `now`). */
+  function findOverlap(entries, personId, startMs, endMs, ignoreId, now) {
+    var list = entries || [];
+    for (var i = 0; i < list.length; i += 1) {
+      var e = list[i];
+      if (e.personId !== personId || e.id === ignoreId) continue;
+      var a = time(e.start);
+      var b = e.end ? time(e.end) : nowMs(now);
+      if (a === null || b === null) continue;
+      if (a < endMs && b > startMs) return e;
+    }
+    return null;
+  }
+
+  function overlapMessage(entry, now) {
+    return 'Nakłada się na zapis ' + clockOf(time(entry.start)) + '–' + (entry.end ? clockOf(time(entry.end)) : 'teraz') + '.';
+  }
+
+  /**
+   * Zakres „od–do” w danym dniu: sprawdza format, kolejność, przyszłość, limit i nakładanie.
+   * @returns {{errors: Object, startMs?: number, endMs?: number}}
+   */
+  function resolveRange(entries, personId, date, from, to, now, ignoreId) {
+    var errors = {};
+    var a = parseClock(from);
+    var b = parseClock(to);
+    if (a === null || b === null) { errors.time = 'Podaj godzinę początku i końca (GG:MM).'; return { errors: errors }; }
+    if (b <= a) { errors.time = 'Koniec musi być później niż początek.'; return { errors: errors }; }
+    if ((b - a) / 60 > MAX_MANUAL_HOURS) { errors.time = 'Jeden wpis nie może mieć więcej niż ' + MAX_MANUAL_HOURS + ' godzin.'; return { errors: errors }; }
+    var dayStart = new Date(date + 'T00:00:00').getTime();
+    var startMs = dayStart + a * 60000;
+    var endMs = dayStart + b * 60000;
+    if (endMs > nowMs(now)) { errors.time = 'Koniec wpisu jest w przyszłości.'; return { errors: errors }; }
+    var clash = findOverlap(entries, personId, startMs, endMs, ignoreId, now);
+    if (clash) { errors.time = overlapMessage(clash, now); return { errors: errors }; }
+    return { errors: errors, startMs: startMs, endMs: endMs };
+  }
+
   function running(entries, personId) {
     var list = entries || [];
     for (var i = 0; i < list.length; i += 1) {
@@ -102,21 +155,35 @@
    */
   function addManual(entries, spec, now) {
     var errors = {};
-    var hours = Number(String(spec.hours === undefined ? '' : spec.hours).replace(',', '.'));
     var date = text(spec.date);
-    if (!Number.isFinite(hours) || hours <= 0) errors.hours = 'Podaj liczbę godzin większą od zera.';
-    else if (hours > MAX_MANUAL_HOURS) errors.hours = 'Jeden wpis nie może mieć więcej niż ' + MAX_MANUAL_HOURS + ' godzin.';
+    var range = text(spec.from) || text(spec.to);
+    var hours = Number(String(spec.hours === undefined ? '' : spec.hours).replace(',', '.'));
+    if (!range) {
+      if (!Number.isFinite(hours) || hours <= 0) errors.hours = 'Podaj liczbę godzin większą od zera.';
+      else if (hours > MAX_MANUAL_HOURS) errors.hours = 'Jeden wpis nie może mieć więcej niż ' + MAX_MANUAL_HOURS + ' godzin.';
+    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + 'T12:00:00'))) errors.date = 'Podaj poprawną datę.';
     else if (new Date(date + 'T00:00:00').getTime() > nowMs(now)) errors.date = 'Czasu nie można zapisać na przyszłość.';
     var note = text(spec.note);
     if (note.length > MAX_NOTE) errors.note = 'Notatka może mieć najwyżej ' + MAX_NOTE + ' znaków.';
+    var startMs;
+    var endMs;
+    if (range && !errors.date) {
+      var resolved = resolveRange(entries, spec.personId, date, spec.from, spec.to, now, null);
+      Object.assign(errors, resolved.errors);
+      startMs = resolved.startMs;
+      endMs = resolved.endMs;
+    }
     if (Object.keys(errors).length) return { valid: false, errors: errors, entries: (entries || []).slice(), entry: null };
 
-    var startMs = new Date(date + 'T12:00:00').getTime() - Math.round(hours * 60) * 60000;
+    if (!range) {
+      startMs = new Date(date + 'T12:00:00').getTime() - Math.round(hours * 60) * 60000;
+      endMs = startMs + Math.round(hours * 60) * 60000;
+    }
     var stamp = new Date(nowMs(now)).toISOString();
     var entry = {
       id: newId(), personId: spec.personId, projectId: spec.projectId, stageId: spec.stageId, taskId: spec.taskId,
-      label: text(spec.label), start: new Date(startMs).toISOString(), end: new Date(startMs + Math.round(hours * 60) * 60000).toISOString(),
+      label: text(spec.label), start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString(),
       note: note, source: 'manual', updatedAt: stamp
     };
     return { valid: true, errors: {}, entries: (entries || []).concat([entry]), entry: entry };
@@ -129,7 +196,12 @@
     if (!target || !target.end) return { valid: false, errors: { hours: 'Nie znaleziono wpisu.' }, entries: (entries || []).slice(), entry: null };
     var data = patch || {};
     var next = Object.assign({}, target, { updatedAt: new Date(nowMs(now)).toISOString() });
-    if (data.hours !== undefined) {
+    if (data.from !== undefined || data.to !== undefined) {
+      var startDay = dayKey(time(target.start));
+      var rr = resolveRange(entries, target.personId, startDay, data.from, data.to, now, target.id);
+      if (rr.errors.time) errors.time = rr.errors.time;
+      else { next.start = new Date(rr.startMs).toISOString(); next.end = new Date(rr.endMs).toISOString(); }
+    } else if (data.hours !== undefined) {
       var hours = Number(String(data.hours).replace(',', '.'));
       if (!Number.isFinite(hours) || hours <= 0) errors.hours = 'Podaj liczbę godzin większą od zera.';
       else if (hours > MAX_MANUAL_HOURS) errors.hours = 'Jeden wpis nie może mieć więcej niż ' + MAX_MANUAL_HOURS + ' godzin.';
@@ -351,6 +423,9 @@
     clock: clock,
     duration: duration,
     hoursOf: hoursOf,
+    parseClock: parseClock,
+    clockOf: clockOf,
+    findOverlap: findOverlap,
     clockLabel: clockLabel,
     isoWeek: isoWeek,
     weekDays: weekDays,

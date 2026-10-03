@@ -1,0 +1,161 @@
+/* ETROM — karta czasu: zapisany czas osoby w tygodniu lub miesiącu, rozbity na projekty i zadania.
+   Czyste funkcje, bez DOM. Eksport CSV (średnik i BOM: Excel w polskich ustawieniach otwiera od razu). */
+(function (root) {
+  'use strict';
+
+  var node = typeof module !== 'undefined' && module.exports;
+  var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
+
+  var DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
+  var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+  var MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
+  var MONTHS_GEN = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+  /**
+   * Okres: tydzień (pon–ndz) albo miesiąc kalendarzowy, przesunięty o `offset` okresów.
+   * @returns {{mode: string, offset: number, from: Date, to: Date, days: Date[], title: string}}
+   */
+  function period(now, mode, offset) {
+    var ref = startOfDay(now instanceof Date ? now : new Date(now));
+    var shift = Number(offset) || 0;
+    var from;
+    var to;
+    var title;
+    if (mode === 'month') {
+      from = new Date(ref.getFullYear(), ref.getMonth() + shift, 1);
+      to = new Date(from.getFullYear(), from.getMonth() + 1, 0);
+      title = MONTHS[from.getMonth()] + ' ' + from.getFullYear();
+    } else {
+      from = addDays(ref, -((ref.getDay() + 6) % 7) + shift * 7);
+      to = addDays(from, 6);
+      title = from.getDate() + (from.getMonth() === to.getMonth() ? '' : ' ' + MONTHS_GEN[from.getMonth()]) + '–' + to.getDate() + ' ' + MONTHS_GEN[to.getMonth()] + ' ' + to.getFullYear();
+    }
+    var days = [];
+    for (var d = from; d.getTime() <= to.getTime(); d = addDays(d, 1)) days.push(d);
+    return { mode: mode === 'month' ? 'month' : 'week', offset: shift, from: from, to: to, days: days, title: title };
+  }
+
+  /**
+   * Karta czasu osoby.
+   * @param {Array} entries wszystkie wpisy czasu
+   * @param {string} personId
+   * @param {Date} now
+   * @param {{mode?: string, offset?: number, target?: number}} [options] target: minuty celu dnia (domyślnie 480)
+   */
+  function build(entries, personId, now, options) {
+    var o = options || {};
+    var target = Number(o.target) > 0 ? Number(o.target) : 480;
+    var p = period(now, o.mode, o.offset);
+    var todayKey = TL.dayKey(now instanceof Date ? now.getTime() : now);
+    var index = {};
+    var days = p.days.map(function (d, i) {
+      var key = TL.dayKey(d.getTime());
+      index[key] = i;
+      return { key: key, date: d.getTime(), label: DAYS[d.getDay()], number: d.getDate(), weekend: d.getDay() === 0 || d.getDay() === 6, today: key === todayKey, future: key > todayKey, minutes: 0 };
+    });
+    var rows = {};
+    var order = [];
+    (entries || []).forEach(function (entry) {
+      if (entry.personId !== personId) return;
+      var i = index[TL.dayKey(entry.start)];
+      if (i === undefined) return;
+      var m = TL.minutes(entry, now);
+      var pid = String(entry.projectId);
+      var row = rows[pid];
+      if (!row) {
+        row = rows[pid] = { projectId: entry.projectId, minutes: 0, cells: days.map(function () { return 0; }), tasks: {}, taskOrder: [] };
+        order.push(pid);
+      }
+      row.minutes += m;
+      row.cells[i] += m;
+      days[i].minutes += m;
+      var tk = entry.stageId + '|' + entry.taskId;
+      var task = row.tasks[tk];
+      if (!task) {
+        task = row.tasks[tk] = { stageId: entry.stageId, taskId: entry.taskId, label: entry.label || '', minutes: 0, cells: days.map(function () { return 0; }) };
+        row.taskOrder.push(tk);
+      }
+      task.minutes += m;
+      task.cells[i] += m;
+      if (entry.label) task.label = entry.label;
+    });
+    var list = order.map(function (k) {
+      var row = rows[k];
+      return {
+        projectId: row.projectId, minutes: row.minutes, cells: row.cells,
+        tasks: row.taskOrder.map(function (t) { return row.tasks[t]; }).sort(function (a, b) { return b.minutes - a.minutes; })
+      };
+    }).sort(function (a, b) { return b.minutes - a.minutes; });
+    var total = days.reduce(function (sum, d) { return sum + d.minutes; }, 0);
+    var workdays = days.filter(function (d) { return !d.weekend; }).length;
+    return {
+      period: p, days: days, rows: list, total: total,
+      target: workdays * target, dayTarget: target, workdays: workdays,
+      activeDays: days.filter(function (d) { return d.minutes > 0; }).length
+    };
+  }
+
+  /** Jedna komórka CSV (średnik jako separator). */
+  function cell(value) {
+    var text = value === null || value === undefined ? '' : String(value);
+    return /[";\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  /** Tablica wierszy → CSV z BOM i końcami CRLF. */
+  function csv(rows) {
+    return '﻿' + rows.map(function (row) { return row.map(cell).join(';'); }).join('\r\n') + '\r\n';
+  }
+
+  function hours(minutes) { return String(Math.round(minutes / 6) / 10).replace('.', ','); }
+
+  /**
+   * Wiersze CSV z podsumowaniem karty: projekt, zadanie, godziny w dniach i razem.
+   * @param {Object} sheet wynik build()
+   * @param {function(*): {code: string, name: string}} project
+   */
+  function summaryRows(sheet, project) {
+    var head = ['Projekt', 'Nazwa projektu', 'Zadanie'].concat(sheet.days.map(function (d) { return d.number + '.' + (new Date(d.date).getMonth() + 1) + ' ' + d.label; }), ['Razem (h)']);
+    var out = [head];
+    sheet.rows.forEach(function (row) {
+      var info = project(row.projectId) || { code: String(row.projectId), name: '' };
+      out.push([info.code, info.name, 'RAZEM'].concat(row.cells.map(function (m) { return m ? hours(m) : ''; }), [hours(row.minutes)]));
+      row.tasks.forEach(function (task) {
+        out.push([info.code, info.name, task.label || task.taskId].concat(task.cells.map(function (m) { return m ? hours(m) : ''; }), [hours(task.minutes)]));
+      });
+    });
+    out.push(['', '', 'SUMA'].concat(sheet.days.map(function (d) { return d.minutes ? hours(d.minutes) : ''; }), [hours(sheet.total)]));
+    return out;
+  }
+
+  /**
+   * Wiersze CSV z pojedynczymi wpisami okresu (do rozliczeń i faktur).
+   * @param {function(Object): {project: {code: string, name: string}, stage: string, task: string}} resolve
+   */
+  function entryRows(entries, personId, now, options, resolve) {
+    var p = period(now, options && options.mode, options && options.offset);
+    var fromMs = p.from.getTime();
+    var toMs = addDays(p.to, 1).getTime();
+    var list = (entries || []).filter(function (e) {
+      var t = Date.parse(e.start);
+      return e.personId === personId && t >= fromMs && t < toMs;
+    }).sort(function (a, b) { return Date.parse(a.start) - Date.parse(b.start); });
+    var out = [['Data', 'Dzień', 'Od', 'Do', 'Minuty', 'Godziny', 'Projekt', 'Nazwa projektu', 'Etap', 'Zadanie', 'Notatka', 'Źródło']];
+    list.forEach(function (e) {
+      var info = resolve(e) || { project: { code: String(e.projectId), name: '' }, stage: '', task: e.label || '' };
+      var start = new Date(e.start);
+      var minutes = TL.minutes(e, now);
+      out.push([
+        TL.dayKey(e.start), DAYS_LONG[start.getDay()], TL.clockOf(Date.parse(e.start)), e.end ? TL.clockOf(Date.parse(e.end)) : '', minutes, hours(minutes),
+        info.project.code, info.project.name, info.stage, info.task, e.note || '', e.source === 'manual' ? 'ręcznie' : 'zegar'
+      ]);
+    });
+    return out;
+  }
+
+  var api = { period: period, build: build, csv: csv, summaryRows: summaryRows, entryRows: entryRows, hours: hours };
+  if (node) module.exports = api;
+  else { root.ETROM = root.ETROM || {}; root.ETROM.Timesheet = api; }
+})(typeof globalThis !== 'undefined' ? globalThis : this);

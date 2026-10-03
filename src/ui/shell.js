@@ -139,6 +139,12 @@
       on: { click: function () { look = Object.assign({}, LOOK_DEFAULTS); actions.setPref(look); syncLook(); } }
     });
 
+    var targetOptions = [240, 300, 360, 420, 450, 480, 540, 600].map(function (m) { return { value: String(m), label: (Math.round(m / 6) / 10 + ' h').replace('.', ',') }; });
+    var dayTarget = UI.select({ id: 'work-target', value: String(prefs.dayTarget || 480), options: targetOptions, on: { change: function () { actions.setPref({ dayTarget: Number(dayTarget.value) }); } }, attrs: { 'data-fk': 'work-target', 'aria-label': 'Cel dnia pracy' } });
+    var endOptions = [];
+    for (var m = 15 * 60; m <= 21 * 60; m += 30) endOptions.push({ value: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), label: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') });
+    var dayEnd = UI.select({ id: 'work-end', value: prefs.dayEnd || '17:00', options: endOptions, on: { change: function () { actions.setPref({ dayEnd: dayEnd.value }); } }, attrs: { 'data-fk': 'work-end', 'aria-label': 'Koniec dnia pracy' } });
+
     function item(label, icon, run, tone, kbd) {
       return D.el('button', {
         class: 'menu__item' + (tone === 'danger' ? ' menu__item--danger' : ''),
@@ -158,6 +164,10 @@
         D.el('span', { class: 'settings__label', text: 'Kolor pracy w toku', attrs: { id: 'accent-label' } }),
         D.el('div', { class: 'accent-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'accent-label' } }, swatches)
       ]),
+      D.el('div', { class: 'menu__separator' }),
+      D.el('p', { class: 'settings__group', text: 'Czas pracy' }),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-target' }, text: 'Cel dnia' }), dayTarget]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-end' }, text: 'Koniec dnia pracy' }), dayEnd, D.el('span', { class: 'settings__hint', text: 'po nim zapytam o niezatrzymany zegar' })]),
       D.el('div', { class: 'menu__separator' }),
       D.el('p', { class: 'settings__group', text: 'Wygląd' }),
       D.el('div', { class: 'settings__row' }, [
@@ -233,6 +243,7 @@
       D.el('nav', { class: 'sidebar__nav', attrs: { 'aria-label': 'Główna' } }, [
         D.el('ul', { class: 'nav' }, [
           D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
+          D.el('li', null, [navItem('time', 'clock', 'Czas', '#/czas')]),
           D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
           D.el('li', null, [navItem('analysis', 'chart', 'Analiza', '#/analiza')]),
           D.el('li', null, [(function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()]),
@@ -270,6 +281,7 @@
     if (route.name === 'team') return [{ label: 'Zespół' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
+    if (route.name === 'time') return [{ label: 'Czas' }];
     if (route.name === 'mywork') return [{ label: 'Moja praca' }];
     if (route.name === 'project') return [{ label: 'Projekty', href: '#/projekty' }, { label: project ? project.name : 'Nie znaleziono' }];
     return [{ label: 'Projekty' }];
@@ -277,7 +289,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
     Object.keys(nodes.nav).forEach(function (key) {
       var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
@@ -293,6 +305,7 @@
     nodes.counts.mywork.classList.toggle('count--alarm', !!(box && (box.overdue || box.urgent)));
     nodes.counts.feed.textContent = '';
     nodes.counts.analysis.textContent = '';
+    nodes.counts.time.textContent = '';
     var alarms = projects.filter(function (p) { return Insight.health(p, now).level === 'alarm'; }).length;
     nodes.alarm.hidden = !alarms;
     D.render(nodes.alarm, alarms ? [Sig.datum('alarm', { size: 12, label: false }), D.el('span', { text: String(alarms) })] : []);

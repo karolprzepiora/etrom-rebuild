@@ -83,6 +83,39 @@
     });
   }
 
+
+  /**
+   * Pytanie z kilkoma wyborami. Zwraca `value` wybranego przycisku albo null (Esc).
+   * @param {{title: string, message?: string, options: Array<{value: string, label: string, variant?: string}>}} options
+   * @returns {Promise<string|null>}
+   */
+  function choose(options) {
+    var settings = options || {};
+    return new Promise(function (resolve) {
+      var dialog = D.el('dialog', { class: 'dialog', attrs: { 'aria-labelledby': 'dialog-title', 'aria-describedby': 'dialog-text' } });
+      var buttons = (settings.options || []).map(function (opt, index) {
+        var b = button(opt.label, opt.variant || (index === 0 ? 'primary' : 'secondary'), { 'data-choice': opt.value }, function () { dialog.close(opt.value); });
+        return b;
+      });
+      D.append(dialog, [
+        D.el('div', { class: 'dialog__card' }, [
+          D.el('div', { class: 'dialog__head' }, [
+            D.el('h2', { class: 'dialog__title', text: settings.title || 'Wybierz', attrs: { id: 'dialog-title' } }),
+            D.el('p', { class: 'dialog__text', text: settings.message || '', attrs: { id: 'dialog-text' } })
+          ]),
+          D.el('div', { class: 'dialog__actions dialog__actions--stack' }, buttons)
+        ])
+      ]);
+      dialog.addEventListener('close', function () {
+        var value = dialog.returnValue && dialog.returnValue !== 'cancel' ? dialog.returnValue : null;
+        dialog.remove();
+        resolve(value);
+      });
+      mount(dialog);
+      if (buttons[0]) buttons[0].focus();
+    });
+  }
+
   /**
    * Pytanie z polem tekstowym. Zwraca tekst albo null przy anulowaniu.
    * @param {{title: string, message?: string, label: string, placeholder?: string,
@@ -251,6 +284,7 @@
 
   root.ETROM.Dialog = {
     confirm: confirm,
+    choose: choose,
     prompt: prompt,
     drawerForm: drawerForm,
     openDrawer: openDrawer,

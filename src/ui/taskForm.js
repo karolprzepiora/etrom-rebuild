@@ -29,6 +29,7 @@
       id: 'tk-workload', value: values.workload || 'medium',
       options: Object.keys(Tasks.WORKLOAD).map(function (key) { return { value: key, label: Tasks.WORKLOAD[key] }; })
     });
+    var estimate = UI.input({ id: 'tk-estimate', value: values.estimate ? String(values.estimate).replace('.', ',') : '', error: problems.estimate, placeholder: 'np. 16', attrs: { inputmode: 'decimal', autocomplete: 'off' } });
     var description = UI.textarea({ id: 'tk-description', value: values.description, placeholder: 'Zakres, ustalenia, odnośniki do rysunków…' });
     var important = UI.checkbox({ id: 'tk-important', checked: !!values.important, label: 'Zadanie ważne', hint: 'Wyróżnia zadanie na liście etapu.' });
 
@@ -67,6 +68,7 @@
           name: name.value,
           deadline: deadline.value,
           workload: workload.value,
+          estimate: estimate.value,
           important: important.querySelector('input').checked,
           description: description.value,
           assignees: Object.keys(boxes).filter(function (id) { return boxes[id].checked; })
@@ -81,6 +83,7 @@
             UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline }),
             UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload })
           ]),
+          UI.field({ id: 'tk-estimate', label: 'Szacunek godzin', optional: true, control: estimate, error: problems.estimate, hint: 'Pracochłonność całego zadania; na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }),
           important
         ]),
         D.el('hr', { class: 'form__divider' }),

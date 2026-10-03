@@ -706,6 +706,55 @@ async function main() {
       && await evaluate('return /1 h 30 min|4 h/.test(document.querySelector("#inspector .insp-time__total").textContent);'));
     await pressKey('escape');
 
+    /* 21b. Wpis od–do, wybór zadania, kontrola zakresu */
+    await go('#/moja-praca');
+    await click('[data-fk="time-add"]');
+    await sleep(300);
+    check('„Dopisz czas wstecz” otwiera formularz z wyborem zadania i polami od–do',
+      await evaluate('return document.querySelectorAll("#tm-task option").length >= 1 && !!document.getElementById("tm-from") && !!document.getElementById("tm-to");'));
+    await evaluate('document.getElementById("tm-from").value = "10:30"; document.getElementById("tm-to").value = "10:00"; document.getElementById("time-form").requestSubmit(); return true;');
+    await sleep(200);
+    check('odwrócony zakres od–do pokazuje błąd i nie zapisuje',
+      await evaluate('return /Koniec musi być później/.test(document.querySelector("#time-form .field__error").textContent);'));
+    const beforeRange = await state('(s.workspace.entries || []).length');
+    await evaluate('const d = new Date(Date.now() - 90 * 86400000); const k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); document.getElementById("tm-date").value = k; document.getElementById("tm-from").value = "03:10"; document.getElementById("tm-to").value = "03:40"; document.getElementById("time-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('wpis od–do zapisuje dokładny przedział 30 minut',
+      (await state('(s.workspace.entries || []).length')) === beforeRange + 1
+      && await evaluate('const e = window.ETROM.app.store.getState().workspace.entries.filter(x => x.source === "manual").sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0]; return window.ETROM.TimeLog.minutes(e) === 30 && new Date(e.start).getHours() === 3 && new Date(e.start).getMinutes() === 10;'));
+
+    /* 21c. Ekran „Czas”: karta czasu, eksport, plan obciążenia */
+    await go('#/czas');
+    check('ekran „Czas” pokazuje kartę czasu z macierzą dni i sumą',
+      await evaluate('return !!document.querySelector(".ts-table") && document.querySelectorAll(".ts-table thead .ts-day").length === 7 && !!document.querySelector(".ts-table tfoot .ts-sum") && document.querySelector("#view-time").hidden === false;'));
+    check('pozycja „Czas” w menu bocznym jest zaznaczona',
+      await evaluate('return document.querySelector(\'.sidebar a[href="#/czas"]\').getAttribute("aria-current") === "page";'));
+    await click('[data-fk="ts-prev"]');
+    await sleep(200);
+    check('przesunięcie okresu zmienia tytuł i wraca przyciskiem „Ten tydzień”',
+      (await state('s.timeOffset')) === -1 && await evaluate('return !!document.querySelector("[data-fk=ts-today]");'));
+    await click('[data-fk="ts-today"]');
+    await click('.ts-bar .segmented button:nth-child(2)');
+    await sleep(200);
+    check('widok miesiąca ma kolumnę na każdy dzień miesiąca',
+      await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-table thead .ts-day").length === days;'));
+    await click('[data-fk="time-tab-plan"]');
+    await sleep(300);
+    check('zakładka „Plan obciążenia” pokazuje siatkę tygodni z pojemnością',
+      await evaluate('return !!document.querySelector(".pl-table") && document.querySelectorAll(".pl-table thead .pl-week").length === 7 && document.querySelectorAll(".pl-btn").length >= 7;'));
+    await evaluate('const b = document.querySelector(".pl-btn:not(.is-empty):not(.pl-btn--free)"); if (b) b.click(); return !!b;');
+    await sleep(200);
+    check('kliknięcie komórki planu pokazuje zadania z godzinami',
+      await evaluate('return !!document.querySelector(".pl-detail") && document.querySelectorAll(".pl-task").length >= 1;'));
+    await click('[data-fk="time-tab-sheet"]');
+    await sleep(200);
+    await click('[data-fk="ts-export-menu"]');
+    await sleep(200);
+    check('menu eksportu ma podsumowanie i listę wpisów',
+      await evaluate('return [...document.querySelectorAll("[role=menuitem]")].filter(x => /Podsumowanie okresu|Wszystkie wpisy/.test(x.textContent)).length === 2;'));
+    await pressKey('escape');
+    await go('#/moja-praca');
+
     /* 22. Wybór etapów przy zakładaniu projektu */
     await go('#/projekty');
     await pressKey('n');
@@ -1201,7 +1250,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setAnalysisTab("overview"); window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
     await sleep(400);
     check('Analiza: pracownik nie ma dostępu do analizy ani finansów',
-      await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-anTab=finance]") && !document.querySelector(".an-tabs");'));
+      await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-anTab=finance]") && !document.querySelector("#view-analysis .an-tabs");'));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await go('#/projekty');
 

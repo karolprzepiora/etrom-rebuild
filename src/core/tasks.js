@@ -64,6 +64,8 @@
     var name = text(data.name);
     var deadline = text(data.deadline);
     var workload = text(data.workload) || 'medium';
+    var estimateRaw = String(data.estimate === undefined || data.estimate === null ? '' : data.estimate).trim().replace(',', '.');
+    var estimate = estimateRaw === '' ? 0 : Number(estimateRaw);
     var assignees = Array.isArray(data.assignees) ? data.assignees.filter(Boolean) : [];
 
     if (!name) errors.name = 'Podaj nazwę zadania.';
@@ -71,6 +73,8 @@
 
     if (deadline && !isDateTime(deadline)) errors.deadline = 'Użyj poprawnej daty.';
     if (!Object.prototype.hasOwnProperty.call(WORKLOAD, workload)) errors.workload = 'Wybierz nakład pracy.';
+    if (!Number.isFinite(estimate) || estimate < 0 || estimate > 2000) errors.estimate = 'Podaj liczbę godzin od 0,5 do 2000 albo zostaw puste.';
+    else if (estimate > 0 && estimate < 0.5) errors.estimate = 'Najmniejszy szacunek to pół godziny.';
 
     var unknown = assignees.filter(function (id) { return allowed.indexOf(id) < 0; });
     if (unknown.length) errors.assignees = 'Realizatorem może być tylko osoba z zespołu projektu.';
@@ -85,6 +89,7 @@
         name: name,
         deadline: deadline,
         workload: workload,
+        estimate: estimate > 0 ? Math.round(estimate * 10) / 10 : 0,
         assignees: unique,
         description: text(data.description).slice(0, LIMITS.description),
         important: data.important === true,
@@ -324,8 +329,9 @@
         };
       });
 
+      var estimate = Number(item.estimate);
       taken[id] = true;
-      result.push({
+      result.push(Object.assign({
         id: id,
         name: name.slice(0, LIMITS.name),
         status: status,
@@ -339,7 +345,7 @@
         feedback: text(item.feedback).slice(0, LIMITS.reason),
         history: history,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
-      });
+      }, Number.isFinite(estimate) && estimate >= 0.5 && estimate <= 2000 ? { estimate: Math.round(estimate * 10) / 10 } : {}));
     });
 
     return result;
