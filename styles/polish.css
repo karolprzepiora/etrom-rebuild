@@ -577,3 +577,90 @@ body, .app {
       light-dark(oklch(.25 .075 285), oklch(.14 .045 280));
   }
 }
+
+/* =====================================================================
+   Jedna spójna aplikacja: wspólny język „aurora” w całym arkuszu
+   - żywsze akcenty (marka, nurt), chłodno-fioletowy ton linii i wnęk
+   - przycisk główny w gradiencie aurory, połysk i kolorowa poświata kart
+   - projekty niosą swoją barwę także w listach pracy
+   ===================================================================== */
+:root {
+  --brand:      light-dark(oklch(.64 .24 352), oklch(.74 .2 352));
+  --flow:       light-dark(oklch(.52 .125 235), oklch(.76 .12 225));
+  --flow-ink:   light-dark(oklch(.4 .1 235), oklch(.82 .09 225));
+  --flow-ring:  light-dark(oklch(.52 .125 235 / .38), oklch(.76 .12 225 / .45));
+  --line:       light-dark(oklch(.915 .012 285), oklch(.28 .022 285));
+  --line-strong: light-dark(oklch(.82 .02 285), oklch(.38 .025 285));
+  --wash:       light-dark(oklch(.969 .008 285), oklch(.205 .016 282));
+  --wash-2:     light-dark(oklch(.94 .012 285), oklch(.245 .02 282));
+  --hover:      light-dark(oklch(.955 .012 285), oklch(.255 .02 282));
+  --shadow-tint: light-dark(oklch(.3 .09 285 / .22), rgb(0 0 0 / .65));
+  --aurora-1: oklch(.6 .25 352);
+  --aurora-2: oklch(.46 .22 288);
+  --grad-aurora: linear-gradient(135deg, var(--aurora-1), var(--aurora-2));
+  --card-gloss: linear-gradient(180deg, light-dark(rgb(255 255 255 / .75), rgb(255 255 255 / .05)), transparent 46%);
+}
+
+/* arkusz treści: delikatna łuna aurory u góry, spójna z tłem okna */
+.sheet {
+  background:
+    radial-gradient(52rem 15rem at 92% -5rem, light-dark(oklch(.8 .1 352 / .22), oklch(.5 .18 352 / .16)), transparent 70%),
+    radial-gradient(40rem 14rem at 4% -4rem, light-dark(oklch(.82 .08 255 / .22), oklch(.5 .15 255 / .15)), transparent 70%),
+    var(--sheet);
+}
+
+/* przycisk główny */
+.btn--primary {
+  background: var(--grad-aurora); color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(0 0 0 / .18), 0 10px 22px -10px oklch(.55 .26 335 / .75);
+}
+.btn--primary:hover:not(:disabled) { background: var(--grad-aurora); filter: brightness(1.1) saturate(1.1); }
+.btn--primary:active:not(:disabled) { filter: brightness(.95); }
+.btn--primary .kbd { background: rgb(255 255 255 / .2); color: #fff; }
+.btn--secondary { background-image: var(--card-gloss); }
+
+/* karty i panele: połysk na górnej krawędzi */
+.an-card, .an-tile, .fd__widget, .fd__card, .fd__composer, .trow, .kb-card, .card,
+.plan-item > .plan-row, .mywork__aside > *, .pd-prop, .pf-rail, .wl, .kb-col {
+  background-image: var(--card-gloss);
+}
+.fd__card, .fd__composer, .fd__widget, .an-card, .an-tile, .mywork__aside > *, .pf-rail {
+  box-shadow: inset 0 1px 0 light-dark(rgb(255 255 255 / .9), rgb(255 255 255 / .06)), inset 0 0 0 1px var(--line), 0 14px 30px -20px var(--shadow-tint);
+}
+.an-tile--bad { box-shadow: inset 0 0 0 1px var(--line), inset 4px 0 0 var(--alarm), 0 14px 30px -20px var(--shadow-tint); }
+.an-tile--warn { box-shadow: inset 0 0 0 1px var(--line), inset 4px 0 0 var(--warn), 0 14px 30px -20px var(--shadow-tint); }
+
+/* zakładki i liczniki */
+.pf-view.is-active, .an-tab.is-active, .an-tab[aria-selected="true"] { box-shadow: 0 1px 3px light-dark(rgb(16 26 34 / .12), rgb(0 0 0 / .5)), 0 0 0 1px var(--line), 0 8px 16px -10px oklch(.55 .25 340 / .55); }
+.pf-view.is-active .pf-view__count, .nav__count--accent { background: var(--grad-aurora); color: #fff; box-shadow: 0 4px 10px -4px oklch(.55 .26 335 / .7); }
+
+/* wiersze pracy niosą barwę projektu */
+.ibx__row { box-shadow: inset 4px 0 0 oklch(.52 .17 var(--hue, 250)); border-radius: 12px; }
+.ibx__row.is-urgent { box-shadow: inset 4px 0 0 oklch(.52 .17 var(--hue, 250)), inset 0 0 0 1px var(--alarm); }
+.ibx__row:hover { background: var(--wash); }
+
+/* zaznaczenie i ostrość */
+::selection { background: oklch(.64 .24 352 / .3); }
+
+/* nagłówek ekranu: baner aurory, jak pasek boczny i baner projektu */
+.page-header {
+  --ink: #fff; --ink-2: rgb(255 255 255 / .92); --ink-3: rgb(255 255 255 / .78); --line: rgb(255 255 255 / .25);
+  position: relative; overflow: hidden; isolation: isolate; color: #fff;
+  padding: var(--space-5) var(--space-6); border-radius: 22px;
+  background:
+    radial-gradient(34rem 16rem at 96% -30%, oklch(.66 .26 352 / .75), transparent 62%),
+    radial-gradient(30rem 14rem at 0% 130%, oklch(.55 .2 255 / .6), transparent 64%),
+    light-dark(oklch(.3 .09 285), oklch(.22 .07 282));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 22px 40px -22px oklch(.4 .2 300 / .7);
+}
+.page-header::before { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: repeating-radial-gradient(circle at 104% -10%, transparent 0 22px, rgb(255 255 255 / .1) 22px 23px);
+  -webkit-mask-image: radial-gradient(circle at 104% -10%, #000, transparent 62%); mask-image: radial-gradient(circle at 104% -10%, #000, transparent 62%); }
+.page-header .t-page-title, .page-header h1 { color: #fff; }
+.page-header .page-header__description { color: rgb(255 255 255 / .82); }
+.page-header .btn--primary { background: #fff; color: oklch(.4 .2 300); box-shadow: 0 10px 22px -10px rgb(0 0 0 / .5); }
+.page-header .btn--primary:hover:not(:disabled) { background: #fff; filter: brightness(.96); }
+.page-header .btn--primary .kbd { background: oklch(.4 .2 300 / .12); color: oklch(.4 .2 300); }
+.page-header .btn--secondary, .page-header .btn--tertiary { background: rgb(255 255 255 / .16); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28); }
+.page-header .btn--ghost { color: #fff; }
+@media (max-width: 40rem) { .page-header { padding: var(--space-4); border-radius: 18px; } }

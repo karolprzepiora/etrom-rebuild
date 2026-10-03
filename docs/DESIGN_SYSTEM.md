@@ -432,3 +432,7 @@ Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toas
 ## Panel boczny „aurora”
 
 Tło okna (`body`, `.app`) to głęboka granatowo-fioletowa baza z trzema łunami w oklch (magenta marki, błękit, turkus); na ekranach P3 łuny są mocniejsze. Panel boczny ma lokalnie odwrócone tokeny tuszu (biały tekst, szklane aktywne pozycje z poświatą), więc logo, ikony i liczniki zmieniają się same. Arkusz treści pływa nad tłem bez zmian. Na telefonie szuflada ma tę samą aurorę.
+
+## Jeden język „aurora” w całej aplikacji
+
+Pasek boczny, nagłówek każdego ekranu (`.page-header`), baner projektu i przycisk główny należą do jednej rodziny: głęboki granat–fiolet z magentą marki (`--aurora-1`, `--aurora-2`, `--grad-aurora`) i konturami warstwic. Arkusz treści jest jasny dla czytelności, ale ma chłodno-fioletowy ton linii i wnęk, połysk na górnej krawędzi kart (`--card-gloss`) i łunę aurory u góry. Barwę projektu niosą kafle, wiersze, baner, kody, kropka w panelu i lewa krawędź wierszy w „Mojej pracy”. Stan (alarm, uwaga) pozostaje czerwienią i bursztynem.

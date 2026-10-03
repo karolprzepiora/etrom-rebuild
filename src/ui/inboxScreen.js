@@ -64,7 +64,7 @@
       item.stage ? D.el('span', { class: 'truncate', text: E.Model.describeStage(item.stage).name }) : null,
       item.detail ? D.el('span', { class: 'truncate ibx__detail', text: item.detail }) : null
     ];
-    return D.el('li', { class: 'ibx__row' + (item.urgent ? ' is-urgent' : ''), dataset: { inboxKey: item.key, kind: item.kind } }, [
+    return D.el('li', { class: 'ibx__row' + (item.urgent ? ' is-urgent' : ''), style: E.Identity.hueStyle(item.project.code), dataset: { inboxKey: item.key, kind: item.kind } }, [
       D.el('span', { class: 'ibx__kind', attrs: { 'data-tooltip': Inbox.KINDS[item.kind].label } }, [Icons.icon(ICONS[item.kind], 16)]),
       D.el('div', { class: 'ibx__body' }, [
         D.el('span', { class: 'ibx__titleline' }, [
