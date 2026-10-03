@@ -491,3 +491,7 @@ Pomiar komputowanych stylów na wszystkich ekranach wykazał rozjazdy; ujednolic
 - **Rodzaj projektu** (`core/kinds.js`): jaz, zapora, zbiornik/staw, pompownia, elektrownia wodna, wały, mała retencja, rzeka/przepust, ekspertyza/OST, inny. `project.kind` wybierany w formularzu („Rodzaj projektu”) albo rozpoznawany z nazwy po słowach kluczowych (`Kinds.of(project)`).
 - **Kreskowa grafika** (`ui/kindArt.js`, siatka 120×80, kontur `currentColor`): jasny znak wodny w rogu kafla i banera projektu, mała ikona obok numeru na liście. Kolor tła zostaje do rozróżniania numerów, grafika mówi o typie.
 - **Kafle w jednolitym kolorze** (domyślnie): płaski, średnio nasycony kolor projektu, bez połysku, warstwic i poświaty. Wersja z gradientem i połyskiem: Ustawienia → Wygląd → „Kafle z połyskiem” (`data-tiles="full"`).
+
+## Ekran Czas w standardzie Analizy
+
+Karta czasu i plan obciążenia używają tej samej siatki co mapa cieplna w Analizie (`.an-hm`): karta `an-card` z tytułem i objaśnieniem, zaokrąglone komórki, nazwa po lewej, podsumowanie (godziny i procent) po prawej. Barwa komórki karty czasu = barwa projektu, nasycenie = udział w dniu pracy; wiersz „Razem” i plan obciążenia używają skali obciążenia z Analizy (spokojna → bursztyn → czerwień).

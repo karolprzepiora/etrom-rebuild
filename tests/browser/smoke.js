@@ -746,7 +746,7 @@ async function main() {
     /* 21c. Ekran „Czas”: karta czasu, eksport, plan obciążenia */
     await go('#/czas');
     check('ekran „Czas” pokazuje kartę czasu z macierzą dni i sumą',
-      await evaluate('return !!document.querySelector(".ts-table") && document.querySelectorAll(".ts-table thead .ts-day").length === 7 && !!document.querySelector(".ts-table tfoot .ts-sum") && document.querySelector("#view-time").hidden === false;'));
+      await evaluate('return !!document.querySelector(".ts-hm") && document.querySelectorAll(".ts-hm__head .ts-hm__day").length === 7 && !!document.querySelector(".ts-hm__foot .an-hm__sum") && document.querySelector("#view-time").hidden === false;'));
     check('pozycja „Czas” w menu bocznym jest zaznaczona',
       await evaluate('return document.querySelector(\'.sidebar a[href="#/czas"]\').getAttribute("aria-current") === "page";'));
     await click('[data-fk="ts-prev"]');
@@ -757,11 +757,11 @@ async function main() {
     await click('.ts-bar .segmented button:nth-child(2)');
     await sleep(200);
     check('widok miesiąca ma kolumnę na każdy dzień miesiąca',
-      await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-table thead .ts-day").length === days;'));
+      await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-hm__head .ts-hm__day").length === days;'));
     await click('[data-fk="time-tab-plan"]');
     await sleep(300);
     check('zakładka „Plan obciążenia” pokazuje siatkę tygodni z pojemnością',
-      await evaluate('return !!document.querySelector(".pl-table") && document.querySelectorAll(".pl-table thead .pl-week").length === 7 && document.querySelectorAll(".pl-btn").length >= 7;'));
+      await evaluate('return !!document.querySelector(".pl-hm") && document.querySelectorAll(".pl-hm .pl-week").length === 7 && document.querySelectorAll(".pl-btn").length >= 7;'));
     await evaluate('const b = document.querySelector(".pl-btn:not(.is-empty):not(.pl-btn--free)"); if (b) b.click(); return !!b;');
     await sleep(200);
     check('kliknięcie komórki planu pokazuje zadania z godzinami',

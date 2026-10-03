@@ -60,66 +60,93 @@
     return D.el('div', { class: 'ts-bar' }, bar);
   }
 
+  /* Karta jak mapa cieplna w Analizie: karta z tytułem, siatka zaokrąglonych komórek, podsumowanie po prawej. */
+  function card(title, subtitle, body, cls) {
+    return D.el('section', { class: 'an-card ' + (cls || '') }, [
+      D.el('header', { class: 'an-card__head' }, [D.el('h3', { class: 'an-card__title', text: title }), subtitle ? D.el('p', { class: 't-meta', text: subtitle }) : null]),
+      body
+    ]);
+  }
+
+  /** Barwa komórki obciążenia: spokojna → bursztyn → czerwień (jak w Analizie). */
+  function loadStyle(ratio) {
+    if (!ratio) return null;
+    var tone = ratio > 1.05 ? 'var(--alarm)' : (ratio > 0.85 ? 'var(--warn)' : 'var(--flow)');
+    return { background: 'color-mix(in srgb, ' + tone + ' ' + Math.round(14 + Math.min(1, ratio) * 62) + '%, transparent)' };
+  }
+
   function heatCell(minutes, hue, tone, target, day, label) {
     var t = Math.max(0, Math.min(1, minutes / (target || 480)));
-    return D.el('td', {
-      class: 'ts-cell' + (minutes ? ' has-time' : '') + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : '') + (t > 0.55 ? ' is-strong' : ''),
+    return D.el('span', {
+      class: 'an-hm__c ts-hm__c' + (minutes ? ' has-time' : '') + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : '') + (t > 0.6 ? ' is-strong' : ''),
       style: minutes ? { '--hue': String(hue), '--tone': String(tone), '--t': String(t) } : null,
-      attrs: minutes ? { 'data-tooltip': label + ': ' + TL.duration(minutes) } : null
-    }, [minutes ? D.el('span', { class: 't-num', text: h(minutes) }) : null]);
+      attrs: { role: 'cell', 'data-tooltip': minutes ? label + ': ' + TL.duration(minutes) : null }
+    }, [minutes ? h(minutes) : '']);
+  }
+
+  function sumCell(minutes, share, bad) {
+    return D.el('span', { class: 'an-hm__sum t-num', attrs: { role: 'cell' } }, [
+      D.el('b', { text: minutes ? TL.duration(minutes) : '—' }),
+      share !== null ? D.el('span', { class: 'an-hm__pct' + (bad ? ' is-bad' : ''), text: share + '%' }) : null
+    ]);
   }
 
   function sheetTable(sheet, state, ctx) {
     var open = state.timeOpen || {};
     var a = ctx.actions;
-    var head = D.el('tr', null, [D.el('th', { class: 'ts-name', attrs: { scope: 'col' }, text: 'Projekt i zadanie' })]
+    var n = sheet.days.length;
+    var cols = 'minmax(10rem, 15rem) repeat(' + n + ', minmax(' + (n > 10 ? '1.35rem' : '2.4rem') + ', 1fr)) 6.5rem';
+    var rowStyle = { '--cols': cols, minWidth: (n > 10 ? 10 + n * 1.5 + 6.5 : 34) + 'rem' };
+
+    var head = D.el('div', { class: 'an-hm__row an-hm__row--head ts-hm__head', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who' })]
       .concat(sheet.days.map(function (d) {
-        return D.el('th', { class: 'ts-day' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''), attrs: { scope: 'col', 'aria-label': d.label + ' ' + d.number } }, [
-          D.el('span', { class: 'ts-day__l', text: d.label }), D.el('span', { class: 'ts-day__n t-num', text: String(d.number) })
+        return D.el('span', { class: 'an-hm__wk ts-hm__day' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''), attrs: { role: 'columnheader', 'aria-label': d.label + ' ' + d.number } }, [
+          D.el('small', { text: n > 10 ? '' : d.label }), D.el('span', { class: 'ts-hm__num t-num', text: String(d.number) })
         ]);
-      }), [D.el('th', { class: 'ts-sum', attrs: { scope: 'col' }, text: 'Razem' })]));
+      }), [D.el('span', { class: 'an-hm__sum', text: 'Razem' })]));
 
     var body = [];
     sheet.rows.forEach(function (row) {
       var project = projectInfo(ctx, row.projectId);
-      var hue = Identity.tileHue(project ? project.code : String(row.projectId));
-      var tone = Identity.tileTone(project ? project.code : String(row.projectId));
+      var code = project ? project.code : String(row.projectId);
+      var hue = Identity.tileHue(code);
+      var tone = Identity.tileTone(code);
       var isOpen = !!open[row.projectId];
-      body.push(D.el('tr', { class: 'ts-row ts-row--project' + (isOpen ? ' is-open' : '') }, [
-        D.el('th', { class: 'ts-name', attrs: { scope: 'row' } }, [
+      var share = sheet.total ? Math.round(row.minutes / sheet.total * 100) : 0;
+      body.push(D.el('div', { class: 'an-hm__row ts-hm__row' + (isOpen ? ' is-open' : ''), style: rowStyle, attrs: { role: 'row' } }, [
+        D.el('span', { class: 'an-hm__who ts-hm__who', attrs: { role: 'rowheader' } }, [
           D.el('button', { class: 'ts-toggle', attrs: { type: 'button', 'aria-expanded': String(isOpen), 'aria-label': (isOpen ? 'Zwiń zadania projektu ' : 'Rozwiń zadania projektu ') + (project ? project.code : ''), 'data-fk': 'ts-toggle-' + row.projectId }, on: { click: function () { a.toggleTimeProject(row.projectId); } } }, [
-            Icons.icon(isOpen ? 'chevronDown' : 'chevronRight', 14),
-            codePill(project, row.projectId),
-            D.el('span', { class: 'ts-pname truncate', text: project ? project.name : 'Usunięty projekt' })
-          ])
+            Icons.icon(isOpen ? 'chevronDown' : 'chevronRight', 14)
+          ]),
+          codePill(project, row.projectId),
+          D.el('span', { class: 'ts-pname truncate', text: project ? project.name : 'Usunięty projekt' })
         ])
       ].concat(row.cells.map(function (m, i) { return heatCell(m, hue, tone, sheet.dayTarget, sheet.days[i], (project ? project.code : '') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
-        D.el('td', { class: 'ts-sum t-num', text: TL.duration(row.minutes) })
+        sumCell(row.minutes, share, false)
       ])));
       if (isOpen) {
         row.tasks.forEach(function (task) {
-          body.push(D.el('tr', { class: 'ts-row ts-row--task' }, [
-            D.el('th', { class: 'ts-name', attrs: { scope: 'row' } }, [D.el('span', { class: 'ts-tname truncate', text: task.label || 'Zadanie', attrs: { 'data-tooltip': task.label || '' } })])
+          body.push(D.el('div', { class: 'an-hm__row ts-hm__row ts-hm__row--task', style: rowStyle, attrs: { role: 'row' } }, [
+            D.el('span', { class: 'an-hm__who ts-hm__who', attrs: { role: 'rowheader' } }, [D.el('span', { class: 'ts-tname truncate', text: task.label || 'Zadanie', attrs: { 'data-tooltip': task.label || '' } })])
           ].concat(task.cells.map(function (m, i) { return heatCell(m, hue, tone, sheet.dayTarget, sheet.days[i], (task.label || 'Zadanie') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
-            D.el('td', { class: 'ts-sum t-num', text: TL.duration(task.minutes) })
+            sumCell(task.minutes, null, false)
           ])));
         });
       }
     });
 
-    var foot = D.el('tr', { class: 'ts-foot' }, [D.el('th', { class: 'ts-name', attrs: { scope: 'row' }, text: 'Razem' })]
+    var targetPct = sheet.target ? Math.round(sheet.total / sheet.target * 100) : null;
+    var foot = D.el('div', { class: 'an-hm__row ts-hm__row ts-hm__foot', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who ts-hm__who', attrs: { role: 'rowheader' } }, [D.el('b', { text: 'Razem' })])]
       .concat(sheet.days.map(function (d) {
-        var pct = Math.min(100, d.minutes / sheet.dayTarget * 100);
         var over = d.minutes > sheet.dayTarget;
-        return D.el('td', {
-          class: 'ts-cell ts-cell--total' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
-          attrs: d.minutes ? { 'data-tooltip': d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') } : null
-        }, [d.minutes ? D.el('span', { class: 't-num', text: h(d.minutes) }) : null, D.el('i', { class: 'ts-bar-day' + (over ? ' is-over' : ''), style: { '--p': pct + '%' }, attrs: { 'aria-hidden': 'true' } })]);
-      }), [D.el('td', { class: 'ts-sum t-num', text: TL.duration(sheet.total) })]));
+        return D.el('span', {
+          class: 'an-hm__c ts-hm__c ts-hm__total' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
+          style: loadStyle(d.weekend ? 0 : d.minutes / sheet.dayTarget) || (d.minutes ? loadStyle(d.minutes / sheet.dayTarget) : null),
+          attrs: { role: 'cell', 'data-tooltip': d.minutes ? d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') : null }
+        }, [d.minutes ? h(d.minutes) : '']);
+      }), [sumCell(sheet.total, targetPct, targetPct !== null && targetPct > 105)]));
 
-    return D.el('div', { class: 'ts-scroll', attrs: { tabindex: '0', role: 'region', 'aria-label': 'Karta czasu' } }, [
-      D.el('table', { class: 'ts-table' }, [D.el('thead', null, [head]), D.el('tbody', null, body), D.el('tfoot', null, [foot])])
-    ]);
+    return D.el('div', { class: 'an-hm ts-hm', attrs: { role: 'table', 'aria-label': 'Karta czasu', tabindex: '0' } }, [head].concat(body, [foot]));
   }
 
   function stat(label, value, sub) {
@@ -149,7 +176,7 @@
         stat('Średnio na dzień', avg ? TL.duration(avg) : '—', 'w dniach z zapisem')
       ]),
       sheet.rows.length
-        ? sheetTable(sheet, state, ctx)
+        ? card('Godziny w okresie', 'barwa = projekt, nasycenie = udział w dniu pracy (' + TL.duration(sheet.dayTarget) + '); w wierszu „Razem” barwa = obciążenie dnia', sheetTable(sheet, state, ctx))
         : UI.emptyState({ icon: 'clock', title: 'Brak zapisanego czasu w tym okresie', text: 'Włącz zegar przy zadaniu (▶), dopisz czas z menu zadania albo zaznacz przedział na osi dnia w Mojej pracy.' })
     ];
     return { body: body, sheet: sheet, summary: sheet.period.title + ' · ' + TL.duration(sheet.total) + (sheet.target ? ' z ' + TL.duration(sheet.target) : '') };
@@ -167,19 +194,13 @@
 
   function planCell(cell, week, personId, index, selected, ctx) {
     var ratio = cell.capacity > 0 ? cell.planned / cell.capacity : (cell.planned > 0 ? 2 : 0);
-    var pct = Math.min(100, Math.round(ratio * 100));
     var isSel = selected && selected.personId === personId && selected.week === index;
-    return D.el('td', { class: 'pl-cell' + (isSel ? ' is-selected' : '') }, [
-      D.el('button', {
-        class: 'pl-btn pl-btn--' + cell.state + (cell.planned ? '' : ' is-empty'),
-        style: { '--p': pct + '%' },
-        attrs: { type: 'button', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + personId + '-' + index, 'data-tooltip': cell.planned ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.state === 'over' ? ' — przeciążenie' : (cell.state === 'tight' ? ' — napięty tydzień' : '')) : 'Brak zaplanowanej pracy' },
-        on: { click: function () { ctx.actions.setTime({ planCell: isSel ? null : { personId: personId, week: index } }); } }
-      }, [
-        D.el('span', { class: 'pl-btn__fill', attrs: { 'aria-hidden': 'true' } }),
-        D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: cell.planned ? hh(cell.planned) : '–' }), D.el('span', { text: ' / ' + hh(cell.capacity) })])
-      ])
-    ]);
+    return D.el('button', {
+      class: 'an-hm__c pl-btn pl-btn--' + cell.state + (cell.planned ? '' : ' is-empty') + (isSel ? ' is-selected' : ''),
+      style: loadStyle(ratio),
+      attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + personId + '-' + index, 'data-tooltip': cell.planned ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.state === 'over' ? ' — przeciążenie' : '') : 'Brak zaplanowanej pracy' },
+      on: { click: function () { ctx.actions.setTime({ planCell: isSel ? null : { personId: personId, week: index } }); } }
+    }, [cell.planned ? D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: hh(cell.planned) }), D.el('small', { text: ' / ' + hh(cell.capacity) })]) : '']);
   }
 
   function planDetail(selected, plan, people, ctx) {
@@ -214,26 +235,29 @@
     });
     var selected = state.planCell || null;
     var overCount = plan.rows.filter(function (r) { return r.weeks.some(function (c) { return c.state === 'over'; }); }).length;
-    var head = D.el('tr', null, [D.el('th', { class: 'pl-who', attrs: { scope: 'col' }, text: 'Osoba' })]
+    var rowStyle = { '--cols': 'minmax(10rem, 14rem) repeat(' + (plan.weeks.length + 1) + ', minmax(4.2rem, 1fr))', minWidth: '44rem' };
+    var head = D.el('div', { class: 'an-hm__row an-hm__row--head', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who' })]
       .concat(plan.weeks.map(function (w) {
-        return D.el('th', { class: 'pl-week' + (w.current ? ' is-current' : ''), attrs: { scope: 'col' } }, [D.el('span', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays + ' dni rob.') })]);
-      }), [D.el('th', { class: 'pl-week', attrs: { scope: 'col' } }, [D.el('span', { text: 'Bez terminu' }), D.el('small', { text: 'nie wliczone' })])]));
+        return D.el('span', { class: 'an-hm__wk pl-week' + (w.current ? ' is-current' : ''), attrs: { role: 'columnheader' } }, [D.el('span', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays + ' dni rob.') })]);
+      }), [D.el('span', { class: 'an-hm__wk pl-week', attrs: { role: 'columnheader' } }, [D.el('span', { text: 'Bez terminu' }), D.el('small', { text: 'nie wliczone' })])]));
     var body = plan.rows.map(function (row) {
       var person = Team.findPerson(people, row.personId);
-      return D.el('tr', null, [D.el('th', { class: 'pl-who', attrs: { scope: 'row' } }, [E.Avatar.avatar(person, { size: 'sm', tooltip: false }), D.el('span', { class: 'truncate', text: Team.fullName(person) })])]
+      var freeOn = selected && selected.personId === row.personId && selected.week === 'free';
+      return D.el('div', { class: 'an-hm__row', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who truncate', attrs: { role: 'rowheader' } }, [E.Avatar.avatar(person, { size: 'sm', tooltip: false }), D.el('span', { class: 'truncate', text: Team.fullName(person) })])]
         .concat(row.weeks.map(function (cell, i) { return planCell(cell, plan.weeks[i], row.personId, i, selected, ctx); }), [
-          D.el('td', { class: 'pl-cell' }, [D.el('button', {
-            class: 'pl-btn pl-btn--free' + (row.unscheduled.hours ? '' : ' is-empty'), attrs: { type: 'button', 'data-fk': 'pl-free-' + row.personId, 'aria-pressed': String(!!(selected && selected.personId === row.personId && selected.week === 'free')) },
-            on: { click: function () { var on = selected && selected.personId === row.personId && selected.week === 'free'; ctx.actions.setTime({ planCell: on ? null : { personId: row.personId, week: 'free' } }); } }
-          }, [D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: row.unscheduled.hours ? hh(row.unscheduled.hours) : '–' }), D.el('span', { text: ' h' })])])])
+          D.el('button', {
+            class: 'an-hm__c pl-btn pl-btn--free' + (row.unscheduled.hours ? '' : ' is-empty') + (freeOn ? ' is-selected' : ''), attrs: { type: 'button', role: 'cell', 'data-fk': 'pl-free-' + row.personId, 'aria-pressed': String(!!freeOn) },
+            on: { click: function () { ctx.actions.setTime({ planCell: freeOn ? null : { personId: row.personId, week: 'free' } }); } }
+          }, [row.unscheduled.hours ? D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: hh(row.unscheduled.hours) }), D.el('small', { text: ' h' })]) : ''])
         ]));
     });
+    var grid = D.el('div', { class: 'an-hm pl-hm', attrs: { role: 'table', 'aria-label': 'Plan obciążenia', tabindex: '0' } }, [head].concat(body));
     return {
       summary: management ? (overCount ? F2(overCount, 'osoba przeciążona', 'osoby przeciążone', 'osób przeciążonych') + ' w najbliższych tygodniach' : 'Nikt nie jest przeciążony w najbliższych tygodniach') : 'Twój plan na najbliższe tygodnie',
       body: [
         D.el('p', { class: 'pl-intro', text: 'Plan liczy godziny z otwartych zadań (szacunek albo wartość z nakładu pracy, pomniejszone o zapisany już czas) i rozkłada je na dni robocze do terminu. Kliknij komórkę, żeby zobaczyć zadania.' + (management ? '' : ' Plan całego zespołu widzi zarząd.') }),
         plan.rows.length
-          ? D.el('div', { class: 'ts-scroll', attrs: { tabindex: '0', role: 'region', 'aria-label': 'Plan obciążenia' } }, [D.el('table', { class: 'pl-table' }, [D.el('thead', null, [head]), D.el('tbody', null, body)])])
+          ? card('Obciążenie tydzień po tygodniu', 'godziny do zrobienia z otwartych zadań; barwa = udział w pojemności tygodnia (' + hh((state.prefs.dayTarget || 480) / 60) + ' h na dzień)', grid)
           : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
         planDetail(selected, plan, people, ctx),
         D.el('div', { class: 'pl-legend', attrs: { 'aria-hidden': 'true' } }, [
