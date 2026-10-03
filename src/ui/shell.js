@@ -158,10 +158,9 @@
       D.el('div', { class: 'sidebar__tools' }, [search, create]),
       D.el('nav', { class: 'sidebar__nav', attrs: { 'aria-label': 'Główna' } }, [
         D.el('ul', { class: 'nav' }, [
-          D.el('li', null, [navItem('inbox', 'mail', 'Skrzynka', '#/skrzynka')]),
+          D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
           D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
           D.el('li', null, [navItem('analysis', 'chart', 'Analiza', '#/analiza')]),
-          D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
           D.el('li', null, [(function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()]),
           D.el('li', null, [navItem('team', 'people', 'Zespół', '#/zespol')])
         ]),
@@ -194,7 +193,6 @@
   function crumbs(state, project) {
     var route = state.route;
     if (route.name === 'team') return [{ label: 'Zespół' }];
-    if (route.name === 'inbox') return [{ label: 'Skrzynka' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
     if (route.name === 'mywork') return [{ label: 'Moja praca' }];
@@ -204,7 +202,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    var section = route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
     Object.keys(nodes.nav).forEach(function (key) {
       var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
@@ -215,15 +213,11 @@
     nodes.counts.team.textContent = String((state.workspace.people || []).filter(function (p) { return p.active !== false; }).length);
 
     var now = new Date();
-    var me = E.Team.findPerson(state.workspace.people || [], state.prefs.me);
-    var mine = me ? Insight.myWork(me.id, projects, now) : null;
-    nodes.counts.mywork.textContent = mine ? String(mine.open + mine.toApprove.length) : '';
-    nodes.counts.mywork.classList.toggle('count--alarm', !!(mine && mine.overdue));
+    var box = E.MyWork.count(state, now);
+    nodes.counts.mywork.textContent = box ? String(box.total) : '';
+    nodes.counts.mywork.classList.toggle('count--alarm', !!(box && (box.overdue || box.urgent)));
     nodes.counts.feed.textContent = '';
     nodes.counts.analysis.textContent = '';
-    var box = E.InboxScreen.count(state, now);
-    nodes.counts.inbox.textContent = box && box.total ? String(box.total) : '';
-    nodes.counts.inbox.classList.toggle('count--alarm', !!(box && box.urgent));
     var alarms = projects.filter(function (p) { return Insight.health(p, now).level === 'alarm'; }).length;
     nodes.alarm.hidden = !alarms;
     D.render(nodes.alarm, alarms ? [Sig.datum('alarm', { size: 12, label: false }), D.el('span', { text: String(alarms) })] : []);

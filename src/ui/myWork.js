@@ -1,7 +1,7 @@
 /* ETROM — „Moja praca”: ekran, który otwiera się rano.
-   Zadania jednej osoby według czasu (po terminie, dziś, ten tydzień, później),
-   to, co wymaga jej decyzji (zadania do zatwierdzenia, zwroty do poprawy),
-   oraz projekty, w których ma funkcję. Kim jest osoba przy tym urządzeniu,
+   Jedno miejsce na „co mam zrobić”: to, co wymaga reakcji (zatwierdzenia, pisma),
+   zadania jednej osoby według czasu (po terminie, dziś, ten tydzień, później)
+   oraz projekty, w których ma funkcję. Dawna Skrzynka jest teraz sekcją tego ekranu. Kim jest osoba przy tym urządzeniu,
    zapisuje preferencja „ja” — bez logowania, do czasu wspólnych kont. */
 (function (root) {
   'use strict';
@@ -156,55 +156,89 @@
     return btn;
   }
 
-  // Widoki listy: które przedziały czasu i które zatwierdzenia pokazują.
+  // Widoki listy: które przedziały czasu i co wymaga reakcji.
   var VIEWS = [
     { value: 'all', label: 'Wszystko' },
     { value: 'today', label: 'Dziś' },
     { value: 'week', label: 'Ten tydzień' },
-    { value: 'approve', label: 'Do decyzji' },
+    { value: 'react', label: 'Wymaga reakcji' },
     { value: 'returned', label: 'Do poprawy' }
   ];
 
-  function viewCount(key, work) {
-    if (key === 'all') return work.open + work.toApprove.length;
-    if (key === 'today') return work.buckets.overdue.length + work.buckets.today.length;
-    if (key === 'week') return work.buckets.overdue.length + work.buckets.today.length + work.buckets.week.length;
-    if (key === 'approve') return work.toApprove.length;
-    return work.returned.length;
+  /**
+   * Jeden model dla ekranu i licznika w menu: zadania osoby, to, co wymaga jej reakcji
+   * (zatwierdzenia, pisma), alarmy projektów. Zadanie utworzone z pisma, które jest
+   * w sekcji reakcji, nie powtarza się na liście zadań — widać je przy piśmie.
+   */
+  function model(state, now) {
+    var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
+    if (!me) return null;
+    var work = Insight.myWork(me.id, state.workspace.projects, now);
+    var result = E.Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed, state.workspace.entries);
+    var parts = E.InboxScreen.split(result);
+    var buckets = {};
+    var open = 0;
+    Object.keys(work.buckets).forEach(function (key) {
+      buckets[key] = work.buckets[key].filter(function (r) { return !parts.hiddenTasks[r.task.id]; });
+      open += buckets[key].length;
+    });
+    return {
+      me: me, work: work, result: result, parts: parts, buckets: buckets, open: open,
+      overdue: buckets.overdue.length,
+      returned: work.returned.filter(function (r) { return !parts.hiddenTasks[r.task.id]; }),
+      react: parts.react, alarms: parts.alarms, snoozed: parts.snoozed
+    };
+  }
+
+  /** Liczba w menu: otwarte zadania + to, co wymaga reakcji. */
+  function count(state, now) {
+    var m = model(state, now || new Date());
+    if (!m) return null;
+    return { total: m.open + m.react.length, overdue: m.overdue, urgent: m.parts.urgent };
+  }
+
+  function viewCount(key, m) {
+    var b = m.buckets;
+    if (key === 'all') return m.open + m.react.length;
+    if (key === 'today') return b.overdue.length + b.today.length;
+    if (key === 'week') return b.overdue.length + b.today.length + b.week.length;
+    if (key === 'react') return m.react.length;
+    return m.returned.length;
   }
 
   /** Które sekcje i które wiersze pokazuje wybrany widok. */
-  function pick(key, work) {
-    var buckets = work.buckets;
-    var out = { approve: work.toApprove, groups: {} };
-    GROUPS.forEach(function (g) { out.groups[g.key] = buckets[g.key]; });
-    if (key === 'today') { out.approve = []; out.groups = { overdue: buckets.overdue, today: buckets.today }; }
-    else if (key === 'week') { out.approve = []; out.groups = { overdue: buckets.overdue, today: buckets.today, week: buckets.week }; }
-    else if (key === 'approve') { out.groups = {}; }
+  function pick(key, m) {
+    var b = m.buckets;
+    var out = { react: m.react, alarms: m.alarms, snoozed: m.snoozed, groups: {} };
+    GROUPS.forEach(function (g) { out.groups[g.key] = b[g.key]; });
+    if (key === 'today') { out.react = []; out.alarms = []; out.snoozed = []; out.groups = { overdue: b.overdue, today: b.today }; }
+    else if (key === 'week') { out.react = []; out.alarms = []; out.snoozed = []; out.groups = { overdue: b.overdue, today: b.today, week: b.week }; }
+    else if (key === 'react') { out.groups = {}; }
     else if (key === 'returned') {
-      out.approve = [];
-      GROUPS.forEach(function (g) { out.groups[g.key] = buckets[g.key].filter(function (r) { return r.task.status === 'changes'; }); });
+      out.react = []; out.alarms = []; out.snoozed = [];
+      GROUPS.forEach(function (g) { out.groups[g.key] = b[g.key].filter(function (r) { return r.task.status === 'changes'; }); });
     }
     return out;
   }
 
-  function viewTabs(work, current, actions) {
+  function viewTabs(m, current, actions) {
     return D.el('div', { class: 'pf-views mywork__views', attrs: { role: 'tablist', 'aria-label': 'Widoki mojej pracy' } }, VIEWS.map(function (v) {
       var active = v.value === current;
       return D.el('button', {
         class: 'pf-view' + (active ? ' is-active' : ''),
         attrs: { type: 'button', role: 'tab', 'aria-selected': String(active), 'data-fk': 'mywork-view-' + v.value },
         on: { click: function () { actions.setMyView(v.value); } }
-      }, [D.el('span', { text: v.label }), D.el('span', { class: 'pf-view__count t-num', text: String(viewCount(v.value, work)) })]);
+      }, [D.el('span', { text: v.label }), D.el('span', { class: 'pf-view__count t-num', text: String(viewCount(v.value, m)) })]);
     }));
   }
 
-  function summaryText(person, work) {
-    if (!work.open && !work.toApprove.length) return 'Nic nie czeka na ' + (person.firstName || Team.fullName(person)) + '. Czysty stół.';
-    var parts = [F.count(work.open, 'otwarte zadanie', 'otwarte zadania', 'otwartych zadań')];
-    if (work.overdue) parts.push(work.overdue + ' po terminie');
-    if (work.returned.length) parts.push(work.returned.length + ' do poprawy');
-    if (work.toApprove.length) parts.push(work.toApprove.length + ' do Twojej decyzji');
+  function summaryText(m) {
+    var person = m.me;
+    if (!m.open && !m.react.length) return 'Nic nie czeka na ' + (person.firstName || Team.fullName(person)) + '. Czysty stół.';
+    var parts = [F.count(m.open, 'otwarte zadanie', 'otwarte zadania', 'otwartych zadań')];
+    if (m.overdue) parts.push(m.overdue + ' po terminie');
+    if (m.returned.length) parts.push(m.returned.length + ' do poprawy');
+    if (m.react.length) parts.push(m.react.length + ' wymaga reakcji');
     return parts.join(' · ');
   }
 
@@ -213,25 +247,28 @@
    */
   function view(state, ctx) {
     var people = state.workspace.people || [];
-    var me = Team.findPerson(people, state.prefs.me);
     var now = new Date();
-    if (!me) return { summary: 'Twoje zadania, zatwierdzenia i projekty w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
-
-    var work = Insight.myWork(me.id, state.workspace.projects, now);
-    var nothing = !work.open && !work.toApprove.length && !work.projects.length;
+    var m = model(state, now);
+    if (!m) return { summary: 'Twoje zadania, zatwierdzenia i pisma w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
+    var me = m.me;
+    var nothing = !m.open && !m.react.length && !m.work.projects.length;
 
     var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
-    var shown = pick(current, work);
-    var main = [viewTabs(work, current, ctx.actions)];
-    main.push(section('Czeka na Twoją decyzję', shown.approve.length, '', shown.approve, ctx, { approve: true }));
+    var shown = pick(current, m);
+    var main = [viewTabs(m, current, ctx.actions)];
+    var rest = [
+      E.InboxScreen.alarmStrip(shown.alarms, ctx),
+      E.InboxScreen.section(shown.react, ctx, now)
+    ];
     GROUPS.forEach(function (g) {
       var rows = shown.groups[g.key] || [];
-      main.push(section(g.label, rows.length, g.tone, rows, ctx));
+      rest.push(section(g.label, rows.length, g.tone, rows, ctx));
     });
-    if (current !== 'all' && main.length === 1 + 1 + GROUPS.length && main.slice(1).every(function (n) { return !n; })) {
-      main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
-    }
-    if (current === 'all' && !work.open && !work.toApprove.length) {
+    rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
+    var visible = rest.filter(Boolean);
+    main = main.concat(visible);
+    if (current !== 'all' && !visible.length) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
+    if (current === 'all' && !m.open && !m.react.length) {
       main.push(UI.emptyState({
         icon: 'checkCircle',
         title: 'Brak otwartych zadań',
@@ -240,7 +277,7 @@
     }
 
     return {
-      summary: summaryText(me, work),
+      summary: summaryText(m),
       who: whoButton(me, people, ctx.actions),
       body: D.el('div', { class: 'mywork' }, [
         D.el('div', { class: 'mywork__main' }, main),
@@ -248,13 +285,13 @@
           E.Timer.todayBlock(TL.forDay(state.workspace.entries || [], me.id, now), { find: ctx.find, actions: ctx.actions }),
           D.el('div', { class: 'maside__projects' }, [
             D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
-            projectsAside(work, now)
+            projectsAside(m.work, now)
           ])
         ])
       ]),
-      work: work
+      work: m.work
     };
   }
 
-  root.ETROM.MyWork = { view: view, VIEWS: VIEWS };
+  root.ETROM.MyWork = { view: view, count: count, model: model, VIEWS: VIEWS };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

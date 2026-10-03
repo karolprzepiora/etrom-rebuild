@@ -1,4 +1,6 @@
-/* ETROM — ekran „Skrzynka”: wszystko, co wymaga reakcji zalogowanej osoby.
+/* ETROM — sekcja „Wymaga reakcji” w „Mojej pracy” (dawna Skrzynka): zatwierdzenia i pisma
+   do odpowiedzi jednej osoby oraz pasek projektów w alarmie. Osobnego ekranu już nie ma —
+   jedno miejsce na „co mam zrobić”. Objaśnienia są w dymkach (po najechaniu), nie na ekranie.
    Pozycje wynikają ze stanu pracy (core/inbox.js) — nie ma „oznacz jako przeczytane”:
    pozycja znika, gdy człowiek zrobi to, czego od niej oczekuje. Można ją odłożyć do jutra. */
 (function (root) {
@@ -11,21 +13,7 @@
   var Inbox = E.Inbox;
   var Team = E.Team;
 
-  var FILTERS = [
-    { value: 'all', label: 'Wszystko' },
-    { value: 'approve', label: 'Do zatwierdzenia' },
-    { value: 'returned', label: 'Do poprawy' },
-    { value: 'mail', label: 'Pisma do odpowiedzi' },
-    { value: 'project', label: 'Projekty w alarmie' }
-  ];
   var ICONS = { approve: 'checkCircle', returned: 'alert', mail: 'mail', project: 'alertCircle' };
-  // Nagłówki grup mówią wprost, czego dotyczy pozycja i co z nią zrobić.
-  var GROUPS = {
-    approve: { title: 'Czeka na Twoją decyzję', text: 'Zadania zgłoszone do zatwierdzenia. Zatwierdź albo zwróć z uwagą do poprawy.' },
-    returned: { title: 'Wróciło do poprawy', text: 'Zadania zwrócone Tobie z uwagą. Popraw je i zgłoś ponownie.' },
-    mail: { title: 'Pisma wymagające odpowiedzi', text: 'Zbliża się termin odpowiedzi. Utwórz zadanie, żeby zapisywać czas pracy nad pismem, albo od razu napisz odpowiedź.' },
-    project: { title: 'Projekty w alarmie', text: 'Projekty, którymi kierujesz, z przekroczonym terminem lub budżetem.' }
-  };
 
   function dateOf(item) {
     if (item.kind === 'mail') return item.entry.replyDue;
@@ -79,14 +67,16 @@
     return D.el('li', { class: 'ibx__row' + (item.urgent ? ' is-urgent' : ''), dataset: { inboxKey: item.key, kind: item.kind } }, [
       D.el('span', { class: 'ibx__kind', attrs: { 'data-tooltip': Inbox.KINDS[item.kind].label } }, [Icons.icon(ICONS[item.kind], 16)]),
       D.el('div', { class: 'ibx__body' }, [
-        D.el('button', {
-          class: 'ibx__title trow__name',
-          text: item.title,
-          attrs: { type: 'button', 'data-fk': 'inbox-open-' + item.key },
-          on: { click: function () { openItem(item, ctx.actions); } }
-        }),
+        D.el('span', { class: 'ibx__titleline' }, [
+          D.el('button', {
+            class: 'ibx__title trow__name',
+            text: item.title,
+            attrs: { type: 'button', 'data-fk': 'inbox-open-' + item.key },
+            on: { click: function () { openItem(item, ctx.actions); } }
+          }),
+          D.el('span', { class: 'ibx__info', attrs: { tabindex: '0', role: 'img', 'aria-label': item.why, 'data-tooltip': item.why } }, [Icons.icon('info', 14)])
+        ]),
         D.el('span', { class: 'mrow__context' }, context.filter(Boolean)),
-        D.el('span', { class: 'ibx__why', text: item.why }),
         linkedChips(item, ctx.actions)
       ]),
       D.el('span', { class: 'ibx__when' }, [date ? UI.countdown(String(date).slice(0, 10), { now: now }) : null]),
@@ -96,36 +86,47 @@
     ]);
   }
 
-  function intro() {
-    return D.el('div', { class: 'ibx__intro' }, [
-      D.el('span', { class: 'ibx__intro-icon' }, [Icons.icon('mail', 18)]),
-      D.el('div', { class: 'ibx__intro-text' }, [
-        D.el('strong', { text: 'Skrzynka to rzeczy, na które musisz zareagować.' }),
-        D.el('span', { text: ' Zatwierdzenia, zadania zwrócone do poprawy, pisma z terminem odpowiedzi i projekty w alarmie pojawiają się tu same, a znikają, gdy je załatwisz — nie ma nic do „odznaczania”. Swoje zadania do wykonania znajdziesz w „Mojej pracy”, a wszystkie pisma projektu w jego zakładce „Korespondencja”.' })
-      ])
-    ]);
+  var SECTION_HINT = 'Rzeczy, na które czeka ktoś inny: zadania do zatwierdzenia i pisma, którym zbliża się termin odpowiedzi. Pojawiają się same, a znikają, gdy je załatwisz.';
+
+  /** Dzieli wynik Inbox.build na to, co idzie do sekcji „Wymaga reakcji”, i alarmy projektów.
+   *  Zadania wrócone do poprawy zostają na zwykłej liście zadań (mają tam uwagę i termin). */
+  function split(result) {
+    var react = result.items.filter(function (i) { return i.kind === 'approve' || i.kind === 'mail'; });
+    var alarms = result.items.filter(function (i) { return i.kind === 'project'; });
+    var hiddenTasks = {};
+    react.forEach(function (item) {
+      (item.linked || []).forEach(function (r) { hiddenTasks[r.task.id] = true; });
+    });
+    var later = result.snoozed.filter(function (i) { return i.kind === 'approve' || i.kind === 'mail'; });
+    return { react: react, alarms: alarms, hiddenTasks: hiddenTasks, snoozed: later, urgent: react.filter(function (i) { return i.urgent; }).length };
   }
 
-  function group(kind, items, ctx, now) {
-    return D.el('section', { class: 'ibx__group', dataset: { group: kind } }, [
-      D.el('header', { class: 'ibx__group-head' }, [
-        D.el('h2', { class: 'ibx__group-title' }, [Icons.icon(ICONS[kind], 15), D.el('span', { text: GROUPS[kind].title }), D.el('span', { class: 'ibx__group-count t-num', text: String(items.length) })]),
-        D.el('p', { class: 'ibx__group-text', text: GROUPS[kind].text })
+  /** Sekcja „Wymaga reakcji” — ten sam szkielet co sekcje zadań. */
+  function section(items, ctx, now) {
+    if (!items.length) return null;
+    var urgent = items.some(function (i) { return i.urgent; });
+    return D.el('section', { class: 'msec' + (urgent ? ' msec--alarm' : ''), dataset: { group: 'react' }, attrs: { 'aria-label': 'Wymaga reakcji' } }, [
+      D.el('div', { class: 'msec__head' }, [
+        D.el('h2', { class: 'msec__title', text: 'Wymaga reakcji' }),
+        D.el('span', { class: 'msec__count t-num', text: String(items.length) }),
+        D.el('span', { class: 'ibx__info', attrs: { tabindex: '0', role: 'img', 'aria-label': SECTION_HINT, 'data-tooltip': SECTION_HINT } }, [Icons.icon('info', 14)])
       ]),
-      D.el('ul', { class: 'ibx__list', attrs: { 'aria-label': GROUPS[kind].title } }, items.map(function (item) { return row(item, ctx, now); }))
+      D.el('ul', { class: 'ibx__list', attrs: { 'aria-label': 'Wymaga reakcji' } }, items.map(function (item) { return row(item, ctx, now); }))
     ]);
   }
 
-  function filterBar(result, filter, actions) {
-    return D.el('div', { class: 'pf-views ibx__filters', attrs: { role: 'tablist', 'aria-label': 'Rodzaj pozycji' } }, FILTERS.map(function (f) {
-      var count = f.value === 'all' ? result.total : result.counts[f.value];
-      var active = f.value === filter;
+  /** Wąski pasek projektów w alarmie (tylko dla liderów). */
+  function alarmStrip(items, ctx) {
+    if (!items.length) return null;
+    return D.el('div', { class: 'ibx__alarms', attrs: { role: 'group', 'aria-label': 'Projekty w alarmie' } }, [
+      D.el('span', { class: 'ibx__alarms-label' }, [Icons.icon('alertCircle', 14), D.el('span', { text: 'Projekty w alarmie' })])
+    ].concat(items.map(function (item) {
       return D.el('button', {
-        class: 'pf-view' + (active ? ' is-active' : ''),
-        attrs: { type: 'button', role: 'tab', 'aria-selected': String(active), 'data-fk': 'inbox-filter-' + f.value },
-        on: { click: function () { actions.setInboxFilter(f.value); } }
-      }, [D.el('span', { text: f.label }), D.el('span', { class: 'pf-view__count t-num', text: String(count) })]);
-    }));
+        class: 'ibx__alarm', dataset: { inboxKey: item.key, kind: 'project' },
+        attrs: { type: 'button', 'data-fk': 'inbox-open-' + item.key, 'data-tooltip': item.title + ' — ' + item.detail + '. ' + item.why },
+        on: { click: function () { openItem(item, ctx.actions); } }
+      }, [D.el('span', { class: 'code', text: item.project.code }), D.el('span', { class: 'truncate', text: item.detail })]);
+    })));
   }
 
   function snoozedBlock(list, actions) {
@@ -146,49 +147,5 @@
     ]);
   }
 
-  function summary(me, result) {
-    if (!me) return 'Wybierz w „Mojej pracy”, kim jesteś — Skrzynka pokaże, co czeka na Ciebie.';
-    if (!result.total) return 'Nic nie czeka na ' + (me.firstName || Team.fullName(me)) + '. Skrzynka jest pusta.';
-    var parts = [E.Format.count(result.total, 'pozycja czeka', 'pozycje czekają', 'pozycji czeka')];
-    if (result.urgent) parts.push(result.urgent + ' pilne');
-    return parts.join(' · ');
-  }
-
-  function view(state, ctx) {
-    var people = state.workspace.people || [];
-    var me = Team.findPerson(people, state.prefs.me);
-    var now = new Date();
-    if (!me) {
-      return { summary: summary(null), body: E.Welcome.card(state, ctx, 'Skrzynka zbiera rzeczy, które wymagają Twojej reakcji: zatwierdzenia, poprawki i pisma bez odpowiedzi.') };
-    }
-    var result = Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed, state.workspace.entries);
-    var filter = state.inboxFilter || 'all';
-    var shown = filter === 'all' ? result.items : result.items.filter(function (i) { return i.kind === filter; });
-    var body;
-    if (!result.total && !result.snoozed.length) {
-      body = UI.emptyState({ icon: 'checkCircle', title: 'Wszystko załatwione', text: 'Zatwierdzenia, zadania do poprawy, pisma z kończącym się terminem odpowiedzi i projekty w alarmie pojawią się tutaj same, gdy będą wymagały Twojej reakcji. Swoje zadania do wykonania masz w „Mojej pracy”.' });
-    } else {
-      body = D.el('div', { class: 'ibx' }, [
-        intro(),
-        filterBar(result, filter, ctx.actions),
-        shown.length
-          ? D.el('div', { class: 'ibx__groups' }, Inbox.KIND_ORDER.map(function (kind) {
-              var items = shown.filter(function (i) { return i.kind === kind; });
-              return items.length ? group(kind, items, ctx, now) : null;
-            }).filter(Boolean))
-          : D.el('p', { class: 'ibx__empty', text: result.total ? 'Nic w tej kategorii.' : 'Skrzynka jest pusta — zostały tylko odłożone pozycje.' }),
-        snoozedBlock(result.snoozed, ctx.actions)
-      ]);
-    }
-    return { summary: summary(me, result), body: body, result: result };
-  }
-
-  /** Liczba pozycji dla paska bocznego. */
-  function count(state, now) {
-    var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
-    if (!me) return null;
-    return Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now || new Date(), state.prefs.snoozed, state.workspace.entries);
-  }
-
-  root.ETROM.InboxScreen = { view: view, count: count, FILTERS: FILTERS };
+  root.ETROM.InboxScreen = { split: split, section: section, alarmStrip: alarmStrip, snoozedBlock: snoozedBlock };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

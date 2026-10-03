@@ -590,7 +590,7 @@ async function main() {
     check('wybór osoby zapisuje się w preferencjach i pokazuje jej zadania',
       await evaluate('return !!document.querySelector(".mywork") && !!document.querySelector(".mywho") && document.querySelectorAll(".mrow").length > 0 && /^p-\\d+$/.test(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).me || "");'));
     check('zadania są pogrupowane w przedziały czasu i mają projekt oraz termin',
-      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Czeka na Twoją decyzję","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .tdue, .mrow .due--none");'));
+      await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Wymaga reakcji","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .tdue, .mrow .due--none");'));
     check('pasek boczny pokazuje licznik pracy osoby',
       await evaluate('return /^\\d+$/.test(document.querySelector("[data-screen=mywork] .nav__count").textContent);'));
     check('moje projekty pokazują funkcję i licznik dni do końca',
@@ -607,34 +607,33 @@ async function main() {
     await pressKey('j');
     check('J w Mojej pracy ustawia fokus na pierwszym zadaniu',
       await evaluate('return document.activeElement && document.activeElement.classList.contains("trow__name");'));
-    await pressKey('g');
-    await pressKey('s');
-    await sleep(300);
-    check('skrót G S otwiera Skrzynkę, a pozycje mają rodzaj, projekt i akcje',
-      (await evaluate('return location.hash;')) === '#/skrzynka' && await evaluate('return !document.getElementById("view-inbox").hidden && document.querySelectorAll(".ibx__row").length > 0 && !!document.querySelector(".ibx__row .mrow__project") && !!document.querySelector(".ibx__row [data-fk^=inbox-snooze]");'));
-    check('pasek boczny pokazuje licznik Skrzynki zgodny z listą',
-      await evaluate('return document.querySelector("[data-screen=inbox] .nav__count").textContent === String(document.querySelectorAll("#view-inbox .ibx__list .ibx__row").length);'));
-    await click('[data-fk="inbox-filter-approve"]');
+    check('w menu nie ma już osobnej Skrzynki, a stary link #/skrzynka otwiera Moją pracę',
+      !(await evaluate('return !!document.querySelector("[data-screen=inbox]");')) && await (async () => { await go('#/skrzynka'); await sleep(300); return evaluate('return !document.getElementById("view-mywork").hidden && !document.getElementById("view-inbox");'); })());
+    check('Moja praca ma sekcję „Wymaga reakcji”: pozycje mają projekt i akcje, a objaśnienia są w dymkach (bez tekstów na ekranie)',
+      await evaluate('const sec = document.querySelector("#view-mywork [data-group=react]"); return !!sec && sec.querySelectorAll(".ibx__row").length > 0 && !!sec.querySelector(".ibx__row .mrow__project") && !!sec.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!sec.querySelector(".ibx__info[data-tooltip]") && !document.querySelector(".ibx__intro, .ibx__why, .ibx__group-text");'));
+    check('licznik w menu = zadania na liście + pozycje „Wymaga reakcji”',
+      await evaluate('const n = document.querySelectorAll("#view-mywork .mrow").length + document.querySelectorAll("#view-mywork [data-group=react] .ibx__row").length; return document.querySelector("[data-screen=mywork] .nav__count").textContent === String(n);'));
+    await click('[data-fk="mywork-view-react"]');
     await sleep(150);
-    check('filtr „Do zatwierdzenia” zostawia tylko zatwierdzenia',
-      await evaluate('const r = [...document.querySelectorAll("#view-inbox .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => x.dataset.kind === "approve");'));
-    await click('[data-fk="inbox-filter-all"]');
-    await sleep(150);
-    const inboxBefore = await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length;');
+    check('widok „Wymaga reakcji” zostawia tylko zatwierdzenia i pisma',
+      await evaluate('const r = [...document.querySelectorAll("#view-mywork .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => ["approve", "mail"].includes(x.dataset.kind)) && !document.querySelector("#view-mywork .mrow");'));
+    const reactSel = '#view-mywork [data-group=react] .ibx__row';
+    const inboxBefore = await evaluate('return document.querySelectorAll("' + reactSel + '").length;');
     await click('.ibx__row [data-fk^="inbox-snooze"]');
     await sleep(250);
     check('„Odłóż do jutra” chowa pozycję i przenosi ją do odłożonych, zapis trafia do preferencji',
-      await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
+      await evaluate('return document.querySelectorAll("' + reactSel + '").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
     await click('.ibx__later > summary');
     await click('.ibx__row--later button');
     await sleep(250);
-    check('„Przywróć” oddaje pozycję do Skrzynki',
-      await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length === ' + inboxBefore + ';'));
-    const approveBefore = await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;');
+    check('„Przywróć” oddaje pozycję do sekcji „Wymaga reakcji”',
+      await evaluate('return document.querySelectorAll("' + reactSel + '").length === ' + inboxBefore + ';'));
+    const approveBefore = await evaluate('return document.querySelectorAll("#view-mywork [data-kind=approve]").length;');
     await click('[data-fk^="inbox-approve-"]');
     await sleep(300);
-    check('„Zatwierdź” w Skrzynce zamyka zadanie i pozycja znika',
-      (await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;')) === approveBefore - 1);
+    check('„Zatwierdź” zamyka zadanie i pozycja znika z sekcji reakcji',
+      (await evaluate('return document.querySelectorAll("#view-mywork [data-kind=approve]").length;')) === approveBefore - 1);
+    await click('[data-fk="mywork-view-all"]');
     // Przywracamy zadanie do zatwierdzenia — dalsze kroki scenariusza na nim polegają.
     await evaluate('window.ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.map(function (p) { return Object.assign({}, p, { stages: p.stages.map(function (g) { return Object.assign({}, g, { tasks: (g.tasks || []).map(function (t) { return t.name.indexOf("Uzgodnić kolizję") >= 0 ? Object.assign({}, t, { status: "review" }) : t; }) }); }) }); }) }) }); }); return true;');
     await go('#/moja-praca');
@@ -984,21 +983,12 @@ async function main() {
     check('pracownik widzi to samo zużycie (z korektą) jako zwykły procent, bez godzin', (await stageText(activeStageId)) === usageNow.percent + '%' && usageNow.bonus === plannedHours / 2, (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
 
-    /* 36c. Panel szczegółów zwija się (]) i oddaje miejsce środkowi */
+    /* 36c. Szczegóły projektu nie mają bocznego panelu — treść zajmuje całą szerokość */
     await client.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await go('#/projekty/' + id2);
     await sleep(300);
-    const widthOpen = await evaluate('return document.querySelector(".detail__work").getBoundingClientRect().width;');
-    check('panel szczegółów jest szarą powierzchnią tego samego koloru co menu',
-      await evaluate('const a = getComputedStyle(document.querySelector(".pd-side")).backgroundColor; const b = getComputedStyle(document.querySelector(".sidebar")).backgroundColor; return a === b || b === "rgba(0, 0, 0, 0)";'));
-    await pressKey('rbracket');
-    await sleep(250);
-    const widthClosed = await evaluate('return document.querySelector(".detail__work").getBoundingClientRect().width;');
-    check('klawisz ] zwija panel szczegółów, a treść środkowa się powiększa',
-      !(await evaluate('return !!document.querySelector(".pd-side");')) && (await state('s.prefs.detailsOpen')) === false && widthClosed > widthOpen + 100, widthOpen + ' → ' + widthClosed);
-    await pressKey('rbracket');
-    await sleep(250);
-    check('ponowny ] rozwija panel szczegółów', await evaluate('return !!document.querySelector(".pd-side");') && (await state('s.prefs.detailsOpen')) === true);
+    check('szczegóły projektu nie mają szarego panelu bocznego ani przycisku jego przełączania',
+      !(await evaluate('return !!document.querySelector(".pd-side, [data-fk=details-toggle]");')));
     await client.send('Emulation.clearDeviceMetricsOverride');
 
     /* 37. Projekt bez danych i zły adres */
@@ -1292,11 +1282,11 @@ async function main() {
     /* 38f. Pismo → zadanie → czas; Skrzynka z objaśnieniami i grupami */
     const annaId = await state('s.workspace.people.find(p => p.firstName === "Anna").id');
     await evaluate('window.ETROM.app.actions.setMe("' + annaId + '"); return true;');
-    await go('#/skrzynka');
+    await go('#/moja-praca');
     await sleep(500);
-    check('Skrzynka: wprowadzenie wyjaśnia, do czego służy, a pozycje mają grupy i podpowiedź „dlaczego to widzę”',
-      await evaluate('return !!document.querySelector(".ibx__intro") && /na które musisz zareagować/.test(document.querySelector(".ibx__intro").textContent) && document.querySelectorAll(".ibx__group").length >= 1 && [...document.querySelectorAll(".ibx__groups .ibx__row")].every(r => r.querySelector(".ibx__why") && r.querySelector(".ibx__why").textContent.length > 10);'));
-    check('Skrzynka: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
+    check('Moja praca: pozycje reakcji mają dymki „dlaczego to widzę”, a na ekranie nie ma tekstów objaśniających',
+      await evaluate('return !document.querySelector(".ibx__intro, .ibx__why") && [...document.querySelectorAll("#view-mywork .ibx__row .ibx__info")].every(n => (n.getAttribute("data-tooltip") || "").length > 20) && !!document.querySelector("#view-mywork .ibx__row .ibx__info");'));
+    check('Moja praca: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
       await evaluate('const r = document.querySelector(".ibx__row[data-kind=mail]"); return !!r && !!r.querySelector("[data-fk^=inbox-mailtask-]") && !!r.querySelector("[data-fk^=inbox-reply-]");'));
     const code01 = await projectId('2601');
     await go('#/projekty/' + code01 + '/korespondencja');

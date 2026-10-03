@@ -155,7 +155,7 @@ bursztynowa przy ostrzeżeniu) z listą powodów i przyciskami działań („Zmi
 „Pokaż zadania”, „Dodaj zadania”, „Otwórz korespondencję”). Gdy nic nie wymaga reakcji — bloku nie ma.
 
 Zakładki: Plan (etapy), Zadania, Korespondencja, Zespół, Czas (zapisany czas wg etapów), Aktywność
-(`Insight.activity`). Po prawej zwijany panel Szczegóły (`prefs.detailsOpen`).
+(`Insight.activity`). Bez bocznego panelu — dane w nagłówku, reszta w zakładkach Zespół i Aktywność.
 
 ### Flow — tor przebiegu (`Flow.flowTrack`)
 
@@ -324,9 +324,9 @@ formularze na całą szerokość.
   opis profilu przebiegu dla czytnika ekranu.
 - `prefers-reduced-motion` respektowane, ruch ciągły kończy się sam.
 
-## Skrzynka i Moja praca
+## Moja praca (z dawną Skrzynką)
 
-- Skrzynka to lista „do reakcji”, nie archiwum: bez „przeczytane”, pozycja znika, gdy sprawa jest załatwiona. Jedyny zapis to odłożenie do jutra (`prefs.snoozed`).
+- Jedno miejsce na „co mam zrobić”: sekcja „Wymaga reakcji” (zatwierdzenia, pisma) nad zadaniami według czasu; pasek alarmów projektów dla liderów. Objaśnienia nie zajmują ekranu — są w dymkach (`.ibx__info[data-tooltip]`). Reakcje to lista „do reakcji”, nie archiwum: bez „przeczytane”, pozycja znika, gdy sprawa jest załatwiona. Jedyny zapis to odłożenie do jutra (`prefs.snoozed`).
 - Kolor tylko dla pilnych: lewa kreska i ikona w tonie alarmu przy pozycji po terminie, reszta neutralna.
 - Obie listy używają zakładek z licznikami (`pf-view`), płaskich wierszy z linią zamiast kart z cieniem i gęstości `--row-h`; `J`/`K` przechodzą po wierszach.
 
@@ -402,4 +402,4 @@ Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte og�
 ## Pismo → zadanie → czas oraz Skrzynka
 - **Zadanie z pisma** (opcjonalne): w Korespondencji przycisk „Utwórz zadanie z pisma” (pod pismem oraz w menu wiersza) otwiera zwykły formularz zadania z wybieralnym etapem, nazwą z numeru pisma, terminem odpowiedzi i zespołem. Zadanie zapamiętuje pismo w `task.mailId`. Czas rejestruje się na zadaniu, więc liczy się do budżetu etapu i Analizy; kilkadziesiąt godzin nad jednym wezwaniem to zwykłe godziny zadania.
 - Pismo pokazuje powiązane zadania (status i suma godzin, `Mail.linkedTasks`), zadanie w panelu ma pole „Z pisma”. Pismo kończy się jak dotąd: zarejestrowaną odpowiedzią.
-- **Skrzynka** ma wprowadzenie („to rzeczy, na które musisz zareagować”), grupy z nagłówkiem i jednym zdaniem wyjaśnienia (Czeka na Twoją decyzję · Wróciło do poprawy · Pisma wymagające odpowiedzi · Projekty w alarmie), przy każdej pozycji zdanie „dlaczego to widzę” (`item.why`) oraz akcje dopasowane do rodzaju (pismo: Utwórz zadanie / Otwórz zadanie + Napisz odpowiedź). Granica z „Moją pracą”: Skrzynka to reakcje na cudze działania i pisma, Moja praca to własne zadania do wykonania.
+- **Moja praca** nie ma wprowadzeń ani zdań wyjaśniających na ekranie: „dlaczego to widzę” (`item.why`) i opis sekcji są w dymkach po najechaniu lub fokusie. Pismo z zadaniem to jeden wiersz (zadanie nie powtarza się na liście). Akcje wg rodzaju: pismo — Utwórz zadanie / Otwórz zadanie + Napisz odpowiedź.

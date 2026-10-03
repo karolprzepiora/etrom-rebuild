@@ -207,8 +207,7 @@ body, .app {
 .person__name { font-weight: 650; }
 .avatar { box-shadow: 0 0 0 2px var(--sheet); }
 
-/* panel szczegółów i karty informacyjne */
-.pd-side { border-radius: 22px; }
+/* karty informacyjne */
 .card { border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line); }
 
 /* nakładki: okna, menu, paleta, powiadomienia */

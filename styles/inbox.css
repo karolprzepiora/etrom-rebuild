@@ -3,8 +3,6 @@
    kolor tylko dla tego, co wymaga reakcji, jedna skala typografii, gęstość z --row-h. */
 
 /* ---------- Skrzynka ---------- */
-.ibx { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
-.ibx__filters { margin-bottom: 0; }
 .ibx__list { display: block; margin: 0; padding: 0; list-style: none; }
 .ibx__row {
   display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) 8.5rem auto; align-items: center; gap: var(--space-3);
@@ -53,16 +51,21 @@
 .mywork__aside .timer-resume, .mywork__aside [class*="resume"] { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Skrzynka: wprowadzenie i grupy */
-.ibx__intro { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--flow-wash); color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.5; }
-.ibx__intro-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--sheet); color: var(--flow-ink); flex: none; }
-.ibx__intro strong { color: var(--ink); }
-.ibx__groups { display: grid; gap: var(--space-6, 2rem); }
-.ibx__group { display: grid; gap: var(--space-2); }
-.ibx__group-head { display: grid; gap: 2px; }
-.ibx__group-title { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-md); font-weight: 650; color: var(--ink); }
-.ibx__group-count { font-size: var(--fs-xs); font-weight: 600; background: var(--wash); border-radius: 999px; padding: 0 8px; color: var(--ink-2); }
-.ibx__group-text { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
-.ibx__why { font-size: var(--fs-sm); color: var(--ink-3); line-height: 1.4; white-space: normal; }
 .ibx__linked { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: 2px; }
 .ibx__body { overflow: visible; }
 .ibx__actions { flex-wrap: wrap; }
+
+/* Objaśnienia w dymkach, nie na ekranie */
+.ibx__titleline { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.ibx__info { display: inline-grid; place-items: center; flex: none; color: var(--ink-3); border-radius: 50%; cursor: help; opacity: .7; }
+.ibx__info:hover, .ibx__info:focus-visible { opacity: 1; color: var(--ink-2); outline: none; }
+.ibx__info:focus-visible { box-shadow: var(--focus-ring); }
+.msec__head .ibx__info { align-self: center; }
+
+/* Pasek projektów w alarmie */
+.ibx__alarms { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ibx__alarms-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--alarm-ink); }
+.ibx__alarm { display: inline-flex; align-items: center; gap: var(--space-2); max-width: 18rem; padding: 4px 10px; border-radius: var(--radius-full); background: var(--alarm-wash); color: var(--alarm-ink); font-size: var(--fs-sm); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alarm) 28%, transparent); }
+.ibx__alarm:hover { box-shadow: inset 0 0 0 1px var(--alarm); }
+.ibx__alarm:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ibx__alarm .code { font-weight: 650; }

@@ -41,7 +41,6 @@
     timeForm: null,
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
-    inboxFilter: 'all',
     analysisProject: null,
     analysisTab: 'overview',
     feedEditing: null,
@@ -77,7 +76,7 @@
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
     if (parts[0] === 'zespol') return { name: 'team' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
-    if (parts[0] === 'skrzynka') return { name: 'inbox' };
+    if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
     if (parts[0] === 'analiza') return { name: 'analysis' };
     if (parts[0] === 'projekty' && parts[1] && /^\d+$/.test(parts[1])) {
@@ -88,13 +87,12 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'inbox' ? 'inbox' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')));
   }
 
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
     if (route.name === 'mywork') return '#/moja-praca';
-    if (route.name === 'inbox') return '#/skrzynka';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
     if (route.name === 'project') return '#/projekty/' + route.projectId + (route.tab && route.tab !== 'etapy' ? '/' + route.tab : '');
@@ -175,7 +173,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'inbox' ? 'inbox' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects'))) });
   }
 
   function openProject(id, tab) {
@@ -1136,12 +1134,10 @@
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
     ['G M', 'Przejdź do mojej pracy'],
-    ['G S', 'Przejdź do skrzynki'],
-    ['J K', 'Następny / poprzedni wiersz (projekty, moja praca, skrzynka)'],
+    ['J K', 'Następny / poprzedni wiersz (projekty, moja praca)'],
     ['V', 'Zmień widok: tabela ↔ karty (na zadaniach: lista ↔ kanban)'],
     ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
     ['[', 'Zwiń lub rozwiń panel boczny (menu)'],
-    [']', 'Zwiń lub rozwiń panel szczegółów projektu'],
     ['Esc', 'Zamknij podgląd, menu albo panel; odznacz wiersze'],
     ['Ctrl Enter', 'Zapisz formularz'],
     ['?', 'Ta lista']
@@ -1890,8 +1886,7 @@
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
       { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
-      { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'powiadomienia zatwierdzenia pisma do reakcji', run: function () { goTo('inbox'); } },
-      { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia dziś', run: function () { goTo('mywork'); } },
+      { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia pisma skrzynka reakcje dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
       { label: 'Widok: karty', icon: 'grid', meta: now(prefs.view === 'cards'), keywords: 'kafelki', run: function () { goTo('projects'); setView('cards'); } },
@@ -1976,7 +1971,6 @@
     toggleTimer: toggleTimer,
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
-    setInboxFilter: function (value) { store.set({ inboxFilter: value }); },
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
     setAnalysisTab: function (tab) { store.set({ analysisTab: tab }); },
     openAnalysisProject: function (id) { store.set({ analysisProject: id, analysisTab: 'projects' }); },
@@ -2415,12 +2409,6 @@
     D.patch(nodes.analysisBody, [screen.body]);
   }
 
-  function renderInbox(state) {
-    var screen = E.InboxScreen.view(state, { actions: actions });
-    nodes.inboxSummary.textContent = screen.summary;
-    D.patch(nodes.inboxBody, [screen.body]);
-  }
-
   function snoozeInbox(key, title) {
     var next = E.Inbox.snooze(store.getState().prefs.snoozed, key, new Date(), 1);
     setPref({ snoozed: next });
@@ -2530,7 +2518,6 @@
     nodes.views.project.hidden = route.name !== 'project';
     nodes.views.team.hidden = route.name !== 'team';
     nodes.views.mywork.hidden = route.name !== 'mywork';
-    nodes.views.inbox.hidden = route.name !== 'inbox';
     nodes.views.feed.hidden = route.name !== 'feed';
     nodes.views.analysis.hidden = route.name !== 'analysis';
 
@@ -2554,9 +2541,6 @@
     } else if (route.name === 'feed') {
       document.title = 'Aktualności · ETROM';
       renderFeed(state);
-    } else if (route.name === 'inbox') {
-      document.title = 'Skrzynka · ETROM';
-      renderInbox(state);
     } else if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
       renderMyWork(state);
@@ -2642,7 +2626,6 @@
       if (event.key === 'p' || event.key === 'P') { event.preventDefault(); goTo('projects'); return; }
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
-      if (event.key === 's' || event.key === 'S') { event.preventDefault(); goTo('inbox'); return; }
       if (event.key === 'a' || event.key === 'A') { event.preventDefault(); goTo('feed'); return; }
       if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
     }
@@ -2662,8 +2645,8 @@
         return;
       }
     }
-    if ((route === 'mywork' || route === 'inbox') && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
-      var rows = Array.prototype.slice.call(document.querySelectorAll(route === 'inbox' ? '#view-inbox .ibx > .ibx__list .ibx__title' : '#view-mywork .trow__name'));
+    if ((route === 'mywork') && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
+      var rows = Array.prototype.slice.call(document.querySelectorAll('#view-mywork .trow__name'));
       if (rows.length) {
         event.preventDefault();
         var cur = rows.indexOf(document.activeElement);
@@ -2691,7 +2674,6 @@
       if (route === 'project' && state.route.tab === 'zadania') { event.preventDefault(); setPref({ taskView: state.prefs.taskView === 'kanban' ? 'list' : 'kanban' }); return; }
     }
     if (event.key === '[') { event.preventDefault(); toggleSidebar(); return; }
-    if (event.key === ']' && route === 'project') { event.preventDefault(); setPref({ detailsOpen: state.prefs.detailsOpen === false }); return; }
     if (event.key === '?') { event.preventDefault(); showShortcuts(); return; }
     if (event.key === '/') {
       if (route === 'project') return;
@@ -2732,15 +2714,13 @@
     nodes.myworkSummary = D.byId('mywork-summary');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
-    nodes.inboxSummary = D.byId('inbox-summary');
-    nodes.inboxBody = D.byId('inbox-body');
     nodes.feedSummary = D.byId('feed-summary');
     nodes.feedBody = D.byId('feed-body');
     nodes.analysisSummary = D.byId('analysis-summary');
     nodes.analysisTools = D.byId('analysis-tools');
     nodes.analysisBody = D.byId('analysis-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

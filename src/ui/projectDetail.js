@@ -168,42 +168,6 @@
     ]);
   }
 
-  /* ---------- panel szczegółów (po prawej, zwijany) ---------- */
-
-  function detailsPanel(project, ctx, now) {
-    var team = project.team || Team.emptyTeam();
-    var entries = (ctx.state.workspace.entries) || [];
-    var recent = Insight.activity(project, ctx.state.workspace.mail || [], 4);
-    var roles = Team.FUNCTIONS.map(function (fn) {
-      var person = Team.findPerson(ctx.people, team[fn.key]);
-      return person ? D.el('li', { class: 'pd-kv' }, [
-        D.el('span', { class: 'pd-kv__k', text: fn.label }),
-        D.el('button', { class: 'pd-kv__v pd-link', attrs: { type: 'button' }, text: Team.fullName(person), on: { click: function () { ctx.actions.inspect({ kind: 'person', personId: person.id }); } } })
-      ]) : null;
-    }).filter(Boolean);
-    var members = (team.members || []).length;
-
-    function section(title, children) {
-      return D.el('section', { class: 'pd-side__sec' }, [D.el('h3', { class: 'pd-side__h', text: title })].concat(children));
-    }
-    return D.el('aside', { class: 'pd-side', attrs: { 'aria-label': 'Szczegóły projektu' } }, [
-      section('Szczegóły', [D.el('ul', { class: 'pd-side__list' }, [
-        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Kod' }), D.el('span', { class: 'pd-kv__v code', text: project.code })]),
-        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Zamawiający' }), D.el('span', { class: 'pd-kv__v', text: project.client || '—' })]),
-        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Utworzono' }), D.el('span', { class: 'pd-kv__v t-num', text: project.createdAt ? F.date(project.createdAt.slice(0, 10), { year: 'always' }) : '—' })]),
-        D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Etapy' }), D.el('span', { class: 'pd-kv__v t-num', text: String(project.stages.length) })])
-      ])]),
-      section('Zespół', roles.length || members
-        ? [D.el('ul', { class: 'pd-side__list' }, roles.concat(members ? [D.el('li', { class: 'pd-kv' }, [D.el('span', { class: 'pd-kv__k', text: 'Członkowie' }), D.el('span', { class: 'pd-kv__v t-num', text: String(members) })])] : []))]
-        : [D.el('p', { class: 'pd-side__empty', text: 'Zespół nie jest przypisany.' })]),
-      section('Ostatnia aktywność', recent.length
-        ? [D.el('ul', { class: 'pd-side__list pd-side__list--act' }, recent.map(function (a) {
-            return D.el('li', { class: 'pd-act' }, [D.el('span', { class: 'pd-act__text', text: a.text }), D.el('span', { class: 'pd-act__at t-num', text: F.dateTime(String(a.at).slice(0, 16)) })]);
-          }))]
-        : [D.el('p', { class: 'pd-side__empty', text: 'Jeszcze nic się nie wydarzyło.' })])
-    ]);
-  }
-
   /* ---------- zakładka Zadania ---------- */
 
   function tasksTab(project, ctx) {
@@ -440,24 +404,12 @@
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });
-    // Tablica zadań potrzebuje całej szerokości: panel szczegółów chowa się, dopóki jest na ekranie.
-    var board = (tab === 'zadania' && ctx.state.prefs.taskView === 'kanban') || tab === 'korespondencja' || tab === 'analiza';
-    var open = ctx.state.prefs.detailsOpen !== false && !board;
-    var toggle = UI.iconButton({
-      icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm', kbd: ']',
-      attrs: { 'aria-pressed': String(open), 'data-fk': 'details-toggle' },
-      onClick: function () { ctx.actions.setPref({ detailsOpen: !open }); }
-    });
-
     return [
       header(project, ctx, now),
       attentionBlock(project, ctx, now),
-      D.el('div', { class: 'pd-layout' + (open ? '' : ' is-wide') }, [
-        D.el('div', { class: 'detail__work' }, [
-          D.el('div', { class: 'pd-tabsrow' }, [tabs, board ? null : toggle]),
-          D.el('div', { class: 'detail__body', attrs: { 'data-tab': tab } }, [body])
-        ]),
-        open ? detailsPanel(project, ctx, now) : null
+      D.el('div', { class: 'detail__work' }, [
+        D.el('div', { class: 'pd-tabsrow' }, [tabs]),
+        D.el('div', { class: 'detail__body', attrs: { 'data-tab': tab } }, [body])
       ])
     ];
   }
