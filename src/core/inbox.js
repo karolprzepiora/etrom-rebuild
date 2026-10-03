@@ -49,7 +49,7 @@
    * @param {Object<string,string>} snoozed klucz → data (RRRR-MM-DD), do której ukryta
    * @returns {{items: Array, snoozed: Array, counts: Object, total: number, urgent: number}}
    */
-  function build(personId, projects, mail, now, snoozed) {
+  function build(personId, projects, mail, now, snoozed, entries) {
     var ref = now instanceof Date ? now : new Date();
     var today = dateKey(ref);
     var hidden = snoozed && typeof snoozed === 'object' ? snoozed : {};
@@ -58,10 +58,10 @@
       var work = Insight.myWork(personId, projects, ref);
       work.toApprove.forEach(function (row) {
         var days = daysOf(row.task.deadline, ref);
-        all.push({ key: taskKey('approve', row), kind: 'approve', project: row.project, stage: row.stage, task: row.task, title: row.task.name, days: days, urgent: days !== null && days < 0 });
+        all.push({ key: taskKey('approve', row), kind: 'approve', project: row.project, stage: row.stage, task: row.task, title: row.task.name, why: 'Realizatorzy zgłosili to zadanie do zatwierdzenia. Zatwierdź albo zwróć z uwagą.', days: days, urgent: days !== null && days < 0 });
       });
       work.returned.forEach(function (row) {
-        all.push({ key: taskKey('returned', row), kind: 'returned', project: row.project, stage: row.stage, task: row.task, title: row.task.name, detail: row.task.feedback || '', days: row.days, urgent: !!row.overdue });
+        all.push({ key: taskKey('returned', row), kind: 'returned', project: row.project, stage: row.stage, task: row.task, title: row.task.name, detail: row.task.feedback || '', why: 'Zadanie wróciło do poprawy. Popraw i zgłoś ponownie do zatwierdzenia.', days: row.days, urgent: !!row.overdue });
       });
       (projects || []).forEach(function (project) {
         if (project.status === 'done') return;
@@ -70,10 +70,10 @@
         if (!owner) return;
         Mail.pending(mail || [], project.id, ref).forEach(function (x) {
           if (x.reply.days > MAIL_HORIZON) return;
-          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', days: x.reply.days, urgent: x.reply.state === 'overdue' });
+          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: Mail.linkedTasks(project, x.entry.id, entries, ref), why: (x.reply.state === 'overdue' ? 'Termin odpowiedzi na to pismo minął. ' : 'Zbliża się termin odpowiedzi na to pismo. ') + 'Jesteś liderem lub koordynatorem projektu. Utwórz zadanie (żeby zapisywać czas) albo od razu napisz odpowiedź.', days: x.reply.days, urgent: x.reply.state === 'overdue' });
         });
         if (fns.indexOf('leader') >= 0 && Insight.health(project, ref).level === 'alarm') {
-          all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.health(project, ref).label, days: null, urgent: true });
+          all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.health(project, ref).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });
         }
       });
     }

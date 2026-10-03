@@ -87,7 +87,8 @@
         workload: workload,
         assignees: unique,
         description: text(data.description).slice(0, LIMITS.description),
-        important: data.important === true
+        important: data.important === true,
+        mailId: text(data.mailId).slice(0, 60)
       }
     };
   }
@@ -334,6 +335,7 @@
         parts: parts,
         description: text(item.description).slice(0, LIMITS.description),
         important: item.important === true,
+        mailId: text(item.mailId).slice(0, 60),
         feedback: text(item.feedback).slice(0, LIMITS.reason),
         history: history,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''

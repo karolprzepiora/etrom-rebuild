@@ -441,7 +441,7 @@
       })
     });
     // Tablica zadań potrzebuje całej szerokości: panel szczegółów chowa się, dopóki jest na ekranie.
-    var board = tab === 'zadania' && ctx.state.prefs.taskView === 'kanban';
+    var board = (tab === 'zadania' && ctx.state.prefs.taskView === 'kanban') || tab === 'korespondencja' || tab === 'analiza';
     var open = ctx.state.prefs.detailsOpen !== false && !board;
     var toggle = UI.iconButton({
       icon: 'sidebar', label: open ? 'Ukryj szczegóły' : 'Pokaż szczegóły', size: 'sm', kbd: ']',

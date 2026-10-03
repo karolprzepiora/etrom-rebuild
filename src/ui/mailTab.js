@@ -39,12 +39,35 @@
         { label: 'Edytuj wpis', icon: 'edit', onSelect: function () { actions.editMail(entry.id); } }
       ];
       if (entry.direction === 'in') items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
-      if (entry.replyDue && !entry.noReply) items.push({ label: 'Utwórz zadanie z terminem odpowiedzi', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
+      items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
       items.push({ type: 'separator' });
       items.push({ label: 'Usuń wpis', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteMail(entry.id); } });
       return { label: 'Działania pisma', align: 'end', items: items };
     });
     return btn;
+  }
+
+  /** Zadania powstałe z pisma (z czasem pracy) albo przycisk, który je zakłada. */
+  function taskLine(entry, project, ctx, now, r) {
+    var linked = Mail.linkedTasks(project, entry.id, ctx.state.workspace.entries, now);
+    if (!linked.length) {
+      if (r.state === 'answered' || r.state === 'none') return null;
+      return D.el('span', { class: 'mrow2__tasks' }, [
+        UI.button({ label: 'Utwórz zadanie z pisma', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
+      ]);
+    }
+    return D.el('span', { class: 'mrow2__tasks' }, linked.map(function (row) {
+      return D.el('button', {
+        class: 'mrow2__task', attrs: { type: 'button', 'data-fk': 'mail-linked-' + row.task.id, 'data-tooltip': 'Otwórz zadanie' },
+        on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: project.id, stageId: row.stage.id, taskId: row.task.id }); } }
+      }, [
+        E.Icons.icon('checklist', 13),
+        D.el('span', { class: 'truncate', text: row.task.name }),
+        D.el('span', { class: 'mrow2__task-meta t-num', text: E.Tasks.TASK_STATUS[row.task.status] + ' · ' + F.hours(row.hours) })
+      ]);
+    }).concat([
+      UI.button({ label: 'Kolejne zadanie', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
+    ]));
   }
 
   function mailRow(entry, list, project, ctx, now) {
@@ -68,7 +91,8 @@
       UI.badge(Mail.KINDS[entry.kind], 'neutral'),
       replyBlock(entry, list, now),
       r.state !== 'none' ? UI.badge(STATE_LABEL[r.state], STATE_TONE[r.state]) : D.el('span'),
-      rowMenu(entry, project, ctx.actions)
+      rowMenu(entry, project, ctx.actions),
+      taskLine(entry, project, ctx, now, r)
     ]);
   }
 

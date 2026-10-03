@@ -631,7 +631,7 @@
         projectId: projectId, stageId: stageId,
         draft: {
           id: task.id, name: task.name, deadline: task.deadline, workload: task.workload,
-          important: task.important, description: task.description, assignees: (task.assignees || []).slice()
+          important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || ''
         },
         errors: {}
       }
@@ -642,6 +642,7 @@
     var form = store.getState().taskForm;
     if (!form) return;
     var project = findProject(form.projectId);
+    if (values.id == null && values.stageId && stageOf(form.projectId, values.stageId)) form = Object.assign({}, form, { stageId: values.stageId });
     var stage = stageOf(form.projectId, form.stageId);
     if (!project || !stage) return;
 
@@ -762,25 +763,27 @@
   }
 
   /** Zadanie z terminem odpowiedzi: w pierwszym etapie w toku (albo pierwszym), przypisane do lidera. */
+  /** Otwiera formularz zadania wypełniony danymi pisma; zadanie zapamięta pismo (task.mailId). */
   function mailToTask(id) {
     var entry = mailList().filter(function (e) { return e.id === id; })[0];
     var project = entry && findProject(entry.projectId);
-    if (!project || !project.stages.length || !entry.replyDue) return;
+    if (!project) return;
+    if (!project.stages.length) { Toast.show({ message: 'Projekt nie ma jeszcze etapów — dodaj etap, w którym zapiszesz pracę nad pismem.', tone: 'info', timeout: 5000 }); return; }
     var stage = project.stages.filter(function (s) { return s.status === 'working'; })[0]
       || project.stages.filter(function (s) { return s.status !== 'done'; })[0] || project.stages[0];
     var allowed = projectRoster(project);
     var assignees = project.team && project.team.leader && allowed.indexOf(project.team.leader) >= 0 ? [project.team.leader] : [];
-    var values = {
-      name: 'Odpowiedź na pismo ' + entry.regNo + ': ' + entry.subject,
-      deadline: entry.replyDue + 'T15:00', workload: 'medium', important: true,
-      description: 'Pismo od: ' + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.', assignees: assignees
-    };
-    var check = Tasks.validateTask(values, allowed);
-    if (!check.valid) { Toast.show({ message: 'Nie udało się utworzyć zadania — sprawdź termin odpowiedzi.', tone: 'danger', timeout: 4000 }); return; }
-    var created = Tasks.createTask(values, stage.tasks || [], allowed);
-    pendingFlash = { projectId: project.id, taskId: created.id };
-    mapStage(project.id, stage.id, function (current) { return Object.assign({}, current, { tasks: (current.tasks || []).concat([created]) }); });
-    Toast.show({ message: 'Dodano zadanie w etapie „' + Model.describeStage(stage).name + '”.', tone: 'success', timeout: 4000 });
+    var verb = entry.direction === 'in' ? 'Odpowiedź na pismo ' : 'Pismo ';
+    store.set({ taskForm: {
+      projectId: project.id, stageId: stage.id, fromMail: { id: entry.id, regNo: entry.regNo, subject: entry.subject, counterparty: entry.counterparty },
+      draft: {
+        name: verb + entry.regNo + ': ' + entry.subject,
+        deadline: entry.replyDue && !entry.noReply ? entry.replyDue + 'T15:00' : '', workload: 'medium', important: !!entry.replyDue && entry.kind === 'summons',
+        description: (entry.direction === 'in' ? 'Pismo od: ' : 'Pismo do: ') + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.',
+        assignees: assignees, mailId: entry.id, stageId: stage.id
+      },
+      errors: {}
+    } });
   }
 
   function mailReplyOptions(projectId, direction, selfId) {
@@ -1394,7 +1397,8 @@
       { stage: 1, name: 'Koncepcja przebudowy przepustu — wariant A i B', status: 'done', workload: 'large', hours: -120, people: [0, 2] },
       { stage: 2, name: 'Inwentaryzacja przyrodnicza', status: 'review', workload: 'medium', hours: 20, people: [3] },
       { stage: 3, name: 'Raport o oddziaływaniu na środowisko', status: 'working', workload: 'large', hours: 90, people: [3, 5], important: true, description: 'Wymaga danych z inwentaryzacji przyrodniczej i opinii RDOŚ.' },
-      { stage: 4, name: 'Zamówić mapę do celów projektowych', status: 'todo', workload: 'small', hours: -30, people: [5] }
+      { stage: 4, name: 'Zamówić mapę do celów projektowych', status: 'todo', workload: 'small', hours: -30, people: [5] },
+      { stage: 6, name: 'Uzupełnić wniosek o pozwolenie wodnoprawne', status: 'working', workload: 'veryLarge', hours: 96, people: [2, 0], important: true, mail: 'Wezwanie do uzupełnienia wniosku', work: 34, description: 'Zadanie z wezwania RZGW: uzupełnić operat, mapy i obliczenia hydrauliczne.' }
     ],
     '2602': [
       { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', workload: 'large', hours: 72, people: [1, 3] },
@@ -1416,7 +1420,8 @@
         reason: 'Uzupełnić opis oddziaływania na wody powierzchniowe.'
       },
       { stage: 3, name: 'Analiza wariantów pompowni', status: 'working', workload: 'medium', hours: 30, people: [2, 4] },
-      { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', workload: 'small', hours: 240, people: [4] }
+      { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', workload: 'small', hours: 240, people: [4] },
+      { stage: 3, name: 'Uzupełnić kartę informacyjną wg opinii RDOŚ', status: 'working', workload: 'large', hours: 120, people: [1, 2], mail: 'Opinia do karty informacyjnej', work: 18, description: 'Uwagi RDOŚ do oddziaływania na wody powierzchniowe i siedliska.' }
     ],
     '2605': [
       { stage: 13, name: 'Przekazanie dokumentacji zamawiającemu', status: 'done', workload: 'small', hours: -900, people: [1] }
@@ -1427,7 +1432,8 @@
       { stage: 6, name: 'Operat wodnoprawny', status: 'working', workload: 'large', hours: 70, people: [6, 2], important: true },
       { stage: 5, name: 'Wniosek o decyzję lokalizacyjną', status: 'review', workload: 'medium', hours: 10, people: [3] },
       { stage: 9, name: 'Projekt zagospodarowania osadów', status: 'todo', workload: 'large', hours: 200, people: [2] },
-      { stage: 6, name: 'Uzupełnić dane hydrologiczne', status: 'changes', workload: 'small', hours: -4, people: [6], reason: 'Brakuje przepływów z ostatnich 10 lat.' }
+      { stage: 6, name: 'Uzupełnić dane hydrologiczne', status: 'changes', workload: 'small', hours: -4, people: [6], reason: 'Brakuje przepływów z ostatnich 10 lat.' },
+      { stage: 9, name: 'Uzupełnić dane o osadach (wezwanie gminy)', status: 'todo', workload: 'medium', hours: 60, people: [2, 6], mail: 'Wezwanie do uzupełnienia danych o osadach' }
     ],
     '2607': [
       { stage: 0, name: 'Zebrać wytyczne od zarządcy drogi', status: 'done', workload: 'small', hours: -150, people: [3] },
@@ -1633,6 +1639,27 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
     });
+    // Zadania wywołane pismami: łączymy po temacie pisma (task.mailId), żeby widać było pismo → zadanie → czas.
+    updateWorkspace(function (workspace) {
+      var changed = false;
+      var projects = workspace.projects.map(function (project) {
+        var specs = (DEMO_TASKS[project.code] || []).filter(function (sp) { return sp.mail; });
+        if (!specs.length) return project;
+        var stages = project.stages.map(function (stage) {
+          var tasks = (stage.tasks || []).map(function (task) {
+            var spec = specs.filter(function (sp) { return sp.name === task.name; })[0];
+            if (!spec || task.mailId) return task;
+            var entry = (workspace.mail || []).filter(function (m) { return m.projectId === project.id && m.subject.indexOf(spec.mail) === 0; })[0];
+            if (!entry) return task;
+            changed = true;
+            return Object.assign({}, task, { mailId: entry.id });
+          });
+          return Object.assign({}, stage, { tasks: tasks });
+        });
+        return Object.assign({}, project, { stages: stages });
+      });
+      return changed ? Object.assign({}, workspace, { projects: projects }) : workspace;
+    });
     // Demonstracyjne wartości umów i czas pracy z ostatnich tygodni (do Analizy).
     var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000, '2606': 240000, '2607': 95000 };
     var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02, '2606': 0.84, '2607': 1.1 };
@@ -1684,6 +1711,23 @@
               });
               left -= hours; todayHours -= hours;
             }
+          }
+        });
+      });
+      // Praca nad zadaniami z pism (kilkadziesiąt godzin): wpisy przypięte do zadania.
+      projectsOut.forEach(function (project) {
+        (DEMO_TASKS[project.code] || []).filter(function (sp) { return sp.work; }).forEach(function (spec) {
+          var found = null;
+          project.stages.forEach(function (stage) { (stage.tasks || []).forEach(function (task) { if (task.name === spec.name) found = { stage: stage, task: task }; }); });
+          if (!found) return;
+          var chunks = Math.ceil(spec.work / 4);
+          for (var c = 0; c < chunks; c += 1) {
+            var day = workdays[Math.max(0, workdays.length - 1 - Math.floor(c * 0.6))];
+            var who = found.task.assignees[c % found.task.assignees.length];
+            if (!who) continue;
+            var st = new Date(day); st.setHours(13 + (c % 2) * 2, 0, 0, 0);
+            counter += 1;
+            entriesOut.push({ id: 'e-demo-t-' + counter, personId: who, projectId: project.id, stageId: found.stage.id, taskId: found.task.id, label: found.task.name, start: st.toISOString(), end: new Date(st.getTime() + Math.min(4, spec.work - c * 4) * 3600000).toISOString(), note: c % 3 === 0 ? 'Poprawki po wezwaniu' : '', source: 'manual', updatedAt: st.toISOString() });
           }
         });
       });
@@ -2425,7 +2469,7 @@
         : [];
       settings.title = current.draft.id != null ? 'Edytuj zadanie' : 'Nowe zadanie';
       settings.subtitle = (project ? project.code : '') + (stage ? ' · ' + Model.describeStage(stage).name : '');
-      settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster);
+      settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster, current.fromMail ? { mail: current.fromMail, stageId: current.stageId, stages: (project ? project.stages : []).map(function (st) { return { value: st.id, label: Model.describeStage(st).name }; }) } : null);
     } else if (current === state.timeForm) {
       var logged = findProject(current.projectId);
       var loggedTask = taskOf(current.projectId, current.stageId, current.taskId);
@@ -2541,6 +2585,7 @@
       entries: state.workspace.entries || [],
       me: state.prefs.me,
       findProject: findProject,
+      mailOf: function (id) { return mailList().filter(function (e) { return e.id === id; })[0] || null; },
       actions: actions
     });
   }

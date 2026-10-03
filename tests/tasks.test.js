@@ -239,3 +239,12 @@ test('progi dalszych terminów', () => {
   assert.equal(Tasks.deadlineInfo(task({ deadline: '2026-06-20T12:00' }), NOW).tone, 'warning');
   assert.equal(Tasks.deadlineInfo(task({ deadline: '2026-07-20T12:00' }), NOW).tone, 'normal');
 });
+
+test('zadanie zapamiętuje pismo, z którego powstało (mailId), i zachowuje je po wczytaniu z dysku', () => {
+  const check = Tasks.validateTask({ name: 'Odpowiedź', mailId: 'm-7', assignees: [] }, []);
+  assert.equal(check.value.mailId, 'm-7');
+  const created = Tasks.createTask({ name: 'Odpowiedź', mailId: 'm-7' }, [], []);
+  assert.equal(created.mailId, 'm-7');
+  assert.equal(Tasks.normalizeTasks([created], []).pop().mailId, 'm-7');
+  assert.equal(Tasks.validateTask({ name: 'Zwykłe' }, []).value.mailId, '');
+});

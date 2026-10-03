@@ -16,7 +16,7 @@
    * @param {{onSubmit: Function, onCancel: Function, onEditTeam?: Function}} handlers
    * @param {Array} roster osoby z zespołu projektu
    */
-  function taskForm(draft, errors, handlers, roster) {
+  function taskForm(draft, errors, handlers, roster, fromMail) {
     var values = draft || {};
     var problems = errors || {};
     var editing = values.id != null;
@@ -51,6 +51,10 @@
         ])
       : UI.alert({ tone: 'info', text: 'Projekt nie ma jeszcze zespołu. Przypisz osoby w edycji projektu, żeby wskazać realizatorów.' });
 
+    var stage = fromMail && fromMail.stages && fromMail.stages.length
+      ? UI.select({ id: 'tk-stage', options: fromMail.stages, value: values.stageId || fromMail.stageId })
+      : null;
+
     var form = E.Dialog.drawerForm({
       id: 'task-form',
       submitLabel: editing ? 'Zapisz zmiany' : 'Dodaj zadanie',
@@ -58,6 +62,8 @@
       onSubmit: function () {
         handlers.onSubmit({
           id: values.id,
+          mailId: values.mailId || '',
+          stageId: stage ? stage.value : undefined,
           name: name.value,
           deadline: deadline.value,
           workload: workload.value,
@@ -67,7 +73,9 @@
         });
       },
       body: [
+        fromMail ? UI.alert({ tone: 'info', text: 'Zadanie powstaje z pisma ' + fromMail.mail.regNo + ' — ' + fromMail.mail.subject + '. Czas pracy zapiszesz na tym zadaniu, więc policzy się do budżetu wybranego etapu.' }) : null,
         D.el('section', { class: 'form__section' }, [
+          stage ? UI.field({ id: 'tk-stage', label: 'Etap', control: stage, hint: 'W tym etapie zapisuje się godziny i liczy budżet.' }) : null,
           UI.field({ id: 'tk-name', label: 'Nazwa zadania', required: true, control: name, error: problems.name }),
           D.el('div', { class: 'form__row' }, [
             UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline }),

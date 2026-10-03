@@ -93,3 +93,18 @@ test('skrzynka: bez osoby jest pusta', () => {
   const r = Inbox.build(null, [project()], [], NOW, {});
   assert.equal(r.total, 0);
 });
+
+test('skrzynka: pismo pokazuje powiązane zadania z czasem pracy i podpowiada, co zrobić', () => {
+  const Mail = require('../src/core/mail.js');
+  const mail = Mail.create([], 1, { direction: 'in', kind: 'summons', subject: 'Wezwanie', counterparty: 'RZGW', registeredDate: '2026-09-28', replyDue: '2026-10-03' }, { now: NOW }).entries;
+  const id = mail[0].id;
+  const p = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'working', mailId: id })])] });
+  const entries = [{ id: 'e1', personId: 'p-3', projectId: 1, stageId: 'concept', taskId: 'z', start: '2026-10-01T08:00:00.000Z', end: '2026-10-01T18:00:00.000Z', source: 'manual' }];
+  const item = Inbox.build('p-1', [p], mail, NOW, {}, entries).items.filter((i) => i.kind === 'mail')[0];
+  assert.equal(item.linked.length, 1);
+  assert.equal(item.linked[0].hours, 10);
+  assert.ok(/zadanie/i.test(item.why));
+  const bare = Inbox.build('p-1', [project()], mail, NOW, {}, []).items.filter((i) => i.kind === 'mail')[0];
+  assert.equal(bare.linked.length, 0);
+  Inbox.build('p-1', [p], mail, NOW, {}, entries).items.forEach((i) => assert.ok(typeof i.why === 'string' && i.why.length > 10));
+});

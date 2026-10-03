@@ -6,6 +6,9 @@
 (function (root) {
   'use strict';
 
+  var nodeEnv = typeof module !== 'undefined' && module.exports;
+  var TimeLog = nodeEnv ? require('./timelog.js') : root.ETROM.TimeLog;
+
   var DIRECTIONS = { in: 'Przychodzące', out: 'Wychodzące' };
   // Przedrostki numeru w dzienniku: P — przychodzące, W — wychodzące.
   var PREFIX = { in: 'P', out: 'W' };
@@ -238,7 +241,22 @@
     });
   }
 
+  /** Zadania wywołane pismem (task.mailId) wraz z etapem i zapisanym czasem w godzinach. */
+  function linkedTasks(project, mailId, entries, now) {
+    var out = [];
+    ((project && project.stages) || []).forEach(function (stage) {
+      (stage.tasks || []).forEach(function (task) {
+        if (task.mailId !== mailId) return;
+        var minutes = (entries || []).filter(function (e) { return e.projectId === project.id && e.taskId === task.id; })
+          .reduce(function (t, e) { return t + TimeLog.minutes(e, now); }, 0);
+        out.push({ stage: stage, task: task, hours: Math.round(minutes / 6) / 10 });
+      });
+    });
+    return out;
+  }
+
   var api = {
+    linkedTasks: linkedTasks,
     DIRECTIONS: DIRECTIONS,
     KINDS: KINDS,
     KIND_ORDER: KIND_ORDER,

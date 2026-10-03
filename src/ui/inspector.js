@@ -103,7 +103,10 @@
         D.el('dl', { class: 'props' }, [
           prop('Termin', task.deadline ? UI.due(task.deadline, info, { done: task.status === 'done' }) : D.el('span', { class: 't-muted', text: 'Bez terminu' })),
           prop('Nakład pracy', D.el('span', { text: Tasks.WORKLOAD[task.workload] })),
-          task.important ? prop('Priorytet', UI.badge('Ważne', 'warning', { icon: 'flag' })) : null
+          task.important ? prop('Priorytet', UI.badge('Ważne', 'warning', { icon: 'flag' })) : null,
+          task.mailId && ctx.mailOf && ctx.mailOf(task.mailId)
+            ? prop('Z pisma', D.el('button', { class: 'insp-mail', attrs: { type: 'button', 'data-fk': 'insp-mail', 'data-tooltip': 'Otwórz korespondencję projektu' }, on: { click: function () { actions.openProject(project.id, 'korespondencja'); } } }, [Icons.icon('mail', 13), D.el('span', { class: 'truncate', text: ctx.mailOf(task.mailId).regNo + ' · ' + ctx.mailOf(task.mailId).subject })]))
+            : null
         ]),
         block('Realizatorzy', [people.length
           ? D.el('ul', { class: 'parts' }, people.map(function (person) {

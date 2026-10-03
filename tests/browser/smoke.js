@@ -613,23 +613,23 @@ async function main() {
     check('skrót G S otwiera Skrzynkę, a pozycje mają rodzaj, projekt i akcje',
       (await evaluate('return location.hash;')) === '#/skrzynka' && await evaluate('return !document.getElementById("view-inbox").hidden && document.querySelectorAll(".ibx__row").length > 0 && !!document.querySelector(".ibx__row .mrow__project") && !!document.querySelector(".ibx__row [data-fk^=inbox-snooze]");'));
     check('pasek boczny pokazuje licznik Skrzynki zgodny z listą',
-      await evaluate('return document.querySelector("[data-screen=inbox] .nav__count").textContent === String(document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length);'));
+      await evaluate('return document.querySelector("[data-screen=inbox] .nav__count").textContent === String(document.querySelectorAll("#view-inbox .ibx__list .ibx__row").length);'));
     await click('[data-fk="inbox-filter-approve"]');
     await sleep(150);
     check('filtr „Do zatwierdzenia” zostawia tylko zatwierdzenia',
-      await evaluate('const r = [...document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => x.dataset.kind === "approve");'));
+      await evaluate('const r = [...document.querySelectorAll("#view-inbox .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => x.dataset.kind === "approve");'));
     await click('[data-fk="inbox-filter-all"]');
     await sleep(150);
-    const inboxBefore = await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length;');
+    const inboxBefore = await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length;');
     await click('.ibx__row [data-fk^="inbox-snooze"]');
     await sleep(250);
     check('„Odłóż do jutra” chowa pozycję i przenosi ją do odłożonych, zapis trafia do preferencji',
-      await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
+      await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
     await click('.ibx__later > summary');
     await click('.ibx__row--later button');
     await sleep(250);
     check('„Przywróć” oddaje pozycję do Skrzynki',
-      await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length === ' + inboxBefore + ';'));
+      await evaluate('return document.querySelectorAll("#view-inbox .ibx__groups .ibx__row").length === ' + inboxBefore + ';'));
     const approveBefore = await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;');
     await click('[data-fk^="inbox-approve-"]');
     await sleep(300);
@@ -1288,6 +1288,31 @@ async function main() {
       await evaluate('const c = document.querySelector(".fd__stream .fd__card"); return /Wpis po poprawce/.test(c.textContent) && /edytowano/.test(c.textContent) && !document.querySelector("[data-fk=fd-edit-text]");'));
     check('cudzy wpis nie ma przycisku edycji',
       await evaluate('return [...document.querySelectorAll(".fd__stream .fd__card[data-kind=post]")].filter(c => !/Michał/.test(c.querySelector(".fd__name").textContent)).every(c => !c.querySelector("[data-fk^=fd-edit-]"));'));
+
+    /* 38f. Pismo → zadanie → czas; Skrzynka z objaśnieniami i grupami */
+    const annaId = await state('s.workspace.people.find(p => p.firstName === "Anna").id');
+    await evaluate('window.ETROM.app.actions.setMe("' + annaId + '"); return true;');
+    await go('#/skrzynka');
+    await sleep(500);
+    check('Skrzynka: wprowadzenie wyjaśnia, do czego służy, a pozycje mają grupy i podpowiedź „dlaczego to widzę”',
+      await evaluate('return !!document.querySelector(".ibx__intro") && /na które musisz zareagować/.test(document.querySelector(".ibx__intro").textContent) && document.querySelectorAll(".ibx__group").length >= 1 && [...document.querySelectorAll(".ibx__groups .ibx__row")].every(r => r.querySelector(".ibx__why") && r.querySelector(".ibx__why").textContent.length > 10);'));
+    check('Skrzynka: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
+      await evaluate('const r = document.querySelector(".ibx__row[data-kind=mail]"); return !!r && !!r.querySelector("[data-fk^=inbox-mailtask-]") && !!r.querySelector("[data-fk^=inbox-reply-]");'));
+    const code01 = await projectId('2601');
+    await go('#/projekty/' + code01 + '/korespondencja');
+    await sleep(500);
+    check('Korespondencja: pismo ze zleconym zadaniem pokazuje je z statusem i sumą godzin',
+      await evaluate('const c = document.querySelector(".mrow2__task"); return !!c && /\\d+(,\\d+)?\\s*h/.test(c.textContent.replace(/\\u00a0/g, " ")) && /W toku|Do wykonania|Do zatwierdzenia/.test(c.textContent);'));
+    await click('[data-fk^="mail-task-"]');
+    await sleep(500);
+    check('„Utwórz zadanie z pisma” otwiera formularz z etapem, nazwą z numeru pisma i terminem odpowiedzi',
+      await evaluate('const n = document.getElementById("tk-name"); return !!document.getElementById("tk-stage") && /P\\/\\d{4}\\/\\d+/.test(n.value) && !!document.getElementById("tk-deadline").value;'));
+    await evaluate('document.getElementById("tk-name").value = "Uzupełnić operat po wezwaniu (smoke)"; document.getElementById("task-form").requestSubmit(); return true;');
+    await sleep(500);
+    check('zadanie z pisma zapamiętuje pismo (mailId) i pojawia się przy piśmie w Korespondencji',
+      (await state('(s.workspace.projects.find(p => p.code === "2601").stages.flatMap(g => g.tasks).find(t => t.name.includes("smoke")) || {}).mailId')) !== ''
+      && await evaluate('return [...document.querySelectorAll(".mrow2__task")].some(c => c.textContent.includes("smoke"));'));
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
 
     /* 38e. Ekran startowy: trzy kroki zależnie od stanu */
     check('ekran startowy: pusta aplikacja ma trzy nieukończone kroki z działaniami',
