@@ -71,6 +71,13 @@
     if (position.length > LIMITS.position) errors.position = 'Stanowisko może mieć najwyżej ' + LIMITS.position + ' znaków.';
     if (!Object.prototype.hasOwnProperty.call(ORG_ROLES, orgRole)) errors.orgRole = 'Wybierz rolę w organizacji.';
     if (!Object.prototype.hasOwnProperty.call(COOPERATION, cooperation)) errors.cooperation = 'Wybierz formę współpracy.';
+    var costRaw = data.hourlyCost == null ? '' : String(data.hourlyCost).trim().replace(',', '.');
+    var hourlyCost = 0;
+    if (costRaw !== '') {
+      hourlyCost = Number(costRaw);
+      if (!Number.isFinite(hourlyCost) || hourlyCost < 0 || hourlyCost > 10000) errors.hourlyCost = 'Podaj koszt godziny od 0 do 10 000 zł.';
+      else hourlyCost = Math.round(hourlyCost * 100) / 100;
+    }
 
     if (!errors.firstName && !errors.lastName) {
       var candidate = (firstName + ' ' + lastName).toLocaleLowerCase('pl');
@@ -88,7 +95,8 @@
         lastName: lastName,
         position: position,
         orgRole: orgRole,
-        cooperation: cooperation
+        cooperation: cooperation,
+        hourlyCost: hourlyCost
       }
     };
   }
@@ -118,6 +126,7 @@
       position: text(raw.position),
       orgRole: Object.prototype.hasOwnProperty.call(ORG_ROLES, orgRole) ? orgRole : 'member',
       cooperation: Object.prototype.hasOwnProperty.call(COOPERATION, cooperation) ? cooperation : 'internal',
+      hourlyCost: Number.isFinite(Number(raw.hourlyCost)) && Number(raw.hourlyCost) > 0 && Number(raw.hourlyCost) <= 10000 ? Math.round(Number(raw.hourlyCost) * 100) / 100 : 0,
       active: raw.active !== false
     };
   }

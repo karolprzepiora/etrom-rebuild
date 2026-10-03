@@ -43,6 +43,7 @@
     mailView: { direction: 'all', waiting: false, query: '' },
     inboxFilter: 'all',
     analysisProject: null,
+    analysisTab: 'overview',
     feedEditing: null,
     feedFilter: 'all',
     feedLimit: 20,
@@ -236,7 +237,8 @@
       personForm: {
         draft: {
           id: person.id, firstName: person.firstName, lastName: person.lastName,
-          position: person.position, orgRole: person.orgRole, cooperation: person.cooperation
+          position: person.position, orgRole: person.orgRole, cooperation: person.cooperation,
+          hourlyCost: person.hourlyCost ? String(person.hourlyCost) : ''
         },
         errors: {}
       }
@@ -250,6 +252,11 @@
     if (!check.valid) {
       store.set({ personForm: { draft: values, errors: check.errors } });
       return;
+    }
+    // Stawkę godzinową ustawia tylko zarząd; inni nie nadpisują jej przy edycji osoby.
+    if (!E.Budget.isManagement(store.getState().prefs.me, list)) {
+      var kept = editing ? findPerson(values.id) : null;
+      check.value.hourlyCost = kept && kept.hourlyCost ? kept.hourlyCost : 0;
     }
     if (editing) {
       setPeople(function (current) {
@@ -362,7 +369,7 @@
     var picked = Array.isArray(values.stageIds) ? values.stageIds : [];
     var stages = Catalog.all
       .filter(function (entry) { return picked.indexOf(entry.id) >= 0; })
-      .map(function (entry) { return Model.createStage(entry.id); });
+      .map(function (entry) { return Model.createStage(entry.id, { hours: values.stageHours && values.stageHours[entry.id] }); });
     var created = null;
     setWorkspace(function (list) {
       created = Model.createProject(Object.assign({}, check.value, { stages: stages, team: team }), list);
@@ -1408,6 +1415,8 @@
     { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 }
   ];
 
+  var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130 };
+
   function loadDemo() {
     var roster = people().slice();
     DEMO_PEOPLE.forEach(function (row) {
@@ -1415,6 +1424,10 @@
         return Team.fullName(person).toLocaleLowerCase('pl') === (row.firstName + ' ' + row.lastName).toLocaleLowerCase('pl');
       });
       if (!exists) roster = roster.concat([Team.createPerson(row, roster)]);
+    });
+    roster = roster.map(function (person) {
+      var rate = DEMO_RATES[Team.fullName(person)];
+      return rate && !person.hourlyCost ? Object.assign({}, person, { hourlyCost: rate }) : person;
     });
 
     /** Zdjęcie przykładowe rysowane na płótnie (krajobraz z rzeką), żeby galeria miała co pokazać. */
@@ -1610,7 +1623,6 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: entriesOut });
     });
-    if (!store.getState().prefs.hourlyCost) setPref({ hourlyCost: 140 });
     updateWorkspace(function (workspace) {
       var social = workspace.social || E.Social.empty();
       if (social.posts.length) return workspace;
@@ -1800,7 +1812,8 @@
     openMyWork: function () { goTo('mywork'); },
     setInboxFilter: function (value) { store.set({ inboxFilter: value }); },
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
-    setHourlyCost: function (value) { var n = Number(String(value).replace(',', '.')); setPref({ hourlyCost: Number.isFinite(n) && n >= 0 ? n : 0 }); },
+    setAnalysisTab: function (tab) { store.set({ analysisTab: tab }); },
+    openAnalysisProject: function (id) { store.set({ analysisProject: id, analysisTab: 'projects' }); },
     setFeedFilter: function (value) { store.set({ feedFilter: value, feedLimit: 20 }); },
     loadMoreFeed: function () { store.set({ feedLimit: (store.getState().feedLimit || 20) + 20 }); },
     toggleFeedComments: function (key) {
@@ -2281,7 +2294,7 @@
     if (current === state.personForm) {
       settings.title = current.draft.id != null ? 'Edytuj osobę' : 'Nowa osoba';
       settings.subtitle = current.draft.id != null ? 'Zmiany widać od razu we wszystkich projektach.' : 'Osoba trafi do katalogu biura.';
-      settings.content = E.PersonForm.personForm(current.draft, current.errors, { onSubmit: submitPerson, onCancel: function () { store.set({ personForm: null }); } });
+      settings.content = E.PersonForm.personForm(current.draft, current.errors, { onSubmit: submitPerson, onCancel: function () { store.set({ personForm: null }); } }, { management: E.Budget.isManagement(state.prefs.me, state.workspace.people || []) });
     } else if (current === state.taskForm) {
       var project = findProject(current.projectId);
       var stage = stageOf(current.projectId, current.stageId);

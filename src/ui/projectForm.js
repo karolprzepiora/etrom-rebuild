@@ -82,21 +82,48 @@
       teamBody = [UI.alert({ tone: 'info', text: 'Katalog osób jest pusty. Dodaj osoby na ekranie Zespół, a potem przypisz im funkcje.' })];
     }
 
-    /* --- etapy (tylko nowy projekt) --- */
+    /* --- etapy i budżet godzin (tylko nowy projekt) --- */
     var stageBoxes = {};
+    var hourInputs = {};
     var pickedCount = D.el('span', { class: 'grow', attrs: { 'aria-live': 'polite' } });
+    var budget = UI.input({ id: 'pf-budget', type: 'number', value: values.budgetHours == null ? '' : String(values.budgetHours), placeholder: 'np. 500', attrs: { min: '0', step: '10', inputmode: 'numeric' } });
+    var budgetNote = D.el('div', { class: 'pf-budget__note', attrs: { 'aria-live': 'polite' } });
+
+    function picked() { return Catalog.all.filter(function (entry) { return stageBoxes[entry.id] && stageBoxes[entry.id].checked; }); }
+    function hoursOf(id) { var n = Number(String(hourInputs[id].value).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; }
 
     function refreshCount() {
-      var picked = Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; });
-      var hours = Catalog.all.filter(function (entry) { return stageBoxes[entry.id] && stageBoxes[entry.id].checked; })
-        .reduce(function (sum, entry) { return sum + entry.defaultHours; }, 0);
-      pickedCount.textContent = 'Wybrano ' + picked.length + ' z ' + Catalog.all.length + (picked.length ? ' · ' + F.hours(hours) : '');
+      var list = picked();
+      var sum = list.reduce(function (t, entry) { return t + hoursOf(entry.id); }, 0);
+      var total = Number(budget.value);
+      pickedCount.textContent = 'Wybrano ' + list.length + ' z ' + Catalog.all.length + (list.length ? ' · ' + F.hours(sum) : '');
+      Catalog.all.forEach(function (entry) { hourInputs[entry.id].disabled = !stageBoxes[entry.id].checked; });
+      budgetNote.className = 'pf-budget__note';
+      if (!list.length) budgetNote.textContent = 'Zaznacz etapy, a podzielę na nie budżet godzin.';
+      else if (total > 0 && Math.round(sum) !== Math.round(total)) {
+        budgetNote.classList.add('is-off');
+        budgetNote.textContent = 'Suma etapów: ' + F.hours(sum) + ' — ' + (sum > total ? 'o ' + F.hours(sum - total) + ' więcej' : 'o ' + F.hours(total - sum) + ' mniej') + ' niż budżet projektu.';
+      } else if (total > 0) budgetNote.textContent = 'Suma etapów zgadza się z budżetem projektu: ' + F.hours(sum) + '.';
+      else budgetNote.textContent = 'Wpisz budżet projektu, a podzielę go na etapy proporcjonalnie do standardu. Godziny każdego etapu możesz zmienić.';
+    }
+
+    /** Dzieli budżet na zaznaczone etapy wg godzin standardu; bez budżetu przywraca wartości standardu. */
+    function distribute() {
+      var list = picked();
+      var total = Number(budget.value);
+      if (total > 0 && list.length) {
+        var split = Model.distributeHours(total, list.map(function (entry) { return { id: entry.id, weight: entry.defaultHours }; }));
+        list.forEach(function (entry) { hourInputs[entry.id].value = String(split[entry.id]); });
+      } else list.forEach(function (entry) { hourInputs[entry.id].value = String(entry.defaultHours); });
+      refreshCount();
     }
 
     function setAll(value) {
       Object.keys(stageBoxes).forEach(function (id) { stageBoxes[id].checked = value; });
-      refreshCount();
+      distribute();
     }
+
+    budget.addEventListener('input', function () { if (Number(budget.value) > 0) distribute(); else refreshCount(); });
 
     var stagePicker = D.el('div', { class: 'choice-list', attrs: { id: 'pf-stage-picker' } }, [
       D.el('div', { class: 'choice-list__head' }, [
@@ -106,12 +133,14 @@
       ]),
       D.el('div', { class: 'choice-list__items', attrs: { role: 'group', 'aria-label': 'Etapy ze standardu' } }, Catalog.all.map(function (entry) {
         var id = 'pf-stage-' + entry.id;
-        var box = UI.checkbox({ id: id, value: entry.id, on: { change: refreshCount } });
+        var box = UI.checkbox({ id: id, value: entry.id, on: { change: distribute } });
         stageBoxes[entry.id] = box;
-        return D.el('label', { class: 'choice-list__item', attrs: { for: id } }, [
+        var hours = D.el('input', { class: 'input choice-list__hours', attrs: { type: 'number', min: '0', step: '1', value: String(entry.defaultHours), disabled: 'disabled', 'aria-label': 'Godziny etapu: ' + entry.name, inputmode: 'decimal' }, on: { input: refreshCount, click: function (e) { e.stopPropagation(); } } });
+        hourInputs[entry.id] = hours;
+        return D.el('label', { class: 'choice-list__item choice-list__item--hours', attrs: { for: id } }, [
           box,
           D.el('span', { class: 'truncate' }, [D.el('span', { class: 'choice-list__no', text: entry.number }), entry.name]),
-          D.el('span', { class: 'choice-list__meta', text: F.hours(entry.defaultHours) })
+          D.el('span', { class: 'choice-list__meta' }, [hours, ' h'])
         ]);
       }))
     ]);
@@ -130,6 +159,8 @@
         deadline: deadline.value,
         contractValue: contract ? contract.value : undefined,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
+        stageHours: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = hoursOf(id); return acc; }, {}),
+        budgetHours: editing ? undefined : budget.value,
         team: resultTeam
       };
     }
@@ -153,7 +184,7 @@
 
     if (!editing) {
       body.push(D.el('hr', { class: 'form__divider' }));
-      body.push(section('Etapy', 'Niewiele projektów obejmuje cały standard. Etapy spoza standardu dopiszesz po założeniu projektu.', [stagePicker]));
+      body.push(section('Etapy i budżet godzin', 'Wpisz budżet projektu, a podzielę go na wybrane etapy. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h.' }), budgetNote, stagePicker]));
     }
 
     var form = E.Dialog.drawerForm({

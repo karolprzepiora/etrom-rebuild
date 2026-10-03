@@ -385,3 +385,14 @@ test('normalizeWorkspace zachowuje wpisy czasu istniejących projektów i odrzuc
   assert.deepEqual(Model.emptyWorkspace().entries, []);
   assert.deepEqual(Model.normalizeWorkspace({}).entries, []);
 });
+
+test('distributeHours dzieli budżet proporcjonalnie, w pełnych godzinach, z sumą równą budżetowi', () => {
+  const split = Model.distributeHours(500, [{ id: 'a', weight: 40 }, { id: 'b', weight: 80 }, { id: 'c', weight: 40 }]);
+  assert.deepEqual(split, { a: 125, b: 250, c: 125 });
+  const odd = Model.distributeHours(100, [{ id: 'a', weight: 1 }, { id: 'b', weight: 1 }, { id: 'c', weight: 1 }]);
+  assert.equal(odd.a + odd.b + odd.c, 100);
+  const tiny = Model.distributeHours(2, [{ id: 'a', weight: 100 }, { id: 'b', weight: 1 }, { id: 'c', weight: 1 }]);
+  assert.equal(tiny.a + tiny.b + tiny.c, 2);
+  assert.deepEqual(Model.distributeHours(0, [{ id: 'a', weight: 1 }]), {});
+  assert.deepEqual(Model.distributeHours(100, []), {});
+});

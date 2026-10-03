@@ -390,3 +390,11 @@ Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte og�
 
 - Audyt (jasny, ciemny, telefon) potwierdził wspólny język kart i pigułek. Poprawki: nagłówki tabeli Zespołu jak w Projektach; na telefonie filtry są jednym przewijanym rzędem, a tabela projektów pokazuje numer, nazwę i stan (czas umowy, lider, sygnały i termin schodzą; są w karcie i w widoku projektu).
 - **Ekran startowy** (`src/ui/welcome.js`): jedna karta „Zacznijmy od trzech kroków” (osoby → kim jesteś → pierwszy projekt, z odhaczaniem i wyborem osoby jednym kliknięciem) dla Skrzynki, Mojej pracy, Aktualności i Analizy, gdy nie ma jeszcze zespołu albo wybranej osoby. Projekty i Zespół mają własne, bogatsze ekrany startowe.
+
+## Analiza v2: widoki, wykresy w pikselach, stawki osób
+- **Wykresy o zmiennej szerokości** (`Charts.scatter/burn/weekly/timeline`) rysują się przez `Charts.fit` w realnych pikselach kontenera (ResizeObserver); czcionka osi zawsze 11 px, nic się nie skaluje. Małe (pierścień, donut, sparkline) mają stały rozmiar.
+- **Zakładki Analizy** (`.an-tabs`, stan `analysisTab`): Przegląd · Projekty · Zespół · Finanse (tylko zarząd) · Wyceny.
+- **Klocki HTML** zamiast SVG tam, gdzie liczy się tekst: `hbars` (`.an-hb`, kreska = wartość odniesienia), `diverging` (wokół zera), `heatmap` osoby × tygodnie (`.an-hm`, barwa = udział w 40 h), pasek kosztu/prognozy/marży (`.an-split`), chipy sygnałów (`.an-chips`).
+- **Koszt godziny** jest polem osoby (`person.hourlyCost`, edytuje tylko zarząd); koszt projektu = Σ godziny × stawka osoby, korekty zarządu liczone średnią stawką projektu. Wartość wypracowana = wartość umowy × postęp rzeczowy; „marża na wykonanej pracy” = wartość wypracowana − koszt.
+- **Budżet godzin przy zakładaniu projektu**: pole „Budżet godzin projektu” dzieli sumę na zaznaczone etapy proporcjonalnie do standardu (`Model.distributeHours`, metoda największych reszt); godziny każdego etapu są edytowalne, a pod polem widać różnicę względem budżetu.
+- Koszty zewnętrzne (geodeta, opłaty) — osobna zakładka w następnym etapie; analiza jest na nie przygotowana.

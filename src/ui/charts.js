@@ -1,5 +1,6 @@
-/* ETROM — wykresy w czystym SVG (bez bibliotek). Każdy zwraca węzeł <svg> z viewBox,
-   więc skaluje się do szerokości kontenera. Kolory przez klasy (styles/analysis.css),
+/* ETROM — wykresy w czystym SVG (bez bibliotek). Wykresy o zmiennej szerokości (scatter, burn,
+   weekly, …) są rysowane w prawdziwych pikselach kontenera (fit + ResizeObserver), więc
+   czcionki mają zawsze stały rozmiar, a nie skalują się razem z ekranem. Kolory przez klasy (styles/analysis.css),
    dzięki czemu działają w obu motywach. Opisy dla czytnika ekranu w <title>. */
 (function (root) {
   'use strict';
@@ -15,8 +16,30 @@
     return node;
   }
   function svgRoot(w, h, label, cls) {
-    var node = s('svg', { viewBox: '0 0 ' + w + ' ' + h, class: 'ch ' + (cls || ''), role: 'img', 'aria-label': label, preserveAspectRatio: 'xMidYMid meet' });
+    var node = s('svg', { viewBox: '0 0 ' + w + ' ' + h, width: w, height: h, class: 'ch ' + (cls || ''), role: 'img', 'aria-label': label });
     return node;
+  }
+  /** Hostuje wykres rysowany dla aktualnej szerokości kontenera; przerysowuje przy zmianie rozmiaru. */
+  function fit(draw) {
+    var host = D.el('div', { class: 'ch-host' });
+    var last = 0;
+    function paint() {
+      var w = Math.round(host.getBoundingClientRect().width);
+      if (!w || w === last) return;
+      last = w;
+      while (host.firstChild) host.removeChild(host.firstChild);
+      host.appendChild(draw(w));
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      var pending = 0;
+      var ro = new ResizeObserver(function () {
+        if (pending) return;
+        pending = window.requestAnimationFrame(function () { pending = 0; paint(); });
+      });
+      ro.observe(host);
+    } else window.addEventListener('resize', paint);
+    window.requestAnimationFrame(paint);
+    return host;
   }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function nice(max) {
@@ -26,9 +49,10 @@
   }
 
   /** Mapa projektów: oś X — postęp rzeczowy, oś Y — zużycie budżetu; powyżej przekątnej wydajemy szybciej niż robimy. */
-  function scatter(projects, options) {
+  function scatter(projects, options) { return fit(function (W) { return drawScatter(projects, options, W); }); }
+  function drawScatter(projects, options, W) {
     var o = options || {};
-    var W = 640, H = 400, L = 52, R = 40, T = 16, B = 44;
+    var H = Math.round(clamp(W * 0.62, 280, 420)), L = 44, R = 34, T = 14, B = 40;
     var pw = W - L - R, ph = H - T - B;
     var maxY = Math.max(120, Math.ceil(Math.max.apply(null, projects.map(function (p) { return p.usagePct; }).concat([100])) / 20) * 20 + 10);
     var maxPlanned = Math.max.apply(null, projects.map(function (p) { return p.planned; }).concat([1]));
@@ -48,13 +72,10 @@
     }
     svg.appendChild(s('line', { class: 'ch-diag', x1: x(0), y1: y(0), x2: x(100), y2: y(100) }));
     svg.appendChild(s('line', { class: 'ch-limit', x1: L, y1: y(100), x2: L + pw, y2: y(100) }));
-    svg.appendChild(t(L + pw - 48, y(100) - 6, 'budżet 100%', 'ch-note', 'end'));
-    svg.appendChild(t(x(100) - 30, y(100) + 22, 'zgodnie z planem', 'ch-note', 'end'));
-    svg.appendChild(t(L + 8, T + 16, 'wydajemy szybciej, niż robimy', 'ch-note ch-note--bad'));
-    svg.appendChild(t(L + pw / 2, H - 4, 'Postęp rzeczowy', 'ch-label', 'middle'));
-    var yl = t(14, T + ph / 2, 'Zużycie budżetu', 'ch-label', 'middle');
-    yl.setAttribute('transform', 'rotate(-90 14 ' + (T + ph / 2) + ')');
-    svg.appendChild(yl);
+    svg.appendChild(t(L + 6, y(100) - 6, 'budżet 100%', 'ch-note'));
+    if (pw > 300) svg.appendChild(t(L + 8, T + 14, 'wydajemy szybciej, niż robimy', 'ch-note ch-note--bad'));
+    svg.appendChild(t(L + pw / 2, H - 4, 'Postęp rzeczowy →', 'ch-label', 'middle'));
+    svg.appendChild(t(L - 8, T - 2, 'budżet', 'ch-label', 'end'));
 
     projects.slice().sort(function (a, b) { return b.planned - a.planned; }).forEach(function (p) {
       var r = 9 + Math.sqrt(p.planned / maxPlanned) * 17;
@@ -71,8 +92,9 @@
   }
 
   /** Spalanie godzin: skumulowane zużycie, budżet, plan liniowy wg czasu umowy i prognoza wyczerpania. */
-  function burn(p, now) {
-    var W = 640, H = 300, L = 52, R = 16, T = 18, B = 36;
+  function burn(p, now) { return fit(function (W) { return drawBurn(p, now, W); }); }
+  function drawBurn(p, now, W) {
+    var H = Math.round(clamp(W * 0.42, 230, 320)), L = 44, R = 14, T = 16, B = 32;
     var pw = W - L - R, ph = H - T - B;
     var start = Date.parse(p.createdAt) || (p.burn[0] && p.burn[0].t) || now.getTime();
     var first = p.burn.length ? Math.min(start, p.burn[0].t) : start;
@@ -127,13 +149,15 @@
   }
 
   /** Słupki tygodniowe, warstwowo wg projektów. */
-  function weekly(data, options) {
+  function weekly(data, options) { return fit(function (W) { return drawWeekly(data, options, W); }); }
+  function drawWeekly(data, options, W) {
     var o = options || {};
-    var W = 640, H = 260, L = 44, R = 12, T = 14, B = 34;
+    var H = Math.round(clamp(W * 0.34, 190, 250)), L = 38, R = 8, T = 16, B = 30;
     var pw = W - L - R, ph = H - T - B;
     var n = data.labels.length;
     var maxV = nice(Math.max.apply(null, data.totals.concat([10])));
     var bw = pw / n;
+    var step = bw >= 36 ? 1 : (bw >= 22 ? 2 : 3);
     var y = function (v) { return T + ph - (v / maxV) * ph; };
     var svg = svgRoot(W, H, 'Godziny zapisane w kolejnych tygodniach', 'ch--weekly');
     for (var g = 0; g <= maxV; g += maxV / 4) {
@@ -150,9 +174,65 @@
         acc += v;
       });
       var d = new Date(label);
-      if (i % 2 === (n - 1) % 2) svg.appendChild(t(L + i * bw + bw / 2, H - 14, d.getDate() + '.' + String(d.getMonth() + 1).padStart(2, '0'), 'ch-axis', 'middle'));
-      if (data.totals[i]) svg.appendChild(t(L + i * bw + bw / 2, y(data.totals[i]) - 5, F.number(data.totals[i]), 'ch-val', 'middle'));
+      if ((n - 1 - i) % step === 0) svg.appendChild(t(L + i * bw + bw / 2, H - 14, d.getDate() + '.' + String(d.getMonth() + 1).padStart(2, '0'), 'ch-axis', 'middle'));
+      if (bw >= 26 && data.totals[i]) svg.appendChild(t(L + i * bw + bw / 2, y(data.totals[i]) - 5, F.number(data.totals[i]), 'ch-val', 'middle'));
     });
+    if (o.average !== false && n >= 5) {
+      var pts = data.totals.map(function (v, i) {
+        var from = Math.max(0, i - 3), cnt = i - from + 1, acc = 0;
+        for (var k = from; k <= i; k += 1) acc += data.totals[k];
+        return [L + i * bw + bw / 2, y(acc / cnt)];
+      });
+      svg.appendChild(s('path', { class: 'ch-avg', d: pts.map(function (q, i) { return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(' ') }));
+      svg.appendChild(t(L + pw - 2, T - 4, 'średnia krocząca 4 tyg.', 'ch-note', 'end'));
+    }
+    return svg;
+  }
+
+  /** Oś czasu projektów: od założenia do terminu umowy, wypełnienie = postęp rzeczowy, linia = dziś. */
+  function timeline(projects, now, options) { return fit(function (W) { return drawTimeline(projects, now, options, W); }); }
+  function drawTimeline(projects, now, options, W) {
+    var o = options || {};
+    var narrow = W < 520;
+    var rowH = narrow ? 40 : 30, T = 22, B = 6, L = narrow ? 6 : 168, R = 10;
+    var rows = projects.filter(function (p) { return p.start !== null && p.end !== null && p.end > p.start; });
+    var H = T + B + rows.length * rowH;
+    var pw = W - L - R;
+    var nowMs = now.getTime();
+    var min = Math.min.apply(null, rows.map(function (p) { return p.start; }).concat([nowMs - 14 * 86400000]));
+    var max = Math.max.apply(null, rows.map(function (p) { return p.end; }).concat([nowMs + 21 * 86400000]));
+    var x = function (time) { return L + ((time - min) / (max - min)) * pw; };
+    var svg = svgRoot(W, Math.max(H, 60), 'Oś czasu projektów', 'ch--timeline');
+    var months = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+    var d = new Date(min); d.setDate(1); d.setHours(0, 0, 0, 0); d.setMonth(d.getMonth() + 1);
+    var span = (max - min) / 86400000 / 30, every = span > 20 ? 3 : (span > 10 ? 2 : 1), n = 0, guard = 0;
+    while (d.getTime() < max && guard < 60) {
+      if (n % every === 0) {
+        svg.appendChild(s('line', { class: 'ch-grid', x1: x(d.getTime()), y1: T - 4, x2: x(d.getTime()), y2: H - B }));
+        svg.appendChild(t(x(d.getTime()) + 3, 12, months[d.getMonth()] + (d.getMonth() === 0 ? ' ' + d.getFullYear() : ''), 'ch-axis'));
+      }
+      d.setMonth(d.getMonth() + 1); n += 1; guard += 1;
+    }
+    rows.forEach(function (p, i) {
+      var y0 = T + i * rowH;
+      var barY = narrow ? y0 + 20 : y0 + 8, barH = 12;
+      var label = p.code + ' ' + p.name;
+      var maxChars = narrow ? Math.floor(pw / 6.2) : 26;
+      var g = s('g', { class: 'ch-row ch-v-' + p.verdict, tabindex: '0', role: 'button', 'data-tooltip': p.code + ' ' + p.name + ' — postęp ' + Math.round(p.earnedPct) + '%, budżet ' + Math.round(p.usagePct) + '%', 'aria-label': p.code + ' ' + p.name + ', postęp ' + Math.round(p.earnedPct) + ' procent' });
+      g.appendChild(s('rect', { class: 'ch-row-hit', x: 0, y: y0, width: W, height: rowH }));
+      g.appendChild(t(narrow ? L : 4, narrow ? y0 + 13 : barY + 10, label.length > maxChars ? label.slice(0, maxChars - 1) + '…' : label, 'ch-note ch-note--strong'));
+      g.appendChild(s('rect', { class: 'ch-tl-track', x: x(p.start), y: barY, width: Math.max(2, x(p.end) - x(p.start)), height: barH, rx: 6 }));
+      g.appendChild(s('rect', { class: 'ch-tl-fill', x: x(p.start), y: barY, width: Math.max(0, (x(p.end) - x(p.start)) * clamp(p.earnedPct, 0, 100) / 100), height: barH, rx: 6 }));
+      if (p.end < nowMs && p.status !== 'done') g.appendChild(s('rect', { class: 'ch-tl-late', x: x(p.end), y: barY, width: Math.max(2, x(nowMs) - x(p.end)), height: barH, rx: 3 }));
+      var ed = new Date(p.end);
+      g.appendChild(t(Math.min(W - 4, x(Math.max(p.end, p.end < nowMs ? nowMs : p.end)) + 6), barY + 10, ed.getDate() + ' ' + months[ed.getMonth()], 'ch-note', x(p.end) + 40 > W ? 'end' : 'start'));
+      g.addEventListener('click', function () { if (o.onPick) o.onPick(p.id); });
+      g.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && o.onPick) { e.preventDefault(); o.onPick(p.id); } });
+      svg.appendChild(g);
+    });
+    svg.appendChild(s('line', { class: 'ch-today', x1: x(nowMs), y1: T - 4, x2: x(nowMs), y2: H - B }));
+    svg.appendChild(t(x(nowMs), H + 10, 'dziś', 'ch-note ch-note--strong', 'middle'));
+    svg.setAttribute('height', H + 16); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + (H + 16));
     return svg;
   }
 
@@ -199,5 +279,5 @@
     return svg;
   }
 
-  root.ETROM.Charts = { scatter: scatter, burn: burn, weekly: weekly, ring: ring, spark: spark, donut: donut };
+  root.ETROM.Charts = { fit: fit, clamp: clamp, nice: nice, s: s, t: t, svgRoot: svgRoot, scatter: scatter, burn: burn, weekly: weekly, timeline: timeline, ring: ring, spark: spark, donut: donut };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

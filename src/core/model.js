@@ -149,6 +149,32 @@
     };
   }
 
+  /**
+   * Dzieli budżet godzin na etapy proporcjonalnie do wag (metoda największych reszt),
+   * w pełnych godzinach, z co najmniej 1 h na etap, o ile budżet na to pozwala.
+   * @param {number} total
+   * @param {Array<{id:string, weight:number}>} items
+   * @returns {Object<string, number>} id → godziny; suma = total
+   */
+  function distributeHours(total, items) {
+    var out = {};
+    var list = (items || []).filter(function (i) { return i && i.id; });
+    var sum = Math.round(Number(total));
+    if (!list.length || !Number.isFinite(sum) || sum <= 0) return out;
+    var weights = list.map(function (i) { return Number(i.weight) > 0 ? Number(i.weight) : 1; });
+    var wsum = weights.reduce(function (a, b) { return a + b; }, 0);
+    var floor = sum >= list.length ? 1 : 0;
+    var spare = sum - floor * list.length;
+    var shares = weights.map(function (w) { return (w / wsum) * spare; });
+    var base = shares.map(function (v) { return Math.floor(v); });
+    var left = spare - base.reduce(function (a, b) { return a + b; }, 0);
+    shares.map(function (v, i) { return { i: i, r: v - base[i] }; })
+      .sort(function (a, b) { return b.r - a.r || a.i - b.i; })
+      .slice(0, left).forEach(function (x) { base[x.i] += 1; });
+    list.forEach(function (item, i) { out[item.id] = base[i] + floor; });
+    return out;
+  }
+
   /** Kolejny wolny identyfikator etapu własnego w obrębie projektu. */
   function nextCustomStageId(stages) {
     var max = 0;
@@ -437,6 +463,7 @@
     nextProjectCode: nextProjectCode,
     createProject: createProject,
     createStage: createStage,
+    distributeHours: distributeHours,
     createCustomStage: createCustomStage,
     updateStage: updateStage,
     nextCustomStageId: nextCustomStageId,

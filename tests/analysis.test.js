@@ -120,3 +120,27 @@ test('wartość umowy: walidacja i zachowanie przy braku pola w formularzu', () 
   assert.ok(Model.validateProject(Object.assign({ contractValue: 'abc' }, base), []).errors.contractValue);
   assert.equal('contractValue' in Model.validateProject(base, []).value, false, 'brak pola nie zeruje wartości');
 });
+
+test('koszt liczony stawką każdej osoby, a nie jedną stawką globalną', () => {
+  const ppl = [
+    { id: 'p-1', firstName: 'A', lastName: 'A', orgRole: 'managing', hourlyCost: 200 },
+    { id: 'p-2', firstName: 'B', lastName: 'B', orgRole: 'member', hourlyCost: 100 }
+  ];
+  const entries = [entry('p-1', -10, 10, 'concept'), entry('p-2', -9, 10, 'concept')];
+  const a = Analysis.project(project(), { entries, people: ppl }, NOW, { finance: true });
+  assert.equal(a.finance.cost, 3000);
+  assert.equal(a.finance.rate, 150);
+  const rows = Object.fromEntries(a.people.map((r) => [r.personId, r.cost]));
+  assert.equal(rows['p-1'], 2000);
+  assert.equal(rows['p-2'], 1000);
+  assert.ok(a.finance.earnedValue >= 0);
+});
+
+test('portfel: zespół, klienci, kalibracja i sygnały', () => {
+  const w = ws();
+  const data = Analysis.portfolio(w, 'p-1', NOW);
+  assert.ok(Array.isArray(data.team) && Array.isArray(data.clients) && Array.isArray(data.calibration));
+  assert.equal(data.team.reduce((t, r) => t + r.weeks.length, 0), data.team.length * 12);
+  assert.ok(data.signals && typeof data.signals.overdueTasks === 'number');
+  assert.ok(data.totals.utilization >= 0);
+});

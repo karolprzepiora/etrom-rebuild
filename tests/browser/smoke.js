@@ -711,9 +711,18 @@ async function main() {
       'document.getElementById("pf-code").value = "PICK-1";' +
       'document.getElementById("pf-name").value = "Projekt z wyborem etapów";' +
       'document.getElementById("pf-client").value = "Gmina Testowa";' +
-      '["preparation", "water-docs", "handover"].forEach(function (id) { document.getElementById("pf-stage-" + id).checked = true; });' +
-      'document.getElementById("project-form").requestSubmit(); return true;'
+      '["preparation", "water-docs", "handover"].forEach(function (id) { const b = document.getElementById("pf-stage-" + id); b.checked = true; b.dispatchEvent(new Event("change", { bubbles: true })); });' +
+      'const bud = document.getElementById("pf-budget"); bud.value = "500"; bud.dispatchEvent(new Event("input", { bubbles: true })); return true;'
     );
+    check('budżet godzin projektu dzieli się na zaznaczone etapy, a suma równa się budżetowi',
+      await evaluate('const v = ["preparation", "water-docs", "handover"].map(id => Number(document.querySelector("#pf-stage-" + id).closest("label").querySelector(".choice-list__hours").value)); return v.every(n => n > 0) && v.reduce((a, b) => a + b, 0) === 500 && /zgadza się/.test(document.querySelector(".pf-budget__note").textContent);'));
+    await evaluate('const i = document.querySelector("#pf-stage-preparation").closest("label").querySelector(".choice-list__hours"); i.value = String(Number(i.value) + 20); i.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    check('ręczna zmiana godzin etapu pokazuje różnicę względem budżetu',
+      await evaluate('return /o 20 h więcej/.test(document.querySelector(".pf-budget__note").textContent.replace(/\u00a0/g, " "));'));
+    await evaluate('document.getElementById("project-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('utworzony projekt ma godziny etapów z formularza',
+      await state('(s.workspace.projects.filter(p => p.code === "PICK-1")[0] || {stages: []}).stages.reduce((t, st) => t + st.hours, 0)') === 520);
     await sleep(300);
     check('projekt dostaje tylko wybrane etapy, w kolejności standardu',
       (await state('(s.workspace.projects.find(x => x.code === "PICK-1") || { stages: [] }).stages.map(st => st.id).join(",")')) === 'preparation,water-docs,handover');
@@ -796,6 +805,7 @@ async function main() {
     await evaluate('document.activeElement && document.activeElement.blur(); return true;');
     await pressKey('n');
     check('na ekranie Zespołu klawisz N otwiera formularz osoby', await evaluate('return !!document.querySelector("dialog.drawer[open] #person-form");'));
+    check('formularz osoby ma pole kosztu godziny dla zarządu', await evaluate('return !!document.getElementById("pe-cost");'));
     await evaluate(
       'document.getElementById("pe-first").value = "Zofia";' +
       'document.getElementById("pe-last").value = "Nowakowa";' +
@@ -1167,18 +1177,36 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await go('#/analiza');
     await sleep(500);
-    check('Analiza: kafle, mapa projektów, szczegóły, trend i tabela',
-      await evaluate('return location.hash === "#/analiza" && !document.getElementById("view-analysis").hidden && document.querySelectorAll(".an-tile").length >= 4 && document.querySelectorAll(".ch-bubble").length >= 4 && !!document.querySelector(".ch--burn") && !!document.querySelector(".ch--weekly") && document.querySelectorAll(".an-tr--row").length >= 4;'));
-    check('Analiza: zarząd widzi opłacalność i pole kosztu godziny',
-      await evaluate('return !!document.querySelector(".an-card--fin .an-fin__v") && !!document.querySelector("[data-fk=an-rate]");'));
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await sleep(600);
+    check('Analiza: przegląd — kafle, mapa, oś czasu i wykres tygodniowy',
+      await evaluate('return location.hash === "#/analiza" && !document.getElementById("view-analysis").hidden && document.querySelectorAll(".an-tile").length >= 6 && document.querySelectorAll(".ch-bubble").length >= 4 && !!document.querySelector(".ch--timeline") && !!document.querySelector(".ch--weekly") && !!document.querySelector(".an-tabs");'));
+    check('Analiza: wykresy rysują się w realnych pikselach (czcionka osi 11 px, brak skalowania)',
+      await evaluate('const svg = document.querySelector(".ch--weekly"); const host = svg.parentElement; const tx = svg.querySelector(".ch-axis"); return Math.abs(svg.getBoundingClientRect().width - Number(svg.getAttribute("width"))) < 1.5 && Math.abs(host.getBoundingClientRect().width - svg.getBoundingClientRect().width) < 2 && getComputedStyle(tx).fontSize === "11px" && tx.getBoundingClientRect().height < 16;'));
+    await evaluate('window.ETROM.app.actions.setAnalysisTab("projects"); return true;');
+    await sleep(500);
+    check('Analiza: projekty — tabela, szczegóły, spalanie, opłacalność wg stawek osób',
+      await evaluate('return document.querySelectorAll(".an-tr--row").length >= 4 && !!document.querySelector(".ch--burn") && !!document.querySelector(".an-card--fin .an-fin__v") && !!document.querySelector(".an-split") && !document.querySelector("[data-fk=an-rate]");'));
     await evaluate('document.querySelector(".an-tr--row:last-child").click(); return true;');
     await sleep(300);
     check('Analiza: wiersz tabeli zmienia projekt w szczegółach',
       (await evaluate('return document.querySelector(".an-detail").dataset.projectId;')) === (await evaluate('return document.querySelector(".an-tr--row.is-selected").dataset.projectId;')));
-    await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
-    await sleep(300);
-    check('Analiza: pracownik nie widzi opłacalności ani kosztu godziny',
-      await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-fk=an-rate]");'));
+    await evaluate('window.ETROM.app.actions.setAnalysisTab("team"); return true;');
+    await sleep(400);
+    check('Analiza: zespół — mapa cieplna osób i tygodni oraz koszt wg stawek',
+      await evaluate('return document.querySelectorAll(".an-hm__row").length >= 5 && document.querySelectorAll(".an-hm__c").length >= 24 && document.querySelectorAll(".an-mix__bar i").length >= 4;'));
+    await evaluate('window.ETROM.app.actions.setAnalysisTab("finance"); return true;');
+    await sleep(400);
+    check('Analiza: finanse — marża na wykonanej pracy, przychód na godzinę, klienci',
+      await evaluate('return document.querySelectorAll(".an-hb__row").length >= 6 && document.querySelectorAll(".an-kpis--5 .an-tile").length === 5;'));
+    await evaluate('window.ETROM.app.actions.setAnalysisTab("calibration"); return true;');
+    await sleep(400);
+    check('Analiza: wyceny — kalibracja etapów i wskazówki',
+      await evaluate('return document.querySelectorAll(".an-cal__row").length >= 3 && !!document.querySelector(".an-tips");'));
+    await evaluate('window.ETROM.app.actions.setAnalysisTab("overview"); window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
+    await sleep(400);
+    check('Analiza: pracownik nie ma dostępu do analizy ani finansów',
+      await evaluate('return !document.querySelector(".an-card--fin") && !document.querySelector("[data-anTab=finance]") && !document.querySelector(".an-tabs");'));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await go('#/projekty');
 
@@ -1241,7 +1269,7 @@ async function main() {
     await go('#/projekty/' + id2 + '/analiza');
     await sleep(500);
     check('projekt: zakładka Analiza pokazuje spalanie godzin, wskaźniki i opłacalność dla zarządu',
-      await evaluate('return !!document.querySelector(".an--project .ch--burn") && !!document.querySelector(".an--project .an-idxs") && !!document.querySelector(".an--project .an-card--fin") && !!document.querySelector("[data-fk=an-rate]");'));
+      await evaluate('return !!document.querySelector(".an--project .ch--burn") && !!document.querySelector(".an--project .an-idxs") && !!document.querySelector(".an--project .an-card--fin");'));
     await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
     await sleep(300);
     check('projekt: pracownik nie ma zakładki Analiza, a po wpisaniu adresu widzi wyjaśnienie',

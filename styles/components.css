@@ -832,3 +832,10 @@ tr:hover .row-actions, tr:focus-within .row-actions, .row:hover .row-actions, .r
 .countdown--done { color: var(--ink-3); }
 .pcard__due { display: inline-flex; align-items: baseline; gap: var(--space-2); }
 .due-line { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); }
+
+/* godziny etapu w formularzu projektu */
+.choice-list__meta { display: inline-flex; align-items: center; gap: var(--space-1); }
+.choice-list__hours { width: 4.5rem; min-height: 1.75rem; padding: 2px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+.choice-list__hours:disabled { background: transparent; box-shadow: none; color: var(--ink-3); }
+.pf-budget__note { margin: calc(var(--space-2) * -1) 0 var(--space-3); font-size: var(--fs-sm); color: var(--ink-3); }
+.pf-budget__note.is-off { color: var(--warn-ink); }

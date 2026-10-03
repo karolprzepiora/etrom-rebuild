@@ -16,7 +16,8 @@
    * @param {Object} errors mapa pole → komunikat
    * @param {{onSubmit: Function, onCancel: Function}} handlers
    */
-  function personForm(draft, errors, handlers) {
+  function personForm(draft, errors, handlers, opts) {
+    var management = !!(opts && opts.management);
     var values = draft || {};
     var problems = errors || {};
     var editing = values.id != null;
@@ -27,6 +28,7 @@
     var orgRole = UI.select({ id: 'pe-role', options: options(Team.ORG_ROLES), value: values.orgRole || 'member' });
     var cooperation = UI.select({ id: 'pe-coop', options: options(Team.COOPERATION), value: values.cooperation || 'internal' });
 
+    var cost = management ? UI.input({ id: 'pe-cost', type: 'number', value: values.hourlyCost == null ? '' : String(values.hourlyCost), error: problems.hourlyCost, placeholder: 'np. 140', attrs: { min: '0', max: '10000', step: '5', inputmode: 'decimal' } }) : null;
     var form = E.Dialog.drawerForm({
       id: 'person-form',
       submitLabel: editing ? 'Zapisz zmiany' : 'Dodaj osobę',
@@ -38,7 +40,8 @@
           lastName: lastName.value,
           position: position.value,
           orgRole: orgRole.value,
-          cooperation: cooperation.value
+          cooperation: cooperation.value,
+          hourlyCost: cost ? cost.value : values.hourlyCost
         });
       },
       body: [
@@ -52,7 +55,8 @@
         D.el('hr', { class: 'form__divider' }),
         D.el('section', { class: 'form__section' }, [
           UI.field({ id: 'pe-role', label: 'Rola w organizacji', control: orgRole, error: problems.orgRole, hint: 'Zarządzający widzi wszystkie projekty i nadzór.' }),
-          UI.field({ id: 'pe-coop', label: 'Forma współpracy', control: cooperation, error: problems.cooperation })
+          UI.field({ id: 'pe-coop', label: 'Forma współpracy', control: cooperation, error: problems.cooperation }),
+          cost ? UI.field({ id: 'pe-cost', label: 'Koszt godziny pracy, zł', optional: true, control: cost, error: problems.hourlyCost, hint: 'Widoczny tylko dla zarządu. Z tej stawki Analiza liczy koszt i marżę projektów.' }) : null
         ])
       ]
     });
