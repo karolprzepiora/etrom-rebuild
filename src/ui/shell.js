@@ -21,6 +21,16 @@
     { value: 'graphite', label: 'Grafit', color: '#3E4B49' }
   ];
 
+  // Motywy kolorystyczne (podgląd w pigułce: dwa kolory aurory).
+  var PALETTES = [
+    { value: 'ocean', label: 'Morski', a: 'oklch(.62 .14 200)', b: 'oklch(.4 .13 252)' },
+    { value: 'graphite', label: 'Grafit', a: 'oklch(.52 .03 250)', b: 'oklch(.3 .03 255)' },
+    { value: 'forest', label: 'Leśny', a: 'oklch(.6 .14 160)', b: 'oklch(.4 .12 195)' },
+    { value: 'sunset', label: 'Zachód', a: 'oklch(.66 .16 38)', b: 'oklch(.42 .15 12)' },
+    { value: 'violet', label: 'Fiolet', a: 'oklch(.6 .15 335)', b: 'oklch(.4 .14 288)' }
+  ];
+  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, vivid: 100, contrast: 50 };
+
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
   function logo(markOnly) {
     return D.el('span', { class: 'logo' + (markOnly ? ' logo--mark' : ''), attrs: { 'aria-hidden': 'true' } }, [
@@ -75,6 +85,56 @@
       });
     });
 
+    // ---- Wygląd: motyw kolorystyczny, HDR, intensywność i kontrast ----
+    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast };
+    var palButtons = PALETTES.map(function (pal) {
+      return D.el('button', {
+        class: 'pal-swatch',
+        attrs: { type: 'button', role: 'radio', 'aria-checked': String(look.palette === pal.value), 'aria-label': 'Motyw kolorystyczny: ' + pal.label, 'data-tooltip': pal.label, 'data-fk': 'palette-' + pal.value },
+        style: { '--pa': pal.a, '--pb': pal.b },
+        dataset: { value: pal.value },
+        on: { click: function () { look.palette = pal.value; actions.setPref({ palette: pal.value }); syncLook(); } }
+      });
+    });
+    var hdrSwitch = UI.switchControl({
+      id: 'look-hdr', label: 'HDR', checked: look.hdr,
+      attrs: { 'data-fk': 'look-hdr', 'aria-describedby': 'look-hdr-hint' },
+      onChange: function (on) { look.hdr = on; actions.setPref({ hdr: on }); syncLook(); }
+    });
+    function slider(o) {
+      var out = D.el('output', { class: 'look-slider__val t-num', attrs: { for: o.id } });
+      var input = D.el('input', {
+        class: 'look-slider__input', attrs: { id: o.id, type: 'range', min: String(o.min), max: String(o.max), step: '1', 'data-fk': o.id, 'aria-label': o.label },
+        on: {
+          input: function () { o.set(Number(input.value)); out.textContent = o.format(Number(input.value)); actions.previewLook(look); },
+          change: function () { actions.setPref(o.patch(Number(input.value))); }
+        }
+      });
+      input.value = String(o.get());
+      out.textContent = o.format(o.get());
+      return { node: D.el('div', { class: 'look-slider' }, [D.el('label', { class: 'settings__label', attrs: { for: o.id }, text: o.label }), input, out]), input: input, out: out, o: o };
+    }
+    var vividSlider = slider({
+      id: 'look-vivid', label: 'Intensywność kolorów', min: 40, max: 150,
+      get: function () { return look.vivid; }, set: function (v) { look.vivid = v; },
+      format: function (v) { return v + '%'; }, patch: function (v) { return { vivid: v }; }
+    });
+    var contrastSlider = slider({
+      id: 'look-contrast', label: 'Kontrast', min: 0, max: 100,
+      get: function () { return look.contrast; }, set: function (v) { look.contrast = v; },
+      format: function (v) { return v === 50 ? 'standard' : (v > 50 ? '+' + (v - 50) : String(v - 50)); }, patch: function (v) { return { contrast: v }; }
+    });
+    function syncLook() {
+      palButtons.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === look.palette)); });
+      hdrSwitch.input.checked = !!look.hdr;
+      [vividSlider, contrastSlider].forEach(function (sl) { sl.input.value = String(sl.o.get()); sl.out.textContent = sl.o.format(sl.o.get()); });
+      actions.previewLook(look);
+    }
+    var resetLook = D.el('button', {
+      class: 'link-btn', text: 'Przywróć domyślny wygląd', attrs: { type: 'button', 'data-fk': 'look-reset' },
+      on: { click: function () { look = Object.assign({}, LOOK_DEFAULTS); actions.setPref(look); syncLook(); } }
+    });
+
     function item(label, icon, run, tone, kbd) {
       return D.el('button', {
         class: 'menu__item' + (tone === 'danger' ? ' menu__item--danger' : ''),
@@ -94,6 +154,16 @@
         D.el('span', { class: 'settings__label', text: 'Kolor pracy w toku', attrs: { id: 'accent-label' } }),
         D.el('div', { class: 'accent-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'accent-label' } }, swatches)
       ]),
+      D.el('div', { class: 'menu__separator' }),
+      D.el('p', { class: 'settings__group', text: 'Wygląd' }),
+      D.el('div', { class: 'settings__row' }, [
+        D.el('span', { class: 'settings__label', text: 'Motyw kolorystyczny', attrs: { id: 'palette-label' } }),
+        D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
+      ]),
+      D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
+      vividSlider.node,
+      contrastSlider.node,
+      D.el('div', { class: 'settings__row' }, [resetLook]),
       D.el('div', { class: 'menu__separator' }),
       item('Skróty klawiszowe', 'keyboard', actions.showShortcuts, null, '?'),
       item('Dodaj dane przykładowe', 'sparkle', actions.loadDemo),
@@ -132,7 +202,7 @@
     workspace.setAttribute('aria-haspopup', 'dialog');
     workspace.setAttribute('aria-expanded', 'false');
     workspace.addEventListener('click', function () {
-      Menu.open({ anchor: workspace, label: 'Ustawienia i dane', content: settingsPanel(getState()), minWidth: '26rem' });
+      Menu.open({ anchor: workspace, label: 'Ustawienia i dane', content: settingsPanel(getState()), minWidth: '26rem', className: 'popover--settings' });
     });
 
     var search = D.el('button', {

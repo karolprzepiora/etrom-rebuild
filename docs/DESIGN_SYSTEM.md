@@ -436,3 +436,14 @@ Tło okna (`body`, `.app`) to głęboka granatowo-morska baza z trzema łunami w
 ## Jeden język „aurora” w całej aplikacji
 
 Pasek boczny, nagłówek każdego ekranu (`.page-header`), baner projektu i przycisk główny należą do jednej rodziny: głęboki morski granat z turkusem (magenta marki tylko jako drobny akcent) (`--aurora-1`, `--aurora-2`, `--grad-aurora`) i konturami warstwic. Arkusz treści jest jasny dla czytelności, ale ma chłodno-fioletowy ton linii i wnęk, połysk na górnej krawędzi kart (`--card-gloss`) i łunę aurory u góry. Barwę projektu niosą kafle, wiersze, baner, kody, kropka w panelu i lewa krawędź wierszy w „Mojej pracy”. Stan (alarm, uwaga) pozostaje czerwienią i bursztynem.
+
+## Wygląd: motywy kolorystyczne, HDR, intensywność i kontrast
+
+Cały język „aurora” żyje w `styles/aurora.css` i jest sterowany czterema ustawieniami (Ustawienia → Wygląd, zapisywane w preferencjach):
+
+- **Motyw kolorystyczny** (`data-palette`): morski (domyślny), grafit, leśny, zachód, fiolet. Paleta ustawia odcienie tła okna, paska bocznego, nagłówków, przycisku głównego i lekki ton arkusza (`--au-h1/h2/h3`, `--au-bh`, `--au-sat`).
+- **HDR** (`data-hdr="off"` → `--hdr: 0`): wyłączony usuwa połysk, kolorowe poświaty i rozszerzoną gamę; włączony używa P3 / ekranu HDR (`@media (color-gamut: p3)`, `(dynamic-range: high)`).
+- **Intensywność kolorów** (`--vivid` 0,4–1,5): mnoży chromę aurory i barw projektów.
+- **Kontrast** (`--ctr` −1…+1): ciemniejsze tła pod białym tekstem, mocniejsze linie, ciemniejszy tekst w jasnym motywie i jaśniejszy w ciemnym. Granice tekstu pomocniczego dobrano tak, by przy skrajnych ustawieniach nie schodził poniżej AA.
+
+Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po puszczeniu. „Przywróć domyślny wygląd” cofa wszystko. Kolory stanu (alarm, uwaga) nie zależą od motywu.

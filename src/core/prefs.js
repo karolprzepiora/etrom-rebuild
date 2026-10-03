@@ -8,6 +8,9 @@
   var THEMES = ['system', 'light', 'dark'];
   var VIEWS = ['list', 'cards'];
   var ACCENTS = ['standard', 'graphite'];
+  // Motywy kolorystyczne: tło okna, pasek boczny, nagłówki i przycisk główny.
+  var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet'];
+  var VIVID_MIN = 40; var VIVID_MAX = 150; var VIVID_DEFAULT = 100; var CONTRAST_DEFAULT = 50;
   var GROUPS = ['health', 'status', 'none'];
   var DENSITIES = ['comfortable', 'compact'];
   var TASK_VIEWS = ['list', 'kanban'];
@@ -58,7 +61,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
     };
   }
 
@@ -78,6 +81,12 @@
     return customViews(source.customViews).some(function (v) { return v.id === id; }) ? id : 'all';
   }
 
+  function clampInt(value, min, max, fallback) {
+    var n = typeof value === 'number' ? value : NaN;
+    if (!isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(n)));
+  }
+
   function normalize(raw) {
     var source = (raw && typeof raw === 'object') ? raw : {};
     var accent = LEGACY_ACCENTS[source.accent] || source.accent;
@@ -95,6 +104,10 @@
       projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,
       railCollapsed: source.railCollapsed === true,
+      palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
+      hdr: source.hdr !== false,
+      vivid: clampInt(source.vivid, VIVID_MIN, VIVID_MAX, VIVID_DEFAULT),
+      contrast: clampInt(source.contrast, 0, 100, CONTRAST_DEFAULT),
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
       // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).
@@ -151,6 +164,9 @@
     THEMES: THEMES,
     VIEWS: VIEWS,
     ACCENTS: ACCENTS,
+    PALETTES: PALETTES,
+    VIVID_MIN: VIVID_MIN,
+    VIVID_MAX: VIVID_MAX,
     COLUMNS: COLUMNS,
     GROUPS: GROUPS,
     DENSITIES: DENSITIES,

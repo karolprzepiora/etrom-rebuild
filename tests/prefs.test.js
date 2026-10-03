@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, palette: 'ocean', hdr: true, vivid: 100, contrast: 50, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -131,4 +131,19 @@ test('panel szczegółów projektu jest domyślnie otwarty', () => {
 test('widok zadań projektu: lista albo kanban', () => {
   assert.equal(Prefs.normalize({ taskView: 'kanban' }).taskView, 'kanban');
   assert.equal(Prefs.normalize({ taskView: 'x' }).taskView, 'list');
+});
+
+test('wygląd: paleta tylko ze znanych, HDR domyślnie włączony, intensywność i kontrast w zakresie', () => {
+  assert.equal(Prefs.normalize({ palette: 'forest' }).palette, 'forest');
+  assert.equal(Prefs.normalize({ palette: 'neon' }).palette, 'ocean');
+  assert.equal(Prefs.normalize({}).hdr, true);
+  assert.equal(Prefs.normalize({ hdr: false }).hdr, false);
+  assert.equal(Prefs.normalize({ hdr: 'nie' }).hdr, true);
+  assert.equal(Prefs.normalize({ vivid: 500 }).vivid, 150);
+  assert.equal(Prefs.normalize({ vivid: 3 }).vivid, 40);
+  assert.equal(Prefs.normalize({ vivid: 'x' }).vivid, 100);
+  assert.equal(Prefs.normalize({ vivid: 87.6 }).vivid, 88);
+  assert.equal(Prefs.normalize({ contrast: -5 }).contrast, 0);
+  assert.equal(Prefs.normalize({ contrast: 130 }).contrast, 100);
+  assert.equal(Prefs.normalize({ contrast: 70 }).contrast, 70);
 });

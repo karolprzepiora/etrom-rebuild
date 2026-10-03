@@ -1378,6 +1378,28 @@ async function main() {
     await click('[data-fk="rail-toggle"]');
     await sleep(300);
     check('panel terminów da się rozwinąć z powrotem', (await state('s.prefs.railCollapsed')) === false && await evaluate('return !!document.querySelector(".pf-rail__sec");'));
+    await click('#action-settings');
+    await sleep(300);
+    await click('[data-fk="palette-forest"]');
+    await sleep(200);
+    check('Ustawienia → Wygląd: wybór motywu kolorystycznego zmienia paletę i zapisuje ją',
+      (await state('s.prefs.palette')) === 'forest' && await evaluate('return document.documentElement.getAttribute("data-palette") === "forest";'));
+    await click('#look-hdr');
+    await sleep(200);
+    check('przełącznik HDR wyłącza połysk i poświatę (data-hdr=off) i zapisuje wybór',
+      (await state('s.prefs.hdr')) === false && await evaluate('return document.documentElement.getAttribute("data-hdr") === "off" && getComputedStyle(document.documentElement).getPropertyValue("--hdr").trim() === "0";'));
+    await evaluate('const i = document.getElementById("look-vivid"); i.value = "150"; i.dispatchEvent(new Event("input", { bubbles: true })); i.dispatchEvent(new Event("change", { bubbles: true })); const c = document.getElementById("look-contrast"); c.value = "100"; c.dispatchEvent(new Event("input", { bubbles: true })); c.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(200);
+    check('suwaki intensywności i kontrastu ustawiają zmienne --vivid i --ctr oraz zapisują preferencje',
+      (await state('s.prefs.vivid')) === 150 && (await state('s.prefs.contrast')) === 100 &&
+      await evaluate('const st = document.documentElement.style; return st.getPropertyValue("--vivid") === "1.5" && st.getPropertyValue("--ctr") === "1";'));
+    await click('[data-fk="look-reset"]');
+    await sleep(200);
+    check('„Przywróć domyślny wygląd” cofa paletę, HDR, intensywność i kontrast',
+      (await state('s.prefs.palette')) === 'ocean' && (await state('s.prefs.hdr')) === true && (await state('s.prefs.vivid')) === 100 && (await state('s.prefs.contrast')) === 50 &&
+      await evaluate('return !document.documentElement.hasAttribute("data-palette") && !document.documentElement.hasAttribute("data-hdr");'));
+    await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return true;');
+    await sleep(200);
     check('wiersze tabeli i kafle mają barwę projektu', await evaluate('const r = document.querySelector("tr.prow-project"); return !!r && /^\\d+$/.test(r.style.getPropertyValue("--hue"));'));
     await go('#/zespol');
     await sleep(500);

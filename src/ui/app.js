@@ -1389,6 +1389,20 @@
     if (prefs.accent === 'standard') document.documentElement.removeAttribute('data-accent');
     else document.documentElement.setAttribute('data-accent', prefs.accent);
     document.documentElement.setAttribute('data-density', prefs.density || 'comfortable');
+    applyLook(prefs);
+  }
+
+  /** Wygląd: paleta, HDR, intensywność i kontrast jako atrybuty i zmienne CSS (podgląd na żywo bez zapisu). */
+  function applyLook(look) {
+    var el = document.documentElement;
+    if (!look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
+    else el.setAttribute('data-palette', look.palette);
+    if (look.hdr === false) el.setAttribute('data-hdr', 'off');
+    else el.removeAttribute('data-hdr');
+    var vivid = typeof look.vivid === 'number' ? look.vivid : 100;
+    var contrast = typeof look.contrast === 'number' ? look.contrast : 50;
+    el.style.setProperty('--vivid', String(vivid / 100));
+    el.style.setProperty('--ctr', String((contrast - 50) / 50));
   }
 
   function setPref(patch) {
@@ -2190,6 +2204,7 @@
     goTo: goTo,
     setMe: setMe,
     setPref: setPref,
+    previewLook: applyLook,
     inspect: inspect,
     closeInspector: closeInspector,
     isInspected: isInspected,
@@ -2894,6 +2909,7 @@
         showShortcuts: showShortcuts,
         toggleSidebar: toggleSidebar,
         setPref: setPref,
+        previewLook: applyLook,
         loadDemo: loadDemo,
         exportJson: exportJson,
         importJson: function () { nodes.fileInput.click(); },
