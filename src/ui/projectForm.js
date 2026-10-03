@@ -47,6 +47,17 @@
       options: Object.keys(Model.PROJECT_STATUS).map(function (key) { return { value: key, label: Model.PROJECT_STATUS[key] }; })
     });
 
+    /* --- rodzaj projektu: z nazwy albo wybrany ręcznie --- */
+    var kindSelect = UI.select({
+      id: 'pf-kind', value: E.Kinds.isKey(values.kind) ? values.kind : '',
+      options: [{ value: '', label: 'Rozpoznaj z nazwy' }].concat(E.Kinds.KINDS.map(function (k) { return { value: k.key, label: k.label }; }))
+    });
+    var kindHint = D.el('span', { class: 't-meta' });
+    function paintKind() { kindHint.textContent = kindSelect.value ? '' : 'Teraz: ' + E.Kinds.label(E.Kinds.detect(name.value)); }
+    name.addEventListener('input', paintKind);
+    kindSelect.addEventListener('change', paintKind);
+    paintKind();
+
     /* --- kolor projektu: 40 próbek albo automatyczny (z numeru projektu) --- */
     var Id = E.Identity;
     var chosenColor = Id.validIndex(values.color) ? values.color : null;
@@ -191,6 +202,7 @@
         deadline: deadline.value,
         contractValue: contract ? contract.value : undefined,
         color: chosenColor === null ? '' : chosenColor,
+        kind: kindSelect.value,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
         stageHours: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = hoursOf(id); return acc; }, {}),
         budgetHours: editing ? undefined : budget.value,
@@ -205,6 +217,7 @@
           UI.field({ id: 'pf-status', label: 'Status', control: status, error: problems.status })
         ]),
         UI.field({ id: 'pf-name', label: 'Nazwa', required: true, control: name, error: problems.name }),
+        UI.field({ id: 'pf-kind', label: 'Rodzaj projektu', optional: true, control: kindSelect, error: problems.kind, hint: 'Decyduje o grafice na kaflu (jaz, zapora, pompownia…). Domyślnie wynika z nazwy.' }),
         UI.field({ id: 'pf-color', label: 'Kolor projektu', optional: true, control: colorPicker, error: problems.color, hint: 'Ten kolor mają kafel projektu, paski czasu i znaczki. Automatyczny wynika z numeru projektu.' }),
         D.el('div', { class: 'form__row' }, [
           UI.field({ id: 'pf-client', label: 'Zamawiający', required: true, control: client, error: problems.client }),

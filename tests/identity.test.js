@@ -51,7 +51,7 @@ test('paleta ma 40 różnych kolorów, poza czerwienią i bursztynem', () => {
   const all = Identity.swatches();
   assert.equal(all.length, 40);
   assert.equal(new Set(all.map((c) => c.hue + ':' + c.tone)).size, 40);
-  assert.ok(all.every((c) => c.hue >= 105 && c.hue <= 350));
+  assert.ok(all.every((c) => c.hue >= 125 && c.hue <= 350));
 });
 
 test('kolejne numery projektów w roku dostają różne kolory (40 z rzędu bez powtórki)', () => {

@@ -5,6 +5,9 @@
   var Catalog = (typeof module !== 'undefined' && module.exports)
     ? require('./catalog.js')
     : root.ETROM.Catalog;
+  var Kinds = (typeof module !== 'undefined' && module.exports)
+    ? require('./kinds.js')
+    : root.ETROM.Kinds;
   var Team = (typeof module !== 'undefined' && module.exports)
     ? require('./team.js')
     : root.ETROM.Team;
@@ -100,6 +103,13 @@
 
     var value = { code: code, name: name, client: client, status: status, deadline: deadline };
     if (contractValue !== undefined) value.contractValue = contractValue;
+    // Rodzaj projektu: klucz z listy albo brak (rozpoznawany z nazwy).
+    if (Object.prototype.hasOwnProperty.call(input, 'kind')) {
+      var rawKind = text(String(input.kind == null ? '' : input.kind));
+      if (!rawKind) value.kind = null;
+      else if (Kinds.isKey(rawKind)) value.kind = rawKind;
+      else errors.kind = 'Wybierz rodzaj z listy.';
+    }
     // Kolor projektu: indeks palety 0–39 albo brak (kolor z numeru projektu).
     if (Object.prototype.hasOwnProperty.call(input, 'color')) {
       var rawColor = input.color === '' || input.color == null ? null : Number(input.color);
@@ -356,6 +366,7 @@
       team: input.team ? Object.assign(Team.emptyTeam(), input.team) : Team.emptyTeam(),
       contractValue: v.contractValue == null ? null : v.contractValue,
       color: v.color == null ? null : v.color,
+      kind: v.kind == null ? null : v.kind,
       createdAt: new Date().toISOString()
     };
   }
@@ -438,6 +449,7 @@
         team: team,
         contractValue: Number.isFinite(Number(item.contractValue)) && item.contractValue !== null && Number(item.contractValue) >= 0 ? Number(item.contractValue) : null,
         color: Number.isInteger(item.color) && item.color >= 0 && item.color < 40 ? item.color : null,
+        kind: Kinds.isKey(item.kind) ? item.kind : null,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

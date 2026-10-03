@@ -347,7 +347,7 @@
       form: {
         draft: {
           id: project.id, code: project.code, name: project.name, client: project.client,
-          status: project.status, deadline: project.deadline, contractValue: project.contractValue, color: project.color,
+          status: project.status, deadline: project.deadline, contractValue: project.contractValue, color: project.color, kind: project.kind,
           team: Object.assign(Team.emptyTeam(), project.team)
         },
         errors: {}

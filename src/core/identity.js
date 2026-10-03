@@ -28,7 +28,7 @@
      więc 40 projektów w roku różni się od siebie i sąsiednie nigdy nie są podobne. */
   var PALETTE_SIZE = 40;
   var HUES = 20;
-  var HUE_FROM = 105;
+  var HUE_FROM = 125;
   var HUE_TO = 350;
   var PERM_STEP = 7;
   var overrides = {};

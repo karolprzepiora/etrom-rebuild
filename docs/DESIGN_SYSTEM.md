@@ -485,3 +485,9 @@ Pomiar komputowanych stylów na wszystkich ekranach wykazał rozjazdy; ujednolic
 **Kafle projektów** mają dwa tryby (`prefs.tilesFull`, atrybut `data-tiles="full"`):
 - **spokojny (domyślny)**: neutralna powierzchnia, kolor projektu w pasku z lewej (6 px), numerze i delikatnym tle; czerwony obrys tylko dla alarmu; baner projektu o 40% mniej nasycony;
 - **pełny kolor**: dotychczasowe gradienty (Ustawienia → Wygląd → „Kafle w pełnym kolorze”).
+
+## Rodzaj projektu i jednolite kafle
+
+- **Rodzaj projektu** (`core/kinds.js`): jaz, zapora, zbiornik/staw, pompownia, elektrownia wodna, wały, mała retencja, rzeka/przepust, ekspertyza/OST, inny. `project.kind` wybierany w formularzu („Rodzaj projektu”) albo rozpoznawany z nazwy po słowach kluczowych (`Kinds.of(project)`).
+- **Kreskowa grafika** (`ui/kindArt.js`, siatka 120×80, kontur `currentColor`): jasny znak wodny w rogu kafla i banera projektu, mała ikona obok numeru na liście. Kolor tła zostaje do rozróżniania numerów, grafika mówi o typie.
+- **Kafle w jednolitym kolorze** (domyślnie): płaski, średnio nasycony kolor projektu, bez połysku, warstwic i poświaty. Wersja z gradientem i połyskiem: Ustawienia → Wygląd → „Kafle z połyskiem” (`data-tiles="full"`).

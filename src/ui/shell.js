@@ -106,7 +106,7 @@
       onChange: function (on) { look.hdr = on; actions.setPref({ hdr: on }); syncLook(); }
     });
     var tilesSwitch = UI.switchControl({
-      id: 'look-tiles', label: 'Kafle w pełnym kolorze', checked: !!look.tilesFull,
+      id: 'look-tiles', label: 'Kafle z połyskiem', checked: !!look.tilesFull,
       attrs: { 'data-fk': 'look-tiles', 'aria-describedby': 'look-tiles-hint' },
       onChange: function (on) { look.tilesFull = on; actions.setPref({ tilesFull: on }); syncLook(); }
     });
@@ -181,7 +181,7 @@
         D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
       ]),
       D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
-      D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie spokojne: kolor tylko w pasku i numerze' })]),
+      D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie jednolity kolor, bez połysku i cieniowania' })]),
       vividSlider.node,
       contrastSlider.node,
       D.el('div', { class: 'settings__row' }, [resetLook]),
