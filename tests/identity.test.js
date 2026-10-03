@@ -45,3 +45,12 @@ test('inicjały budują się z imienia i nazwiska', () => {
 test('inicjały zachowują polskie znaki', () => {
   assert.equal(Identity.initials('Łukasz Żuk'), 'ŁŻ');
 });
+
+test('tileHue: stała barwa kafla, nigdy w zakresie czerwieni i bursztynu', () => {
+  const Identity = require('../src/core/identity.js');
+  for (const code of ['2601', '2602', '2603', 'W-1', 'DEMO-004', '']) {
+    const h = Identity.tileHue(code);
+    assert.equal(h, Identity.tileHue(code));
+    assert.ok(h >= 150 && h < 290, code + ' → ' + h);
+  }
+});

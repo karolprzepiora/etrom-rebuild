@@ -22,6 +22,11 @@
     return (hash(code) * HUE_STEP) % 360;
   }
 
+  /** Barwa tła kafla: tylko zielenie–fiolety (150–290), by czerwień i bursztyn znaczyły wyłącznie stan. */
+  function tileHue(code) {
+    return 150 + (hue(code) % 140);
+  }
+
   /**
    * Zmienne CSS okładki projektu: dwa przygaszone odcienie i kąt warstwic.
    * Nasycenie trzymane nisko, żeby biała typografia pozostała czytelna.
@@ -45,7 +50,7 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toLocaleUpperCase('pl');
   }
 
-  var api = { hue: hue, coverStyle: coverStyle, initials: initials };
+  var api = { hue: hue, tileHue: tileHue, coverStyle: coverStyle, initials: initials };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Identity = api; }

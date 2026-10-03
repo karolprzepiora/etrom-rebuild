@@ -331,6 +331,7 @@
     return D.el('article', {
       class: 'pcard pf-card pc project level-' + health.level + (done ? ' is-closed' : ''),
       dataset: { projectCode: project.code, projectId: project.id },
+      style: { '--hue': String(E.Identity.tileHue(project.code)) },
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label, [role="menu"]')) return;
