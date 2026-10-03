@@ -399,7 +399,16 @@ Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte og�
 - **Budżet godzin przy zakładaniu projektu**: pole „Budżet godzin projektu” dzieli sumę na zaznaczone etapy proporcjonalnie do standardu (`Model.distributeHours`, metoda największych reszt); godziny każdego etapu są edytowalne, a pod polem widać różnicę względem budżetu.
 - Koszty zewnętrzne (geodeta, opłaty) — osobna zakładka w następnym etapie; analiza jest na nie przygotowana.
 
-## Pismo → zadanie → czas oraz Skrzynka
+## Pismo → zadanie → czas: jeden właściciel sprawy
+
+Pismo przychodzące oczekujące na odpowiedź ma w danej chwili jednego „właściciela” (`Mail.handling`):
+- **new** — nikt się nie zajął (brak zadania z pisma): pismo jest w „Wymaga reakcji” u lidera/koordynatora **od razu po wpisaniu** (bez okna 3 dni), z akcjami „Utwórz zadanie” / „Napisz odpowiedź”;
+- **taken** — jest otwarte zadanie: pismo znika z reakcji, sprawę prowadzi zadanie (termin, wykonawca, czas); w Korespondencji pismo ma plakietkę „W realizacji” i chip zadania z godzinami;
+- **finished** — zadania zakończone, odpowiedzi nie zarejestrowano: pismo wraca do reakcji z akcją „Zarejestruj odpowiedź”.
+Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toast proponuje „Zamknij zadanie/zadania” z pisma. Pisma wychodzące nie trafiają do reakcji (czekamy na cudzą odpowiedź).
+- **Wymaga odpowiedzi?** (formularz pisma przychodzącego) zastępuje dawną opcjonalną datę i checkbox: „Tak” wymaga terminu, który podpowiada rodzaj pisma (`Mail.suggestReplyDue`: wezwanie/decyzja/opinia/zapytanie 14 dni, postanowienie 7, wniosek 30; umowa, zawiadomienie, odpowiedź, inne — bez odpowiedzi), liczony od daty wpływu. „Nie” nie pokazuje pola terminu. Pismo wychodzące ma tylko nieobowiązkowe „Oczekujemy odpowiedzi do”.
+
+(Poniżej opis wcześniejszej wersji — Skrzynka została scalona z „Moją pracą”, patrz sekcja wyżej.)
 - **Zadanie z pisma** (opcjonalne): w Korespondencji przycisk „Utwórz zadanie z pisma” (pod pismem oraz w menu wiersza) otwiera zwykły formularz zadania z wybieralnym etapem, nazwą z numeru pisma, terminem odpowiedzi i zespołem. Zadanie zapamiętuje pismo w `task.mailId`. Czas rejestruje się na zadaniu, więc liczy się do budżetu etapu i Analizy; kilkadziesiąt godzin nad jednym wezwaniem to zwykłe godziny zadania.
 - Pismo pokazuje powiązane zadania (status i suma godzin, `Mail.linkedTasks`), zadanie w panelu ma pole „Z pisma”. Pismo kończy się jak dotąd: zarejestrowaną odpowiedzią.
 - **Moja praca** nie ma wprowadzeń ani zdań wyjaśniających na ekranie: „dlaczego to widzę” (`item.why`) i opis sekcji są w dymkach po najechaniu lub fokusie. Pismo z zadaniem to jeden wiersz (zadanie nie powtarza się na liście). Akcje wg rodzaju: pismo — Utwórz zadanie / Otwórz zadanie + Napisz odpowiedź.

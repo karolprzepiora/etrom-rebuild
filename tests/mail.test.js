@@ -84,3 +84,19 @@ test('normalizacja odrzuca zepsute wpisy i osierocone projekty, czyści złe pow
   assert.equal(out[1].replyTo, '');
   assert.deepEqual(Mail.normalizeEntries(undefined, [1]), []);
 });
+
+test('poczta: handling — kto trzyma pismo oczekujące na odpowiedź', () => {
+  assert.equal(Mail.handling([]), 'new');
+  assert.equal(Mail.handling([{ task: { status: 'working' } }]), 'taken');
+  assert.equal(Mail.handling([{ task: { status: 'done' } }, { task: { status: 'todo' } }]), 'taken');
+  assert.equal(Mail.handling([{ task: { status: 'done' } }]), 'finished');
+});
+
+test('poczta: podpowiedź terminu odpowiedzi z rodzaju pisma', () => {
+  assert.equal(Mail.suggestReplyDue('summons', '2026-10-01'), '2026-10-15');
+  assert.equal(Mail.suggestReplyDue('ruling', '2026-10-28'), '2026-11-04');
+  assert.equal(Mail.suggestReplyDue('application', '2026-12-10'), '2027-01-09');
+  assert.equal(Mail.suggestReplyDue('contract', '2026-10-01'), '');
+  assert.equal(Mail.suggestReplyDue('other', '2026-10-01'), '');
+  assert.equal(Mail.suggestReplyDue('summons', ''), '');
+});

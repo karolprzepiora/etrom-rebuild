@@ -18,7 +18,6 @@
     project: { label: 'Projekt w alarmie', order: 3 }
   };
   var KIND_ORDER = ['approve', 'returned', 'mail', 'project'];
-  var MAIL_HORIZON = 3;
   var MAX_SNOOZED = 200;
 
   function dateKey(now) {
@@ -69,8 +68,17 @@
         var owner = fns.indexOf('leader') >= 0 || fns.indexOf('coordinator') >= 0;
         if (!owner) return;
         Mail.pending(mail || [], project.id, ref).forEach(function (x) {
-          if (x.reply.days > MAIL_HORIZON) return;
-          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: Mail.linkedTasks(project, x.entry.id, entries, ref), why: (x.reply.state === 'overdue' ? 'Termin odpowiedzi na to pismo minął. ' : 'Zbliża się termin odpowiedzi na to pismo. ') + 'Jesteś liderem lub koordynatorem projektu. Utwórz zadanie (żeby zapisywać czas) albo od razu napisz odpowiedź.', days: x.reply.days, urgent: x.reply.state === 'overdue' });
+          // Tylko pisma przychodzące: na wychodzące czekamy my, to nie jest „do zrobienia” dla lidera.
+          if (x.entry.direction !== 'in') return;
+          // Jeden właściciel sprawy: dopóki trwa zadanie z pisma, pismo nie dubluje go w reakcjach.
+          var linked = Mail.linkedTasks(project, x.entry.id, entries, ref);
+          var state = Mail.handling(linked);
+          if (state === 'taken') return;
+          var late = x.reply.state === 'overdue';
+          var why = state === 'finished'
+            ? 'Zadanie z tego pisma jest zakończone, ale nie zarejestrowano odpowiedzi. Wpisz wysłane pismo do dziennika, a pismo zniknie stąd.'
+            : (late ? 'Termin odpowiedzi na to pismo minął, a nikt się nim nie zajął. ' : 'Nowe pismo wymaga odpowiedzi i nikt się nim jeszcze nie zajął. ') + 'Jesteś liderem lub koordynatorem projektu. Utwórz zadanie (żeby zapisywać czas i przydzielić osobę) albo od razu napisz odpowiedź.';
+          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: state, project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: linked, why: why, days: x.reply.days, urgent: late });
         });
         if (fns.indexOf('leader') >= 0 && Insight.health(project, ref).level === 'alarm') {
           all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.health(project, ref).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });
@@ -133,7 +141,7 @@
     return out;
   }
 
-  var api = { KINDS: KINDS, KIND_ORDER: KIND_ORDER, MAIL_HORIZON: MAIL_HORIZON, build: build, snooze: snooze, unsnooze: unsnooze, cleanSnoozed: cleanSnoozed };
+  var api = { KINDS: KINDS, KIND_ORDER: KIND_ORDER, build: build, snooze: snooze, unsnooze: unsnooze, cleanSnoozed: cleanSnoozed };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Inbox = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

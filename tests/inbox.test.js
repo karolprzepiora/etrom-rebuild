@@ -40,14 +40,15 @@ test('skrzynka: zadanie zwrócone do poprawy wraca do realizatora z uzasadnienie
   assert.equal(r.items[0].urgent, true);
 });
 
-test('skrzynka: pisma — tylko w ciągu 3 dni lub po terminie, tylko dla lidera i koordynatora', () => {
+test('skrzynka: pisma bez opiekuna widać od razu (nie dopiero przed terminem), tylko lider i koordynator', () => {
   const mail = [
     { id: 'm1', projectId: 1, direction: 'in', subject: 'Wezwanie', counterparty: 'RZGW', replyDue: '2026-09-30', registeredDate: '2026-09-20' },
     { id: 'm2', projectId: 1, direction: 'in', subject: 'Zapytanie', replyDue: '2026-10-05', registeredDate: '2026-09-30' },
     { id: 'm3', projectId: 1, direction: 'in', subject: 'Daleko', replyDue: '2026-10-20', registeredDate: '2026-09-30' }
   ];
   const r = Inbox.build('p-1', [project()], mail, NOW, {});
-  assert.deepEqual(r.items.map((i) => i.entry.id), ['m1', 'm2']);
+  assert.deepEqual(r.items.map((i) => i.entry.id), ['m1', 'm2', 'm3']);
+  assert.ok(r.items.every((i) => i.handling === 'new'));
   assert.equal(r.items[0].urgent, true);
   assert.equal(Inbox.build('p-3', [project()], mail, NOW, {}).total, 0);
 });
@@ -94,17 +95,29 @@ test('skrzynka: bez osoby jest pusta', () => {
   assert.equal(r.total, 0);
 });
 
-test('skrzynka: pismo pokazuje powiązane zadania z czasem pracy i podpowiada, co zrobić', () => {
+test('skrzynka: jedno pismo ma jednego właściciela — bez zadania, z otwartym zadaniem, po zakończeniu zadania', () => {
   const Mail = require('../src/core/mail.js');
   const mail = Mail.create([], 1, { direction: 'in', kind: 'summons', subject: 'Wezwanie', counterparty: 'RZGW', registeredDate: '2026-09-28', replyDue: '2026-10-03' }, { now: NOW }).entries;
   const id = mail[0].id;
-  const p = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'working', mailId: id })])] });
   const entries = [{ id: 'e1', personId: 'p-3', projectId: 1, stageId: 'concept', taskId: 'z', start: '2026-10-01T08:00:00.000Z', end: '2026-10-01T18:00:00.000Z', source: 'manual' }];
-  const item = Inbox.build('p-1', [p], mail, NOW, {}, entries).items.filter((i) => i.kind === 'mail')[0];
-  assert.equal(item.linked.length, 1);
-  assert.equal(item.linked[0].hours, 10);
-  assert.ok(/zadanie/i.test(item.why));
-  const bare = Inbox.build('p-1', [project()], mail, NOW, {}, []).items.filter((i) => i.kind === 'mail')[0];
+  const items = (p, e) => Inbox.build('p-1', [p], mail, NOW, {}, e).items.filter((i) => i.kind === 'mail');
+
+  const bare = items(project(), [])[0];
+  assert.equal(bare.handling, 'new');
   assert.equal(bare.linked.length, 0);
-  Inbox.build('p-1', [p], mail, NOW, {}, entries).items.forEach((i) => assert.ok(typeof i.why === 'string' && i.why.length > 10));
+  assert.ok(/nikt się/i.test(bare.why));
+
+  const taken = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'working', mailId: id })])] });
+  assert.equal(items(taken, entries).length, 0, 'pismo z otwartym zadaniem nie dubluje zadania w reakcjach');
+
+  const finished = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'done', mailId: id })])] });
+  const item = items(finished, entries)[0];
+  assert.equal(item.handling, 'finished');
+  assert.equal(item.linked[0].hours, 10);
+  assert.ok(/nie zarejestrowano odpowiedzi/i.test(item.why));
+});
+
+test('skrzynka: pismo wychodzące czekające na cudzą odpowiedź nie jest zadaniem lidera', () => {
+  const mail = [{ id: 'o1', projectId: 1, direction: 'out', subject: 'Wniosek', counterparty: 'Gmina', replyDue: '2026-09-30', registeredDate: '2026-09-20' }];
+  assert.equal(Inbox.build('p-1', [project()], mail, NOW, {}).items.filter((i) => i.kind === 'mail').length, 0);
 });

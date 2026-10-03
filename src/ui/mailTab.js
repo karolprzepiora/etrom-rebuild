@@ -13,6 +13,8 @@
 
   var STATE_LABEL = { waiting: 'Czeka na odpowiedź', overdue: 'Po terminie', answered: 'Odpowiedziano' };
   var STATE_TONE = { waiting: 'info', overdue: 'danger', answered: 'success' };
+  // Kto trzyma sprawę, gdy pismo czeka na odpowiedź (Mail.handling).
+  var HANDLING_LABEL = { new: 'Nikt się nie zajął', taken: 'W realizacji', finished: 'Wpisz odpowiedź' };
 
   function options(map, order) {
     return (order || Object.keys(map)).map(function (key) { return { value: key, label: map[key] }; });
@@ -39,7 +41,7 @@
         { label: 'Edytuj wpis', icon: 'edit', onSelect: function () { actions.editMail(entry.id); } }
       ];
       if (entry.direction === 'in') items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
-      items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
+      if (entry.direction === 'in') items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
       items.push({ type: 'separator' });
       items.push({ label: 'Usuń wpis', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteMail(entry.id); } });
       return { label: 'Działania pisma', align: 'end', items: items };
@@ -51,11 +53,12 @@
   function taskLine(entry, project, ctx, now, r) {
     var linked = Mail.linkedTasks(project, entry.id, ctx.state.workspace.entries, now);
     if (!linked.length) {
-      if (r.state === 'answered' || r.state === 'none') return null;
+      if (r.state === 'answered' || r.state === 'none' || entry.direction !== 'in') return null;
       return D.el('span', { class: 'mrow2__tasks' }, [
         UI.button({ label: 'Utwórz zadanie z pisma', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
       ]);
     }
+    var finished = Mail.handling(linked) === 'finished' && (r.state === 'waiting' || r.state === 'overdue');
     return D.el('span', { class: 'mrow2__tasks' }, linked.map(function (row) {
       return D.el('button', {
         class: 'mrow2__task', attrs: { type: 'button', 'data-fk': 'mail-linked-' + row.task.id, 'data-tooltip': 'Otwórz zadanie' },
@@ -65,9 +68,19 @@
         D.el('span', { class: 'truncate', text: row.task.name }),
         D.el('span', { class: 'mrow2__task-meta t-num', text: E.Tasks.TASK_STATUS[row.task.status] + ' · ' + F.hours(row.hours) })
       ]);
-    }).concat([
+    }).concat(finished ? [
+      UI.button({ label: 'Zarejestruj odpowiedź', icon: 'reply', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'mail-reply-' + entry.id }, onClick: function () { ctx.actions.replyMail(entry.id); } })
+    ] : []).concat([
       UI.button({ label: 'Kolejne zadanie', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
     ]));
+  }
+
+  function stateBadge(entry, project, ctx, now, r) {
+    if (r.state === 'none') return D.el('span');
+    if (r.state === 'answered' || entry.direction !== 'in') return UI.badge(STATE_LABEL[r.state], STATE_TONE[r.state]);
+    var h = Mail.handling(Mail.linkedTasks(project, entry.id, ctx.state.workspace.entries, now));
+    var label = r.state === 'overdue' && h === 'new' ? STATE_LABEL.overdue : HANDLING_LABEL[h];
+    return UI.badge(label, r.state === 'overdue' && h !== 'taken' ? 'danger' : (h === 'taken' ? 'neutral' : STATE_TONE[r.state]));
   }
 
   function mailRow(entry, list, project, ctx, now) {
@@ -90,7 +103,7 @@
       ]),
       UI.badge(Mail.KINDS[entry.kind], 'neutral'),
       replyBlock(entry, list, now),
-      r.state !== 'none' ? UI.badge(STATE_LABEL[r.state], STATE_TONE[r.state]) : D.el('span'),
+      stateBadge(entry, project, ctx, now, r),
       rowMenu(entry, project, ctx.actions),
       taskLine(entry, project, ctx, now, r)
     ]);
@@ -173,7 +186,10 @@
     var replyDue = UI.input({ id: 'ml-due', type: 'date', value: d.replyDue, error: er.replyDue });
     var summary = UI.textarea({ id: 'ml-summary', rows: 4, value: d.summary, placeholder: 'O co chodzi, czego pismo wymaga (nieobowiązkowe)', attrs: { maxlength: '2000' } });
     var where = UI.input({ id: 'ml-where', value: d.where, maxlength: 300, placeholder: 'np. segregator 3 · folder na dysku' });
-    var noReply = UI.checkbox({ id: 'ml-noreply', checked: !!d.noReply, label: 'Odpowiedź nie jest wymagana' });
+    // Pismo przychodzące: wprost „czy wymaga odpowiedzi”. „Tak” wymaga terminu (podpowiadamy go z rodzaju pisma),
+    // dzięki czemu pismo nie zginie przez zapomniane pole.
+    var needs = d.needsReply || (d.noReply ? 'no' : (d.replyDue ? 'yes' : 'no'));
+    var needsSel = UI.select({ id: 'ml-needs', value: needs, options: [{ value: 'yes', label: 'Tak — trzeba odpowiedzieć' }, { value: 'no', label: 'Nie — tylko do wiadomości' }] });
     var replyTo = UI.select({
       id: 'ml-replyto', value: d.replyTo || '',
       options: [{ value: '', label: '— to nie jest odpowiedź —' }].concat(spec.replies || [])
@@ -184,11 +200,31 @@
       return {
         id: d.id, direction: direction.value, kind: kind.value, counterparty: counterparty.value, subject: subject.value,
         number: number.value, registeredDate: registered.value, letterDate: letterDate.value, replyDue: replyDue.value,
-        summary: summary.value, where: where.value, noReply: noReply.querySelector ? noReply.querySelector('input').checked : false,
+        summary: summary.value, where: where.value,
+        needsReply: incoming ? needsSel.value : '',
+        noReply: incoming && needsSel.value === 'no',
         replyTo: replyTo.value
       };
     };
     direction.addEventListener('change', function () { handlers.onRedraft(fresh()); });
+    // Zmiana rodzaju lub daty wpływu przelicza podpowiedziany termin, o ile użytkownik go sam nie zmienił.
+    var retune = function () {
+      var next = fresh();
+      if (incoming && (next.replyDue === '' || next.replyDue === Mail.suggestReplyDue(d.kind || 'other', d.registeredDate))) {
+        next.replyDue = Mail.suggestReplyDue(next.kind, next.registeredDate);
+        next.needsReply = next.replyDue ? 'yes' : 'no';
+        next.noReply = !next.replyDue;
+      }
+      handlers.onRedraft(next);
+    };
+    kind.addEventListener('change', retune);
+    registered.addEventListener('change', function () { if (incoming) retune(); });
+    needsSel.addEventListener('change', function () {
+      var next = fresh();
+      if (next.needsReply === 'yes' && !next.replyDue) next.replyDue = Mail.suggestReplyDue(next.kind, next.registeredDate) || Mail.suggestReplyDue('summons', next.registeredDate);
+      if (next.needsReply === 'no') next.replyDue = '';
+      handlers.onRedraft(next);
+    });
 
     return E.Dialog.drawerForm({
       id: 'mail-form',
@@ -203,8 +239,8 @@
         UI.field({ id: 'ml-number', label: 'Znak pisma', optional: true, control: number, error: er.number, hint: 'Numer sprawy nadany przez urząd albo przez nas.' }),
         UI.field({ id: 'ml-registered', label: incoming ? 'Data wpływu' : 'Data wysłania', required: true, control: registered, error: er.registeredDate }),
         UI.field({ id: 'ml-letter', label: 'Data pisma', optional: true, control: letterDate, error: er.letterDate, hint: 'Jeśli różni się od daty w dzienniku.' }),
-        UI.field({ id: 'ml-due', label: 'Termin odpowiedzi', optional: true, control: replyDue, error: er.replyDue, hint: incoming ? 'Np. 14 dni z wezwania. Pilnujemy go aż do wpisania odpowiedzi.' : 'Do kiedy oczekujemy odpowiedzi na nasze pismo.' }),
-        noReply,
+        incoming ? UI.field({ id: 'ml-needs', label: 'Wymaga odpowiedzi?', required: true, control: needsSel, hint: 'Pismo „Tak” trafia do „Wymaga reakcji” u lidera, dopóki ktoś nie zajmie się nim (zadanie) albo nie wpisze odpowiedzi.' }) : null,
+        (!incoming || needsSel.value === 'yes') ? UI.field({ id: 'ml-due', label: incoming ? 'Termin odpowiedzi' : 'Oczekujemy odpowiedzi do', required: incoming, optional: !incoming, control: replyDue, error: er.replyDue, hint: incoming ? 'Podpowiedź z rodzaju pisma (np. wezwanie 14 dni od wpływu) — popraw wg treści pisma.' : 'Nieobowiązkowe. Do kiedy oczekujemy odpowiedzi na nasze pismo.' }) : null,
         (spec.replies && spec.replies.length) ? UI.field({ id: 'ml-replyto', label: incoming ? 'To jest odpowiedź na nasze pismo' : 'To jest odpowiedź na pismo', optional: true, control: replyTo, error: er.replyTo }) : null,
         UI.field({ id: 'ml-summary', label: 'Streszczenie', optional: true, control: summary, error: er.summary }),
         UI.field({ id: 'ml-where', label: 'Gdzie jest oryginał', optional: true, control: where, hint: 'Segregator, folder na dysku. Załączniki w programie dojdą później.' })

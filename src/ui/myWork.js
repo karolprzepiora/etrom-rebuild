@@ -176,16 +176,12 @@
     var work = Insight.myWork(me.id, state.workspace.projects, now);
     var result = E.Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed, state.workspace.entries);
     var parts = E.InboxScreen.split(result);
-    var buckets = {};
-    var open = 0;
-    Object.keys(work.buckets).forEach(function (key) {
-      buckets[key] = work.buckets[key].filter(function (r) { return !parts.hiddenTasks[r.task.id]; });
-      open += buckets[key].length;
-    });
+    var buckets = work.buckets;
+    var open = work.open;
     return {
       me: me, work: work, result: result, parts: parts, buckets: buckets, open: open,
       overdue: buckets.overdue.length,
-      returned: work.returned.filter(function (r) { return !parts.hiddenTasks[r.task.id]; }),
+      returned: work.returned,
       react: parts.react, alarms: parts.alarms, snoozed: parts.snoozed
     };
   }

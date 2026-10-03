@@ -255,7 +255,36 @@
     return out;
   }
 
+  /**
+   * Kto „trzyma” pismo oczekujące na odpowiedź:
+   *  new      — nikt się nie zajął (brak zadania z pisma) → czeka w „Wymaga reakcji”,
+   *  taken    — jest otwarte zadanie → sprawę prowadzi zadanie (termin, wykonawca, czas),
+   *  finished — zadania zakończone, a odpowiedzi nie zarejestrowano → trzeba ją wpisać do dziennika.
+   * @param {Array} linked wynik linkedTasks
+   */
+  function handling(linked) {
+    var rows = linked || [];
+    if (!rows.length) return 'new';
+    return rows.some(function (r) { return r.task.status !== 'done'; }) ? 'taken' : 'finished';
+  }
+
+  // Podpowiedź terminu odpowiedzi (dni od daty wpływu) wg rodzaju pisma przychodzącego.
+  // null — pismo zwykle nie wymaga odpowiedzi.
+  var REPLY_DAYS = { decision: 14, ruling: 7, summons: 14, notice: null, opinion: 14, application: 30, inquiry: 14, reply: null, contract: null, other: null };
+
+  /** Podpowiedziany termin odpowiedzi (RRRR-MM-DD) albo '' gdy rodzaj zwykle nie wymaga odpowiedzi. */
+  function suggestReplyDue(kind, registeredDate) {
+    var days = Object.prototype.hasOwnProperty.call(REPLY_DAYS, kind) ? REPLY_DAYS[kind] : null;
+    if (days === null || !isDate(registeredDate)) return '';
+    var p = registeredDate.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1, p[2] + days);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   var api = {
+    handling: handling,
+    suggestReplyDue: suggestReplyDue,
+    REPLY_DAYS: REPLY_DAYS,
     linkedTasks: linkedTasks,
     DIRECTIONS: DIRECTIONS,
     KINDS: KINDS,

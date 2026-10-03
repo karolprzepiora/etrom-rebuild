@@ -35,11 +35,11 @@
       ];
     }
     if (item.kind === 'mail') {
-      var linked = item.linked || [];
+      if (item.handling === 'finished') {
+        return [UI.button({ label: 'Zarejestruj odpowiedź', icon: 'reply', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-reply-' + item.entry.id }, onClick: function () { actions.replyMail(item.entry.id); } })];
+      }
       return [
-        linked.length
-          ? UI.button({ label: 'Otwórz zadanie', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-task-' + item.entry.id }, onClick: function () { actions.inspect({ kind: 'task', projectId: item.project.id, stageId: linked[0].stage.id, taskId: linked[0].task.id }); } })
-          : UI.button({ label: 'Utwórz zadanie', icon: 'plus', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-mailtask-' + item.entry.id }, onClick: function () { actions.mailTask(item.entry.id); } }),
+        UI.button({ label: 'Utwórz zadanie', icon: 'plus', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-mailtask-' + item.entry.id }, onClick: function () { actions.mailTask(item.entry.id); } }),
         UI.button({ label: 'Napisz odpowiedź', icon: 'reply', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-reply-' + item.entry.id }, onClick: function () { actions.replyMail(item.entry.id); } })
       ];
     }
@@ -89,16 +89,12 @@
   var SECTION_HINT = 'Rzeczy, na które czeka ktoś inny: zadania do zatwierdzenia i pisma, którym zbliża się termin odpowiedzi. Pojawiają się same, a znikają, gdy je załatwisz.';
 
   /** Dzieli wynik Inbox.build na to, co idzie do sekcji „Wymaga reakcji”, i alarmy projektów.
-   *  Zadania wrócone do poprawy zostają na zwykłej liście zadań (mają tam uwagę i termin). */
+   *  Pismo z otwartym zadaniem nie trafia tu w ogóle (prowadzi je zadanie). Zadania wrócone do poprawy zostają na zwykłej liście zadań (mają tam uwagę i termin). */
   function split(result) {
     var react = result.items.filter(function (i) { return i.kind === 'approve' || i.kind === 'mail'; });
     var alarms = result.items.filter(function (i) { return i.kind === 'project'; });
-    var hiddenTasks = {};
-    react.forEach(function (item) {
-      (item.linked || []).forEach(function (r) { hiddenTasks[r.task.id] = true; });
-    });
     var later = result.snoozed.filter(function (i) { return i.kind === 'approve' || i.kind === 'mail'; });
-    return { react: react, alarms: alarms, hiddenTasks: hiddenTasks, snoozed: later, urgent: react.filter(function (i) { return i.urgent; }).length };
+    return { react: react, alarms: alarms, snoozed: later, urgent: react.filter(function (i) { return i.urgent; }).length };
   }
 
   /** Sekcja „Wymaga reakcji” — ten sam szkielet co sekcje zadań. */

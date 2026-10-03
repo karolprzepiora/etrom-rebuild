@@ -701,6 +701,10 @@
 
   function openAddMail(projectId, direction, preset) {
     var draft = Object.assign({ direction: direction || 'in', kind: direction === 'out' ? 'reply' : 'other', registeredDate: Mail.todayKey(new Date()) }, preset || {});
+    if (draft.direction === 'in' && draft.replyDue === undefined) {
+      draft.replyDue = Mail.suggestReplyDue(draft.kind, draft.registeredDate);
+      draft.needsReply = draft.replyDue ? 'yes' : 'no';
+    }
     store.set({ mailForm: { mode: 'new', projectId: projectId, draft: draft, errors: {} } });
   }
 
@@ -722,11 +726,22 @@
     });
   }
 
+  /** Otwarte zadania powstałe z pisma (do zaproponowania zamknięcia po odpowiedzi). */
+  function openMailTasks(projectId, mailId) {
+    var project = findProject(projectId);
+    return project ? Mail.linkedTasks(project, mailId, [], new Date()).filter(function (r) { return r.task.status !== 'done'; })
+      .map(function (r) { return { projectId: projectId, stageId: r.stage.id, taskId: r.task.id }; }) : [];
+  }
+
   function submitMail(values) {
     var form = store.getState().mailForm;
     if (!form) return;
     var list = mailList();
     var meta = { personId: currentMe() || '', now: new Date() };
+    if (values.direction === 'in' && values.needsReply === 'yes' && !values.replyDue) {
+      store.set({ mailForm: Object.assign({}, form, { draft: values, errors: { replyDue: 'Podaj termin odpowiedzi albo wybierz „Nie — tylko do wiadomości”.' } }) });
+      return;
+    }
     var result = values.id
       ? Mail.update(list, values.id, values, meta)
       : Mail.create(list, form.projectId, values, meta);
@@ -737,7 +752,18 @@
     setMail(function () { return result.entries; });
     store.set({ mailForm: null });
     var saved = result.entry;
-    Toast.show({ message: (values.id ? 'Zapisano ' : 'Wpisano do dziennika: ') + saved.regNo + '.', tone: 'success', timeout: 3500 });
+    var message = (values.id ? 'Zapisano ' : 'Wpisano do dziennika: ') + saved.regNo + '.';
+    // Odpowiedź załatwia pismo — jeśli zostały po nim otwarte zadania, proponujemy ich zamknięcie.
+    var open = !values.id && saved.direction === 'out' && saved.replyTo ? openMailTasks(saved.projectId, saved.replyTo) : [];
+    if (open.length) {
+      Toast.show({
+        message: message + ' Zadań z pisma otwartych: ' + open.length + '.', tone: 'success', timeout: 9000,
+        actionLabel: open.length === 1 ? 'Zamknij zadanie' : 'Zamknij zadania',
+        onAction: function () { open.forEach(function (row) { moveTaskStatus(row.projectId, row.stageId, row.taskId, 'done'); }); }
+      });
+    } else {
+      Toast.show({ message: message, tone: 'success', timeout: 3500 });
+    }
   }
 
   function deleteMail(id) {
@@ -1417,7 +1443,7 @@
       },
       { stage: 3, name: 'Analiza wariantów pompowni', status: 'working', workload: 'medium', hours: 30, people: [2, 4] },
       { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', workload: 'small', hours: 240, people: [4] },
-      { stage: 3, name: 'Uzupełnić kartę informacyjną wg opinii RDOŚ', status: 'working', workload: 'large', hours: 120, people: [1, 2], mail: 'Opinia do karty informacyjnej', work: 18, description: 'Uwagi RDOŚ do oddziaływania na wody powierzchniowe i siedliska.' }
+      { stage: 3, name: 'Uzupełnić kartę informacyjną wg opinii RDOŚ', status: 'done', workload: 'large', hours: 120, people: [1, 2], mail: 'Opinia do karty informacyjnej', work: 18, description: 'Uwagi RDOŚ do oddziaływania na wody powierzchniowe i siedliska.' }
     ],
     '2605': [
       { stage: 13, name: 'Przekazanie dokumentacji zamawiającemu', status: 'done', workload: 'small', hours: -900, people: [1] }
