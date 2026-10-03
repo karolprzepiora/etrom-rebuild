@@ -112,7 +112,7 @@
     var stateLabel = health.level === 'closed' ? 'Zakończony' : (attention ? 'Wymaga uwagi' : 'W normie');
 
     return D.el('dl', { class: 'pd-props' }, [
-      prop('Stan', [D.el('span', { class: 'pd-state', attrs: { 'data-tooltip': health.reasons.map(function (r) { return r.text; }).join('; ') || null } }, [Sig.datum(health.level, { label: false }), D.el('span', { text: stateLabel })])]),
+      prop('Stan', [E.Flow.stateButton(project, ctx, { now: now, label: stateLabel, className: 'pd-state' })]),
       prop('Termin umowy', deadlineProp(project, ctx, now)),
       prop('Lider', [PL.leaderCell(project, ctx)]),
       PL.timeRibbon(project, now) ? D.el('div', { class: 'pd-prop pd-prop--ribbon' }, [D.el('dt', { class: 'pd-prop__label', text: 'Czas umowy' }), D.el('dd', { class: 'pd-prop__value' }, [PL.timeRibbon(project, now)])]) : null

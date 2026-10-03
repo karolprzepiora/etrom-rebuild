@@ -426,7 +426,8 @@ test('attentionItems: powody stanu z działaniami, zaległe pisma, etap bez zada
   const waiting = [{ entry: { id: 'm1' }, reply: { state: 'overdue', days: -3 } }];
   const withMail = Insight.attentionItems(calm, NOW, waiting);
   assert.equal(withMail[0].rule, 'mail-late');
-  assert.equal(withMail[0].level, 'alarm');
+  assert.equal(withMail[0].level, 'warning');
+  assert.equal(withMail.filter((x) => x.rule === 'mail-late').length, 1, 'pismo po terminie nie dubluje się z powodem stanu');
 });
 
 test('activity: zmiany statusów zadań i pisma, najnowsze pierwsze', () => {
@@ -441,4 +442,28 @@ test('activity: zmiany statusów zadań i pisma, najnowsze pierwsze', () => {
   assert.match(list[0].text, /W toku → Do zatwierdzenia/);
   assert.equal(list[1].kind, 'mail');
   assert.equal(Insight.activity(p, mail, 2).length, 2);
+});
+
+test('health: pismo po terminie obniża stan do ostrzegawczego (spójnie z listą terminów)', () => {
+  const calm = project({ deadline: '2027-12-31' });
+  assert.equal(Insight.health(calm, NOW).level, 'normal');
+  const waiting = [{ entry: { id: 'm1' }, reply: { state: 'overdue', days: -3 } }];
+  const h = Insight.health(calm, NOW, waiting);
+  assert.equal(h.level, 'warning');
+  assert.equal(h.reasons[0].rule, 'mail-late');
+  assert.equal(Insight.health(calm, NOW, [{ entry: { id: 'm2' }, reply: { state: 'waiting', days: 4 } }]).level, 'normal');
+});
+
+test('explain: nagłówek, powody i mierniki z progami — także dla projektu w normie', () => {
+  const calm = project({ deadline: '2027-12-31' });
+  const ok = Insight.explain(calm, NOW, []);
+  assert.equal(ok.level, 'normal');
+  assert.ok(/Żaden próg/.test(ok.headline));
+  assert.ok(ok.meters.length >= 4);
+  assert.ok(ok.meters.every((m) => m.level === 'ok' && m.note.length > 10));
+  const bad = Insight.explain(project({ deadline: '2026-09-26' }), NOW, []);
+  assert.equal(bad.level, 'alarm');
+  assert.ok(/minął/.test(bad.headline));
+  assert.equal(bad.meters.find((m) => m.key === 'deadline').level, 'alarm');
+  assert.deepEqual(Insight.explain(project({ status: 'done' }), NOW, []).meters, []);
 });

@@ -1192,6 +1192,40 @@
     dialog.showModal();
   }
 
+  /* ---------- zdarzenia projektowe do Aktualności ---------- */
+
+  var eventSnap = null;
+  var eventsQuiet = 0;
+  var eventsBusy = false;
+
+  /** Porównuje stan z poprzednim odciskiem i dopisuje zdarzenia (etap zakończony, zmiana stanu, status projektu). */
+  function observeEvents() {
+    if (eventsBusy) return;
+    var ws = store.getState().workspace;
+    if (!ws || !Array.isArray(ws.projects)) return;
+    var social = ws.social || E.Social.empty();
+    var res = E.Events.detect(eventSnap, ws.projects, new Date(), { actorId: currentMe() || '', health: social.health, recent: social.events });
+    eventSnap = res.snapshot;
+    var events = eventsQuiet ? [] : res.events;
+    var stored = social.health || {};
+    var healthDiffers = Object.keys(res.health).some(function (id) { return stored[id] !== res.health[id]; });
+    if (!events.length && !healthDiffers) return;
+    eventsBusy = true;
+    try {
+      updateWorkspace(function (workspace) {
+        return Object.assign({}, workspace, { social: E.Social.recordEvents(workspace.social, events, res.health) });
+      });
+    } finally { eventsBusy = false; }
+  }
+
+  /** Wykonuje zmianę hurtową (dane przykładowe, wczytanie kopii, czyszczenie) bez generowania zdarzeń. */
+  function quietly(fn) {
+    eventsQuiet += 1;
+    try { fn(); } finally { eventsQuiet -= 1; observeEvents(); }
+  }
+
+  function loadDemo() { quietly(loadDemoNow); }
+
   /* ---------- filtry i preferencje ---------- */
 
   function setFilters(patch) {
@@ -1484,7 +1518,57 @@
 
   var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130, 'Marta Testowa': 160, 'Tomasz Testowy': 110 };
 
-  function loadDemo() {
+  // Docelowe obciążenie tygodniowe osób w danych przykładowych (h): od wolnej przepustowości po pełne obłożenie.
+  var DEMO_WEEK_HOURS = [38, 46, 41, 39, 32, 36, 30, 24];
+  var DEMO_BEFORE_START_MS = 40 * 86400000; // przykładowa praca może sięgać do ~6 tygodni przed założeniem projektu w systemie (prace wstępne)
+
+  /**
+   * Wyrównuje obciążenie osób w danych przykładowych: nadmiar godzin z przeładowanego tygodnia
+   * przesuwa na wcześniejsze tygodnie (nie wcześniej niż początek projektu), zachowując sumy godzin projektów.
+   * Dzisiejsze wpisy zostają. Wpis, dla którego nie ma miejsca, jest pomijany.
+   */
+  function levelDemoLoad(list, projects, roster, now) {
+    var byProject = {};
+    projects.forEach(function (p) { byProject[p.id] = p; });
+    var index = {};
+    roster.forEach(function (p, i) { index[p.id] = i; });
+    var todayKey = E.TimeLog.dayKey(now.getTime());
+    function monday(date) {
+      var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    var load = {};
+    var out = [];
+    var keep = list.filter(function (e) { return E.TimeLog.dayKey(Date.parse(e.start)) === todayKey; });
+    keep.forEach(function (e) {
+      var wk = monday(new Date(e.start));
+      var l = load[e.personId] || (load[e.personId] = {});
+      l[wk] = (l[wk] || 0) + (Date.parse(e.end) - Date.parse(e.start)) / 3600000;
+    });
+    out = keep.slice();
+    list.filter(function (e) { return keep.indexOf(e) < 0; })
+      .sort(function (a, b) { return Date.parse(b.start) - Date.parse(a.start); })
+      .forEach(function (e) {
+        var hours = (Date.parse(e.end) - Date.parse(e.start)) / 3600000;
+        var target = DEMO_WEEK_HOURS[index[e.personId] === undefined ? 0 : index[e.personId] % DEMO_WEEK_HOURS.length];
+        var l = load[e.personId] || (load[e.personId] = {});
+        var created = byProject[e.projectId] && byProject[e.projectId].createdAt ? Date.parse(byProject[e.projectId].createdAt) : 0;
+        for (var shift = 0; shift <= 20; shift += 1) {
+          var start = new Date(Date.parse(e.start) - shift * 7 * 86400000);
+          if (start.getTime() < created - 86400000 - DEMO_BEFORE_START_MS) break;
+          var wk = monday(start);
+          if ((l[wk] || 0) + hours <= target + 0.01) {
+            l[wk] = (l[wk] || 0) + hours;
+            out.push(shift ? Object.assign({}, e, { start: start.toISOString(), end: new Date(start.getTime() + hours * 3600000).toISOString(), updatedAt: start.toISOString() }) : e);
+            return;
+          }
+        }
+      });
+    return out;
+  }
+
+  function loadDemoNow() {
     var roster = people().slice();
     DEMO_PEOPLE.forEach(function (row) {
       var exists = roster.some(function (person) {
@@ -1765,6 +1849,7 @@
           entriesOut.push({ id: 'e-demo-' + counter, personId: team[k % team.length], projectId: project.id, stageId: stage.id, taskId: '', label: Model.describeStage(stage).name, start: start.toISOString(), end: new Date(start.getTime() + (1.5 + k * 0.25) * 3600000).toISOString(), note: 'Praca nad dokumentacją', source: 'manual', updatedAt: start.toISOString() });
         });
       }
+      entriesOut = levelDemoLoad(entriesOut, projectsOut, workspace.people || [], nowDate);
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: ownEntries.concat(entriesOut) });
     });
     // Korekty godzin zarządu (np. dodatkowe uzgodnienia) — widać je w budżecie etapu i w Analizie.
@@ -1839,6 +1924,29 @@
           if (made.valid) social = made.social;
         });
       });
+      // Zdarzenia projektowe z bieżącego stanu przykładowych projektów (odświeżane przy każdym wczytaniu).
+      var demoEvents = [];
+      var seenLevels = {};
+      var nowDate = new Date();
+      Object.keys(byCode).filter(function (code) { return /^26\d\d$/.test(code); }).sort().forEach(function (code, i) {
+        var project = byCode[code];
+        var done = project.stages.filter(function (st) { return st.status === 'done'; });
+        done.slice(-2).reverse().forEach(function (st, n) {
+          var following = E.Events.nextStageName(project, st.id);
+          demoEvents.push({ id: 'ev-demo-' + code + '-s' + n, event: 'stage-done', projectId: project.id, stageId: st.id, level: 'normal',
+            at: new Date(Date.now() - (0.5 + i * 0.35 + n * 3) * 3600000).toISOString(), actorId: (project.team && project.team.leader) || '',
+            title: 'Etap zakończony', text: E.Events.stageName(project, st.id), detail: following ? 'Następny etap: ' + following : 'To był ostatni etap' });
+        });
+        var health = E.Insight.health(project, nowDate);
+        seenLevels[project.id] = health.level === 'closed' ? 'normal' : health.level;
+        if (health.level === 'warning' || health.level === 'alarm') {
+          demoEvents.push({ id: 'ev-demo-' + code + '-h', event: 'health', projectId: project.id, level: health.level,
+            at: new Date(Date.now() - (0.2 + i * 0.25) * 3600000).toISOString(), title: E.Events.HEALTH_TITLE[health.level],
+            text: health.reasons[0] ? health.reasons[0].text : '', detail: health.reasons.length > 1 ? 'Powodów: ' + health.reasons.length : '' });
+        }
+      });
+      social = Object.assign({}, social, { events: (social.events || []).filter(function (e) { return String(e.id).indexOf('ev-demo-') !== 0; }) });
+      social = E.Social.recordEvents(social, demoEvents, seenLevels);
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, social: social });
     });
     Toast.show({
@@ -1882,8 +1990,10 @@
       try {
         var parsed = Model.normalizeWorkspace(JSON.parse(String(reader.result)));
         lastPercent = {};
-        store.update(function (state) {
-          return Object.assign({}, state, { workspace: parsed, expandedStages: {}, selection: {}, form: null, notice: '' });
+        quietly(function () {
+          store.update(function (state) {
+            return Object.assign({}, state, { workspace: parsed, expandedStages: {}, selection: {}, form: null, notice: '' });
+          });
         });
         navigate({ name: 'projects' });
         Toast.show({
@@ -2390,6 +2500,17 @@
     commitMotion(project);
   }
 
+  /** Pojemność osób (średnia godzin z 4 tygodni wobec 40 h) — tylko dla zarządu, który widzi godziny wszystkich. */
+  function teamCapacity(state) {
+    var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
+    if (!me || !E.Budget.isManagement(me.id, state.workspace.people || [])) return null;
+    var pf = E.Analysis.portfolio(state.workspace, me.id, new Date());
+    var map = {};
+    pf.team.forEach(function (t) { map[t.personId] = { utilization: t.utilization, avg4: t.avg4, capacity: pf.capacity }; });
+    (state.workspace.people || []).forEach(function (p) { if (!map[p.id]) map[p.id] = { utilization: 0, avg4: 0, capacity: pf.capacity }; });
+    return map;
+  }
+
   function renderTeam(state) {
     var roster = state.workspace.people || [];
     var visible = E.TeamScreen.visiblePeople(roster, state.teamFilters);
@@ -2408,7 +2529,7 @@
     nodes.teamFilters.hidden = !roster.length;
     nodes.newPerson.hidden = !roster.length;
 
-    D.patch(nodes.teamList, [E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions)]);
+    D.patch(nodes.teamList, [E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state))]);
   }
 
   function renderMyWork(state) {
@@ -2726,6 +2847,8 @@
      ========================================================= */
 
   function init() {
+    // Stan projektu wszędzie uwzględnia pisma po terminie (jedno źródło prawdy).
+    E.Insight.setMailSource(function () { return store.getState().workspace.mail || []; });
     nodes.app = D.byId('app');
     nodes.notice = D.byId('notice');
     nodes.filters = D.byId('filters');
@@ -2807,6 +2930,8 @@
     lastWorkspace = loaded.workspace;
     var route = parseRoute(location.hash);
     store.subscribe(renderAll);
+    store.subscribe(observeEvents);
+    window.setInterval(observeEvents, 5 * 60 * 1000);
     store.update(function (state) {
       return Object.assign({}, state, {
         workspace: loaded.workspace,

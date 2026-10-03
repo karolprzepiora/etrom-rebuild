@@ -278,11 +278,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .prow--off .avatar { filter: grayscale(1); opacity: 0.6; }
 
 .load { display: inline-flex; align-items: center; gap: var(--space-2-5); }
-.load__pips { display: inline-flex; gap: 3px; }
-.pip { width: 6px; height: 14px; border-radius: 2px; background: var(--track); }
-.pip--on { background: var(--flow); }
-.pip--late { background: var(--alarm); }
-.load__pips--over .pip:last-child { background: repeating-linear-gradient(var(--flow) 0 2px, transparent 2px 4px); }
 .load__value { min-width: 1.25rem; font-size: var(--fs-sm); font-weight: 600; }
 
 .role-list { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-1-5); }
@@ -622,3 +617,18 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
   .mrow2__date, .mrow2 > .badge:not(:nth-last-child(2)) { display: none; }
 }
 
+
+/* Obciążenie osoby: liczba zadań, a dla zarządu wskaźnik pojemności */
+.load { display: inline-flex; align-items: center; gap: var(--space-2-5); }
+.load__tasks { font-size: var(--fs-sm); }
+.load--cap { display: grid; grid-template-columns: auto 7.5rem; grid-template-areas: "pct bar" "sub sub" "tasks tasks"; align-items: center; column-gap: var(--space-2-5); row-gap: 1px; white-space: normal; min-width: 11.5rem; }
+.load--cap .load__pct { grid-area: pct; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 650; letter-spacing: var(--tracking-tight, -0.01em); }
+.load--cap .load__bar { grid-area: bar; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.load--cap .load__fill { display: block; height: 100%; border-radius: 3px; background: var(--flow); }
+.load--cap .load__sub { grid-area: sub; font-size: var(--fs-xs); color: var(--ink-3); }
+.load--cap .load__tasks { grid-area: tasks; font-size: var(--fs-xs); color: var(--ink-2); }
+.load--high .load__fill { background: var(--warn); }
+.load--high .load__pct { color: var(--warn-ink); }
+.load--over .load__fill { background: var(--alarm); }
+.load--over .load__pct { color: var(--alarm-ink); }
+.load--free .load__fill { background: var(--ink-3); }

@@ -11,14 +11,17 @@
     { id: 'party', emoji: '🎉', label: 'Gratulacje' },
     { id: 'eyes', emoji: '👀', label: 'Widzę' }
   ];
-  var LIMITS = { post: 1000, comment: 500, key: 120, posts: 500, comments: 3000, reactionKeys: 3000, images: 4, imageChars: 700000, imageTotal: 3500000, pollOptions: 5, pollOption: 80 };
+  var LIMITS = { post: 1000, comment: 500, key: 120, posts: 500, comments: 3000, events: 200, reactionKeys: 3000, images: 4, imageChars: 700000, imageTotal: 3500000, pollOptions: 5, pollOption: 80 };
   // Rodzaje wpisów: zwykły, ogłoszenie (zarząd), ankieta i wyróżnienie osoby.
   var TYPES = ['post', 'announcement', 'poll', 'kudos'];
+  // Zdarzenia projektowe tworzone przez aplikację (nie przez ludzi): etap zakończony, zmiana stanu, status projektu.
+  var EVENTS = ['stage-done', 'health', 'project-done', 'project-paused', 'project-resumed'];
+  var LEVELS = ['normal', 'warning', 'alarm'];
   var IMAGE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
   function text(value) { return typeof value === 'string' ? value.trim() : ''; }
   function ids() { return REACTIONS.map(function (r) { return r.id; }); }
-  function empty() { return { reactions: {}, comments: [], posts: [] }; }
+  function empty() { return { reactions: {}, comments: [], posts: [], events: [], health: {} }; }
 
   function nextId(prefix, list) {
     var max = 0;
@@ -74,7 +77,47 @@
       seenPosts[id] = true;
       out.posts.push(cleanPost(p, id, body));
     });
+
+    // Zdarzenia projektowe i ostatnio widziane stany (do wykrywania zmian między sesjami).
+    var seenEvents = {};
+    (Array.isArray(source.events) ? source.events : []).forEach(function (e) {
+      var ev = cleanEvent(e);
+      if (!ev || seenEvents[ev.id]) return;
+      seenEvents[ev.id] = true;
+      out.events.push(ev);
+    });
+    out.events.sort(function (a, b) { return Date.parse(a.at) - Date.parse(b.at); });
+    out.events = out.events.slice(-LIMITS.events);
+    var health = source.health && typeof source.health === 'object' && !Array.isArray(source.health) ? source.health : {};
+    Object.keys(health).slice(0, 500).forEach(function (pid) {
+      if (/^\d{1,9}$/.test(pid) && LEVELS.indexOf(health[pid]) >= 0) out.health[pid] = health[pid];
+    });
     return out;
+  }
+
+  function cleanEvent(e) {
+    if (!e || typeof e !== 'object') return null;
+    var id = text(e.id);
+    if (!id || id.length > 40 || EVENTS.indexOf(e.event) < 0 || !isTime(e.at) || !Number.isSafeInteger(e.projectId) || e.projectId <= 0) return null;
+    var title = text(e.title).slice(0, 160);
+    if (!title) return null;
+    var out = { id: id, at: e.at, event: e.event, projectId: e.projectId, title: title, text: text(e.text).slice(0, 300), detail: text(e.detail).slice(0, 300) };
+    if (text(e.stageId)) out.stageId = text(e.stageId).slice(0, 60);
+    if (LEVELS.indexOf(e.level) >= 0) out.level = e.level;
+    if (text(e.actorId)) out.actorId = text(e.actorId).slice(0, 60);
+    return out;
+  }
+
+  /** Dopisuje zdarzenia (najstarsze wypadają po przekroczeniu limitu) i aktualizuje zapamiętane stany projektów. */
+  function recordEvents(social, events, health) {
+    var s = social || empty();
+    var list = (s.events || []).slice();
+    (events || []).forEach(function (e) {
+      var clean = cleanEvent(Object.assign({}, e, { id: e.id || nextId('ev', list) }));
+      if (clean && !list.some(function (x) { return x.id === clean.id; })) list.push(clean);
+    });
+    list.sort(function (a, b) { return Date.parse(a.at) - Date.parse(b.at); });
+    return Object.assign({}, s, { events: list.slice(-LIMITS.events), health: health ? Object.assign({}, s.health || {}, health) : (s.health || {}) });
   }
 
   function cleanImages(list) {
@@ -259,7 +302,7 @@
   }
 
   var api = {
-    REACTIONS: REACTIONS, LIMITS: LIMITS, TYPES: TYPES, empty: empty, normalize: normalize,
+    REACTIONS: REACTIONS, LIMITS: LIMITS, TYPES: TYPES, EVENTS: EVENTS, empty: empty, normalize: normalize, recordEvents: recordEvents,
     toggleReaction: toggleReaction, reactionsOf: reactionsOf,
     addComment: addComment, removeComment: removeComment, commentsOf: commentsOf,
     addPost: addPost, removePost: removePost, editPost: editPost, vote: vote, pollResults: pollResults, togglePin: togglePin, imageChars: imageChars

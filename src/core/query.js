@@ -68,7 +68,7 @@
   function matchesHealth(project, health, now, mail) {
     if (!health || health === 'all' || HEALTH.indexOf(health) < 0) return true;
     if (health === 'overdue') return insight().hasOverdue(project, now, mail);
-    var level = insight().health(project, now).level;
+    var level = insight().healthOf(project, now, mail).level;
     if (health === 'attention') return level === 'alarm' || level === 'warning';
     return level === health;
   }

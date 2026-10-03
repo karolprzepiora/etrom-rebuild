@@ -196,3 +196,12 @@ a.fd__chip:hover { color: var(--ink); background: var(--canvas); }
 .fd__head .fd__who { flex: 1; min-width: 0; }
 .fd__head .fd__chip { flex: none; }
 @media (max-width: 40rem) { .fd__head { flex-wrap: wrap; } .fd__head .fd__chip { order: 5; flex-basis: 100%; max-width: none; text-align: left; } }
+
+/* Zdarzenia projektowe (generowane przez aplikację): subtelna szyna stanu i ikona systemowa */
+.fd__card--event { box-shadow: inset 3px 0 0 var(--line-strong), inset 0 0 0 1px var(--line); }
+.fd__card--lvl-warning { box-shadow: inset 3px 0 0 var(--warn), inset 0 0 0 1px var(--line); }
+.fd__card--lvl-alarm { box-shadow: inset 3px 0 0 var(--alarm), inset 0 0 0 1px var(--line); }
+.fd__card--lvl-normal.fd__card--event { box-shadow: inset 3px 0 0 var(--flow), inset 0 0 0 1px var(--line); }
+.fd__sysicon--warning { color: var(--warn-ink); background: var(--warn-wash); }
+.fd__sysicon--alarm { color: var(--alarm-ink); background: var(--alarm-wash); }
+.fd__sysicon--normal { color: var(--flow-ink, var(--ink-2)); }

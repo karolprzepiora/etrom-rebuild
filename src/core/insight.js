@@ -31,6 +31,11 @@
   // Termin etapu bliżej niż tyle dni — znacznik ostrzegawczy na torze przebiegu.
   var STAGE_SOON = 7;
 
+  // Źródło dziennika pism dla ocen stanu wołanych bez jawnej listy (aplikacja ustawia je raz przy starcie),
+  // dzięki czemu stan projektu jest wszędzie taki sam: lista, pasek boczny, inspektor, zespół.
+  var mailSource = null;
+  function setMailSource(fn) { mailSource = typeof fn === 'function' ? fn : null; }
+
   function plural(n, one, few, many) {
     var t = n % 100;
     var u = n % 10;
@@ -99,9 +104,10 @@
    * Stan projektu z powodami. Pierwszy powód jest najważniejszy i służy za nagłówek.
    * @returns {{level: string, label: string, reasons: Array<{level: string, text: string}>}}
    */
-  function health(project, now) {
+  function health(project, now, waitingMail) {
     var reference = now instanceof Date ? now : new Date();
     var reasons = [];
+    if (waitingMail === undefined) waitingMail = project && mailSource ? Mail.pending(mailSource() || [], project.id, reference) : [];
 
     if (!project) return { level: 'normal', label: LEVELS.normal.label, reasons: [] };
     if (project.status === 'done') {
@@ -149,11 +155,70 @@
       });
     }
 
+    // Pismo bez odpowiedzi po terminie to zaległość tak samo jak zadanie po terminie.
+    var lateMail = (waitingMail || []).filter(function (x) { return x.reply && x.reply.state === 'overdue'; });
+    if (lateMail.length) {
+      reasons.push({
+        rule: 'mail-late',
+        level: 'warning',
+        text: lateMail.length + ' ' + plural(lateMail.length, 'pismo czeka', 'pisma czekają', 'pism czeka') + ' na odpowiedź po terminie'
+      });
+    }
+
     if (project.status === 'paused') reasons.push({ rule: 'project-paused', level: 'warning', text: 'Projekt wstrzymany' });
 
     reasons.sort(function (a, b) { return LEVELS[a.level].rank - LEVELS[b.level].rank; });
     var level = reasons.length ? reasons[0].level : 'normal';
     return { level: level, label: LEVELS[level].label, reasons: reasons };
+  }
+
+  /** Stan projektu z uwzględnieniem pism czekających na odpowiedź (lista pism z dziennika). */
+  function healthOf(project, now, mailList) {
+    var reference = now instanceof Date ? now : new Date();
+    return health(project, reference, project ? Mail.pending(mailList || [], project.id, reference) : []);
+  }
+
+  /**
+   * Wyjaśnienie stanu: nagłówek, powody oraz mierniki z progami — także dla „W normie”,
+   * żeby było widać, dlaczego żaden próg nie jest przekroczony.
+   * @returns {{level, label, headline, reasons, meters: Array<{key, label, value, note, level}>}}
+   */
+  function explain(project, now, waitingMail) {
+    var reference = now instanceof Date ? now : new Date();
+    var state = health(project, reference, waitingMail);
+    if (!project || project.status === 'done') {
+      return { level: state.level, label: state.label, headline: 'Projekt zakończony — stan nie jest już oceniany.', reasons: state.reasons, meters: [] };
+    }
+    var left = Progress.daysUntil(project.deadline, reference);
+    var plan = schedule(project, reference);
+    var progress = Progress.projectProgress(project).percent;
+    var tasks = allTasks(project);
+    var late = tasks.filter(function (e) { return Tasks.isOverdue(e.task, reference); }).length;
+    var returned = tasks.filter(function (e) { return e.task.status === 'changes'; }).length;
+    var lateMail = (waitingMail || []).filter(function (x) { return x.reply && x.reply.state === 'overdue'; }).length;
+    var meters = [];
+
+    var dlLevel = left !== null && left < 0 ? 'alarm' : (left !== null && left <= DEADLINE_SOON && progress < DEADLINE_SOON_PROGRESS ? 'warning' : 'ok');
+    meters.push({
+      key: 'deadline', label: 'Termin umowy', level: dlLevel,
+      value: left === null ? 'brak terminu' : (left < 0 ? days(-left) + ' po terminie' : (left === 0 ? 'dzisiaj' : 'za ' + days(left))),
+      note: 'Alarm po terminie; ostrzeżenie, gdy zostało ≤ ' + DEADLINE_SOON + ' dni, a postęp jest poniżej ' + DEADLINE_SOON_PROGRESS + '%.'
+    });
+    if (plan && left !== null && left >= 0) {
+      meters.push({
+        key: 'schedule', label: 'Harmonogram', level: plan.lag >= LAG_ALARM ? 'alarm' : (plan.lag >= LAG_WARNING ? 'warning' : 'ok'),
+        value: 'postęp ' + progress + '% przy ' + plan.expected + '% czasu umowy (' + (plan.lag > 0 ? 'opóźnienie ' + plan.lag : 'zapas ' + (-plan.lag)) + ' p.p.)',
+        note: 'Ostrzeżenie od ' + LAG_WARNING + ' p.p. opóźnienia, alarm od ' + LAG_ALARM + ' p.p.'
+      });
+    }
+    meters.push({ key: 'late', label: 'Zadania po terminie', level: late ? 'warning' : 'ok', value: String(late), note: 'Każde zadanie po terminie to ostrzeżenie.' });
+    meters.push({ key: 'returned', label: 'Zwroty do poprawy', level: returned ? 'warning' : 'ok', value: String(returned), note: 'Zadanie zwrócone do poprawy to ostrzeżenie.' });
+    if (waitingMail) meters.push({ key: 'mail', label: 'Pisma po terminie', level: lateMail ? 'warning' : 'ok', value: String(lateMail), note: 'Pismo bez odpowiedzi po terminie odpowiedzi to ostrzeżenie.' });
+
+    var headline = state.reasons.length
+      ? state.reasons[0].text + (state.reasons.length > 1 ? ' (+' + (state.reasons.length - 1) + ' ' + plural(state.reasons.length - 1, 'powód', 'powody', 'powodów') + ')' : '')
+      : 'Żaden próg nie jest przekroczony: terminy, harmonogram, zadania i pisma są w normie.';
+    return { level: state.level, label: state.label, headline: headline, reasons: state.reasons, meters: meters };
   }
 
   /**
@@ -487,19 +552,12 @@
       'schedule-lag': [{ id: 'plan', label: 'Pokaż plan' }],
       'tasks-late': [{ id: 'tasks', label: 'Pokaż zadania' }],
       'tasks-returned': [{ id: 'tasks', label: 'Pokaż zadania' }],
-      'project-paused': [{ id: 'resume', label: 'Wznów projekt' }]
+      'project-paused': [{ id: 'resume', label: 'Wznów projekt' }],
+      'mail-late': [{ id: 'mail', label: 'Otwórz korespondencję' }]
     };
-    health(project, reference).reasons.forEach(function (r) {
+    health(project, reference, waitingMail).reasons.forEach(function (r) {
       out.push({ rule: r.rule, level: r.level, text: r.text, actions: ACTIONS[r.rule] || [] });
     });
-    var lateMail = (waitingMail || []).filter(function (x) { return x.reply.state === 'overdue'; });
-    if (lateMail.length) {
-      out.push({
-        rule: 'mail-late', level: 'alarm',
-        text: lateMail.length + ' ' + plural(lateMail.length, 'pismo', 'pisma', 'pism') + ' czeka na odpowiedź po terminie',
-        actions: [{ id: 'mail', label: 'Otwórz korespondencję' }]
-      });
-    }
     var current = project.status === 'active' ? Progress.activeStage(project) : null;
     if (current && current.status === 'working' && !(current.tasks || []).length) {
       out.push({
@@ -731,6 +789,9 @@
     LAG_ALARM: LAG_ALARM,
     upcomingFor: upcomingFor,
     health: health,
+    healthOf: healthOf,
+    setMailSource: setMailSource,
+    explain: explain,
     profile: profile,
     gauge: gauge,
     ladder: ladder,

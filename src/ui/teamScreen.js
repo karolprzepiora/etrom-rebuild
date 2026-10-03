@@ -16,8 +16,7 @@
   var F = E.Format;
 
   var MAX_ROLE_BADGES = 2;
-  var PIPS = 8;
-
+  
   /** Filtruje i porządkuje katalog osób. Czysta funkcja. */
   function visiblePeople(people, filters) {
     var options = filters || {};
@@ -59,21 +58,29 @@
     return D.el('div', { class: 'role-list' }, children);
   }
 
-  /** Obciążenie: kropki = otwarte zadania, wypełnione na czerwono = po terminie. */
-  function loadMeter(load) {
-    var pips = [];
-    for (var i = 0; i < PIPS; i += 1) {
-      var cls = 'pip';
-      if (i < load.overdue) cls += ' pip--late';
-      else if (i < load.open) cls += ' pip--on';
-      pips.push(D.el('span', { class: cls }));
-    }
-    return D.el('div', {
-      class: 'load',
-      attrs: { role: 'img', 'aria-label': 'Otwarte zadania: ' + load.open + (load.overdue ? ', po terminie: ' + load.overdue : '') }
-    }, [
-      D.el('span', { class: 'load__pips' + (load.open > PIPS ? ' load__pips--over' : '') }, pips),
-      D.el('span', { class: 'load__value t-num' + (load.overdue ? ' t-alarm' : (load.open ? '' : ' t-muted')), text: load.open ? String(load.open) : '—' })
+  /**
+   * Obciążenie: liczba otwartych zadań i zaległości; dla zarządu dodatkowo wskaźnik pojemności
+   * (średnia godzin z 4 tygodni wobec 40 h): procent, pasek i godziny.
+   * @param {{open:number, overdue:number}} load
+   * @param {{utilization:number, avg4:number, capacity:number}} [cap]
+   */
+  function loadMeter(load, cap) {
+    var tasks = D.el('span', { class: 'load__tasks t-num' + (load.overdue ? ' t-alarm' : (load.open ? '' : ' t-muted')), text: load.open
+      ? F.count(load.open, 'zadanie', 'zadania', 'zadań') + (load.overdue ? ' · ' + load.overdue + ' po term.' : '')
+      : 'brak zadań' });
+    var label = 'Otwarte zadania: ' + load.open + (load.overdue ? ', po terminie: ' + load.overdue : '');
+    if (!cap) return D.el('div', { class: 'load', attrs: { role: 'img', 'aria-label': label } }, [tasks]);
+    var u = cap.utilization;
+    var tone = u > 110 ? 'over' : (u >= 85 ? 'high' : (u < 40 ? 'free' : 'ok'));
+    var note = { over: 'przeciążenie', high: 'pełne obłożenie', ok: 'w normie', free: 'wolna przepustowość' }[tone];
+    return D.el('div', { class: 'load load--cap load--' + tone, attrs: { role: 'img', 'aria-label': label + '. Obciążenie ' + u + '% (' + cap.avg4 + ' z ' + cap.capacity + ' godzin tygodniowo, średnia z 4 tygodni) — ' + note }, dataset: { util: String(u) } }, [
+      D.el('span', { class: 'load__pct t-num', text: u + '%' }),
+      D.el('span', { class: 'load__bar', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: 'load__fill', style: { width: Math.min(100, u) + '%' } })]),
+      D.el('span', { class: 'load__sub' }, [
+        D.el('span', { class: 't-num', text: cap.avg4 + ' / ' + cap.capacity + ' h' }),
+        D.el('span', { class: 'load__note', text: ' · ' + note })
+      ]),
+      tasks
     ]);
   }
 
@@ -98,7 +105,7 @@
     return btn;
   }
 
-  function personRow(person, projects, actions, now) {
+  function personRow(person, projects, actions, now, cap) {
     var inactive = person.active === false;
     var load = Insight.workload(person.id, projects, now);
     var inspected = actions.isInspected && actions.isInspected('person', person.id);
@@ -124,7 +131,7 @@
           D.el('span', { class: 'person__meta', text: [person.position || 'Bez stanowiska', Team.COOPERATION[person.cooperation]].filter(Boolean).join(', ') })
         ])
       ])]),
-      D.el('td', { class: 'col-load' }, [loadMeter(load)]),
+      D.el('td', { class: 'col-load' }, [loadMeter(load, cap)]),
       D.el('td', { class: 'col-projects t-num' }, [D.el('span', { class: load.projects ? '' : 't-muted', text: load.projects ? String(load.projects) : '—', attrs: { 'aria-label': 'Czynne projekty: ' + load.projects } })]),
       D.el('td', { class: 'col-functions' }, [roleBadges(load, now)]),
       D.el('td', { class: 'col-state' }, [inactive ? UI.badge('Wyłączona', 'warning') : null]),
@@ -186,7 +193,7 @@
     });
   }
 
-  function teamList(people, projects, filters, actions) {
+  function teamList(people, projects, filters, actions, capacity) {
     var all = people || [];
     var visible = visiblePeople(all, filters);
     var now = new Date();
@@ -203,7 +210,7 @@
 
     var head = D.el('thead', null, [D.el('tr', null, [
       D.el('th', { class: 'col-person', attrs: { scope: 'col' }, text: 'Osoba' }),
-      D.el('th', { class: 'col-load', attrs: { scope: 'col' }, text: 'Otwarte zadania' }),
+      D.el('th', { class: 'col-load', attrs: { scope: 'col' }, text: capacity ? 'Obciążenie' : 'Otwarte zadania' }),
       D.el('th', { class: 'col-projects', attrs: { scope: 'col' }, text: 'Projekty' }),
       D.el('th', { class: 'col-functions', attrs: { scope: 'col' }, text: 'Funkcje' }),
       D.el('th', { class: 'col-state', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Stan' })]),
@@ -218,7 +225,7 @@
           D.el('span', { class: 'group-row__label', text: group.label }),
           D.el('span', { class: 'group-row__count', text: String(members.length) })
         ])])
-      ])].concat(members.map(function (person) { return personRow(person, projects, actions, now); })));
+      ])].concat(members.map(function (person) { return personRow(person, projects, actions, now, capacity ? capacity[person.id] : null); })));
     }).filter(Boolean);
 
     return D.el('div', { class: 'table-wrap team-table' }, [

@@ -1337,6 +1337,45 @@ async function main() {
     await sleep(250);
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
 
+    /* 38h. Zdarzenia projektowe w Aktualnościach, wyjaśnienie stanu, radar jako filtr, obciążenie zespołu */
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/aktualnosci');
+    await sleep(500);
+    await click('[data-fk="fd-filter-events"]');
+    await sleep(250);
+    check('filtr „Zdarzenia” zostawia tylko zdarzenia projektowe',
+      await evaluate('const c = [...document.querySelectorAll(".fd__card")]; return c.length > 0 && c.every(x => x.classList.contains("fd__card--event"));'));
+    check('Aktualności: dane przykładowe mają zdarzenia projektowe (etap zakończony, zmiana stanu) z kontekstem projekt → etap',
+      await evaluate('const c = [...document.querySelectorAll(".fd__card--event")]; return c.length >= 3 && c.some(x => /Etap zakończony/.test(x.textContent) && /→/.test(x.textContent)) && c.some(x => /stan (ostrzegawczy|alarmowy)/.test(x.textContent));'));
+    await click('[data-fk="fd-filter-all"]');
+    const evBefore = await state('s.workspace.social.events.length');
+    const code02 = await projectId('2602');
+    await evaluate('const a = window.ETROM.app; a.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.map(function (p) { if (p.code !== "2602") return p; let done = false; return Object.assign({}, p, { stages: p.stages.map(function (g) { if (!done && g.status !== "done") { done = true; return Object.assign({}, g, { status: "done" }); } return g; }) }); }) }) }); }); return true;');
+    await sleep(300);
+    check('zakończenie etapu dopisuje zdarzenie „Etap zakończony” do Aktualności i zapamiętuje je w danych',
+      (await state('s.workspace.social.events.length')) > evBefore && await state('s.workspace.social.events.some(e => e.event === "stage-done" && e.projectId === ' + code02 + ' && !e.id.startsWith("ev-demo"))'));
+    await go('#/projekty/' + code01);
+    await sleep(500);
+    await click('[data-fk="state-' + code01 + '"]');
+    await sleep(300);
+    check('klik w stan projektu otwiera wyjaśnienie: powód, mierniki z progami i akcje',
+      await evaluate('const x = document.querySelector(".popover .xs"); return !!x && x.querySelectorAll(".xs__meter").length >= 4 && /Termin umowy/.test(x.textContent) && !!x.querySelector(".xs__head");'));
+    await pressKey('escape');
+    await sleep(200);
+    await go('#/projekty');
+    await sleep(500);
+    await click('[data-fk="rail-filter-late"]');
+    await sleep(300);
+    check('nagłówek „Po terminie” w radarze terminów filtruje listę projektów (drugi klik zdejmuje filtr)',
+      (await state('s.filters.health')) === 'overdue' && await evaluate('return document.querySelector("[data-fk=rail-filter-late]").getAttribute("aria-pressed") === "true";'));
+    await click('[data-fk="rail-filter-late"]');
+    await sleep(250);
+    check('drugi klik zdejmuje filtr radaru', (await state('s.filters.health')) === 'all');
+    await go('#/zespol');
+    await sleep(500);
+    check('Zespół (zarząd): obciążenie w procentach z paskiem i godzinami zamiast kresek',
+      await evaluate('const l = [...document.querySelectorAll(".load--cap")]; return l.length >= 3 && l.every(x => /^\\d+%/.test(x.textContent)) && !!document.querySelector(".load__bar") && !document.querySelector(".pip");'));
+
     /* 38e. Ekran startowy: trzy kroki zależnie od stanu */
     check('ekran startowy: pusta aplikacja ma trzy nieukończone kroki z działaniami',
       await evaluate('const a = { newPerson() {}, openCreate() {}, loadDemo() {}, setMe() {} }; const n = window.ETROM.Welcome.card({ workspace: { people: [], projects: [] }, prefs: { me: null } }, { actions: a }, "x"); return n.querySelectorAll(".wl__step").length === 3 && n.querySelectorAll(".wl__step.is-done").length === 0 && !!n.querySelector("[data-fk=wl-add-person]") && !!n.querySelector("[data-fk=wl-add-project]") && !!n.querySelector("[data-fk=wl-demo]");'));

@@ -158,9 +158,9 @@
     return btn;
   }
 
-  function reasonLine(project, health, hidden) {
+  function reasonLine(project, health, hidden, ctx) {
     if (health.level === 'alarm' || health.level === 'warning') {
-      return D.el('span', { class: 'truncate pf-reason pf-reason--' + health.level, text: health.reasons[0].text });
+      return E.Flow.stateButton(project, ctx, { text: health.reasons[0].text + (health.reasons.length > 1 ? ' · +' + (health.reasons.length - 1) : ''), className: 'pf-reason pf-reason--' + health.level });
     }
     return D.el('span', { class: 'truncate', text: hidden.indexOf('client') < 0 ? (project.client || '') : '' });
   }
@@ -168,7 +168,7 @@
   /** „DEMO-002” → „002”: w wąskich miejscach numer bez prefiksu; pełny kod jest w podpowiedzi. */
   function shortCode(code) { return String(code).replace(/^[A-Za-z]+-?/, '') || String(code); }
 
-  function nameCell(project, health, hidden) {
+  function nameCell(project, health, hidden, ctx) {
     return D.el('div', { class: 'stack' }, [
       D.el('a', {
         class: 'project-link stack__main',
@@ -176,7 +176,7 @@
         attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id },
         dataset: { projectTitle: project.id }
       }),
-      D.el('span', { class: 'stack__sub stack__sub--row' }, [reasonLine(project, health, hidden)])
+      D.el('span', { class: 'stack__sub stack__sub--row' }, [reasonLine(project, health, hidden, ctx)])
     ]);
   }
 
@@ -220,7 +220,7 @@
     var cells = {
       code: D.el('span', { class: 'pf-num pf-num--pill t-num' }, [project.code]),
       time: timeRibbon(project, now) || D.el('span', { class: 't-muted', text: '—' }),
-      name: nameCell(project, health, hidden),
+      name: nameCell(project, health, hidden, ctx),
       team: leaderCell(project, ctx),
       deadline: dueCell(project, ctx, now),
       tasks: signalsCell(project, ctx, now)
@@ -238,7 +238,7 @@
       }
     }, [
       D.el('td', { class: 'cell--check' }, [
-        D.el('span', { class: 'pick' }, [Sig.datum(health.level, { label: health.label + (health.reasons[0] ? ': ' + health.reasons[0].text : '') }), box])
+        D.el('span', { class: 'pick' }, [E.Flow.stateButton(project, ctx, { now: now }), box])
       ])
     ].concat(columns.map(function (column) {
       return D.el('td', { class: 'col-' + column.key }, [cells[column.key]]);
@@ -349,7 +349,7 @@
         D.el('a', { class: 'project-link clamp-2', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id }, dataset: { projectTitle: project.id } })
       ]),
       D.el('p', { class: 'pc__client truncate', text: project.client || 'Bez zamawiającego' }),
-      risk ? D.el('p', { class: 'pf-reason pf-reason--' + health.level + ' pc__reason', text: health.reasons[0].text }) : null,
+      risk ? D.el('p', { class: 'pc__reason' }, [E.Flow.stateButton(project, ctx, { text: health.reasons[0].text + (health.reasons.length > 1 ? ' · +' + (health.reasons.length - 1) : ''), className: 'pf-reason pf-reason--' + health.level })]) : null,
       timeRibbon(project, now),
       D.el('div', { class: 'pc__foot' }, [
         team.length ? Avatar.avatarStack(team, { max: 4, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Bez zespołu' }),
@@ -470,7 +470,17 @@
     var sections = ['late', 'week', 'later'].filter(function (k) { return buckets[k].length; }).map(function (key) {
       var list = buckets[key];
       return D.el('section', { class: 'pf-rail__sec pf-rail__sec--' + key }, [
-        D.el('h3', { class: 'pf-rail__h' }, [D.el('span', { text: TITLES[key] }), D.el('span', { class: 'pf-rail__n t-num', text: String(list.length) })]),
+        D.el('h3', { class: 'pf-rail__h' }, [(function () {
+          // Nagłówek to filtr listy projektów: Po terminie → projekty z zaległościami, Ten tydzień / Później → projekty z terminem w tym horyzoncie.
+          var patch = key === 'late' ? { health: 'overdue' } : { horizon: key === 'week' ? 7 : 60 };
+          var cur = ctx.state.filters || {};
+          var on = key === 'late' ? cur.health === 'overdue' : cur.horizon === patch.horizon;
+          return D.el('button', {
+            class: 'pf-rail__filter' + (on ? ' is-on' : ''),
+            attrs: { type: 'button', 'aria-pressed': String(on), 'data-fk': 'rail-filter-' + key, 'data-tooltip': on ? 'Zdejmij filtr listy' : 'Pokaż na liście tylko te projekty' },
+            on: { click: function () { act.filterPortfolio(patch); } }
+          }, [D.el('span', { text: TITLES[key] }), D.el('span', { class: 'pf-rail__n t-num', text: String(list.length) }), Icons.icon('filter', 12)]);
+        })()]),
         D.el('ul', { class: 'pf-rail__list' }, list.slice(0, MAX[key]).map(function (item) {
           return D.el('li', null, [D.el('button', {
             class: 'pf-due-item',

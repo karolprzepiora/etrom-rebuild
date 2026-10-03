@@ -178,3 +178,11 @@
 .pc .pf-due { text-align: right; }
 .pc .pf-due__date { font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .pc, .pc:hover { transition: none; transform: none; } }
+
+/* Nagłówki radaru terminów są filtrami listy projektów */
+.pf-rail__filter { display: inline-flex; align-items: center; gap: var(--space-2); padding: 2px 6px; margin-left: -6px; border: 0; border-radius: var(--radius-full); background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; }
+.pf-rail__filter svg { opacity: 0; transition: opacity .12s; }
+.pf-rail__filter:hover { background: var(--wash); }
+.pf-rail__filter:hover svg, .pf-rail__filter:focus-visible svg, .pf-rail__filter.is-on svg { opacity: .8; }
+.pf-rail__filter.is-on { background: var(--wash); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.pf-rail__filter:focus-visible { outline: none; box-shadow: var(--focus-ring); }

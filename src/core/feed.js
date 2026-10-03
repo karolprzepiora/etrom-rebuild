@@ -13,7 +13,7 @@
   var MIN_TIME_MINUTES = 5;
   // Zapisy czasu starsze niż to okno są w „Czasie” projektu, nie w strumieniu.
   var TIME_WINDOW_DAYS = 14;
-  var FILTERS = ['all', 'mine', 'mail', 'posts', 'media'];
+  var FILTERS = ['all', 'mine', 'events', 'mail', 'posts', 'media'];
 
   function allTasks(project) {
     var out = [];
@@ -84,6 +84,13 @@
       if (groups[k].minutes >= MIN_TIME_MINUTES) items.push(groups[k]);
     });
 
+    // Zdarzenia projektowe zapisane przez aplikację (etap zakończony, zmiana stanu, status projektu).
+    ((ws.social && ws.social.events) || []).forEach(function (e) {
+      var project = byId[e.projectId];
+      if (!project) return;
+      items.push({ key: 'event:' + e.id, kind: 'event', at: e.at, actorId: e.actorId || '', project: project, event: e });
+    });
+
     ((ws.social && ws.social.posts) || []).forEach(function (p) {
       var project = p.projectId ? byId[p.projectId] : null;
       if (p.projectId && !project) return;
@@ -121,6 +128,7 @@
     var counts = {
       all: all.length,
       mine: all.filter(function (i) { return isMine(i, viewerId); }).length,
+      events: all.filter(function (i) { return i.kind === 'event'; }).length,
       mail: all.filter(function (i) { return i.kind === 'mail'; }).length,
       posts: all.filter(function (i) { return i.kind === 'post'; }).length,
       media: all.filter(isMedia).length
@@ -129,6 +137,7 @@
     var pinned = all.filter(function (i) { return i.kind === 'post' && i.post.pinned; });
     var shown = all;
     if (filter === 'mine') shown = all.filter(function (i) { return isMine(i, viewerId); });
+    else if (filter === 'events') shown = all.filter(function (i) { return i.kind === 'event'; });
     else if (filter === 'mail') shown = all.filter(function (i) { return i.kind === 'mail'; });
     else if (filter === 'posts') shown = all.filter(function (i) { return i.kind === 'post'; });
     else if (filter === 'media') shown = all.filter(isMedia);

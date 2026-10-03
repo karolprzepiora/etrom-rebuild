@@ -139,7 +139,79 @@
     return null;
   }
 
+  /* ---------- Wyjaśnienie stanu (po kliknięciu) ---------- */
+
+  var METER_TONE = { ok: 'ok', warning: 'warning', alarm: 'alarm' };
+
+  /** Karta „dlaczego ten stan”: powody z akcjami, potem mierniki z progami (także w normie). */
+  function explainCard(project, ctx, now) {
+    var mail = (ctx.state && ctx.state.workspace && ctx.state.workspace.mail) || [];
+    var waiting = E.Mail.pending(mail, project.id, now);
+    var info = Insight.explain(project, now, waiting);
+    var act = ctx.actions;
+    var items = Insight.attentionItems(project, now, waiting).filter(function (item) {
+      return info.reasons.some(function (r) { return r.rule === item.rule; });
+    });
+    var run = {
+      deadline: function () { act.editProject(project.id); },
+      close: function () { act.setProjectStatus([project.id], 'done'); },
+      resume: function () { act.setProjectStatus([project.id], 'active'); },
+      plan: function () { act.inspect({ kind: 'plan', projectId: project.id }); },
+      tasks: function () { act.openProject(project.id, 'zadania'); },
+      mail: function () { act.openProject(project.id, 'korespondencja'); }
+    };
+    return D.el('div', { class: 'xs' }, [
+      D.el('div', { class: 'xs__head' }, [
+        Sig.datum(info.level, { size: 16, label: false }),
+        D.el('div', { class: 'xs__headtext' }, [
+          D.el('strong', { class: 'xs__state', text: info.label }),
+          D.el('span', { class: 'xs__headline', text: info.headline })
+        ])
+      ]),
+      items.length ? D.el('ul', { class: 'xs__reasons' }, items.map(function (item) {
+        return D.el('li', { class: 'xs__reason xs__reason--' + item.level }, [
+          D.el('span', { class: 'xs__reason-text', text: item.text }),
+          D.el('span', { class: 'xs__reason-actions' }, item.actions.filter(function (a) { return run[a.id]; }).map(function (a) {
+            return D.el('button', { class: 'xs__action', attrs: { type: 'button', 'data-fk': 'xs-' + item.rule + '-' + a.id }, text: a.label, on: { click: function () { E.Menu.close(); run[a.id](); } } });
+          }))
+        ]);
+      })) : null,
+      info.meters.length ? D.el('div', { class: 'xs__meters', attrs: { role: 'list', 'aria-label': 'Mierniki stanu' } }, info.meters.map(function (m) {
+        return D.el('div', { class: 'xs__meter xs__meter--' + (METER_TONE[m.level] || 'ok'), attrs: { role: 'listitem' } }, [
+          D.el('span', { class: 'xs__meter-label', text: m.label }),
+          D.el('span', { class: 'xs__meter-value t-num', text: m.value }),
+          D.el('span', { class: 'xs__meter-note', text: m.note })
+        ]);
+      })) : null
+    ]);
+  }
+
+  /**
+   * Przycisk stanu projektu: znacznik i (opcjonalnie) etykieta; klik otwiera wyjaśnienie.
+   * @param {Object} project
+   * @param {{state: Object, actions: Object}} ctx
+   * @param {{now?: Date, label?: string, compact?: boolean, className?: string}} [options]
+   */
+  function stateButton(project, ctx, options) {
+    var o = options || {};
+    var now = o.now || new Date();
+    var mail = (ctx.state && ctx.state.workspace && ctx.state.workspace.mail) || [];
+    var info = Insight.explain(project, now, E.Mail.pending(mail, project.id, now));
+    var children = o.text ? [D.el('span', { class: 'truncate', text: o.text })] : [Sig.datum(info.level, { size: o.compact ? 12 : undefined, label: false })];
+    if (o.label) children.push(D.el('span', { text: o.label }));
+    var btn = D.el('button', {
+      class: 'statebtn' + (o.className ? ' ' + o.className : ''),
+      attrs: { type: 'button', 'data-fk': 'state-' + project.id, 'aria-label': info.label + ': ' + info.headline + '. Pokaż szczegóły stanu', 'data-tooltip': info.label + ' — ' + info.headline }
+    }, children);
+    E.Menu.bind(btn, function () {
+      return { content: explainCard(project, ctx, new Date()), label: 'Stan projektu ' + project.code, align: 'start', minWidth: '24rem' };
+    });
+    btn.removeAttribute('aria-haspopup');
+    btn.setAttribute('aria-haspopup', 'dialog');
+    return btn;
+  }
+
   root.ETROM.Flow = {
-    marker: marker, flowTrack: flowTrack, level: level
+    marker: marker, flowTrack: flowTrack, level: level, stateButton: stateButton, explainCard: explainCard
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

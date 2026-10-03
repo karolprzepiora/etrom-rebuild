@@ -80,8 +80,8 @@
             : (late ? 'Termin odpowiedzi na to pismo minął, a nikt się nim nie zajął. ' : 'Nowe pismo wymaga odpowiedzi i nikt się nim jeszcze nie zajął. ') + 'Jesteś liderem lub koordynatorem projektu. Utwórz zadanie (żeby zapisywać czas i przydzielić osobę) albo od razu napisz odpowiedź.';
           all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: state, project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: linked, why: why, days: x.reply.days, urgent: late });
         });
-        if (fns.indexOf('leader') >= 0 && Insight.health(project, ref).level === 'alarm') {
-          all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.health(project, ref).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });
+        if (fns.indexOf('leader') >= 0 && Insight.healthOf(project, ref, mail).level === 'alarm') {
+          all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.healthOf(project, ref, mail).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });
         }
       });
     }

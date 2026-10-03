@@ -18,6 +18,7 @@
   var FILTERS = [
     { value: 'all', label: 'Wszystko' },
     { value: 'mine', label: 'Moje' },
+    { value: 'events', label: 'Zdarzenia' },
     { value: 'mail', label: 'Pisma' },
     { value: 'posts', label: 'Wpisy' },
     { value: 'media', label: 'Zdjęcia' }
@@ -51,6 +52,11 @@
   function actorAvatar(item, people) {
     var p = person(people, item.actorId);
     if (p) return E.Avatar.avatar(p, { size: 'md' });
+    if (item.kind === 'event') {
+      var ev = item.event;
+      var icon = ev.event === 'stage-done' ? 'checkCircle' : (ev.event === 'health' ? (ev.level === 'alarm' ? 'alertCircle' : (ev.level === 'warning' ? 'alert' : 'checkCircle')) : (ev.event === 'project-done' ? 'flag' : 'clock'));
+      return D.el('span', { class: 'fd__sysicon fd__sysicon--' + (ev.level || 'normal') }, [Icons.icon(icon, 18)]);
+    }
     return D.el('span', { class: 'fd__sysicon' }, [Icons.icon(item.kind === 'mail' ? 'mail' : 'folder', 18)]);
   }
 
@@ -62,6 +68,15 @@
   function headline(item, people) {
     var who = name(person(people, item.actorId));
     if (item.kind === 'project') return { title: 'Nowy projekt w biurze', lead: item.project.name, text: '' };
+    if (item.kind === 'event') {
+      // Kontekst projektowy: „2601 → Postępowanie lokalizacyjne”, bez udawania wpisu człowieka.
+      var ev = item.event;
+      var st = ev.stageId ? (item.project.stages || []).filter(function (x) { return x.id === ev.stageId; })[0] : null;
+      var where = item.project.code + ' → ' + (st ? E.Model.describeStage(st).name : item.project.name);
+      return ev.event === 'stage-done'
+        ? { title: ev.title, lead: where, text: ev.detail }
+        : { title: ev.title, lead: where, text: ev.text + (ev.detail ? ' · ' + ev.detail : '') };
+    }
     if (item.kind === 'mail') {
       var m = item.mail;
       return {
@@ -147,6 +162,10 @@
     if (item.kind === 'task') return [UI.button({ label: 'Otwórz zadanie', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.inspect({ kind: 'task', projectId: item.project.id, stageId: item.stage.id, taskId: item.task.id }); } })];
     if (item.kind === 'mail') return [UI.button({ label: 'Otwórz pismo', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.openProject(item.project.id, 'korespondencja'); } })];
     if (item.kind === 'project') return [UI.button({ label: 'Otwórz projekt', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.openProject(item.project.id, 'etapy'); } })];
+    if (item.kind === 'event') {
+      var stageEvent = item.event.event === 'stage-done' && item.event.stageId && ctx.actions.openStage;
+      return [UI.button({ label: stageEvent ? 'Otwórz etap' : 'Otwórz projekt', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'fd-event-open-' + item.event.id }, onClick: function () { if (stageEvent) ctx.actions.openStage(item.project.id, item.event.stageId); else ctx.actions.openProject(item.project.id, 'etapy'); } })];
+    }
     return [];
   }
 
@@ -264,7 +283,7 @@
         h.text ? D.el('p', { class: item.kind === 'task' ? 'fd__quote' : (item.kind === 'post' ? 'fd__text' : 'fd__sub'), text: h.text }) : null
       ];
     }
-    return D.el('article', { class: 'fd__card fd__card--' + item.kind + (type && type !== 'post' ? ' fd__card--' + type : '') + (post && post.pinned ? ' is-pinned' : ''), dataset: { feedKey: item.key, kind: item.kind, postType: type || null } }, [
+    return D.el('article', { class: 'fd__card fd__card--' + item.kind + (item.kind === 'event' ? ' fd__card--lvl-' + (item.event.level || 'normal') : '') + (type && type !== 'post' ? ' fd__card--' + type : '') + (post && post.pinned ? ' is-pinned' : ''), dataset: { feedKey: item.key, kind: item.kind, postType: type || null } }, [
       D.el('header', { class: 'fd__head' }, [
         actorAvatar(item, people),
         D.el('div', { class: 'fd__who' }, [
