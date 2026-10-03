@@ -207,6 +207,86 @@
     return m ? h + ' h ' + m + ' min' : h + ' h';
   }
 
+
+  var DAYS_SHORT = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'];
+  var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+  var MONTHS_SHORT = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+  var MONTHS_LONG = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  /** Numer tygodnia ISO 8601. */
+  function isoWeek(date) {
+    var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    var dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  }
+
+  /** Etykiety zegara w pasku: „sob. 3 paź”, „11:44” i pełna data do podpowiedzi. */
+  function clockLabel(now) {
+    var d = now instanceof Date ? now : new Date(now);
+    return {
+      day: DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()],
+      time: pad(d.getHours()) + ':' + pad(d.getMinutes()),
+      long: DAYS_LONG[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS_LONG[d.getMonth()] + ' ' + d.getFullYear() + ' · tydzień ' + isoWeek(d)
+    };
+  }
+
+  /**
+   * Tydzień pracy osoby (pon–ndz) z podziałem każdego dnia na projekty.
+   * @returns {Array<{key:string,label:string,date:number,minutes:number,today:boolean,weekend:boolean,projects:Array<{projectId:string,minutes:number}>}>}
+   */
+  function weekDays(entries, personId, now) {
+    var ref = now instanceof Date ? now : new Date(nowMs(now));
+    var monday = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - ((ref.getDay() + 6) % 7));
+    var todayKey = dayKey(ref.getTime());
+    var out = [];
+    for (var i = 0; i < 7; i += 1) {
+      var day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      var key = dayKey(day.getTime());
+      var by = {};
+      var order = [];
+      var total = 0;
+      (entries || []).forEach(function (entry) {
+        if (entry.personId !== personId || dayKey(entry.start) !== key) return;
+        var m = minutes(entry, now);
+        if (!by[entry.projectId]) { by[entry.projectId] = 0; order.push(entry.projectId); }
+        by[entry.projectId] += m;
+        total += m;
+      });
+      out.push({
+        key: key, date: day.getTime(), label: DAYS_SHORT[day.getDay()].replace('.', ''), minutes: total,
+        today: key === todayKey, weekend: day.getDay() === 0 || day.getDay() === 6,
+        projects: order.map(function (id) { return { projectId: id, minutes: by[id] }; })
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Luki między zapisami tego samego dnia (od pierwszego startu do teraz lub końca ostatniego wpisu).
+   * @param {Array} list wpisy dnia, w dowolnej kolejności
+   * @param {number} [minGap] minimalna długość luki w minutach
+   * @returns {Array<{from:number,to:number,minutes:number}>} znaczniki czasu ms
+   */
+  function gaps(list, now, minGap) {
+    var limit = minGap || 20;
+    var spans = (list || []).map(function (entry) {
+      var a = time(entry.start);
+      var b = entry.end ? time(entry.end) : nowMs(now);
+      return a === null || b === null ? null : { a: a, b: Math.max(a, b) };
+    }).filter(Boolean).sort(function (x, y) { return x.a - y.a; });
+    var out = [];
+    var reach = null;
+    spans.forEach(function (span) {
+      if (reach !== null && span.a - reach >= limit * 60000) {
+        out.push({ from: reach, to: span.a, minutes: Math.round((span.a - reach) / 60000) });
+      }
+      reach = reach === null ? span.b : Math.max(reach, span.b);
+    });
+    return out;
+  }
+
   /** Godziny jako liczba z przecinkiem: 12,5. */
   function hoursOf(totalMinutes) {
     return Math.round(totalMinutes / 6) / 10;
@@ -271,6 +351,10 @@
     clock: clock,
     duration: duration,
     hoursOf: hoursOf,
+    clockLabel: clockLabel,
+    isoWeek: isoWeek,
+    weekDays: weekDays,
+    gaps: gaps,
     normalizeEntries: normalizeEntries
   };
 

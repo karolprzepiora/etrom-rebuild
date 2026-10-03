@@ -2694,6 +2694,7 @@
     var meCurrent = currentMe();
     var todays = meCurrent ? TL.forDay(state.workspace.entries || [], meCurrent, new Date()) : [];
     D.render(nodes.timerSlot, [
+      E.Timer.nowClock(),
       meCurrent ? E.Timer.dayMeter(todays, { find: locateEntry, actions: actions }) : null,
       E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions })
     ]);

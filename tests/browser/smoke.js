@@ -653,8 +653,10 @@ async function main() {
       await evaluate('return !!document.querySelector(".timer-pill") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__time").textContent);'));
     check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
       (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
-    check('pasek dnia w górnej belce pokazuje czas i segment projektu',
-      await evaluate('const m = document.querySelector(".topbar .daymeter"); return !!m && !!m.querySelector(".dmseg.is-live") && /\\/ 8 h/.test(m.textContent);'));
+    check('pasek dnia w górnej belce: oś 6–22 z odcinkiem projektu, znacznikiem „teraz” i sumą',
+      await evaluate('const m = document.querySelector(".topbar .daymeter"); const r = m && m.querySelector(".dribbon"); return !!r && r.getAttribute("data-from") === "360" && r.getAttribute("data-to") === "1320" && !!r.querySelector(".dribbon__seg.is-live") && !!r.querySelector(".dribbon__now") && /\\/ 8 h/.test(m.textContent);'));
+    check('zegar w belce pokazuje dzień tygodnia, datę i godzinę',
+      await evaluate('const c = document.querySelector(".topbar .nowclock"); return !!c && /^(pon|wt|śr|czw|pt|sob|niedz)\\. \\d{1,2} [a-ząćęłńóśźż]{3}$/.test(c.querySelector(".nowclock__day").textContent) && /^\\d\\d:\\d\\d$/.test(c.querySelector(".nowclock__time").textContent) && /tydzień \\d+/.test(c.getAttribute("data-tooltip"));'));
     check('pasek zegara pokazuje godzinę startu „od HH:MM”',
       await evaluate('return /^od \\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__since").textContent);'));
     await sleep(1700);
@@ -672,6 +674,8 @@ async function main() {
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
     check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
       await evaluate('return document.querySelectorAll(".etoday .eproj__row").length >= 1 && !!document.querySelector(".etoday .dmtrack--big");'));
+    check('panel „Dzisiaj” pokazuje tydzień z kolumną dzisiejszego dnia',
+      await evaluate('return document.querySelectorAll(".etoday .eweek__day").length >= 5 && !!document.querySelector(".etoday .eweek__day.is-today");'));
     check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
       await evaluate('return !!document.querySelector(".etoday__resume");'));
     await pressKey('t');

@@ -46,7 +46,7 @@
       var project = found && found.project;
       var key = String(entry.projectId);
       if (!by[key]) {
-        by[key] = { key: key, code: project ? project.code : '—', name: project ? project.name : 'Usunięty projekt', hue: Identity.hue(project ? project.code : key), base: 0, liveStart: null };
+        by[key] = { key: key, code: project ? project.code : '—', name: project ? project.name : 'Usunięty projekt', hue: Identity.tileHue(project ? project.code : key), base: 0, liveStart: null };
         order.push(key);
       }
       if (entry.end) by[key].base += TL.minutes(entry);
@@ -84,7 +84,81 @@
     return D.el('span', { class: 'dmtrack ' + (cls || ''), style: { '--cap': String(cap) }, attrs: { 'aria-hidden': 'true' } }, kids);
   }
 
-  /** Pasek dnia w górnej belce: rośnie z godzinami i pokazuje, na których projektach był zapis. */
+
+  var RIBBON_FROM = 6 * 60;
+  var RIBBON_TO = 22 * 60;
+
+  function dayStartMs(now) {
+    var d = new Date(now);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  }
+
+  /** Zakres paska: domyślnie 6–22, rozszerzany do pełnych godzin, gdy zapis wychodzi poza niego. */
+  function ribbonRange(entries, now) {
+    var base = dayStartMs(now);
+    var from = RIBBON_FROM;
+    var to = RIBBON_TO;
+    (entries || []).forEach(function (entry) {
+      var a = (Date.parse(entry.start) - base) / 60000;
+      var b = ((entry.end ? Date.parse(entry.end) : now) - base) / 60000;
+      from = Math.min(from, Math.floor(Math.max(0, a) / 60) * 60);
+      to = Math.max(to, Math.ceil(Math.min(24 * 60, b) / 60) * 60);
+    });
+    return { from: from, to: to, base: base };
+  }
+
+  function ribbonPct(range, minute) {
+    return Math.max(0, Math.min(100, (minute - range.from) / (range.to - range.from) * 100));
+  }
+
+  /**
+   * Pasek dnia w górnej belce: stała oś (domyślnie 6–22). Każdy zapis to odcinek
+   * w barwie projektu w miejscu, w którym naprawdę był; chodzący zegar rośnie
+   * do znacznika „teraz”. Po całym dniu zostaje kolorowy zapis pracy.
+   */
+  function dayRibbon(entries, ctx, now) {
+    var range = ribbonRange(entries, now);
+    var nowMin = (now - range.base) / 60000;
+    var ticks = [];
+    for (var h = Math.ceil(range.from / 60); h * 60 <= range.to; h += 1) {
+      if (h * 60 === range.from || h * 60 === range.to || h % 2) continue;
+      ticks.push(D.el('i', { class: 'dribbon__tick', style: { left: ribbonPct(range, h * 60) + '%' }, attrs: { 'aria-hidden': 'true' } }));
+    }
+    var segs = (entries || []).slice().sort(function (a, b) { return Date.parse(a.start) - Date.parse(b.start); }).map(function (entry) {
+      var found = ctx.find(entry);
+      var begin = (Date.parse(entry.start) - range.base) / 60000;
+      var finish = entry.end ? (Date.parse(entry.end) - range.base) / 60000 : nowMin;
+      var left = ribbonPct(range, begin);
+      var width = Math.max(0.5, ribbonPct(range, Math.max(finish, begin)) - left);
+      var code = found && found.project ? found.project.code : '—';
+      var name = (found && found.task && found.task.name) || entry.label || 'Zadanie';
+      var label = code + ' · ' + name + ' — ' + hm(entry.start) + '–' + (entry.end ? hm(entry.end) : 'teraz') + ' (' + TL.duration(TL.minutes(entry, now)) + ')';
+      return D.el('span', {
+        class: 'dribbon__seg' + (entry.end ? '' : ' is-live'),
+        style: { left: left + '%', width: width + '%', '--seg-h': String(Identity.tileHue(code)) },
+        attrs: Object.assign({ 'data-tooltip': label, 'data-code': code, 'data-start-min': String(begin) },
+          entry.end ? { 'data-min': String(TL.minutes(entry, now)) } : { 'data-live-start': String(Date.parse(entry.start)) })
+      }, [D.el('span', { class: 'dribbon__code', text: code })]);
+    });
+    var marker = nowMin >= range.from && nowMin <= range.to
+      ? [D.el('i', { class: 'dribbon__now', style: { left: ribbonPct(range, nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [];
+    return D.el('span', { class: 'dribbon', attrs: { 'aria-hidden': 'true', 'data-from': String(range.from), 'data-to': String(range.to), 'data-base': String(range.base) } }, [
+      D.el('span', { class: 'dribbon__h t-num', text: String(range.from / 60) }),
+      D.el('span', { class: 'dribbon__track' }, ticks.concat(segs, marker)),
+      D.el('span', { class: 'dribbon__h t-num', text: String(range.to / 60) })
+    ]);
+  }
+
+  /** Zegar w belce: dzień tygodnia, data i godzina, odświeżany co minutę. */
+  function nowClock() {
+    var label = TL.clockLabel(new Date());
+    return D.el('time', { class: 'nowclock', attrs: { 'data-nowclock': '1', 'data-tooltip': label.long } }, [
+      D.el('span', { class: 'nowclock__day', text: label.day }),
+      D.el('span', { class: 'nowclock__time t-num', text: label.time })
+    ]);
+  }
+
+  /** Pasek dnia w górnej belce: etykieta sumy i oś godzin z odcinkami projektów. */
   function dayMeter(entries, ctx) {
     var now = Date.now();
     var parts = dayParts(entries, ctx);
@@ -98,7 +172,7 @@
         D.el('span', { class: 'daymeter__total', text: total ? TL.duration(total) : '0 min', attrs: { 'data-dm-total': '1' } }),
         D.el('span', { class: 'daymeter__of', text: ' / ' + Math.round(DAY_TARGET / 60) + ' h' })
       ]),
-      meterTrack(parts, now, 'dmtrack--bar')
+      dayRibbon(entries, ctx, now)
     ]);
   }
 
@@ -206,10 +280,18 @@
       var label = name + ' — ' + (found && found.project ? found.project.code + ', ' : '') + hm(entry.start) + '–' + (entry.end ? hm(entry.end) : 'teraz') + ' (' + TL.duration(TL.minutes(entry)) + ')';
       return D.el('span', {
         class: 'dayaxis__seg' + (entry.end ? '' : ' is-live'),
-        style: { left: pct(begin) + '%', width: width + '%', '--seg-h': String(Identity.hue(code)) },
+        style: { left: pct(begin) + '%', width: width + '%', '--seg-h': String(Identity.tileHue(code)) },
         attrs: { 'data-tooltip': label, role: 'img', 'aria-label': label }
       });
     });
+
+    var gapList = TL.gaps(list, now, 20);
+    var gapEls = gapList.map(function (g) {
+      var label = 'Luka bez zapisu ' + hm(g.from) + '–' + hm(g.to) + ' (' + TL.duration(g.minutes) + ')';
+      return D.el('span', { class: 'dayaxis__gap', style: { left: pct(minutesOf(g.from)) + '%', width: Math.max(0.6, pct(minutesOf(g.to)) - pct(minutesOf(g.from))) + '%' }, attrs: { 'data-tooltip': label, role: 'img', 'aria-label': label } });
+    });
+    var gapTotal = gapList.reduce(function (sum, g) { return sum + g.minutes; }, 0);
+    var gapWord = gapList.length === 1 ? 'luka' : (gapList.length % 10 >= 2 && gapList.length % 10 <= 4 && (gapList.length % 100 < 12 || gapList.length % 100 > 14) ? 'luki' : 'luk');
 
     var showNow = nowMin >= from && nowMin <= to;
     var first = list[0];
@@ -222,8 +304,40 @@
 
     return D.el('div', { class: 'dayaxis', attrs: { 'aria-label': 'Oś dnia pracy' } }, [
       D.el('p', { class: 'dayaxis__summary t-num', text: summary }),
-      D.el('div', { class: 'dayaxis__track' }, segs.concat(showNow ? [D.el('span', { class: 'dayaxis__now', style: { left: pct(nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [])),
-      D.el('div', { class: 'dayaxis__ticks', attrs: { 'aria-hidden': 'true' } }, ticks)
+      D.el('div', { class: 'dayaxis__track' }, gapEls.concat(segs, showNow ? [D.el('span', { class: 'dayaxis__now', style: { left: pct(nowMin) + '%' }, attrs: { 'aria-hidden': 'true' } })] : [])),
+      D.el('div', { class: 'dayaxis__ticks', attrs: { 'aria-hidden': 'true' } }, ticks),
+      gapList.length ? D.el('p', { class: 'dayaxis__gaps t-num', text: 'Bez zapisu ' + TL.duration(gapTotal) + ' · ' + gapList.length + ' ' + gapWord }) : null
+    ]);
+  }
+
+
+  /** Tydzień pracy: kolumna na dzień, podział na projekty, kreska normy 8 h. */
+  function weekStrip(ctx, nowMs) {
+    if (!ctx.entries || !ctx.meId) return null;
+    var days = TL.weekDays(ctx.entries, ctx.meId, new Date(nowMs));
+    var shown = days.filter(function (d) { return !d.weekend || d.minutes > 0 || d.today; });
+    var total = days.reduce(function (sum, d) { return sum + d.minutes; }, 0);
+    var cap = 600;
+    var cols = shown.map(function (day) {
+      var tip = new Date(day.date).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' }) + ': ' + (day.minutes ? TL.duration(day.minutes) : 'brak zapisu');
+      var segs = day.projects.map(function (p) {
+        var found = ctx.find({ projectId: p.projectId });
+        var code = found && found.project ? found.project.code : '—';
+        tip += (tip.indexOf(' — ') < 0 ? ' — ' : ' · ') + code + ' ' + TL.duration(p.minutes);
+        return D.el('span', { class: 'eweek__seg', style: { height: Math.min(100, p.minutes / cap * 100) + '%', '--seg-h': String(Identity.tileHue(code)) } });
+      });
+      return D.el('li', { class: 'eweek__day' + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : ''), attrs: { 'data-tooltip': tip, 'aria-label': tip } }, [
+        D.el('span', { class: 'eweek__bar' }, segs.concat([D.el('i', { class: 'eweek__goal', attrs: { 'aria-hidden': 'true' } })])),
+        D.el('span', { class: 'eweek__h t-num', text: day.minutes ? String(TL.hoursOf(day.minutes)).replace('.', ',') : '–' }),
+        D.el('span', { class: 'eweek__label', text: day.label })
+      ]);
+    });
+    return D.el('div', { class: 'eweek' }, [
+      D.el('div', { class: 'eweek__head' }, [
+        D.el('h3', { class: 'eweek__title', text: 'Ten tydzień' }),
+        D.el('span', { class: 'eweek__sum t-num', text: TL.duration(total) + ' / 40 h' })
+      ]),
+      D.el('ul', { class: 'eweek__days' }, cols)
     ]);
   }
 
@@ -277,9 +391,10 @@
         ])
       ]),
       meterTrack(parts, now, 'dmtrack--big'),
-      D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) : 'Cel dnia: ' + Math.round(DAY_TARGET / 60) + ' h') }),
+      D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + Math.round(DAY_TARGET / 60) + ' h') }),
       parts.length ? projectShares(parts) : null,
       dayAxis(entries, ctx, new Date()),
+      weekStrip(ctx, now),
       resumeButton(ctx),
       entries.length
         ? D.el('details', { class: 'etoday__log', attrs: entries.length <= 4 ? { open: 'open' } : {} }, [
@@ -342,6 +457,49 @@
     if (host.classList.contains('daymeter')) host.setAttribute('data-tooltip', 'Dziś ' + TL.duration(total) + ' z ' + TL.duration(DAY_TARGET) + ': ' + tips.join(' · '));
   }
 
+
+  /** Żywy pasek w belce: rośnie odcinek chodzącego zegara, znacznik „teraz”, suma i podpowiedź. */
+  function refreshRibbon(host, nowMs) {
+    var ribbon = host.querySelector('.dribbon');
+    if (!ribbon) return;
+    var from = Number(ribbon.getAttribute('data-from'));
+    var to = Number(ribbon.getAttribute('data-to'));
+    var base = Number(ribbon.getAttribute('data-base'));
+    var nowMin = (nowMs - base) / 60000;
+    var pct = function (m) { return Math.max(0, Math.min(100, (m - from) / (to - from) * 100)); };
+    var segs = ribbon.querySelectorAll('.dribbon__seg');
+    var total = 0;
+    var by = {};
+    var order = [];
+    for (var i = 0; i < segs.length; i += 1) {
+      var live = Number(segs[i].getAttribute('data-live-start')) || 0;
+      var minutes = live ? Math.max(0, Math.round((nowMs - live) / 60000)) : (Number(segs[i].getAttribute('data-min')) || 0);
+      if (live) {
+        var left = pct(Number(segs[i].getAttribute('data-start-min')));
+        segs[i].style.width = Math.max(0.5, pct(nowMin) - left) + '%';
+      }
+      var code = segs[i].getAttribute('data-code');
+      if (!(code in by)) { by[code] = 0; order.push(code); }
+      by[code] += minutes;
+      total += minutes;
+    }
+    var marker = ribbon.querySelector('.dribbon__now');
+    if (marker) marker.style.left = pct(nowMin) + '%';
+    var label = host.querySelector('[data-dm-total]');
+    if (label) label.textContent = TL.duration(total);
+    host.classList.toggle('is-empty', !total);
+    host.setAttribute('data-tooltip', total ? 'Dziś ' + TL.duration(total) + ' z ' + TL.duration(DAY_TARGET) + ': ' + order.map(function (c) { return c + ' ' + TL.duration(by[c]); }).join(' · ') : 'Dziś nic nie zapisano');
+  }
+
+  /** Zegar z datą: zmienia tekst tylko, gdy minęła minuta. */
+  function refreshClock(node, nowMs) {
+    var label = TL.clockLabel(new Date(nowMs));
+    var t = node.querySelector('.nowclock__time');
+    var d = node.querySelector('.nowclock__day');
+    if (t && t.textContent !== label.time) t.textContent = label.time;
+    if (d && d.textContent !== label.day) { d.textContent = label.day; node.setAttribute('data-tooltip', label.long); }
+  }
+
   /** Jedno odświeżenie wszystkich żywych liczników na stronie. */
   function tick() {
     var nodes = document.querySelectorAll('[data-timer-start]');
@@ -352,10 +510,12 @@
       nodes[i].textContent = nodes[i].hasAttribute('data-timer-short') ? TL.duration((now - start) / 60000) : TL.clock(now - start);
     }
     var meters = document.querySelectorAll('.daymeter');
-    for (var m = 0; m < meters.length; m += 1) refreshMeter(meters[m], now);
+    for (var m = 0; m < meters.length; m += 1) refreshRibbon(meters[m], now);
+    var clocks = document.querySelectorAll('[data-nowclock]');
+    for (var c = 0; c < clocks.length; c += 1) refreshClock(clocks[c], now);
     var bigs = document.querySelectorAll('.etoday');
     for (var b = 0; b < bigs.length; b += 1) refreshMeter(bigs[b], now);
   }
 
-  E.Timer = { dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
+  E.Timer = { nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

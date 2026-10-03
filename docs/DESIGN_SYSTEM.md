@@ -447,3 +447,10 @@ Cały język „aurora” żyje w `styles/aurora.css` i jest sterowany czterema 
 - **Kontrast** (`--ctr` −1…+1): ciemniejsze tła pod białym tekstem, mocniejsze linie, ciemniejszy tekst w jasnym motywie i jaśniejszy w ciemnym. Granice tekstu pomocniczego dobrano tak, by przy skrajnych ustawieniach nie schodził poniżej AA.
 
 Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po puszczeniu. „Przywróć domyślny wygląd” cofa wszystko. Kolory stanu (alarm, uwaga) nie zależą od motywu.
+
+## Pomiar czasu: pasek dnia, zegar, luki i tydzień
+
+- **Pasek dnia w górnej belce** (`Timer.dayRibbon`): stała oś 6–22 (rozszerzana do pełnych godzin, gdy zapis wychodzi poza nią). Każdy wpis to odcinek w miejscu, w którym naprawdę był, w barwie projektu (`Identity.tileHue`, ta sama co kafel i wiersz projektu) z kodem projektu w środku, gdy odcinek jest dość szeroki (container query). Chodzący zegar rośnie na żywo do znacznika „teraz” (`refreshRibbon` co 0,5 s, bez przerysowania). Podpowiedź odcinka: projekt, zadanie, godziny, czas. Po całym dniu zostaje kolorowy zapis pracy.
+- **Zegar z datą** (`Timer.nowClock`, `TimeLog.clockLabel`): dzień tygodnia, data, godzina; podpowiedź z pełną datą i numerem tygodnia ISO. Na telefonie zostaje sama godzina.
+- **Panel „Dzisiaj”**: luki bez zapisu (`TimeLog.gaps`, ≥ 20 min) jako prążki na osi dnia z podsumowaniem, pasek tygodnia pon–ndz (`TimeLog.weekDays`, weekend tylko gdy ma zapis) z kreską normy 8 h i podziałem na projekty, prognoza „norma o HH:MM” przy chodzącym zegarze.
+- Belka ustępuje miejsca w kolejności: pasek, potem zegar zadania; okruszki mają minimum 7,5 rem. Poniżej 30 rem znikają suma i pasek.

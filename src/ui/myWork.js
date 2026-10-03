@@ -278,7 +278,7 @@
       body: D.el('div', { class: 'mywork' }, [
         D.el('div', { class: 'mywork__main' }, main),
         D.el('aside', { class: 'mywork__aside', attrs: { 'aria-label': 'Czas i projekty' } }, [
-          E.Timer.todayBlock(TL.forDay(state.workspace.entries || [], me.id, now), { find: ctx.find, actions: ctx.actions }),
+          E.Timer.todayBlock(TL.forDay(state.workspace.entries || [], me.id, now), { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id }),
           D.el('div', { class: 'maside__projects' }, [
             D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
             projectsAside(m.work, now)

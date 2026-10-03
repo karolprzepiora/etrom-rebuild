@@ -320,3 +320,54 @@ a.fd__chip--project:hover { background: light-dark(oklch(.38 calc(.15 * var(--kp
 .avatar--off { filter: grayscale(1); opacity: .55; }
 .pc .avatars .avatar, .pf-table .avatar { box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.3 * var(--hdr))), 0 0 0 2px #fff; }
 .avatar:not(.avatar--rest) { font-size: calc(var(--size) * .43); }
+
+/* ---------- Pomiar czasu: pasek dnia 6–22, zegar z datą, tydzień, luki ---------- */
+/* barwa odcinka = barwa projektu (ta sama co kafel i wiersz projektu) */
+.dribbon__seg, .dmseg, .dayaxis__seg, .eweek__seg, .eproj__dot {
+  background: linear-gradient(180deg, oklch(.68 calc(.15 * var(--kp)) var(--seg-h)), oklch(.5 calc(.16 * var(--kp)) var(--seg-h)));
+}
+.eproj__share { background: linear-gradient(to right, oklch(.58 calc(.16 * var(--kp)) var(--seg-h)) var(--share), color-mix(in srgb, var(--ink) 8%, transparent) var(--share)); }
+
+.topbar__timer { gap: var(--space-1); }
+.nowclock { display: inline-flex; align-items: baseline; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3) 0 var(--space-2); align-self: center; line-height: 2rem; white-space: nowrap; cursor: default; }
+.nowclock__day { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .02em; color: var(--ink-3); text-transform: none; }
+.nowclock__time { font-size: var(--fs-md, 1rem); font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+
+.daymeter { gap: var(--space-3); }
+.dribbon { display: inline-flex; align-items: center; gap: 6px; width: clamp(11rem, 30vw, 28rem); }
+.dribbon__h { flex: none; font-size: 10px; font-weight: 600; color: var(--ink-4); }
+.dribbon__track { position: relative; flex: 1; height: 18px; border-radius: 7px; overflow: hidden; background: color-mix(in srgb, var(--ink) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent); }
+.dribbon__tick { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--ink) 11%, transparent); }
+.dribbon__seg { container-type: inline-size; position: absolute; top: 2px; bottom: 2px; min-width: 3px; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.4 * var(--hdr))), 0 0 0 1px var(--sheet); }
+.dribbon__seg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
+.dribbon__code { display: block; padding: 0 5px; font: 700 9.5px/14px var(--font-mono, ui-monospace, monospace); letter-spacing: .02em; color: #fff; white-space: nowrap; text-shadow: 0 1px 1px rgb(0 0 0 / .3); }
+.dribbon__now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 1px var(--sheet); }
+@media (max-width: 64rem) { .dribbon { width: clamp(8rem, 20vw, 14rem); } }
+@media (max-width: 40rem) { .daymeter .dribbon { display: none; } .nowclock__day { display: none; } .nowclock { padding-right: var(--space-2); } }
+@media (prefers-reduced-motion: reduce) { .dribbon__seg.is-live { animation: none; } }
+
+/* panel „Dzisiaj”: luki bez zapisu i tydzień */
+.dayaxis__gap { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 22%, transparent) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent); }
+.dayaxis__gaps { margin: 0; font-size: var(--fs-xs); color: var(--ink-3); }
+.eweek { display: grid; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.eweek__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.eweek__title { margin: 0; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2); }
+.eweek__sum { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
+.eweek__days { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-2); }
+.eweek__day { display: grid; justify-items: center; gap: 3px; padding: var(--space-1) 0; border-radius: 10px; cursor: default; }
+.eweek__day.is-today { background: color-mix(in srgb, var(--flow) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flow) 30%, transparent); }
+.eweek__bar { position: relative; display: flex; flex-direction: column-reverse; width: 1.5rem; height: 3.5rem; border-radius: 7px; overflow: hidden; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.eweek__seg { flex: none; box-shadow: 0 -1px 0 var(--sheet); }
+.eweek__goal { position: absolute; left: 0; right: 0; bottom: 80%; border-top: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent); }
+.eweek__h { font-size: var(--fs-xs); font-weight: 700; color: var(--ink); }
+.eweek__label { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.eweek__day.is-today .eweek__label { color: var(--flow-ink); }
+@container (max-width: 2.3rem) { .dribbon__code { display: none; } }
+/* pasek ustępuje miejsca jako pierwszy: okruszki nie mogą się zwinąć do jednej litery */
+.topbar__crumb { min-width: 7.5rem; }
+.topbar__timer { min-width: 0; flex: 0 1 auto; }
+.daymeter { min-width: 0; flex: 0 1 auto; }
+.dribbon { min-width: 0; flex: 0 1 auto; }
+.dribbon__track { min-width: 5rem; }
+.timer-pill { flex: 0 1 auto; min-width: 0; max-width: min(22rem, 30vw); }
+@media (max-width: 30rem) { .daymeter, .timer-pill__since { display: none; } .nowclock { padding-inline: var(--space-2); } }
