@@ -426,3 +426,5 @@ Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toas
 - Kafle i wiersze tabeli to pełnokolorowe gradienty z białym tekstem; nagłówek projektu to pełnokolorowy baner (`.pd-hero`); kody projektów wszędzie (`Aktualności`, `Moja praca`, `Analiza`, `Zespół`, panel terminów) to nasycone pigułki; w panelu bocznym projekt ma kolorowy znacznik.
 - Stan (alarm / uwaga) to zewnętrzna ramka z odstępem i pełna plakietka, nigdy poświata ani pasek wewnątrz koloru projektu.
 - Barwę przekazuje się przez zmienną `--hue` (`Identity.hueStyle(kod)`).
+- Paleta projektu liczona jest w oklch (`--pj-a`, `--pj-b`, `--pj-glow`): na ekranach P3 i HDR chroma rośnie (`@media (color-gamut: p3)`, `@media (dynamic-range: high)`). Do tego połysk na górnej krawędzi i kolorowa poświata pod kaflem.
+- Ramkę dostaje tylko alarm; uwaga to plakietka i ikona. Zaległość to biała plakietka z czerwonym tekstem (czytelna na każdym kolorze).

@@ -432,3 +432,89 @@ a.fd__chip--project:hover { background: light-dark(hsl(var(--hue) 62% 32%), hsl(
 .pd-hero .pf-num--pill, .pd-head__id .pd-hero .pf-num--pill { background: rgb(255 255 255 / .95); color: hsl(var(--hue) 55% 24%); }
 .pd-hero .pd-head__title, .pd-hero .pd-head__client { color: #fff; }
 .pd-hero .detail__status, .pd-hero .detail__status * { color: #fff; }
+
+/* =====================================================================
+   Wyrazisty, „HDR-owy” wygląd barw projektu
+   - kolory w oklch (na ekranach P3 jeszcze żywsze), jedna paleta dla kafli, wierszy i banera
+   - połysk na górnej krawędzi, kolorowa poświata, ostry biały tekst
+   ===================================================================== */
+.pc, .pf-table .table tbody tr.table__row, .pd-hero {
+  --pj-c: .15;
+  --pj-a: light-dark(oklch(.47 var(--pj-c) var(--hue)), oklch(.40 calc(var(--pj-c) * .9) var(--hue)));
+  --pj-b: light-dark(oklch(.36 calc(var(--pj-c) * .9) calc(var(--hue) + 26)), oklch(.30 calc(var(--pj-c) * .8) calc(var(--hue) + 26)));
+  --pj-glow: oklch(.52 .2 var(--hue) / .55);
+  --pj-gloss: radial-gradient(130% 90% at 0% 0%, rgb(255 255 255 / .20), transparent 55%), linear-gradient(180deg, rgb(255 255 255 / .09), transparent 38%);
+  --ink-2: rgb(255 255 255 / .96); --ink-3: rgb(255 255 255 / .88); --ink-4: rgb(255 255 255 / .74);
+}
+@media (color-gamut: p3) { .pc, .pf-table .table tbody tr.table__row, .pd-hero { --pj-c: .185; } }
+@media (dynamic-range: high) { .pc, .pf-table .table tbody tr.table__row, .pd-hero { --pj-c: .2; --pj-glow: oklch(.58 .24 var(--hue) / .7); } }
+
+.pc {
+  background: var(--pj-gloss), linear-gradient(150deg, var(--pj-a), var(--pj-b));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(0 0 0 / .2), 0 2px 4px rgb(0 0 0 / .12), 0 18px 34px -16px var(--pj-glow);
+}
+.pc:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), inset 0 -1px 0 rgb(0 0 0 / .2), 0 4px 8px rgb(0 0 0 / .14), 0 26px 44px -16px var(--pj-glow); }
+/* tylko alarm dostaje ramkę; uwaga to plakietka i ikona */
+.pc.level-alarm { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 5px var(--alarm), inset 0 1px 0 rgb(255 255 255 / .38), 0 18px 34px -16px var(--pj-glow); }
+.pc.level-warning { box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(0 0 0 / .2), 0 2px 4px rgb(0 0 0 / .12), 0 18px 34px -16px var(--pj-glow); }
+.pc.is-closed { background: var(--pj-gloss), linear-gradient(150deg, light-dark(#667682, #46515a), light-dark(#4b5964, #363f46)); }
+.pc__state--warning { box-shadow: 0 0 0 2px #fff, 0 4px 10px -2px rgb(0 0 0 / .35); }
+.pc__state--alarm { box-shadow: 0 0 0 2px #fff, 0 4px 12px -2px oklch(.55 .25 28 / .8); }
+
+.pf-table .table tbody tr.table__row { filter: drop-shadow(0 10px 14px var(--pj-glow)); }
+.pf-table .table tbody tr.table__row > td { background: var(--pj-gloss), linear-gradient(90deg, var(--pj-a), var(--pj-b)); background-attachment: scroll, fixed; box-shadow: inset 0 1px 0 rgb(255 255 255 / .34), inset 0 -1px 0 rgb(0 0 0 / .18); }
+.pf-table .table tbody tr.table__row:hover { filter: drop-shadow(0 12px 18px var(--pj-glow)) brightness(1.07); }
+.pf-table .table tbody tr.table__row:hover > td { background: var(--pj-gloss), linear-gradient(90deg, var(--pj-a), var(--pj-b)); background-attachment: scroll, fixed; }
+.pf-table .table tbody tr.table__row.is-closed > td { background: var(--pj-gloss), linear-gradient(90deg, light-dark(#667682, #46515a), light-dark(#4b5964, #363f46)); filter: none; }
+.pf-table .table tbody tr.level-warning > td,
+.pf-table .table tbody tr.level-warning > td:first-child,
+.pf-table .table tbody tr.level-warning > td:last-child { box-shadow: inset 0 1px 0 rgb(255 255 255 / .34), inset 0 -1px 0 rgb(0 0 0 / .18); }
+.pf-table .table tbody tr.level-alarm > td { box-shadow: 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm), inset 0 1px 0 rgb(255 255 255 / .3); }
+.pf-table .table tbody tr.level-alarm > td:first-child { box-shadow: -3px 0 0 var(--alarm), 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm), inset 0 1px 0 rgb(255 255 255 / .3); }
+.pf-table .table tbody tr.level-alarm > td:last-child { box-shadow: 3px 0 0 var(--alarm), 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm), inset 0 1px 0 rgb(255 255 255 / .3); }
+
+.pd-hero { background: var(--pj-gloss), linear-gradient(150deg, var(--pj-a), var(--pj-b)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 24px 44px -20px var(--pj-glow); }
+
+/* zaległość: biała plakietka z czerwonym tekstem, czytelna na każdym kolorze */
+.pc .pf-due.is-overdue .pf-due__rel, .pf-table .pf-due.is-overdue .pf-due__rel {
+  justify-self: end; margin-top: 2px; padding: 1px 8px; border-radius: 999px; background: #fff; color: var(--alarm-ink, #b02b22); font-weight: 700;
+  box-shadow: 0 2px 6px -1px rgb(0 0 0 / .3);
+}
+.pc .pf-due.is-overdue .pf-due__rel, .pf-table .pf-due.is-overdue .pf-due__rel { color: oklch(.46 .2 27); }
+.pc .pf-sig.is-alert, .pf-table .pf-sig.is-alert { padding: 1px 7px 1px 5px; border-radius: 999px; background: #fff; color: oklch(.46 .2 27); font-weight: 700; box-shadow: 0 2px 6px -1px rgb(0 0 0 / .3); }
+.pc .pf-sig.is-alert svg, .pf-table .pf-sig.is-alert svg { color: inherit; }
+
+/* ikona stanu: większa */
+.pf-table .pick .statebtn { padding: 5px; box-shadow: 0 2px 6px -1px rgb(0 0 0 / .35); }
+.pf-table .pick .statebtn svg { width: 18px; height: 18px; }
+
+/* kody projektów w oklch */
+.pf-num--pill, .fd__pcode, .pf-due-item__code, .mrow__project, .code.pcode, .fd__chip--project, .role-link__code {
+  background: light-dark(oklch(.45 .15 var(--hue)), oklch(.42 .14 var(--hue)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 1px 2px rgb(0 0 0 / .18);
+}
+.pc__num, .pf-table .pf-num--pill, .pd-hero .pf-num--pill { background: rgb(255 255 255 / .96); color: oklch(.34 .12 var(--hue)); box-shadow: 0 2px 6px -1px rgb(0 0 0 / .3); }
+a.fd__chip--project:hover { background: light-dark(oklch(.38 .15 var(--hue)), oklch(.5 .14 var(--hue))); }
+
+/* panel boczny: kolorowa kropka zamiast paska */
+.nav__item--project, .nav__item--project[aria-current="page"] { box-shadow: none; }
+.nav__item--project[aria-current="page"] { box-shadow: 0 0 0 1px light-dark(rgb(16 26 34 / .06), rgb(255 255 255 / .07)), 0 8px 18px -10px var(--shadow-tint); }
+.nav__item--project::after { content: ""; flex: none; width: 9px; height: 9px; margin-left: auto; border-radius: 50%; background: light-dark(oklch(.5 .17 var(--hue, 210)), oklch(.62 .17 var(--hue, 210))); box-shadow: 0 0 0 2px light-dark(rgb(255 255 255 / .8), rgb(0 0 0 / .4)), 0 0 10px oklch(.6 .2 var(--hue, 210) / .6); }
+.app--collapsed .nav__item--project::after { display: none; }
+
+/* ostrość: wyraźniejszy kontrast tekstu i cienkie linie na ekranach o dużej gęstości */
+html { text-rendering: geometricPrecision; }
+@media (min-resolution: 1.5dppx) { .pc, .pf-table .table tbody tr.table__row > td { -webkit-font-smoothing: antialiased; } }
+@media (dynamic-range: high) { .btn--primary, .pf-view__count { filter: saturate(1.15); } }
+
+/* poprawki czytelności tabeli */
+.pf-table .table tbody tr.table__row > td,
+.pf-table .table tbody tr.table__row:hover > td { background: linear-gradient(90deg, var(--pj-a), var(--pj-b)); background-attachment: fixed; }
+.pf-table .table tbody tr.table__row.is-closed > td { background: linear-gradient(90deg, light-dark(#667682, #46515a), light-dark(#4b5964, #363f46)); background-attachment: fixed; }
+.pf-table .pick .statebtn { flex: none; padding: 4px; }
+.pf-table .pick .statebtn svg { width: 16px; height: 16px; }
+.pf-table .col-deadline { min-width: 10.5rem; }
+.pc .pf-due.is-overdue .pf-due__rel, .pf-table .pf-due.is-overdue .pf-due__rel { justify-self: start; padding: 0 7px; font-size: .6875rem; line-height: 1.5; white-space: nowrap; }
+.pc .pf-due.is-overdue .pf-due__rel { justify-self: end; }
+.pf-table .pick .statebtn { width: 24px; height: 24px; min-width: 24px; padding: 0; display: inline-grid; place-items: center; }
+.pc__state--done { background: rgb(255 255 255 / .92); color: #3d4850; }
