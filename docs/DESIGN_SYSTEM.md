@@ -428,3 +428,7 @@ Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toas
 - Barwę przekazuje się przez zmienną `--hue` (`Identity.hueStyle(kod)`).
 - Paleta projektu liczona jest w oklch (`--pj-a`, `--pj-b`, `--pj-glow`): na ekranach P3 i HDR chroma rośnie (`@media (color-gamut: p3)`, `@media (dynamic-range: high)`). Do tego połysk na górnej krawędzi i kolorowa poświata pod kaflem.
 - Ramkę dostaje tylko alarm; uwaga to plakietka i ikona. Zaległość to biała plakietka z czerwonym tekstem (czytelna na każdym kolorze).
+
+## Panel boczny „aurora”
+
+Tło okna (`body`, `.app`) to głęboka granatowo-fioletowa baza z trzema łunami w oklch (magenta marki, błękit, turkus); na ekranach P3 łuny są mocniejsze. Panel boczny ma lokalnie odwrócone tokeny tuszu (biały tekst, szklane aktywne pozycje z poświatą), więc logo, ikony i liczniki zmieniają się same. Arkusz treści pływa nad tłem bez zmian. Na telefonie szuflada ma tę samą aurorę.
