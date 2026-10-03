@@ -68,15 +68,16 @@ body, .app { background: var(--au-bg); background-attachment: fixed; }
   --alarm-ink: oklch(.8 .16 25); --warn-ink: oklch(.86 .15 85);
   --elev-lift: inset 0 1px 0 rgb(255 255 255 / .28), 0 8px 18px -8px rgb(0 0 0 / .6);
   color: #fff;
+  /* spokojna, głęboka kolumna: plama aurory z tła nie prześwituje przez logo i wyszukiwarkę */
+  background: linear-gradient(180deg, oklch(.2 calc(.055 * var(--k)) var(--au-bh) / .9), oklch(.145 calc(.045 * var(--k)) var(--au-bh) / .94));
 }
 .sidebar .nav__item[aria-current="page"] {
-  background: linear-gradient(135deg, oklch(1 0 0 / .22), oklch(1 0 0 / .1));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), 0 8px 20px -8px oklch(.66 calc(.14 * var(--k)) var(--au-h1) / calc(.6 * var(--hdr)));
-  backdrop-filter: blur(8px);
+  background: oklch(1 0 0 / .13);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / .14);   /* bez poświaty i połysku: nie rozlewa się na sąsiednie pozycje */
 }
 .sidebar .nav__item[aria-current="page"] > svg { color: oklch(.88 calc(.12 * var(--k)) var(--au-h1)); }
 .sidebar .nav__item[aria-current="page"]:not(.nav__item--project)::before { background: oklch(.82 calc(.14 * var(--k)) var(--au-h1)); box-shadow: 0 0 calc(14px * var(--hdr)) oklch(.75 calc(.16 * var(--k)) var(--au-h1)); }
-.sidebar .nav__item--project[aria-current="page"] { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), 0 8px 20px -8px oklch(.6 calc(.2 * var(--k)) var(--au-h2) / calc(.6 * var(--hdr))); }
+.sidebar .nav__item--project[aria-current="page"] { box-shadow: inset 0 0 0 1px oklch(1 0 0 / .14); }
 .sidebar .sidebar__search, .sidebar .sidebar__create { background: oklch(1 0 0 / .1); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .16); color: rgb(255 255 255 / .8); }
 .sidebar .sidebar__create { color: #fff; }
 .sidebar .sidebar__search:hover { background: oklch(1 0 0 / .17); }
@@ -87,7 +88,7 @@ body, .app { background: var(--au-bg); background-attachment: fixed; }
 .sidebar .sidebar__label { text-transform: uppercase; letter-spacing: .1em; font-size: .6875rem; font-weight: 600; }
 .sidebar .icon-btn, .sidebar .btn--ghost { color: rgb(255 255 255 / .82); }
 .sidebar .icon-btn:hover { background: oklch(1 0 0 / .14); color: #fff; }
-.sidebar .logo { filter: drop-shadow(0 2px 10px oklch(.66 calc(.14 * var(--k)) var(--au-h1) / calc(.5 * var(--hdr)))); }
+.sidebar .logo { filter: none; }
 .sidebar .nav__item--project::after { background: oklch(.72 calc(.19 * var(--kp)) var(--hue, 210)); box-shadow: 0 0 0 2px rgb(255 255 255 / .22), 0 0 calc(12px * var(--hdr)) oklch(.7 calc(.24 * var(--kp)) var(--hue, 210) / .8); }
 @media (max-width: 56rem) { .sidebar { background: var(--au-bg); } }
 
