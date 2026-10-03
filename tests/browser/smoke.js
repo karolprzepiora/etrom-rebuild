@@ -723,6 +723,26 @@ async function main() {
       (await state('(s.workspace.entries || []).length')) === beforeRange + 1
       && await evaluate('const e = window.ETROM.app.store.getState().workspace.entries.filter(x => x.source === "manual").sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0]; return window.ETROM.TimeLog.minutes(e) === 30 && new Date(e.start).getHours() === 3 && new Date(e.start).getMinutes() === 10;'));
 
+    /* 21d. Panel boczny, kolor projektu, jeden kafel wskaźnika */
+    await go('#/czas');
+    check('Czas ma wysuwany panel boczny, który zwija się i zapamiętuje stan',
+      await evaluate('const b = document.querySelector("[data-fk=rail-time]"); if (!b) return false; b.click(); return true;')
+      && (await sleep(300), await evaluate('return !!document.querySelector("#view-time .rl.is-collapsed") && window.ETROM.app.store.getState().prefs.collapsedRails.indexOf("time") >= 0;')));
+    await evaluate('document.querySelector("[data-fk=rail-time]").click(); return true;');
+    await sleep(200);
+    check('kafle wskaźników na Czasie i w projekcie mają ten sam krój etykiety',
+      await evaluate('const l = document.querySelector("#view-time .ts-stat__l"); return !!l && getComputedStyle(l).textTransform === "uppercase" && getComputedStyle(l).fontSize === "11px";'));
+    await go('#/projekty');
+    const colorPid = await evaluate('return window.ETROM.app.store.getState().workspace.projects[0].id;');
+    await evaluate('window.ETROM.app.actions.editProject(' + JSON.stringify(colorPid) + '); return true;');
+    await sleep(250);
+    check('formularz projektu ma paletę 40 kolorów, a wybrany kolor zapisuje się w projekcie',
+      await evaluate('return document.querySelectorAll(".colorpick__sw").length === 40;')
+      && await evaluate('document.querySelector("[data-fk=color-12]").click(); document.getElementById("project-form").requestSubmit(); return true;')
+      && (await sleep(300), await evaluate('return window.ETROM.app.store.getState().workspace.projects[0].color === 12;')));
+    check('karta projektu nie ma już gwiazdki przypinania',
+      await evaluate('return !document.querySelector(".pc__star");'));
+
     /* 21c. Ekran „Czas”: karta czasu, eksport, plan obciążenia */
     await go('#/czas');
     check('ekran „Czas” pokazuje kartę czasu z macierzą dni i sumą',

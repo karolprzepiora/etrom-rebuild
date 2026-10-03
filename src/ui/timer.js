@@ -48,7 +48,7 @@
       var project = found && found.project;
       var key = String(entry.projectId);
       if (!by[key]) {
-        by[key] = { key: key, code: project ? project.code : '—', name: project ? project.name : 'Usunięty projekt', hue: Identity.tileHue(project ? project.code : key), base: 0, liveStart: null };
+        by[key] = { key: key, code: project ? project.code : '—', name: project ? project.name : 'Usunięty projekt', hue: Identity.tileHue(project ? project.code : key), tone: Identity.tileTone(project ? project.code : key), base: 0, liveStart: null };
         order.push(key);
       }
       if (entry.end) by[key].base += TL.minutes(entry);
@@ -78,7 +78,7 @@
     var kids = parts.map(function (part) {
       return D.el('span', {
         class: 'dmseg' + (part.liveStart ? ' is-live' : ''),
-        style: { '--seg-h': String(part.hue), '--m': String(partMinutes(part, nowMs)) },
+        style: { '--seg-h': String(part.hue), '--seg-t': String(part.tone || 0), '--m': String(partMinutes(part, nowMs)) },
         attrs: Object.assign({ 'data-base': String(part.base), 'data-code': part.code }, part.liveStart ? { 'data-live-start': String(part.liveStart) } : {})
       });
     });
@@ -137,7 +137,7 @@
       var label = code + ' · ' + name + ' — ' + hm(entry.start) + '–' + (entry.end ? hm(entry.end) : 'teraz') + ' (' + TL.duration(TL.minutes(entry, now)) + ')';
       return D.el('span', {
         class: 'dribbon__seg' + (entry.end ? '' : ' is-live'),
-        style: { left: left + '%', width: width + '%', '--seg-h': String(Identity.tileHue(code)) },
+        style: Object.assign({ left: left + '%', width: width + '%' }, Identity.segStyle(code)),
         attrs: Object.assign({ 'data-tooltip': label, 'data-code': code, 'data-start-min': String(begin) },
           entry.end ? { 'data-min': String(TL.minutes(entry, now)) } : { 'data-live-start': String(Date.parse(entry.start)) })
       }, [D.el('span', { class: 'dribbon__code', text: code })]);
@@ -358,7 +358,7 @@
       var editable = !!entry.end && ctx.actions && ctx.actions.editEntry;
       return D.el('span', {
         class: 'dayaxis__seg' + (entry.end ? '' : ' is-live') + (editable ? ' is-editable' : ''),
-        style: { left: pct(begin) + '%', width: width + '%', '--seg-h': String(Identity.tileHue(code)) },
+        style: Object.assign({ left: pct(begin) + '%', width: width + '%' }, Identity.segStyle(code)),
         attrs: Object.assign({ 'data-tooltip': label + (editable ? ' — kliknij, żeby zmienić' : ''), role: editable ? 'button' : 'img', 'aria-label': label }, editable ? { tabindex: '0' } : {}),
         on: editable ? { click: function () { ctx.actions.editEntry(entry.id); }, keydown: function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ctx.actions.editEntry(entry.id); } } } : null
       });
@@ -410,7 +410,7 @@
         var found = ctx.find({ projectId: p.projectId });
         var code = found && found.project ? found.project.code : '—';
         tip += (tip.indexOf(' — ') < 0 ? ' — ' : ' · ') + code + ' ' + TL.duration(p.minutes);
-        return D.el('span', { class: 'eweek__seg', style: { height: Math.min(100, p.minutes / cap * 100) + '%', '--seg-h': String(Identity.tileHue(code)) } });
+        return D.el('span', { class: 'eweek__seg', style: Object.assign({ height: Math.min(100, p.minutes / cap * 100) + '%' }, Identity.segStyle(code)) });
       });
       return D.el('li', { class: 'eweek__day' + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : ''), attrs: { 'data-tooltip': tip, 'aria-label': tip } }, [
         D.el('span', { class: 'eweek__bar' }, segs.concat([D.el('i', { class: 'eweek__goal', style: { bottom: (DAY_TARGET / cap * 100) + '%' }, attrs: { 'aria-hidden': 'true' } })])),
@@ -451,13 +451,13 @@
     return D.el('ul', { class: 'eproj' }, parts.map(function (part) {
       var minutes = partMinutes(part, now);
       return D.el('li', { class: 'eproj__row' }, [
-        D.el('span', { class: 'eproj__dot', style: { '--seg-h': String(part.hue) }, attrs: { 'aria-hidden': 'true' } }),
+        D.el('span', { class: 'eproj__dot', style: { '--seg-h': String(part.hue), '--seg-t': String(part.tone || 0) }, attrs: { 'aria-hidden': 'true' } }),
         D.el('span', { class: 'eproj__what' }, [
           D.el('span', { class: 'code', text: part.code }),
           D.el('span', { class: 'eproj__name truncate', text: part.name })
         ]),
         D.el('span', { class: 'eproj__time t-num', text: minutes < 1 ? '<1 min' : TL.duration(minutes) }),
-        D.el('span', { class: 'eproj__share', style: { '--seg-h': String(part.hue), '--share': String(Math.round(minutes / total * 100)) + '%' }, attrs: { 'aria-hidden': 'true' } })
+        D.el('span', { class: 'eproj__share', style: { '--seg-h': String(part.hue), '--seg-t': String(part.tone || 0), '--share': String(Math.round(minutes / total * 100)) + '%' }, attrs: { 'aria-hidden': 'true' } })
       ]);
     }));
   }

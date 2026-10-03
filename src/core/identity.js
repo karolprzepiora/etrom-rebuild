@@ -22,10 +22,58 @@
     return (hash(code) * HUE_STEP) % 360;
   }
 
-  /** Barwa tła kafla: tylko zielenie–fiolety (150–290), by czerwień i bursztyn znaczyły wyłącznie stan. */
-  function tileHue(code) {
-    return 150 + (hue(code) % 140);
+  /* Paleta 40 kolorów projektów: 20 barw (od żółtozielonej po różową; czerwień i bursztyn
+     zostają dla stanów) w dwóch tonach — jaśniejszym i głębszym.
+     Kolejne numery projektów dostają kolory odległe o ~94° barwy (krok 7 w permutacji),
+     więc 40 projektów w roku różni się od siebie i sąsiednie nigdy nie są podobne. */
+  var PALETTE_SIZE = 40;
+  var HUES = 20;
+  var HUE_FROM = 105;
+  var HUE_TO = 350;
+  var PERM_STEP = 7;
+  var overrides = {};
+
+  function swatch(index) {
+    var i = ((Number(index) % PALETTE_SIZE) + PALETTE_SIZE) % PALETTE_SIZE;
+    var h = i % HUES;
+    return { index: i, hue: Math.round(HUE_FROM + h * (HUE_TO - HUE_FROM) / (HUES - 1)), tone: i < HUES ? 1 : -1 };
   }
+
+  function swatches() {
+    var list = [];
+    for (var i = 0; i < PALETTE_SIZE; i += 1) list.push(swatch(i));
+    return list;
+  }
+
+  /** Indeks 0–39 z numeru projektu: ostatnie dwie cyfry kodu (2607 → 7), inaczej skrót kodu. */
+  function autoIndex(code) {
+    var text = String(code == null ? '' : code);
+    var seq = /(\d{2})\s*$/.exec(text);
+    var n = seq ? Number(seq[1]) : hash(text);
+    return (n * PERM_STEP) % PALETTE_SIZE;
+  }
+
+  function validIndex(value) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < PALETTE_SIZE;
+  }
+
+  /** Zapamiętuje wybrane przez użytkownika kolory (kod → indeks), by każdy widok brał je automatycznie. */
+  function setColors(projects) {
+    var map = {};
+    (projects || []).forEach(function (p) {
+      if (p && validIndex(p.color)) map[String(p.code).toUpperCase()] = p.color;
+    });
+    overrides = map;
+  }
+
+  function colorIndex(code) {
+    var key = String(code == null ? '' : code).toUpperCase();
+    return Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : autoIndex(code);
+  }
+
+  /** @returns {number} barwa (oklch) kafla projektu */
+  function tileHue(code) { return swatch(colorIndex(code)).hue; }
+  function tileTone(code) { return swatch(colorIndex(code)).tone; }
 
   /**
    * Zmienne CSS okładki projektu: dwa przygaszone odcienie i kąt warstwic.
@@ -52,10 +100,15 @@
 
   /** Zmienna CSS --hue dla znaczków i kafli projektu. */
   function hueStyle(code) {
-    return { '--hue': String(tileHue(code)) };
+    return { '--hue': String(tileHue(code)), '--tone': String(tileTone(code)) };
   }
 
-  var api = { hue: hue, tileHue: tileHue, hueStyle: hueStyle, coverStyle: coverStyle, initials: initials };
+  /** Zmienne dla segmentów paska czasu. */
+  function segStyle(code) {
+    return { '--seg-h': String(tileHue(code)), '--seg-t': String(tileTone(code)) };
+  }
+
+  var api = { PALETTE_SIZE: PALETTE_SIZE, swatch: swatch, swatches: swatches, autoIndex: autoIndex, validIndex: validIndex, setColors: setColors, colorIndex: colorIndex, tileTone: tileTone, segStyle: segStyle, hue: hue, tileHue: tileHue, hueStyle: hueStyle, coverStyle: coverStyle, initials: initials };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Identity = api; }

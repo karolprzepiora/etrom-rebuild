@@ -229,7 +229,7 @@
       class: 'table__row prow-project level-' + health.level + (project.status === 'done' ? ' is-closed' : '') + (ctx.motion && ctx.motion.flashProject === project.id ? ' is-flash' : ''),
       attrs: { 'aria-selected': selected ? 'true' : null },
       dataset: { projectCode: project.code, projectId: project.id },
-      style: { '--hue': String(E.Identity.tileHue(project.code)) },
+      style: E.Identity.hueStyle(project.code),
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label, [role="menu"]')) return;
@@ -324,7 +324,6 @@
     var health = Insight.health(project, now);
     var risk = health.level === 'alarm' || health.level === 'warning';
     var done = project.status === 'done';
-    var pinned = ctx.actions.isPinned && ctx.actions.isPinned(project.id);
     var team = Team.projectPeople(project.team).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
     var leaderId = project.team && project.team.leader;
     team.sort(function (a, b) { return (b.id === leaderId) - (a.id === leaderId); });
@@ -332,7 +331,7 @@
     return D.el('article', {
       class: 'pcard pf-card pc project level-' + health.level + (done ? ' is-closed' : ''),
       dataset: { projectCode: project.code, projectId: project.id },
-      style: { '--hue': String(E.Identity.tileHue(project.code)) },
+      style: E.Identity.hueStyle(project.code),
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label, [role="menu"]')) return;
@@ -344,7 +343,6 @@
         D.el('span', { class: 'pc__num t-num', text: '#' + project.code }),
         risk ? D.el('span', { class: 'pc__state pc__state--' + health.level }, [Sig.datum(health.level, { size: 12, label: false }), D.el('span', { text: health.level === 'alarm' ? 'Alarm' : 'Uwaga' })]) : (done ? D.el('span', { class: 'pc__state pc__state--done', text: 'Zakończony' }) : null),
         D.el('span', { class: 'pcard__spacer' }),
-        ctx.actions.togglePin ? UI.iconButton({ icon: 'star', label: pinned ? 'Odepnij z panelu' : 'Przypnij w panelu', size: 'sm', class: 'pc__star' + (pinned ? ' is-on' : ''), attrs: { 'aria-pressed': String(!!pinned) }, onClick: function () { ctx.actions.togglePin(project.id); } }) : null,
         moreButton(project, ctx.actions, 'pcard__more')
       ]),
       D.el('h3', { class: 'pc__name' }, [

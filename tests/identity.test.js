@@ -46,11 +46,29 @@ test('inicjały zachowują polskie znaki', () => {
   assert.equal(Identity.initials('Łukasz Żuk'), 'ŁŻ');
 });
 
-test('tileHue: stała barwa kafla, nigdy w zakresie czerwieni i bursztynu', () => {
+test('paleta ma 40 różnych kolorów, poza czerwienią i bursztynem', () => {
   const Identity = require('../src/core/identity.js');
-  for (const code of ['2601', '2602', '2603', 'W-1', 'DEMO-004', '']) {
-    const h = Identity.tileHue(code);
-    assert.equal(h, Identity.tileHue(code));
-    assert.ok(h >= 150 && h < 290, code + ' → ' + h);
-  }
+  const all = Identity.swatches();
+  assert.equal(all.length, 40);
+  assert.equal(new Set(all.map((c) => c.hue + ':' + c.tone)).size, 40);
+  assert.ok(all.every((c) => c.hue >= 105 && c.hue <= 350));
+});
+
+test('kolejne numery projektów w roku dostają różne kolory (40 z rzędu bez powtórki)', () => {
+  const Identity = require('../src/core/identity.js');
+  Identity.setColors([]);
+  const seen = new Set();
+  for (let n = 1; n <= 40; n += 1) seen.add(Identity.colorIndex('26' + String(n).padStart(2, '0')));
+  assert.equal(seen.size, 40);
+  const a = Identity.swatch(Identity.colorIndex('2601')), b = Identity.swatch(Identity.colorIndex('2602'));
+  assert.ok(Math.abs(a.hue - b.hue) > 60, 'sąsiednie numery są wyraźnie różne');
+});
+
+test('kolor wybrany ręcznie wygrywa z automatycznym', () => {
+  const Identity = require('../src/core/identity.js');
+  Identity.setColors([{ code: '2601', color: 5 }, { code: '2602', color: 99 }]);
+  assert.equal(Identity.colorIndex('2601'), 5);
+  assert.equal(Identity.colorIndex('2602'), Identity.autoIndex('2602'), 'zły indeks jest ignorowany');
+  Identity.setColors([]);
+  assert.equal(Identity.tileHue('2601'), Identity.tileHue('2601'));
 });

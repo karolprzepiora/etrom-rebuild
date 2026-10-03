@@ -27,7 +27,7 @@
 
   function codePill(project, projectId) {
     var code = project ? project.code : '—';
-    return D.el('span', { class: 'ts-code', style: { '--hue': String(Identity.tileHue(code)) }, text: code, attrs: { 'aria-label': 'Projekt ' + code } });
+    return D.el('span', { class: 'ts-code', style: Identity.hueStyle(code), text: code, attrs: { 'aria-label': 'Projekt ' + code } });
   }
 
   /* ---------- Karta czasu ---------- */
@@ -60,11 +60,11 @@
     return D.el('div', { class: 'ts-bar' }, bar);
   }
 
-  function heatCell(minutes, hue, target, day, label) {
+  function heatCell(minutes, hue, tone, target, day, label) {
     var t = Math.max(0, Math.min(1, minutes / (target || 480)));
     return D.el('td', {
       class: 'ts-cell' + (minutes ? ' has-time' : '') + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : '') + (t > 0.55 ? ' is-strong' : ''),
-      style: minutes ? { '--hue': String(hue), '--t': String(t) } : null,
+      style: minutes ? { '--hue': String(hue), '--tone': String(tone), '--t': String(t) } : null,
       attrs: minutes ? { 'data-tooltip': label + ': ' + TL.duration(minutes) } : null
     }, [minutes ? D.el('span', { class: 't-num', text: h(minutes) }) : null]);
   }
@@ -83,6 +83,7 @@
     sheet.rows.forEach(function (row) {
       var project = projectInfo(ctx, row.projectId);
       var hue = Identity.tileHue(project ? project.code : String(row.projectId));
+      var tone = Identity.tileTone(project ? project.code : String(row.projectId));
       var isOpen = !!open[row.projectId];
       body.push(D.el('tr', { class: 'ts-row ts-row--project' + (isOpen ? ' is-open' : '') }, [
         D.el('th', { class: 'ts-name', attrs: { scope: 'row' } }, [
@@ -92,14 +93,14 @@
             D.el('span', { class: 'ts-pname truncate', text: project ? project.name : 'Usunięty projekt' })
           ])
         ])
-      ].concat(row.cells.map(function (m, i) { return heatCell(m, hue, sheet.dayTarget, sheet.days[i], (project ? project.code : '') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
+      ].concat(row.cells.map(function (m, i) { return heatCell(m, hue, tone, sheet.dayTarget, sheet.days[i], (project ? project.code : '') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
         D.el('td', { class: 'ts-sum t-num', text: TL.duration(row.minutes) })
       ])));
       if (isOpen) {
         row.tasks.forEach(function (task) {
           body.push(D.el('tr', { class: 'ts-row ts-row--task' }, [
             D.el('th', { class: 'ts-name', attrs: { scope: 'row' } }, [D.el('span', { class: 'ts-tname truncate', text: task.label || 'Zadanie', attrs: { 'data-tooltip': task.label || '' } })])
-          ].concat(task.cells.map(function (m, i) { return heatCell(m, hue, sheet.dayTarget, sheet.days[i], (task.label || 'Zadanie') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
+          ].concat(task.cells.map(function (m, i) { return heatCell(m, hue, tone, sheet.dayTarget, sheet.days[i], (task.label || 'Zadanie') + ' · ' + sheet.days[i].label + ' ' + sheet.days[i].number); }), [
             D.el('td', { class: 'ts-sum t-num', text: TL.duration(task.minutes) })
           ])));
         });
@@ -283,7 +284,20 @@
       });
       void sheet;
     }
-    return { summary: part.summary, tools: tools, body: D.el('div', { class: 'ts' }, [tabsBar(tab, ctx)].concat(part.body.filter(Boolean))) };
+    var todays = TL.forDay(state.workspace.entries || [], me.id, now);
+    var minutes = TL.sum(todays, now);
+    var main = D.el('div', { class: 'ts' }, [tabsBar(tab, ctx)].concat(part.body.filter(Boolean)));
+    return {
+      summary: part.summary, tools: tools,
+      body: UI.railLayout({
+        id: 'time', title: 'Panel dnia', cls: 'rl--time',
+        collapsed: (state.prefs.collapsedRails || []).indexOf('time') >= 0,
+        onToggle: function () { ctx.actions.toggleRail('time'); },
+        badge: minutes ? TL.duration(minutes) : '',
+        main: [main],
+        side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])]
+      })
+    };
   }
 
   E.TimeScreen = { view: view };

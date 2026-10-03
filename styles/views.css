@@ -370,9 +370,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 /* =========================================================
    Moja praca
    ========================================================= */
-.mywork { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: var(--space-8); align-items: start; margin-top: var(--space-6); }
-.mywork__main { display: grid; gap: var(--space-6); min-width: 0; }
-.mywork__aside { position: sticky; top: var(--space-4); display: grid; gap: var(--space-3); }
+.mywork { margin-top: var(--space-6); }
+.mywork__aside { display: grid; gap: var(--space-3); }
 .msec { display: grid; gap: var(--space-2); }
 .msec__head { display: flex; align-items: baseline; gap: var(--space-2); }
 .msec__title { font-size: var(--fs-md); font-weight: 600; }
@@ -421,8 +420,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .mpick__name { font-weight: 500; }
 
 @container page (max-width: 62rem) {
-  .mywork { grid-template-columns: minmax(0, 1fr); }
-  .mywork__aside { position: static; order: -1; }
   .mrow { grid-template-columns: 8.5rem minmax(0, 1fr) 10rem 2rem; }
   .mrow__load { display: none; }
   .mrow--approve { grid-template-columns: 8.5rem minmax(0, 1fr) auto; }
@@ -491,7 +488,7 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .dayaxis { display: grid; gap: var(--s-1); margin-block: var(--s-2) var(--s-3); }
 .dayaxis__summary { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); }
 .dayaxis__track { position: relative; height: 1.1rem; border-radius: var(--r-sm); background: var(--surface-sunken, color-mix(in srgb, var(--text) 6%, transparent)); overflow: hidden; }
-.dayaxis__seg { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: hsl(var(--seg-h) 45% 52%); }
+.dayaxis__seg { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: oklch(calc(.62 + .07 * var(--seg-t, 0)) .12 var(--seg-h)); }
 .dayaxis__seg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
 .dayaxis__now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--flow); }
 .dayaxis__ticks { position: relative; height: 1rem; }
@@ -550,7 +547,7 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .dmtrack { position: relative; display: flex; align-items: stretch; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
 .dmtrack--bar { width: 7rem; height: 8px; }
 .dmtrack--big { width: 100%; height: 12px; border-radius: 4px; }
-.dmseg { flex: none; width: calc(var(--m) / var(--cap) * 100%); background: hsl(var(--seg-h) 45% 52%); box-shadow: inset -1px 0 0 var(--sheet); transition: width .4s ease; }
+.dmseg { flex: none; width: calc(var(--m) / var(--cap) * 100%); background: oklch(calc(.62 + .07 * var(--seg-t, 0)) .12 var(--seg-h)); box-shadow: inset -1px 0 0 var(--sheet); transition: width .4s ease; }
 .dmseg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
 .dmgoal { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .55; }
 @media (max-width: 56rem) { .dmtrack--bar { width: 4rem; } }
@@ -564,11 +561,11 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .etoday__hint { margin: calc(var(--space-2) * -1) 0 0; }
 .eproj { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
 .eproj__row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "dot what time" ". share share"; gap: 2px var(--space-2); align-items: center; font-size: var(--fs-sm); }
-.eproj__dot { grid-area: dot; width: 8px; height: 8px; border-radius: 2px; background: hsl(var(--seg-h) 45% 52%); }
+.eproj__dot { grid-area: dot; width: 8px; height: 8px; border-radius: 2px; background: oklch(calc(.62 + .07 * var(--seg-t, 0)) .12 var(--seg-h)); }
 .eproj__what { grid-area: what; display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
 .eproj__name { color: var(--ink-3); font-size: var(--fs-xs); }
 .eproj__time { grid-area: time; font-weight: 600; }
-.eproj__share { grid-area: share; height: 3px; border-radius: 2px; background: linear-gradient(to right, hsl(var(--seg-h) 45% 52%) var(--share), color-mix(in srgb, var(--ink) 8%, transparent) var(--share)); }
+.eproj__share { grid-area: share; height: 3px; border-radius: 2px; background: linear-gradient(to right, oklch(calc(.62 + .07 * var(--seg-t, 0)) .12 var(--seg-h)) var(--share), color-mix(in srgb, var(--ink) 8%, transparent) var(--share)); }
 .etoday__log > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); padding: var(--space-1) 0; list-style-position: inside; }
 .etoday__log > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
 .etoday__log .erows { margin-top: var(--space-1); }
@@ -632,3 +629,27 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .load--over .load__fill { background: var(--alarm); }
 .load--over .load__pct { color: var(--alarm-ink); }
 .load--free .load__fill { background: var(--ink-3); }
+
+/* =========================================================
+   Wysuwany panel boczny (ten sam na Mojej pracy, w Czasie i na liście projektów)
+   ========================================================= */
+.rl { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: var(--space-8); align-items: start; transition: grid-template-columns .22s cubic-bezier(.2,.8,.2,1); }
+.rl.is-collapsed { grid-template-columns: minmax(0, 1fr) 3rem; gap: var(--space-5); }
+.rl__main { display: grid; gap: var(--space-6); min-width: 0; }
+.rl__side { position: sticky; top: var(--space-4); min-width: 0; }
+.rl__inner { display: grid; gap: var(--space-3); }
+.rl__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.rl__title { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+.rl__toggle { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); cursor: pointer; }
+.rl__toggle:hover { background: var(--sheet); color: var(--ink); }
+.rl__toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rl.is-collapsed .rl__inner { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-radius: 18px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+.rl__vtitle { writing-mode: vertical-rl; transform: rotate(180deg); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.rl__vcount { max-width: 2.6rem; padding: 1px 6px; border-radius: 999px; text-align: center; font-size: 10px; font-weight: 600; line-height: 1.5; background: var(--sheet); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+.rl__vcount.is-late { background: var(--alarm); color: #fff; box-shadow: none; }
+@container page (max-width: 62rem) {
+  .rl, .rl.is-collapsed { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .rl__side { position: static; order: -1; }
+  .rl.is-collapsed .rl__inner { flex-direction: row; justify-content: flex-start; padding: var(--space-2) var(--space-3); }
+  .rl__vtitle { writing-mode: horizontal-tb; transform: none; }
+}

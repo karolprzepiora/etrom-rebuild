@@ -347,7 +347,7 @@
       form: {
         draft: {
           id: project.id, code: project.code, name: project.name, client: project.client,
-          status: project.status, deadline: project.deadline, contractValue: project.contractValue,
+          status: project.status, deadline: project.deadline, contractValue: project.contractValue, color: project.color,
           team: Object.assign(Team.emptyTeam(), project.team)
         },
         errors: {}
@@ -1537,6 +1537,11 @@
     el.style.setProperty('--ctr', String((contrast - 50) / 50));
   }
 
+  function toggleRail(id) {
+    var list = store.getState().prefs.collapsedRails || [];
+    setPref({ collapsedRails: list.indexOf(id) >= 0 ? list.filter(function (x) { return x !== id; }) : list.concat([id]) });
+  }
+
   function setPref(patch) {
     store.update(function (state) {
       var prefs = E.Prefs.normalize(Object.assign({}, state.prefs, patch));
@@ -2278,6 +2283,7 @@
     toggleTimer: toggleTimer,
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
+    toggleRail: toggleRail,
     setTime: function (patch) { store.set(patch); },
     toggleTimeProject: function (id) {
       var open = Object.assign({}, store.getState().timeOpen || {});
@@ -2918,6 +2924,7 @@
   }
 
   function renderAll(state) {
+    E.Identity.setColors(state.workspace && state.workspace.projects);
     renderNotice(state);
     renderScreen(state);
     renderInspector(state);

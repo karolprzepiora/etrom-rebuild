@@ -100,6 +100,13 @@
 
     var value = { code: code, name: name, client: client, status: status, deadline: deadline };
     if (contractValue !== undefined) value.contractValue = contractValue;
+    // Kolor projektu: indeks palety 0–39 albo brak (kolor z numeru projektu).
+    if (Object.prototype.hasOwnProperty.call(input, 'color')) {
+      var rawColor = input.color === '' || input.color == null ? null : Number(input.color);
+      if (rawColor === null) value.color = null;
+      else if (Number.isInteger(rawColor) && rawColor >= 0 && rawColor < 40) value.color = rawColor;
+      else errors.color = 'Wybierz kolor z palety.';
+    }
     return {
       valid: Object.keys(errors).length === 0,
       errors: errors,
@@ -348,6 +355,7 @@
       stages: Array.isArray(input.stages) ? input.stages.slice() : [],
       team: input.team ? Object.assign(Team.emptyTeam(), input.team) : Team.emptyTeam(),
       contractValue: v.contractValue == null ? null : v.contractValue,
+      color: v.color == null ? null : v.color,
       createdAt: new Date().toISOString()
     };
   }
@@ -429,6 +437,7 @@
         stages: stages,
         team: team,
         contractValue: Number.isFinite(Number(item.contractValue)) && item.contractValue !== null && Number(item.contractValue) >= 0 ? Number(item.contractValue) : null,
+        color: Number.isInteger(item.color) && item.color >= 0 && item.color < 40 ? item.color : null,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

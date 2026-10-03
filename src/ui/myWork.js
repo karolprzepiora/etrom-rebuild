@@ -275,16 +275,26 @@
     return {
       summary: summaryText(m),
       who: whoButton(me, people, ctx.actions),
-      body: D.el('div', { class: 'mywork' }, [
-        D.el('div', { class: 'mywork__main' }, main),
-        D.el('aside', { class: 'mywork__aside', attrs: { 'aria-label': 'Czas i projekty' } }, [
-          E.Timer.todayBlock(TL.forDay(state.workspace.entries || [], me.id, now), { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id }),
-          D.el('div', { class: 'maside__projects' }, [
-            D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
-            projectsAside(m.work, now)
-          ])
-        ])
-      ]),
+      body: (function () {
+        var todays = TL.forDay(state.workspace.entries || [], me.id, now);
+        var minutes = TL.sum(todays, now);
+        return UI.railLayout({
+          id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', cls: 'mywork', mainCls: 'mywork__main',
+          collapsed: (state.prefs.collapsedRails || []).indexOf('mywork') >= 0,
+          onToggle: function () { ctx.actions.toggleRail('mywork'); },
+          badge: minutes ? TL.duration(minutes) : '',
+          main: main,
+          side: [
+            D.el('div', { class: 'mywork__aside' }, [
+              E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id }),
+              D.el('div', { class: 'maside__projects' }, [
+                D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
+                projectsAside(m.work, now)
+              ])
+            ])
+          ]
+        });
+      })(),
       work: m.work
     };
   }

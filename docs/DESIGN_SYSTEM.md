@@ -462,3 +462,10 @@ Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po pusz
 - **Przypomnienie o końcu dnia**: gdy zegar chodzi po „Koniec dnia” (Ustawienia → Czas pracy) albo ≥10 h, okno pyta: ostatnia aktywność / koniec dnia / teraz / ręcznie / zostaw.
 - **Budżet przy zegarze**: chip z procentem zużycia budżetu etapu; godziny widzą tylko lider i zarząd.
 - **Ekran „Czas” (`#/czas`)**: karta czasu (tydzień/miesiąc, eksport CSV: BOM, `;`, CRLF) i plan obciążenia (szacunek `task.estimate` lub domyślny wg wielkości, rozłożony na dni robocze do terminu, pojemność = dni × cel dnia; stany ok/tight/over). Zarząd widzi wszystkich, reszta tylko siebie.
+
+## Kolory projektów, kafle wskaźników i panel boczny
+
+- **Paleta 40 kolorów** (`Identity.swatches()`): 20 barw od żółtozielonej po różową (czerwień i bursztyn zostają dla stanów) × dwa tony (jaśniejszy / głębszy). Kolor wynika z numeru projektu (ostatnie dwie cyfry kodu, krok 7 w permutacji), więc kolejne numery w roku różnią się wyraźnie, a 40 projektów z rzędu nie powtarza koloru.
+- **Wybór ręczny**: `project.color` (indeks 0–39 albo `null` = automatyczny), pole „Kolor projektu” w formularzu projektu (zakładanie i edycja). `Identity.setColors(projects)` jest wołane przy każdym renderze, więc `tileHue/tileTone/hueStyle/segStyle` biorą kolor wybrany ręcznie w kaflu, pillach, pasku czasu i karcie czasu. Zmienne CSS: `--hue` + `--tone` (kafle), `--seg-h` + `--seg-t` (paski).
+- **Jeden kafel wskaźnika**: `.pd-prop` (projekt), `.ts-stat` (Czas), `.an-tile` (Analiza) mają wspólny wygląd (tło, obrys, cień, odstępy, etykieta 11 px wersalikami, wartość 1,25 rem, podpis xs). Nowy kafel wskaźnika używa tych samych reguł.
+- **Wysuwany panel boczny**: `UI.railLayout({id, title, collapsed, onToggle, main, side, badge})`. Stan zwinięcia w `prefs.collapsedRails`, przełączany akcją `toggleRail(id)`. Używany w „Mojej pracy” (zegar i projekty) i w „Czasie” (panel dnia); lista projektów ma własną wersję „Najbliższe terminy” (`prefs.railCollapsed`).

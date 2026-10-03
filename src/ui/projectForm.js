@@ -47,6 +47,38 @@
       options: Object.keys(Model.PROJECT_STATUS).map(function (key) { return { value: key, label: Model.PROJECT_STATUS[key] }; })
     });
 
+    /* --- kolor projektu: 40 próbek albo automatyczny (z numeru projektu) --- */
+    var Id = E.Identity;
+    var chosenColor = Id.validIndex(values.color) ? values.color : null;
+    var swatchEls = [];
+    var autoBtn;
+    function paintPicker() {
+      var effective = chosenColor === null ? Id.autoIndex(code.value) : chosenColor;
+      swatchEls.forEach(function (el, i) {
+        var on = chosenColor === i;
+        el.classList.toggle('is-on', on);
+        el.setAttribute('aria-checked', String(on));
+        el.classList.toggle('is-auto', chosenColor === null && i === effective);
+      });
+      autoBtn.classList.toggle('is-on', chosenColor === null);
+      autoBtn.setAttribute('aria-checked', String(chosenColor === null));
+    }
+    autoBtn = D.el('button', { class: 'colorpick__auto', attrs: { type: 'button', role: 'radio', 'data-fk': 'color-auto' }, text: 'Automatyczny', on: { click: function () { chosenColor = null; paintPicker(); } } });
+    var colorPicker = D.el('div', { class: 'colorpick', attrs: { role: 'radiogroup', 'aria-label': 'Kolor projektu' } }, [
+      D.el('div', { class: 'colorpick__grid' }, Id.swatches().map(function (sw) {
+        var el = D.el('button', {
+          class: 'colorpick__sw', style: { '--hue': String(sw.hue), '--tone': String(sw.tone) },
+          attrs: { type: 'button', role: 'radio', 'aria-label': 'Kolor ' + (sw.index + 1), 'data-fk': 'color-' + sw.index },
+          on: { click: function () { chosenColor = sw.index; paintPicker(); } }
+        });
+        swatchEls[sw.index] = el;
+        return el;
+      })),
+      autoBtn
+    ]);
+    code.addEventListener('input', paintPicker);
+    paintPicker();
+
     /* --- zespół --- */
     var team = values.team || Team.emptyTeam();
     var functionSelects = {};
@@ -158,6 +190,7 @@
         status: status.value,
         deadline: deadline.value,
         contractValue: contract ? contract.value : undefined,
+        color: chosenColor === null ? '' : chosenColor,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
         stageHours: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = hoursOf(id); return acc; }, {}),
         budgetHours: editing ? undefined : budget.value,
@@ -172,6 +205,7 @@
           UI.field({ id: 'pf-status', label: 'Status', control: status, error: problems.status })
         ]),
         UI.field({ id: 'pf-name', label: 'Nazwa', required: true, control: name, error: problems.name }),
+        UI.field({ id: 'pf-color', label: 'Kolor projektu', optional: true, control: colorPicker, error: problems.color, hint: 'Ten kolor mają kafel projektu, paski czasu i znaczki. Automatyczny wynika z numeru projektu.' }),
         D.el('div', { class: 'form__row' }, [
           UI.field({ id: 'pf-client', label: 'Zamawiający', required: true, control: client, error: problems.client }),
           UI.field({ id: 'pf-deadline', label: 'Termin umowy', optional: true, control: deadline, error: problems.deadline })

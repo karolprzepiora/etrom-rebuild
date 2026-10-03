@@ -567,7 +567,27 @@
     ]);
   }
 
+  /**
+   * Układ „treść + wysuwany panel boczny” — ten sam na każdym ekranie.
+   * @param {{id:string, title:string, collapsed:boolean, onToggle:Function, main:Node[], side:Node[], badge?:string, late?:boolean, label?:string, cls?:string}} o
+   */
+  function railLayout(o) {
+    var toggle = D.el('button', {
+      class: 'rl__toggle',
+      attrs: { type: 'button', 'aria-expanded': String(!o.collapsed), 'aria-label': (o.collapsed ? 'Rozwiń panel ' : 'Zwiń panel ') + o.title, 'data-tooltip': o.collapsed ? 'Rozwiń panel' : 'Zwiń panel', 'data-fk': 'rail-' + o.id },
+      on: { click: function () { o.onToggle(); } }
+    }, [Icons.icon(o.collapsed ? 'chevronLeft' : 'chevronRight', 16)]);
+    var side = o.collapsed
+      ? [toggle, D.el('span', { class: 'rl__vtitle', text: o.title }), o.badge ? D.el('span', { class: 'rl__vcount t-num' + (o.late ? ' is-late' : ''), text: o.badge }) : null]
+      : [D.el('div', { class: 'rl__head' }, [D.el('h2', { class: 'rl__title', text: o.title }), toggle])].concat(o.side);
+    return D.el('div', { class: 'rl ' + (o.cls || '') + (o.collapsed ? ' is-collapsed' : '') }, [
+      D.el('div', { class: 'rl__main ' + (o.mainCls || '') }, o.main),
+      D.el('aside', { class: 'rl__side', attrs: { 'aria-label': o.label || o.title } }, [D.el('div', { class: 'rl__inner' }, side)])
+    ]);
+  }
+
   root.ETROM.UI = {
+    railLayout: railLayout,
     cx: cx,
     button: button,
     iconButton: iconButton,
