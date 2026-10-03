@@ -1369,7 +1369,9 @@
     { firstName: 'Ewa', lastName: 'Testowa', position: 'Projektantka hydrotechniczna', orgRole: 'member', cooperation: 'internal' },
     { firstName: 'Jan', lastName: 'Testowy', position: 'Asystent projektanta', orgRole: 'member', cooperation: 'internal' },
     { firstName: 'Olga', lastName: 'Testowa', position: 'Koordynatorka uzgodnień', orgRole: 'member', cooperation: 'external' },
-    { firstName: 'Piotr', lastName: 'Testowy', position: 'Kosztorysant', orgRole: 'member', cooperation: 'consultant' }
+    { firstName: 'Piotr', lastName: 'Testowy', position: 'Kosztorysant', orgRole: 'member', cooperation: 'consultant' },
+    { firstName: 'Marta', lastName: 'Testowa', position: 'Hydrolożka', orgRole: 'member', cooperation: 'internal' },
+    { firstName: 'Tomasz', lastName: 'Testowy', position: 'Geodeta', orgRole: 'member', cooperation: 'external' }
   ];
 
   // Indeksy odnoszą się do DEMO_PEOPLE powyżej.
@@ -1378,26 +1380,61 @@
     '2602': { leader: 1, coordinator: 3, proxyLead: 2, proxyExtra: 4, members: [5] },
     '2603': { leader: 0, coordinator: 4, members: [2] },
     '2604': { leader: 1, coordinator: 2, members: [3, 4] },
-    '2605': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] }
+    '2605': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] },
+    '2606': { leader: 1, coordinator: 6, members: [2, 3, 7] },
+    '2607': { leader: 0, coordinator: 6, members: [3, 4, 7] }
   };
 
   // Indeksy etapów odnoszą się do katalogu, indeksy osób do DEMO_PEOPLE.
   var DEMO_TASKS = {
+    '2601': [
+      { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', workload: 'medium', hours: 48, people: [0, 2] },
+      { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', workload: 'small', hours: 120, people: [4] },
+      { stage: 0, name: 'Zebrać dane wyjściowe od gminy', status: 'done', workload: 'small', hours: -200, people: [2] },
+      { stage: 1, name: 'Koncepcja przebudowy przepustu — wariant A i B', status: 'done', workload: 'large', hours: -120, people: [0, 2] },
+      { stage: 2, name: 'Inwentaryzacja przyrodnicza', status: 'review', workload: 'medium', hours: 20, people: [3] },
+      { stage: 3, name: 'Raport o oddziaływaniu na środowisko', status: 'working', workload: 'large', hours: 90, people: [3, 5], important: true, description: 'Wymaga danych z inwentaryzacji przyrodniczej i opinii RDOŚ.' },
+      { stage: 4, name: 'Zamówić mapę do celów projektowych', status: 'todo', workload: 'small', hours: -30, people: [5] }
+    ],
     '2602': [
       { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', workload: 'large', hours: 72, people: [1, 3] },
       { stage: 9, name: 'Uzgodnić kolizję z siecią gazową', status: 'review', workload: 'medium', hours: -36, people: [2] },
-      { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', workload: 'veryLarge', hours: 240, people: [3, 4], important: true }
+      { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', workload: 'veryLarge', hours: 240, people: [3, 4], important: true },
+      { stage: 11, name: 'Zestawienie przekrojów odcinka III', status: 'done', workload: 'medium', hours: -50, people: [3] },
+      { stage: 7, name: 'Odpowiedzieć na wezwanie w sprawie pozwolenia', status: 'changes', workload: 'medium', hours: 3, people: [2], reason: 'Dopisać analizę wpływu na brzegi.' },
+      { stage: 12, name: 'Przedmiar i kosztorys inwestorski', status: 'todo', workload: 'large', hours: 150, people: [5, 3] },
+      { stage: 13, name: 'Skompletować egzemplarze do przekazania', status: 'todo', workload: 'small', hours: 60, people: [3] }
     ],
-    '2601': [
-      { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', workload: 'medium', hours: 48, people: [0, 2] },
-      { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', workload: 'small', hours: 120, people: [4] }
+    '2603': [
+      { stage: 0, name: 'Ustalić zakres prac z inwestorem', status: 'todo', workload: 'small', hours: 48, people: [0] },
+      { stage: 1, name: 'Wstępna koncepcja zbiornika', status: 'todo', workload: 'veryLarge', hours: 300, people: [2], important: true }
     ],
     '2604': [
       {
         stage: 3, name: 'Przygotować kartę informacyjną przedsięwzięcia',
         status: 'changes', workload: 'medium', hours: -12, people: [1],
         reason: 'Uzupełnić opis oddziaływania na wody powierzchniowe.'
-      }
+      },
+      { stage: 3, name: 'Analiza wariantów pompowni', status: 'working', workload: 'medium', hours: 30, people: [2, 4] },
+      { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', workload: 'small', hours: 240, people: [4] }
+    ],
+    '2605': [
+      { stage: 13, name: 'Przekazanie dokumentacji zamawiającemu', status: 'done', workload: 'small', hours: -900, people: [1] }
+    ],
+    '2606': [
+      { stage: 0, name: 'Przygotować program prac', status: 'done', workload: 'small', hours: -400, people: [6] },
+      { stage: 4, name: 'Pomiary batymetryczne zbiornika', status: 'done', workload: 'medium', hours: -250, people: [7] },
+      { stage: 6, name: 'Operat wodnoprawny', status: 'working', workload: 'large', hours: 70, people: [6, 2], important: true },
+      { stage: 5, name: 'Wniosek o decyzję lokalizacyjną', status: 'review', workload: 'medium', hours: 10, people: [3] },
+      { stage: 9, name: 'Projekt zagospodarowania osadów', status: 'todo', workload: 'large', hours: 200, people: [2] },
+      { stage: 6, name: 'Uzupełnić dane hydrologiczne', status: 'changes', workload: 'small', hours: -4, people: [6], reason: 'Brakuje przepływów z ostatnich 10 lat.' }
+    ],
+    '2607': [
+      { stage: 0, name: 'Zebrać wytyczne od zarządcy drogi', status: 'done', workload: 'small', hours: -150, people: [3] },
+      { stage: 1, name: 'Wstępny przekrój przepustu', status: 'working', workload: 'medium', hours: 24, people: [3, 6] },
+      { stage: 4, name: 'Pomiary geodezyjne dojazdu', status: 'working', workload: 'small', hours: 36, people: [7] },
+      { stage: 6, name: 'Obliczenia hydrauliczne', status: 'todo', workload: 'medium', hours: 96, people: [6] },
+      { stage: 7, name: 'Złożyć wniosek o pozwolenie wodnoprawne', status: 'todo', workload: 'small', hours: 400, people: [4] }
     ]
   };
 
@@ -1412,10 +1449,12 @@
     { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
     { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
     { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
-    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 }
+    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 },
+    { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', deadline: demoDate(75), done: 6, working: 2, scale: 1.25, age: 70 },
+    { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', deadline: demoDate(150), done: 3, working: 1, scale: 0.7, age: 20 }
   ];
 
-  var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130 };
+  var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130, 'Marta Testowa': 160, 'Tomasz Testowy': 110 };
 
   function loadDemo() {
     var roster = people().slice();
@@ -1481,9 +1520,11 @@
         var stageId = DEMO_STAGE_IDS[spec.stage];
         var stage = stageId && stages.filter(function (s) { return s.id === stageId; })[0];
         if (!stage) return;
+        var dupe = stages.some(function (st) { return (st.tasks || []).some(function (t) { return t.name === spec.name; }); });
+        if (dupe) return;
         var assignees = (spec.people || []).map(demoPersonId).filter(function (id) { return id && allowed.indexOf(id) >= 0; });
         var task = Tasks.createTask({
-          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload,
+          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload, description: spec.description || '',
           important: spec.important === true, assignees: assignees
         }, stage.tasks || [], allowed);
         var path = DEMO_PATHS[spec.status] || [];
@@ -1514,12 +1555,13 @@
     setPeople(function () { return roster; });
 
     var added = 0;
+    var freshCodes = {};
     setWorkspace(function (projects) {
       var result = projects.slice();
       DEMO.forEach(function (row) {
         if (result.some(function (p) { return p.code.toUpperCase() === row.code; })) return;
         var stages = Catalog.all.map(function (entry, index) {
-          var stage = Model.createStage(entry.id, { deadline: demoDate(index * 10 - 20) });
+          var stage = Model.createStage(entry.id, { deadline: demoDate(index * 10 - 20), hours: row.scale ? Math.round(entry.defaultHours * row.scale) : undefined });
           if (index < row.done) stage.status = 'done';
           else if (index < row.done + row.working) stage.status = 'working';
           return stage;
@@ -1530,11 +1572,18 @@
           code: row.code, name: row.name, client: row.client, status: row.status,
           deadline: row.deadline, stages: stages, team: team
         }, result);
-        created.createdAt = new Date(Date.now() - (14 + added * 11) * 86400000).toISOString();
+        created.createdAt = new Date(Date.now() - (row.age != null ? row.age : 14 + added * 11) * 86400000).toISOString();
+        freshCodes[row.code] = true;
         result = result.concat([created]);
         added += 1;
       });
-      return result;
+      // Wcześniej wczytane projekty przykładowe dostają brakujące zadania (po nazwie, więc bez dublowania).
+      return result.map(function (project) {
+        if (freshCodes[project.code] || !DEMO_TASKS[project.code] || !DEMO.some(function (r) { return r.code === project.code; })) return project;
+        var stages = (project.stages || []).map(function (st) { return Object.assign({}, st, { tasks: (st.tasks || []).slice() }); });
+        demoTasksFor(project.code, stages, project.team || Team.emptyTeam());
+        return Object.assign({}, project, { stages: stages });
+      });
     });
     // Przykładowa korespondencja: wpisy do projektów demonstracyjnych (po kodzie, bo id nadaje model).
     var iso = function (offset) {
@@ -1550,7 +1599,22 @@
       ],
       '2602': [
         { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30), noReply: true },
-        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), replyDue: iso(11) }
+        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), replyDue: iso(11) },
+        { direction: 'out', kind: 'application', counterparty: 'Starostwo Powiatowe', subject: 'Wniosek o pozwolenie wodnoprawne — odcinek III', registeredDate: iso(-12), replyDue: iso(1) }
+      ],
+      '2604': [
+        { direction: 'in', kind: 'opinion', counterparty: 'Regionalna Dyrekcja Ochrony Środowiska', subject: 'Opinia do karty informacyjnej przedsięwzięcia', registeredDate: iso(-6), replyDue: iso(8) },
+        { direction: 'out', kind: 'inquiry', counterparty: 'Spółka Wodna Rudnik', subject: 'Prośba o dane eksploatacyjne pomp', registeredDate: iso(-15), noReply: true }
+      ],
+      '2605': [
+        { direction: 'in', kind: 'decision', counterparty: 'Urząd Miasta', number: 'GK.6740.4.2026', subject: 'Decyzja zatwierdzająca dokumentację', registeredDate: iso(-45), noReply: true }
+      ],
+      '2606': [
+        { direction: 'out', kind: 'application', counterparty: 'Wody Polskie RZGW', subject: 'Wniosek o uzgodnienie operatu wodnoprawnego', registeredDate: iso(-4), replyDue: iso(24) },
+        { direction: 'in', kind: 'summons', counterparty: 'Gmina Wąwolnica', subject: 'Wezwanie do uzupełnienia danych o osadach', registeredDate: iso(-2), replyDue: iso(4) }
+      ],
+      '2607': [
+        { direction: 'in', kind: 'inquiry', counterparty: 'Zarząd Dróg Powiatowych', subject: 'Zapytanie o przepustowość istniejącego przepustu', registeredDate: iso(-5), replyDue: iso(9) }
       ]
     };
     updateWorkspace(function (workspace) {
@@ -1570,11 +1634,13 @@
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
     });
     // Demonstracyjne wartości umów i czas pracy z ostatnich tygodni (do Analizy).
-    var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000 };
-    var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02 };
+    var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000, '2606': 240000, '2607': 95000 };
+    var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02, '2606': 0.84, '2607': 1.1 };
     updateWorkspace(function (workspace) {
-      if ((workspace.entries || []).length) return workspace;
+      // Wpisy przykładowe (id e-demo-*) generujemy na nowo; wpisy użytkownika zostają.
+      var ownEntries = (workspace.entries || []).filter(function (e) { return String(e.id).indexOf('e-demo-') !== 0; });
       var entriesOut = [];
+      var notes = ['', '', 'Rozmowa z inwestorem', 'Poprawki po uwagach', 'Wizja lokalna', 'Uzgodnienia telefoniczne', '', 'Obliczenia i zestawienia', '', 'Przegląd dokumentacji'];
       var projectsOut = workspace.projects.map(function (project) {
         if (demoValues[project.code] === undefined) return project;
         return Object.assign({}, project, { contractValue: project.contractValue == null ? demoValues[project.code] : project.contractValue });
@@ -1612,8 +1678,8 @@
               var end = new Date(start.getTime() + hours * 3600000);
               counter += 1;
               entriesOut.push({
-                id: 'e-demo-' + counter, personId: team[(k + d) % team.length], projectId: project.id, stageId: row.stage.id, taskId: '',
-                label: Model.describeStage(row.stage).name, start: start.toISOString(), end: end.toISOString(), note: '', source: 'manual',
+                id: 'e-demo-' + counter, personId: team[(k + d) % team.length], projectId: project.id, stageId: row.stage.id, taskId: (row.stage.tasks || []).length && counter % 2 === 0 ? row.stage.tasks[counter % row.stage.tasks.length].id : '',
+                label: Model.describeStage(row.stage).name, start: start.toISOString(), end: end.toISOString(), note: notes[counter % notes.length], source: 'manual',
                 updatedAt: start.toISOString()
               });
               left -= hours; todayHours -= hours;
@@ -1621,23 +1687,71 @@
           }
         });
       });
-      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: entriesOut });
+      // Dzisiejszy czas pracy kilku osób — żeby „Moja praca” i Aktualności miały co pokazać.
+      var nowDate = new Date();
+      if (nowDate.getHours() >= 3) {
+        projectsOut.filter(function (p) { return p.status === 'active' && demoFactor[p.code] !== undefined; }).slice(0, 3).forEach(function (project, k) {
+          var team = Team.projectPeople(project.team);
+          var stage = (project.stages || []).filter(function (st) { return st.status === 'working'; })[0];
+          if (!team.length || !stage) return;
+          var start = new Date(nowDate.getTime() - (2 + k) * 3600000);
+          counter += 1;
+          entriesOut.push({ id: 'e-demo-' + counter, personId: team[k % team.length], projectId: project.id, stageId: stage.id, taskId: '', label: Model.describeStage(stage).name, start: start.toISOString(), end: new Date(start.getTime() + (1.5 + k * 0.25) * 3600000).toISOString(), note: 'Praca nad dokumentacją', source: 'manual', updatedAt: start.toISOString() });
+        });
+      }
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: ownEntries.concat(entriesOut) });
+    });
+    // Korekty godzin zarządu (np. dodatkowe uzgodnienia) — widać je w budżecie etapu i w Analizie.
+    var demoAdjust = [
+      { code: '2602', stage: 'concept', hours: 24, note: 'Dodatkowe uzgodnienia wariantów z RZGW' },
+      { code: '2604', stage: 'environment-docs', hours: 12, note: 'Rozszerzony zakres karty informacyjnej' },
+      { code: '2606', stage: 'water-docs', hours: 16, note: 'Dodatkowa analiza osadów' }
+    ];
+    updateWorkspace(function (workspace) {
+      var boss = demoPersonId(0);
+      var changed = false;
+      var projects = workspace.projects.map(function (project) {
+        var rows = demoAdjust.filter(function (r) { return r.code === project.code; });
+        if (!rows.length) return project;
+        var stages = project.stages.map(function (stage) {
+          var row = rows.filter(function (r) { return r.stage === stage.id; })[0];
+          if (!row || (stage.adjustments || []).some(function (a) { return a.note === row.note; })) return stage;
+          var res = E.Budget.addAdjustment(stage, { hours: row.hours, note: row.note }, boss, new Date(Date.now() - 6 * 86400000));
+          if (!res.valid) return stage;
+          changed = true;
+          return res.stage;
+        });
+        return Object.assign({}, project, { stages: stages });
+      });
+      return changed ? Object.assign({}, workspace, { projects: projects }) : workspace;
     });
     updateWorkspace(function (workspace) {
       var social = workspace.social || E.Social.empty();
-      if (social.posts.length) return workspace;
       var byCode = {};
       workspace.projects.forEach(function (project) { byCode[project.code] = project; });
-      var writers = [demoPersonId(0), demoPersonId(1), demoPersonId(2)];
+      var P = function (i) { return demoPersonId(i); };
+      // Każdy wpis ma odcisk (początek tekstu), więc ponowne wczytanie niczego nie dubluje.
       var posts = [
-        { who: writers[0], code: '', type: 'announcement', pinned: true, text: 'W piątek o 14:00 spotkanie całego biura — omówimy obłożenie na listopad i plan szkoleń. Kawa i ciasto od zarządu.', ago: 30 },
-        { who: writers[1], code: '2602', text: 'Mamy decyzję o warunkach zabudowy odcinka III. Można ruszać z przekrojami.', ago: 20 },
-        { who: writers[2], code: '2601', text: 'Wizja lokalna przy przepuście zrobiona. Stan lepszy, niż zakładaliśmy w inwentaryzacji — zdjęcia poniżej.', ago: 8, photos: [0, 1, 2] },
-        { who: writers[1], code: '', type: 'poll', text: 'Gdzie robimy firmowy wyjazd integracyjny w tym roku?', options: ['Mazury', 'Bieszczady', 'Kazimierz Dolny', 'Zostajemy w Warszawie'], votes: { 0: 0, 1: 1, 2: 0, 3: 3 }, ago: 5 },
-        { who: writers[0], code: '', type: 'kudos', to: demoPersonId(2), text: 'Za nocne domknięcie dokumentacji środowiskowej przed terminem. Dziękujemy!', ago: 3 },
-        { who: writers[2], code: '2601', text: 'Mapy z gminy dotarły — wrzuciłam je do folderu projektu.', ago: 2, photos: [3] }
+        { who: P(0), code: '', type: 'announcement', pinned: true, text: 'W piątek o 14:00 spotkanie całego biura — omówimy obłożenie na listopad i plan szkoleń. Kawa i ciasto od zarządu.', ago: 30,
+          reactions: { like: [1, 2, 3], eyes: [4] }, comments: [{ who: 2, text: 'Będę! Mam kilka pytań o urlopy.', ago: 28 }, { who: 1, text: 'Przygotuję zestawienie obłożenia.', ago: 26 }] },
+        { who: P(1), code: '2602', text: 'Mamy decyzję o warunkach zabudowy odcinka III. Można ruszać z przekrojami.', ago: 20, reactions: { party: [0, 2, 3, 5], like: [4] } },
+        { who: P(2), code: '2601', text: 'Wizja lokalna przy przepuście zrobiona. Stan lepszy, niż zakładaliśmy w inwentaryzacji — zdjęcia poniżej.', ago: 8, photos: [0, 1, 2],
+          reactions: { like: [0, 1], heart: [3] }, comments: [{ who: 0, text: 'Świetnie, to skraca etap inwentaryzacji.', ago: 7 }, { who: 3, text: 'Mogę zająć się opisem zdjęć do raportu.', ago: 6 }] },
+        { who: P(1), code: '', type: 'poll', text: 'Gdzie robimy firmowy wyjazd integracyjny w tym roku?', options: ['Mazury', 'Bieszczady', 'Kazimierz Dolny', 'Zostajemy w Warszawie'], votes: { 0: 0, 1: 1, 2: 0, 3: 3, 4: 1, 5: 2 }, ago: 5 },
+        { who: P(0), code: '', type: 'kudos', to: P(2), text: 'Za nocne domknięcie dokumentacji środowiskowej przed terminem. Dziękujemy!', ago: 3, reactions: { heart: [1, 3, 4, 5], party: [6] } },
+        { who: P(2), code: '2601', text: 'Mapy z gminy dotarły — wrzuciłam je do folderu projektu.', ago: 2, photos: [3] },
+        { who: P(0), code: '', type: 'announcement', text: 'Od poniedziałku czas pracy wpisujemy codziennie do 16:00. Dzięki temu Analiza pokazuje aktualne obłożenie, a lider widzi, gdzie potrzeba wsparcia.', ago: 50, reactions: { like: [1, 2, 3, 6] }, comments: [{ who: 5, text: 'Czy wpisy z zegara liczą się tak samo jak ręczne?', ago: 48 }, { who: 0, text: 'Tak, oba są w rejestrze czasu.', ago: 47 }] },
+        { who: P(1), code: '2606', text: 'Odmulenie zbiornika: pomiary batymetryczne skończone. Geodeta oddał dane wcześniej, niż planowaliśmy.', ago: 26, photos: [1], reactions: { like: [0, 6, 7], party: [2] } },
+        { who: P(0), code: '', type: 'poll', text: 'Kiedy robimy szkolenie z nowego programu do obliczeń hydraulicznych?', options: ['Wtorek rano', 'Środa po południu', 'Czwartek rano'], votes: { 0: 0, 1: 0, 2: 1, 3: 2, 6: 0, 7: 1 }, ago: 14 },
+        { who: P(1), code: '', type: 'kudos', to: P(3), text: 'Za świetnie przygotowane zestawienie przekrojów dla odcinka III — oszczędziło nam pół dnia.', ago: 12, reactions: { heart: [0, 2], like: [5] } },
+        { who: P(6), code: '2607', text: 'Pierwsze wyniki hydrologii dla Klonowa: przepływ miarodajny niższy niż w założeniach — przepust można zmniejszyć. Szczegóły w obliczeniach.', ago: 6, reactions: { eyes: [0, 3], like: [1] }, comments: [{ who: 0, text: 'Super, to zmienia kosztorys. Piotr, zobacz proszę.', ago: 5 }] },
+        { who: P(2), code: '2604', text: 'Pompy w Rudniku po przeglądzie — dokumentacja zdjęciowa stanu istniejącego.', ago: 4, photos: [2, 0] },
+        { who: P(5), code: '', text: 'Zaktualizowałem cenniki kosztorysowe na IV kwartał. Plik w folderze Kosztorysy — proszę korzystać z nowej wersji.', ago: 1, reactions: { like: [0, 1, 2] } }
       ];
+      var comments = [];
       posts.forEach(function (row) {
+        var stamp = row.text.slice(0, 40);
+        if (social.posts.some(function (post) { return post.text.slice(0, 40) === stamp; })) return;
         var project = row.code ? byCode[row.code] : null;
         var res = E.Social.addPost(social, {
           personId: row.who, projectId: project ? project.id : null, text: row.text, type: row.type, to: row.to, pinned: row.pinned, options: row.options,
@@ -1646,10 +1760,18 @@
         if (!res.valid) return;
         res.post.at = new Date(Date.now() - row.ago * 3600000).toISOString();
         if (row.votes && res.post.poll) {
-          Object.keys(row.votes).forEach(function (n) { if (demoPersonId(Number(n)) && res.post.poll.options[row.votes[n]]) res.post.poll.votes[demoPersonId(Number(n))] = res.post.poll.options[row.votes[n]].id; });
+          Object.keys(row.votes).forEach(function (n) { if (P(Number(n)) && res.post.poll.options[row.votes[n]]) res.post.poll.votes[P(Number(n))] = res.post.poll.options[row.votes[n]].id; });
         }
         social = res.social;
         social.posts[social.posts.length - 1] = res.post;
+        var key = 'post:' + res.post.id;
+        Object.keys(row.reactions || {}).forEach(function (rid) {
+          row.reactions[rid].forEach(function (who) { if (P(who)) social = E.Social.toggleReaction(social, key, rid, P(who)); });
+        });
+        (row.comments || []).forEach(function (c) {
+          var made = E.Social.addComment(social, key, P(c.who), c.text, new Date(Date.now() - c.ago * 3600000));
+          if (made.valid) social = made.social;
+        });
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, social: social });
     });

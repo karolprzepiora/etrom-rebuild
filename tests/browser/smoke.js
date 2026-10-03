@@ -237,31 +237,31 @@ async function main() {
     /* 2. Dane przykładowe */
     await click('#empty-demo');
     await sleep(200);
-    check('dane przykładowe dodają 5 projektów', (await cardCount()) === 5, 'było ' + (await cardCount()));
-    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 5);
+    check('dane przykładowe dodają 7 projektów', (await cardCount()) === 7, 'było ' + (await cardCount()));
+    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 7);
 
     check('każdy projekt przykładowy ma komplet etapów ze standardu w katalogowej kolejności',
       await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.all.length)'));
 
     /* 3. Zapis lokalny */
     const stored = await evaluate('const raw = localStorage.getItem("etrom.v3"); return raw ? JSON.parse(raw).projects.length : -1;');
-    check('dane trafiają do localStorage na file://', stored === 5, 'zapisano: ' + stored);
+    check('dane trafiają do localStorage na file://', stored === 7, 'zapisano: ' + stored);
 
     /* 4. Trwałość po przeładowaniu — od tego momentu liczymy błędy strony */
     pageErrors = [];
     await evaluate('location.reload(); return true;');
     await sleep(600);
     await waitForApp();
-    check('po przeładowaniu projekty nadal są', (await cardCount()) === 5, 'było ' + (await cardCount()));
+    check('po przeładowaniu projekty nadal są', (await cardCount()) === 7, 'było ' + (await cardCount()));
 
     /* 5. Wyszukiwanie */
     await evaluate('const input = document.getElementById("tb-search"); input.value = "Lipnica"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     check('szukanie po nazwie zawęża listę do jednego projektu', (await cardCount()) === 1, 'było ' + (await cardCount()));
     check('przy aktywnym filtrze widać licznik i przycisk czyszczenia',
-      await evaluate('return /^1 z 5$/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
+      await evaluate('return /^1 z 7$/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
     await click('#tb-clear');
     await sleep(150);
-    check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 5 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
+    check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 7 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
 
     /* 6. Filtr statusu przez menu */
     await openMenu('#tb-status', 'done');
@@ -269,16 +269,16 @@ async function main() {
     check('przycisk filtra pokazuje wybraną wartość',
       await evaluate('const b = document.getElementById("tb-status"); return b.classList.contains("filter-btn--active") && /Zakończony/.test(b.textContent);'));
     await openMenu('#tb-status', 'all');
-    check('powrót do wszystkich statusów', (await cardCount()) === 5);
+    check('powrót do wszystkich statusów', (await cardCount()) === 7);
 
     /* 7. Sortowanie: domyślnie po numerze projektu, bez grup; kierunek można odwrócić */
     const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
     check('lista jest posortowana po numerze projektu (rosnąco) i nie ma grup',
-      order === '2601,2602,2603,2604,2605' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
+      order === '2601,2602,2603,2604,2605,2606,2607' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(150);
     check('drugi klik w „Nr” odwraca kolejność, nagłówek ogłasza kierunek',
-      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2605,2604,2603,2602,2601'
+      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2607,2606,2605,2604,2603,2602,2601'
       && (await evaluate('return document.querySelector(\'th[aria-sort]\').getAttribute("aria-sort");')) === 'descending');
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(100);
@@ -314,7 +314,7 @@ async function main() {
     await sleep(250);
     const attention = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(r => r.dataset.projectCode);');
     check('zakładka „Wymaga uwagi” zawęża listę do projektów w stanie ostrzegawczym i alarmowym',
-      (await state('s.filters.health')) === 'attention' && attention.length > 0 && attention.length < 5
+      (await state('s.filters.health')) === 'attention' && attention.length > 0 && attention.length < 7
       && (await state('s.workspace.projects.filter(p => ' + JSON.stringify(attention) + '.includes(p.code)).every(p => ["alarm","warning"].includes(window.ETROM.Insight.health(p, new Date()).level))')),
       'kody: ' + attention.join(','));
     check('aktywna zakładka jest zaznaczona, licznik zgadza się z listą, a wybór trafia do ustawień',
@@ -330,7 +330,7 @@ async function main() {
       && (await state('s.workspace.projects.filter(p => window.ETROM.Insight.hasOverdue(p, new Date(), s.workspace.mail)).length')) === (await cardCount()));
     await click('[data-fk="view-all"]');
     await sleep(200);
-    check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 5 && (await state('s.filters.health')) === 'all');
+    check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 7 && (await state('s.filters.health')) === 'all');
 
     /* 7b. Edycja w komórce: lider zmieniany bez wchodzenia w projekt */
     const idLead = await projectId('2603');
@@ -410,7 +410,7 @@ async function main() {
     await sleep(150);
     const duplicateError = await evaluate('const node = document.querySelector("#project-form .field__error"); return node ? node.textContent : "";');
     check('formularz blokuje powtórzony kod projektu',
-      /już istnieje/i.test(duplicateError) && (await cardCount()) === 5, 'komunikat: "' + duplicateError + '"');
+      /już istnieje/i.test(duplicateError) && (await cardCount()) === 7, 'komunikat: "' + duplicateError + '"');
     check('pole z błędem jest oznaczone i opisane dla czytnika ekranu',
       await evaluate('const i = document.getElementById("pf-code"); return i.getAttribute("aria-invalid") === "true" && (i.getAttribute("aria-describedby") || "").indexOf("pf-code-error") >= 0;'));
 
@@ -423,7 +423,7 @@ async function main() {
     );
     await sleep(200);
     check('poprawny formularz dodaje projekt i zamyka panel',
-      (await cardCount()) === 6 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
+      (await cardCount()) === 8 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
       'pozycji: ' + (await cardCount()));
 
     /* 13. Dane użytkownika nie są wykonywane jako HTML */
@@ -474,11 +474,11 @@ async function main() {
     check('pole „zaznacz wszystkie” jest w stanie pośrednim', await evaluate('return document.getElementById("select-all").indeterminate;'));
     await click('#bulk-delete');
     await sleep(300);
-    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 4 && !(await evaluate('return !!document.querySelector(".bulkbar");')),
+    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 6 && !(await evaluate('return !!document.querySelector(".bulkbar");')),
       'pozycji: ' + (await cardCount()) + ', pasek: ' + (await evaluate('return !!document.querySelector(".bulkbar");')) + ', w danych: ' + (await state('s.workspace.projects.length')));
     await click('[data-toast-action]');
     await sleep(300);
-    check('cofnięcie przywraca oba projekty', (await cardCount()) === 6);
+    check('cofnięcie przywraca oba projekty', (await cardCount()) === 8);
 
     /* 16. Wybór kolumn (zapamiętany) */
     await click('#tb-columns');
@@ -630,10 +630,11 @@ async function main() {
     await sleep(250);
     check('„Przywróć” oddaje pozycję do Skrzynki',
       await evaluate('return document.querySelectorAll("#view-inbox .ibx > .ibx__list .ibx__row").length === ' + inboxBefore + ';'));
+    const approveBefore = await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;');
     await click('[data-fk^="inbox-approve-"]');
     await sleep(300);
     check('„Zatwierdź” w Skrzynce zamyka zadanie i pozycja znika',
-      await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length === 0;'));
+      (await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;')) === approveBefore - 1);
     // Przywracamy zadanie do zatwierdzenia — dalsze kroki scenariusza na nim polegają.
     await evaluate('window.ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.map(function (p) { return Object.assign({}, p, { stages: p.stages.map(function (g) { return Object.assign({}, g, { tasks: (g.tasks || []).map(function (t) { return t.name.indexOf("Uzgodnić kolizję") >= 0 ? Object.assign({}, t, { status: "review" }) : t; }) }); }) }); }) }) }); }); return true;');
     await go('#/moja-praca');
@@ -782,7 +783,7 @@ async function main() {
     check('Escape zamyka menu wiersza bez skutków ubocznych', await evaluate('return !document.querySelector(".popover") && !document.querySelector("dialog[open]");'));
 
     /* 25. Ekran Zespołu */
-    check('dane przykładowe zakładają katalog osób', (await state('(s.workspace.people || []).length')) === 6);
+    check('dane przykładowe zakładają katalog osób', (await state('(s.workspace.people || []).length')) === 8);
     await go('#/projekty');
     await click('#tb-columns');
     await sleep(150);
@@ -795,7 +796,7 @@ async function main() {
     await click('.nav__item[data-screen="team"]');
     await sleep(500);
     check('panel boczny przełącza na ekran Zespołu',
-      await evaluate('return !document.getElementById("view-team").hidden && document.getElementById("view-projects").hidden && document.querySelectorAll(".prow").length === 6;'));
+      await evaluate('return !document.getElementById("view-team").hidden && document.getElementById("view-projects").hidden && document.querySelectorAll(".prow").length === 8;'));
     check('aktywna pozycja nawigacji ma aria-current',
       (await evaluate('return document.querySelector(\'.nav__item[data-screen="team"]\').getAttribute("aria-current");')) === 'page');
     check('wiersz osoby pokazuje funkcje pełnione w projektach jako odnośniki',
@@ -814,7 +815,7 @@ async function main() {
       'document.getElementById("person-form").requestSubmit(); return true;'
     );
     await sleep(300);
-    check('nowa osoba trafia do katalogu', (await state('s.workspace.people.length')) === 7);
+    check('nowa osoba trafia do katalogu', (await state('s.workspace.people.length')) === 9);
 
     await pressKey('n');
     await evaluate(

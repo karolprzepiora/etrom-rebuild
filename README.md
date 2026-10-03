@@ -21,8 +21,11 @@ To wszystko. Nie trzeba Node.js, npm ani niczego instalować.
 Jeśli wolisz adres `http://`, działa też przez dowolny serwer statyczny,
 na przykład `python -m http.server 8000`.
 
-Pierwsze uruchomienie jest puste. Przycisk **Dodaj dane przykładowe** dopisuje pięć
-projektów z etapami, zadaniami i zespołem, żeby było na czym sprawdzić program.
+Pierwsze uruchomienie jest puste. Przycisk **Dodaj dane przykładowe** dopisuje siedem
+projektów z etapami, ponad 30 zadaniami (po terminie, na dziś, do poprawy, ukończone), ośmioma
+osobami ze stawkami godzinowymi, ok. 450 wpisami czasu pracy, korektami godzin zarządu,
+korespondencją i wpisami w Aktualnościach (ankiety, wyróżnienia, zdjęcia, komentarze, reakcje).
+Ponowne wczytanie niczego nie dubluje — dopisuje tylko brakujące rzeczy.
 Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 **Ustawienia i dane** na dole panelu bocznego.
 
