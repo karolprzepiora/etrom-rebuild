@@ -33,7 +33,7 @@
     { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },
     { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' }
   ];
-  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, vivid: 100, contrast: 50 };
+  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, tilesFull: false, vivid: 100, contrast: 50 };
 
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
   function logo(markOnly) {
@@ -90,7 +90,7 @@
     });
 
     // ---- Wygląd: motyw kolorystyczny, HDR, intensywność i kontrast ----
-    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast };
+    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast, tilesFull: prefs.tilesFull };
     var palButtons = PALETTES.map(function (pal) {
       return D.el('button', {
         class: 'pal-swatch',
@@ -104,6 +104,11 @@
       id: 'look-hdr', label: 'HDR', checked: look.hdr,
       attrs: { 'data-fk': 'look-hdr', 'aria-describedby': 'look-hdr-hint' },
       onChange: function (on) { look.hdr = on; actions.setPref({ hdr: on }); syncLook(); }
+    });
+    var tilesSwitch = UI.switchControl({
+      id: 'look-tiles', label: 'Kafle w pełnym kolorze', checked: !!look.tilesFull,
+      attrs: { 'data-fk': 'look-tiles', 'aria-describedby': 'look-tiles-hint' },
+      onChange: function (on) { look.tilesFull = on; actions.setPref({ tilesFull: on }); syncLook(); }
     });
     function slider(o) {
       var out = D.el('output', { class: 'look-slider__val t-num', attrs: { for: o.id } });
@@ -131,6 +136,7 @@
     function syncLook() {
       palButtons.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === look.palette)); });
       hdrSwitch.input.checked = !!look.hdr;
+      tilesSwitch.input.checked = !!look.tilesFull;
       [vividSlider, contrastSlider].forEach(function (sl) { sl.input.value = String(sl.o.get()); sl.out.textContent = sl.o.format(sl.o.get()); });
       actions.previewLook(look);
     }
@@ -175,6 +181,7 @@
         D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
       ]),
       D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
+      D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie spokojne: kolor tylko w pasku i numerze' })]),
       vividSlider.node,
       contrastSlider.node,
       D.el('div', { class: 'settings__row' }, [resetLook]),

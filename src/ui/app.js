@@ -1529,6 +1529,8 @@
     var el = document.documentElement;
     if (!look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
     else el.setAttribute('data-palette', look.palette);
+    if (look.tilesFull) el.setAttribute('data-tiles', 'full');
+    else el.removeAttribute('data-tiles');
     if (look.hdr === false) el.setAttribute('data-hdr', 'off');
     else el.removeAttribute('data-hdr');
     var vivid = typeof look.vivid === 'number' ? look.vivid : 100;

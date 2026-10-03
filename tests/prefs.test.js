@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -162,4 +162,10 @@ test('cel dnia i koniec dnia pracy: granice i format', () => {
 test('collapsedRails: tylko poprawne, niepowtarzalne identyfikatory paneli', () => {
   assert.deepEqual(Prefs.normalize({ collapsedRails: ['mywork', 'mywork', 'time', 5, 'Zły Id!'] }).collapsedRails, ['mywork', 'time']);
   assert.deepEqual(Prefs.normalize({ collapsedRails: 'x' }).collapsedRails, []);
+});
+
+test('tilesFull: domyślnie spokojne kafle, tylko true włącza pełny kolor', () => {
+  assert.equal(Prefs.normalize({}).tilesFull, false);
+  assert.equal(Prefs.normalize({ tilesFull: 'tak' }).tilesFull, false);
+  assert.equal(Prefs.normalize({ tilesFull: true }).tilesFull, true);
 });

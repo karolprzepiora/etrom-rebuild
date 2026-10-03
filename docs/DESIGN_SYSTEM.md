@@ -469,3 +469,19 @@ Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po pusz
 - **Wybór ręczny**: `project.color` (indeks 0–39 albo `null` = automatyczny), pole „Kolor projektu” w formularzu projektu (zakładanie i edycja). `Identity.setColors(projects)` jest wołane przy każdym renderze, więc `tileHue/tileTone/hueStyle/segStyle` biorą kolor wybrany ręcznie w kaflu, pillach, pasku czasu i karcie czasu. Zmienne CSS: `--hue` + `--tone` (kafle), `--seg-h` + `--seg-t` (paski).
 - **Jeden kafel wskaźnika**: `.pd-prop` (projekt), `.ts-stat` (Czas), `.an-tile` (Analiza) mają wspólny wygląd (tło, obrys, cień, odstępy, etykieta 11 px wersalikami, wartość 1,25 rem, podpis xs). Nowy kafel wskaźnika używa tych samych reguł.
 - **Wysuwany panel boczny**: `UI.railLayout({id, title, collapsed, onToggle, main, side, badge})`. Stan zwinięcia w `prefs.collapsedRails`, przełączany akcją `toggleRail(id)`. Używany w „Mojej pracy” (zegar i projekty) i w „Czasie” (panel dnia); lista projektów ma własną wersję „Najbliższe terminy” (`prefs.railCollapsed`).
+
+## Audyt UI i standard rozmiarów
+
+Pomiar komputowanych stylów na wszystkich ekranach wykazał rozjazdy; ujednolicono je tak:
+
+| Element | Przed | Standard |
+|---|---|---|
+| Zakładki-pigułki | 37 px (Czas, Analiza) i 44 px (reszta) | 38 px (pigułka 32 px + 3 px ramka) |
+| Zaokrąglenie kart | 14, 16, 18, 20, 22 px | kafel wskaźnika 16, karta/panel 18, nagłówek strony 20 |
+| Nagłówek strony | 112 px, tytuł 2,5 rem | ~92 px, tytuł 2 rem |
+| Kafel wskaźnika | 91–135 px, wartość 1,25–1,5 rem | ~72 px, wartość 1,125 rem |
+| Macierz karty czasu | wiersz 48 px, nagłówek 56 px | wiersz 36 px, zadanie 32 px, nagłówek ~44 px |
+
+**Kafle projektów** mają dwa tryby (`prefs.tilesFull`, atrybut `data-tiles="full"`):
+- **spokojny (domyślny)**: neutralna powierzchnia, kolor projektu w pasku z lewej (6 px), numerze i delikatnym tle; czerwony obrys tylko dla alarmu; baner projektu o 40% mniej nasycony;
+- **pełny kolor**: dotychczasowe gradienty (Ustawienia → Wygląd → „Kafle w pełnym kolorze”).

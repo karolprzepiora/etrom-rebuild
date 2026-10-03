@@ -282,7 +282,7 @@
           id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', cls: 'mywork', mainCls: 'mywork__main',
           collapsed: (state.prefs.collapsedRails || []).indexOf('mywork') >= 0,
           onToggle: function () { ctx.actions.toggleRail('mywork'); },
-          badge: minutes ? TL.duration(minutes) : '',
+          badge: minutes ? (TL.hoursOf(minutes) + " h").replace(".", ",") : '',
           main: main,
           side: [
             D.el('div', { class: 'mywork__aside' }, [

@@ -293,7 +293,7 @@
         id: 'time', title: 'Panel dnia', cls: 'rl--time',
         collapsed: (state.prefs.collapsedRails || []).indexOf('time') >= 0,
         onToggle: function () { ctx.actions.toggleRail('time'); },
-        badge: minutes ? TL.duration(minutes) : '',
+        badge: minutes ? (TL.hoursOf(minutes) + " h").replace(".", ",") : '',
         main: [main],
         side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])]
       })
