@@ -1260,6 +1260,12 @@ async function main() {
     check('cudzy wpis nie ma przycisku edycji',
       await evaluate('return [...document.querySelectorAll(".fd__stream .fd__card[data-kind=post]")].filter(c => !/Michał/.test(c.querySelector(".fd__name").textContent)).every(c => !c.querySelector("[data-fk^=fd-edit-]"));'));
 
+    /* 38e. Ekran startowy: trzy kroki zależnie od stanu */
+    check('ekran startowy: pusta aplikacja ma trzy nieukończone kroki z działaniami',
+      await evaluate('const a = { newPerson() {}, openCreate() {}, loadDemo() {}, setMe() {} }; const n = window.ETROM.Welcome.card({ workspace: { people: [], projects: [] }, prefs: { me: null } }, { actions: a }, "x"); return n.querySelectorAll(".wl__step").length === 3 && n.querySelectorAll(".wl__step.is-done").length === 0 && !!n.querySelector("[data-fk=wl-add-person]") && !!n.querySelector("[data-fk=wl-add-project]") && !!n.querySelector("[data-fk=wl-demo]");'));
+    check('ekran startowy: z osobami pojawia się wybór „kim jesteś”, z kompletem wszystkie kroki są odhaczone',
+      await evaluate('const people = window.ETROM.app.store.getState().workspace.people; const a = { newPerson() {}, openCreate() {}, loadDemo() {}, setMe() {} }; const n1 = window.ETROM.Welcome.card({ workspace: { people, projects: [] }, prefs: { me: null } }, { actions: a }, "x"); const n2 = window.ETROM.Welcome.card({ workspace: { people, projects: [{ id: 1 }] }, prefs: { me: people[0].id } }, { actions: a }, "x"); return n1.querySelectorAll(".wl__chip").length > 0 && n1.querySelectorAll(".wl__step.is-done").length === 1 && n2.querySelectorAll(".wl__step.is-done").length === 3;'));
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

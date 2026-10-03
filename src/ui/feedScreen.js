@@ -544,7 +544,7 @@
     return {
       summary: me ? 'Firmowe media społecznościowe: wpisy, zdjęcia, ankiety, ogłoszenia i zdarzenia z projektów.' : 'Wybierz w „Mojej pracy”, kim jesteś, aby reagować i pisać.',
       body: D.el('div', { class: 'fd' }, [
-        D.el('div', { class: 'fd__main' }, [composer(state, ctx, me), pinned, filterBar(result, filter, ctx.actions), list, more]),
+        D.el('div', { class: 'fd__main' }, [me ? null : E.Welcome.card(state, ctx, 'Aktualności to firmowa tablica: wpisy, zdjęcia, ankiety i zdarzenia z projektów. Żeby pisać i reagować, system musi wiedzieć, kim jesteś.'), me ? composer(state, ctx, me) : null, pinned, filterBar(result, filter, ctx.actions), list, more]),
         sidebar(state, ctx, now, people)
       ]),
       result: result

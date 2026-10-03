@@ -112,11 +112,7 @@
     var me = Team.findPerson(people, state.prefs.me);
     var now = new Date();
     if (!me) {
-      return { summary: summary(null), body: UI.emptyState({
-        icon: 'people', title: 'Najpierw wybierz, kim jesteś',
-        text: 'Skrzynka zbiera rzeczy, które wymagają Twojej reakcji. Wybór osoby robisz w „Mojej pracy”.',
-        actions: [UI.button({ label: 'Przejdź do mojej pracy', variant: 'primary', onClick: function () { ctx.actions.goTo('mywork'); } })]
-      }) };
+      return { summary: summary(null), body: E.Welcome.card(state, ctx, 'Skrzynka zbiera rzeczy, które wymagają Twojej reakcji: zatwierdzenia, poprawki i pisma bez odpowiedzi.') };
     }
     var result = Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed);
     var filter = state.inboxFilter || 'all';

@@ -385,3 +385,8 @@ Układ dwukolumnowy na całą szerokość: oś czasu (kompozytor, przypięte og�
 - Zakładka **Analiza** w projekcie (`#/projekty/<id>/analiza`) pokazuje ten sam szczegółowy widok co ekran Analizy, ale dla jednego projektu. Widzi ją lider projektu i zarząd; pracownikowi zakładka się nie wyświetla, a po wpisaniu adresu dostaje wyjaśnienie.
 - Autor może poprawić własny wpis (ikona ołówka; Ctrl+Enter zapisuje, Esc anuluje). Karta dostaje ślad „edytowano”. Ankiety i zdjęcia nie są edytowane, tylko treść.
 - Stan projektu w panelu bocznym Aktualności używa tego samego znaku (trójkąt) co menu i lista projektów.
+
+## Audyt spójności i ekran startowy
+
+- Audyt (jasny, ciemny, telefon) potwierdził wspólny język kart i pigułek. Poprawki: nagłówki tabeli Zespołu jak w Projektach; na telefonie filtry są jednym przewijanym rzędem, a tabela projektów pokazuje numer, nazwę i stan (czas umowy, lider, sygnały i termin schodzą; są w karcie i w widoku projektu).
+- **Ekran startowy** (`src/ui/welcome.js`): jedna karta „Zacznijmy od trzech kroków” (osoby → kim jesteś → pierwszy projekt, z odhaczaniem i wyborem osoby jednym kliknięciem) dla Skrzynki, Mojej pracy, Aktualności i Analizy, gdy nie ma jeszcze zespołu albo wybranej osoby. Projekty i Zespół mają własne, bogatsze ekrany startowe.

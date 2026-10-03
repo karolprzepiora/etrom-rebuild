@@ -1876,6 +1876,7 @@
     togglePerson: togglePerson,
     deletePerson: deletePerson,
     newPerson: openNewPerson,
+    openCreate: openCreate,
     clearTeamFilters: clearTeamFilters,
     goTo: goTo,
     setMe: setMe,

@@ -248,11 +248,7 @@
     var me = Team.findPerson(people, state.prefs.me);
     var now = new Date();
     if (!me) {
-      return { summary: 'Analiza projektów dla lidera i zarządu.', tools: null, body: UI.emptyState({
-        icon: 'people', title: 'Najpierw wybierz, kim jesteś',
-        text: 'Analiza pokazuje projekty, które możesz oceniać jako lider albo zarząd. Wybór osoby robisz w „Mojej pracy”.',
-        actions: [UI.button({ label: 'Przejdź do mojej pracy', variant: 'primary', onClick: function () { ctx.actions.goTo('mywork'); } })]
-      }) };
+      return { summary: 'Analiza projektów dla lidera i zarządu.', tools: null, body: E.Welcome.card(state, ctx, 'Analiza pokazuje zużycie godzin, prognozy i opłacalność projektów, które możesz oceniać jako lider albo zarząd.') };
     }
     var data = Analysis.portfolio(state.workspace, me.id, now, { rate: state.prefs.hourlyCost });
     if (!data.access) {

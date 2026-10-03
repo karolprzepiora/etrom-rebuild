@@ -117,17 +117,10 @@
   }
 
   /** Wybór osoby: pierwszy kontakt z ekranem albo zmiana osoby. */
-  function picker(people, actions) {
+  function picker(people, actions, state) {
     var active = (people || []).filter(function (p) { return p.active !== false; })
       .sort(function (a, b) { return Team.fullName(a).localeCompare(Team.fullName(b), 'pl', { sensitivity: 'base' }); });
-    if (!active.length) {
-      return UI.emptyState({
-        icon: 'people',
-        title: 'Najpierw dodaj osoby do zespołu',
-        text: 'Moja praca pokazuje zadania przypisane do jednej osoby. Dodaj ludzi w zakładce Zespół, a potem wybierz, kim jesteś.',
-        actions: [UI.button({ label: 'Przejdź do zespołu', icon: 'people', variant: 'primary', onClick: function () { actions.goTo('team'); } })]
-      });
-    }
+    if (!active.length) return E.Welcome.card(state, { actions: actions }, 'Moja praca pokazuje zadania przypisane do jednej osoby oraz to, co czeka na Twoją decyzję.');
     return D.el('div', { class: 'mpick' }, [
       D.el('h2', { class: 'mpick__title', text: 'Kim jesteś?' }),
       D.el('p', { class: 'mpick__text', text: 'Wybierz siebie — ekran pokaże Twoje zadania i to, co czeka na Twoją decyzję. Wybór zapamiętuje się na tym urządzeniu i można go zmienić w każdej chwili.' }),
@@ -222,7 +215,7 @@
     var people = state.workspace.people || [];
     var me = Team.findPerson(people, state.prefs.me);
     var now = new Date();
-    if (!me) return { summary: 'Twoje zadania, zatwierdzenia i projekty w jednym miejscu.', who: null, body: picker(people, ctx.actions) };
+    if (!me) return { summary: 'Twoje zadania, zatwierdzenia i projekty w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
 
     var work = Insight.myWork(me.id, state.workspace.projects, now);
     var nothing = !work.open && !work.toApprove.length && !work.projects.length;
