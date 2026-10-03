@@ -441,7 +441,7 @@ Pasek boczny, nagłówek każdego ekranu (`.page-header`), baner projektu i przy
 
 Cały język „aurora” żyje w `styles/aurora.css` i jest sterowany czterema ustawieniami (Ustawienia → Wygląd, zapisywane w preferencjach):
 
-- **Motyw kolorystyczny** (`data-palette`): morski (domyślny), grafit, leśny, zachód, fiolet. Paleta ustawia odcienie tła okna, paska bocznego, nagłówków, przycisku głównego i lekki ton arkusza (`--au-h1/h2/h3`, `--au-bh`, `--au-sat`).
+- **Motyw kolorystyczny** (`data-palette`): ciemne: morski (domyślny), grafit, leśny, zachód, fiolet; jasne: niebo (`sky`), mięta (`mint`), brzoskwinia (`peach`), lawenda (`lilac`). Jasne motywy mają pastelowe tło okna i jasny panel boczny z ciemnym tekstem (przez `light-dark()`, więc w ciemnym trybie systemu wracają do ciemnej wersji), a baner nagłówka jest jaśniejszy, ale nadal pod białym tekstem. Paleta ustawia odcienie tła okna, paska bocznego, nagłówków, przycisku głównego i lekki ton arkusza (`--au-h1/h2/h3`, `--au-bh`, `--au-sat`).
 - **HDR** (`data-hdr="off"` → `--hdr: 0`): wyłączony usuwa połysk, kolorowe poświaty i rozszerzoną gamę; włączony używa P3 / ekranu HDR (`@media (color-gamut: p3)`, `(dynamic-range: high)`).
 - **Intensywność kolorów** (`--vivid` 0,4–1,5): mnoży chromę aurory i barw projektów.
 - **Kontrast** (`--ctr` −1…+1): ciemniejsze tła pod białym tekstem, mocniejsze linie, ciemniejszy tekst w jasnym motywie i jaśniejszy w ciemnym. Granice tekstu pomocniczego dobrano tak, by przy skrajnych ustawieniach nie schodził poniżej AA.

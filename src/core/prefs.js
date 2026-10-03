@@ -9,7 +9,7 @@
   var VIEWS = ['list', 'cards'];
   var ACCENTS = ['standard', 'graphite'];
   // Motywy kolorystyczne: tło okna, pasek boczny, nagłówki i przycisk główny.
-  var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet'];
+  var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet', 'sky', 'mint', 'peach', 'lilac'];
   var VIVID_MIN = 40; var VIVID_MAX = 150; var VIVID_DEFAULT = 100; var CONTRAST_DEFAULT = 50;
   var GROUPS = ['health', 'status', 'none'];
   var DENSITIES = ['comfortable', 'compact'];

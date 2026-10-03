@@ -27,7 +27,11 @@
     { value: 'graphite', label: 'Grafit', a: 'oklch(.52 .03 250)', b: 'oklch(.3 .03 255)' },
     { value: 'forest', label: 'Leśny', a: 'oklch(.6 .14 160)', b: 'oklch(.4 .12 195)' },
     { value: 'sunset', label: 'Zachód', a: 'oklch(.66 .16 38)', b: 'oklch(.42 .15 12)' },
-    { value: 'violet', label: 'Fiolet', a: 'oklch(.6 .15 335)', b: 'oklch(.4 .14 288)' }
+    { value: 'violet', label: 'Fiolet', a: 'oklch(.6 .15 335)', b: 'oklch(.4 .14 288)' },
+    { value: 'sky', label: 'Niebo (jasny)', a: 'oklch(.9 .07 225)', b: 'oklch(.62 .13 262)' },
+    { value: 'mint', label: 'Mięta (jasny)', a: 'oklch(.92 .07 170)', b: 'oklch(.64 .12 205)' },
+    { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },
+    { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' }
   ];
   var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, vivid: 100, contrast: 50 };
 
