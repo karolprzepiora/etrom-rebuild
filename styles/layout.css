@@ -43,8 +43,6 @@
 .brand-rail { display: none; flex: none; }
 .workspace .logo { --logo-h: 2.375rem; }
 .brand-rail .logo { --logo-h: 2rem; }
-.brand-text { display: grid; min-width: 0; flex: 1; line-height: 1.2; }
-.brand-name { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; letter-spacing: 0.04em; }
 .brand-sub { font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .workspace__chev { color: var(--ink-3); width: 14px; height: 14px; }
 
@@ -184,7 +182,7 @@
 }
 .page:focus { outline: none; }
 #notice:empty { display: none; }
-.view { display: grid; gap: var(--space-8); align-content: start; min-width: 0; }
+.view { display: grid; gap: var(--space-8); align-content: start; min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .view h1:focus { outline: none; }
 .bulk-slot:empty { display: none; }
 .bulk-slot { position: sticky; bottom: var(--space-5); z-index: calc(var(--z-sticky) + 1); order: 99; pointer-events: none; }

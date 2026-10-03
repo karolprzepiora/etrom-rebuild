@@ -495,3 +495,11 @@ Pomiar komputowanych stylów na wszystkich ekranach wykazał rozjazdy; ujednolic
 ## Ekran Czas w standardzie Analizy
 
 Karta czasu i plan obciążenia używają tej samej siatki co mapa cieplna w Analizie (`.an-hm`): karta `an-card` z tytułem i objaśnieniem, zaokrąglone komórki, nazwa po lewej, podsumowanie (godziny i procent) po prawej. Barwa komórki karty czasu = barwa projektu, nasycenie = udział w dniu pracy; wiersz „Razem” i plan obciążenia używają skali obciążenia z Analizy (spokojna → bursztyn → czerwień).
+
+## Audyt: układ, dotyk, wydruk
+
+- Siatki widoków (`.view`, `.fd__main`) mają kolumnę `minmax(0, 1fr)` — treść nie może rozpychać ekranu ponad szerokość telefonu.
+- Panel boczny listy projektów znika poniżej 1180 px także w pliku `aurora.css` (późniejsze reguły nie przywracają drugiej kolumny).
+- Na urządzeniach dotykowych (`pointer: coarse`) małe kontrolki (checkbox, przełącznik, strzałka rozwinięcia, sortowanie) mają pole trafienia ok. 36 px bez zmiany wyglądu.
+- Wydruk (`@media print`): A4 poziomo, bez paneli i przycisków, kolory zachowane — karta czasu i plan nadają się do wydrukowania.
+- Usunięto nieużywane reguły CSS (stare kafle, „na żywo”, stary pasek rodzajów) oraz zdublowane zrzuty ekranu z katalogu głównego.

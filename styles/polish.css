@@ -154,8 +154,6 @@ body, .app {
 .fd__card--post { background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 5%, var(--sheet)), var(--sheet) 60%); }
 .fd__card--task { }
 .fd__daylabel { display: inline-flex; padding: 3px 12px; border-radius: 999px; background: var(--wash); font-size: .75rem; letter-spacing: .04em; }
-.fd__ring { width: 3.75rem; height: 3.75rem; border-width: 3px; }
-.fd__story--normal .fd__ring { border-color: var(--flow); }
 @media (prefers-reduced-motion: reduce) { .mrow:hover, .ibx__row:hover, .fd__card:hover { transform: none; } }
 
 /* =========================================================

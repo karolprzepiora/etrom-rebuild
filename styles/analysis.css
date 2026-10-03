@@ -109,8 +109,6 @@
 .an-mini { position: relative; }
 .an-mini__f--flow { background: var(--flow); } .an-mini__f--ink { background: var(--ink-2); } .an-mini__f--slate { background: var(--ink-4); }
 .an-mini__f--warn { background: var(--warn); } .an-mini__f--bad { background: var(--alarm); }
-.an-rate { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--ink-2); }
-.an-rate__input { width: 5.5rem; }
 
 /* wykresy SVG */
 .ch-host { width: 100%; min-width: 0; min-height: 4rem; }

@@ -15,7 +15,17 @@
   var FORGOTTEN_MINUTES = 10 * 60;
 
   function text(value) { return typeof value === 'string' ? value.trim() : ''; }
-  function time(value) { var t = Date.parse(value); return Number.isFinite(t) ? t : null; }
+  var timeCache = new Map();
+  function time(value) {
+    if (typeof value !== 'string') { var n = Date.parse(value); return Number.isFinite(n) ? n : null; }
+    var hit = timeCache.get(value);
+    if (hit === undefined) {
+      var t = Date.parse(value); hit = Number.isFinite(t) ? t : null;
+      if (timeCache.size > 5000) timeCache.clear();
+      timeCache.set(value, hit);
+    }
+    return hit;
+  }
   function pad(n) { return String(n).padStart(2, '0'); }
 
   var counter = 0;

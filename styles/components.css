@@ -830,7 +830,6 @@ tr:hover .row-actions, tr:focus-within .row-actions, .row:hover .row-actions, .r
 .countdown--urgent, .countdown--urgent .countdown__n { color: var(--warn-ink); }
 .countdown--overdue, .countdown--overdue .countdown__n { color: var(--alarm-ink); }
 .countdown--done { color: var(--ink-3); }
-.pcard__due { display: inline-flex; align-items: baseline; gap: var(--space-2); }
 .due-line { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); }
 
 /* godziny etapu w formularzu projektu */

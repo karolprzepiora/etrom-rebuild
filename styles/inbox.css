@@ -16,7 +16,6 @@
 .ibx__title { text-align: left; font-weight: 500; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ibx__title:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
 .ibx__detail { color: var(--ink-2); }
-.ibx__kindlabel { white-space: nowrap; }
 .ibx__when { font-size: var(--fs-sm); white-space: nowrap; }
 .ibx__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
 .ibx__empty { margin: var(--space-4) 0; color: var(--ink-3); font-size: var(--fs-sm); }

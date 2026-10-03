@@ -2,20 +2,11 @@
    Jedna wąska kolumna, karty z awatarem, reakcje jak chipy, komentarze rozwijane w karcie.
    Kolor tylko dla stanu projektu (pierścień) i własnych reakcji. */
 .fd { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: var(--space-5, 1.5rem); align-items: start; margin-top: var(--space-4); }
-.fd__main { display: grid; gap: var(--space-4); min-width: 0; }
+.fd__main { display: grid; gap: var(--space-4); min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .fd__pinned { display: grid; gap: var(--space-3); }
 
 /* Pasek projektów */
-.fd__stories { display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) var(--space-1) var(--space-2); scrollbar-width: thin; }
-.fd__story { display: grid; justify-items: center; gap: 4px; width: 4.5rem; flex: none; color: var(--ink-2); font-size: var(--fs-xs, 0.75rem); }
-.fd__story:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
-.fd__ring { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: var(--radius-full); border: 2px solid var(--line-strong, var(--line)); background: var(--wash); transition: transform .15s; }
-.fd__story:hover .fd__ring { transform: scale(1.06); }
-.fd__story--alarm .fd__ring { border-color: var(--alarm); box-shadow: 0 0 0 2px var(--alarm-wash); }
-.fd__story--warning .fd__ring { border-color: var(--warn); box-shadow: 0 0 0 2px var(--warn-wash); }
-.fd__story--normal .fd__ring { border-color: var(--accent-bright); }
 .fd__code { font-weight: 600; font-size: var(--fs-sm); color: var(--ink); font-variant-numeric: tabular-nums; }
-.fd__sname { max-width: 100%; }
 
 /* Kompozytor */
 .fd__composer { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--sheet); }
@@ -95,7 +86,6 @@ a.fd__chip:hover { color: var(--ink); background: var(--canvas); }
 .fd__prow { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: var(--space-2); width: 100%; padding: 6px var(--space-2); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink-2); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; transition: background .15s; }
 .fd__prow:hover { background: var(--wash); color: var(--ink); }
 .fd__prow:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.fd__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--flow); }
 .fd__dot--alarm { background: var(--alarm); } .fd__dot--warning { background: var(--warn); } .fd__dot--closed { background: var(--ink-4); }
 .fd__pcode { padding: 1px 8px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-weight: 600; font-size: .75rem; }
 .fd__klist li { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2); align-items: start; font-size: var(--fs-sm); }

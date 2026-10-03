@@ -12,6 +12,8 @@ dla każdego kolejnego ekranu i każdej nowej funkcji.
 
 ![ETROM — szczegóły projektu](docs/screenshots/etrom-projekt.png)
 
+![ETROM — karta czasu](docs/screenshots/etrom-czas.png)
+
 ## Uruchomienie
 
 1. Pobierz i rozpakuj **cały** folder.

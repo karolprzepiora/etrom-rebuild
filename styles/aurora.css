@@ -210,9 +210,6 @@ html { text-rendering: geometricPrecision; }
 .pc__state--alarm { background: var(--alarm); color: #fff; box-shadow: 0 0 0 2px #fff, 0 4px 12px -2px oklch(.55 .25 28 / .8); }
 .pc__state--warning { background: #ffb02e; color: #3a2600; box-shadow: 0 0 0 2px #fff, 0 4px 10px -2px rgb(0 0 0 / .35); }
 .pc__state--done { background: rgb(255 255 255 / .92); color: #3d4850; }
-.pc__star { color: rgb(255 255 255 / .75); }
-.pc__star:hover { background: rgb(255 255 255 / .16); color: #ffd37a; }
-.pc__star.is-on { color: #ffd37a; }
 .pc .avatars .avatar, .pf-table .avatar { box-shadow: 0 0 0 2px #fff; }
 .pc .avatar--rest { background: rgb(255 255 255 / .22); color: #fff; box-shadow: 0 0 0 2px #fff; }
 .pc .pf-reason, .pc .pf-reason--alarm, .pc .pf-reason--warning, .pf-table .pf-reason, .pf-table .pf-reason--alarm, .pf-table .pf-reason--warning { color: #fff; font-weight: 500; }
@@ -575,3 +572,36 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pl-hm .pl-btn--free .pl-btn__txt { color: var(--ink-2); }
 .pl-hm .pl-btn--free.is-selected { box-shadow: inset 0 0 0 2px var(--flow); }
 #ts-person { width: auto; min-width: 12rem; max-width: 16rem; }
+
+/* Audyt: siatki nie mogą rozpychać się ponad ekran (mobile) */
+.fd__composer, .fd__card, .fd__widget, .an-card, .mywork__main, .mywork__aside { min-width: 0; }
+.fd__textarea { max-width: 100%; box-sizing: border-box; }
+.fd__modes { max-width: 100%; }
+@media (max-width: 1180px) { .pf-layout, .pf-layout.is-rail-collapsed { grid-template-columns: minmax(0, 1fr); } .pf-rail { display: none; } }
+@media (max-width: 40rem) { .pf-codecell .kind-icon { display: none; } }
+
+/* Audyt: cele dotykowe — min. 36 px pola trafienia bez zmiany wyglądu */
+@media (pointer: coarse) {
+  .ts-toggle, .statebtn, .table__sort, .person__link, .role-link, .fd__mode { position: relative; }
+  .ts-toggle::after, .statebtn::after, .checkbox::after, .switch::after { content: ""; position: absolute; inset: -9px; }
+  .checkbox, .switch { position: relative; }
+  .fd__mode { min-height: 36px; }
+  .table__sort, .person__link, .role-link { min-height: 36px; display: inline-flex; align-items: center; }
+}
+
+/* Audyt: wydruk (karta czasu, plan, raporty) — czysty arkusz z zachowanymi kolorami */
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  html, body { background: #fff !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rl__side, .rl__toggle, .pf-rail, .timer-bar, .timer, .tabs, .an-tabs, .pf-views-bar, .ts-bar .btn, .toast, .nav, .navtoggle, .fab, .page-header__actions, .ts-toggle { display: none !important; }
+  .page-header { background: none !important; color: #000 !important; box-shadow: none !important; padding: 0 0 8px !important; }
+  .page-header * { color: #000 !important; }
+  .an-card, .fd__card { box-shadow: none !important; break-inside: avoid; border: 1px solid #ccc; }
+  .an-hm, .sheet__scroll, .page { overflow: visible !important; max-width: none !important; }
+  .an-hm__row { min-width: 0 !important; }
+}
+@media print {
+  .sheet, .sheet__scroll, .app, main.page { background: #fff !important; box-shadow: none !important; border-radius: 0 !important; }
+  .ts-bar, .ts-bar *, .seg, .segmented { visibility: hidden; height: 0; margin: 0; padding: 0; overflow: hidden; }
+}

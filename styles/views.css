@@ -66,7 +66,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 /* =========================================================
    Portfel: karty-arkusze
    ========================================================= */
-.pcard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--space-3); }
 .pcard {
   position: relative;
   display: grid;
@@ -78,22 +77,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
   box-shadow: var(--elev-lift);
   transition: box-shadow var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
 }
-.pcard:hover { box-shadow: var(--elev-hover); transform: translateY(-1px); }
-.pcard:has(.project-link:focus-visible) { box-shadow: var(--focus-ring); }
-.pcard__top { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-sm); }
-.pcard__status { margin-left: var(--space-2); font-size: var(--fs-xs); color: var(--ink-2); }
-.pcard__spacer { flex: 1; }
-.pcard__titles { display: grid; gap: var(--space-1); min-width: 0; }
-.pcard__name { font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.25; font-weight: 600; letter-spacing: var(--tracking-title); }
-.pcard .project-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.pcard .project-link:focus-visible { box-shadow: none; }
-.pcard__more, .pcard .datum, .pcard .status, .pcard [data-tooltip] { position: relative; z-index: 1; }
-.pcard__client { font-size: var(--fs-sm); color: var(--ink-3); }
-.pcard__stage, .pcard__reason { font-size: var(--fs-sm); align-self: end; }
-.pcard__stage { color: var(--ink-2); }
-.pcard__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-height: var(--control-sm); min-width: 0; font-size: var(--fs-sm); }
-.pcard__foot > * { min-width: 0; }
-.pcard__due { font-weight: 500; }
 /* =========================================================
    Przestrzeń robocza projektu
    ========================================================= */
@@ -151,18 +134,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .srow-group { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 var(--space-1); padding: 0 var(--space-2) 0 var(--space-3); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .srow-group__meta { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
 
-.kindbar { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); }
-.kindbar__track { display: flex; width: 100%; gap: 2px; height: 0.625rem; }
-.kindbar__seg { position: relative; flex: var(--hours, 1) 1 0; min-width: 6px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--seg) 28%, transparent); }
-.kindbar__seg::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--done, 0%); background: var(--seg); transition: width var(--motion-measure); }
-.kindbar__seg--materials, .kindbar__swatch--materials { --seg: var(--kind-materials); }
-.kindbar__seg--docs, .kindbar__swatch--docs { --seg: var(--kind-docs); }
-.kindbar__seg--decision, .kindbar__swatch--decision { --seg: var(--kind-decision); }
-.kindbar__legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); margin: 0; padding: 0; list-style: none; font-size: var(--fs-xs); color: var(--ink-2); }
-.kindbar__item { display: flex; align-items: center; gap: var(--space-1-5); }
-.kindbar__item.is-zero { color: var(--ink-3); }
-.kindbar__swatch { width: 0.625rem; height: 0.625rem; border-radius: 2px; background: var(--seg); }
-.kindbar__value { color: var(--ink-3); }
 .srow--done .srow__name { font-weight: 500; color: var(--ink-2); }
 .srow__chevron { display: grid; color: var(--ink-3); opacity: 0; transition: opacity var(--duration-fast), transform var(--duration-base) var(--ease-out); }
 .srow:hover .srow__chevron, .srow__expand:focus-visible .srow__chevron, .srow__expand[aria-expanded="true"] .srow__chevron { opacity: 1; }
@@ -496,14 +467,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 @keyframes dayaxis-pulse { 50% { opacity: .6; } }
 @media (prefers-reduced-motion: reduce) { .dayaxis__seg.is-live { animation: none; } }
 
-.livenow { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
-.livenow__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-1); }
-.livenow__item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: var(--space-2); font-size: var(--fs-sm); align-items: baseline; }
-.livenow__stats { display: flex; align-items: baseline; gap: var(--space-2); margin: 0; flex-wrap: wrap; }
-.livenow__big { font-size: var(--fs-2xl, 1.5rem); font-weight: 600; letter-spacing: var(--tracking-title); }
-.livenow__sub { font-size: var(--fs-sm); color: var(--ink-3); }
-.livenow__who { font-weight: 600; }
-.livenow__what, .livenow__since { color: var(--text-muted); }
 
 /* Zadania: pasek statusów i szybki krok */
 .tasks__summary { display: inline-flex; align-items: center; gap: var(--space-2); }
@@ -545,7 +508,6 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .daymeter__of { font-weight: 400; color: var(--ink-3); }
 .daymeter.is-empty .daymeter__label { color: var(--ink-3); font-weight: 500; }
 .dmtrack { position: relative; display: flex; align-items: stretch; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
-.dmtrack--bar { width: 7rem; height: 8px; }
 .dmtrack--big { width: 100%; height: 12px; border-radius: 4px; }
 .dmseg { flex: none; width: calc(var(--m) / var(--cap) * 100%); background: oklch(calc(.62 + .07 * var(--seg-t, 0)) .12 var(--seg-h)); box-shadow: inset -1px 0 0 var(--sheet); transition: width .4s ease; }
 .dmseg.is-live { animation: dayaxis-pulse 1.6s ease-in-out infinite; }
