@@ -22,21 +22,26 @@
     return (hash(code) * HUE_STEP) % 360;
   }
 
-  /* Paleta 40 kolorów projektów: 20 barw (od żółtozielonej po różową; czerwień i bursztyn
-     zostają dla stanów) w dwóch tonach — jaśniejszym i głębszym.
+  /* Paleta 40 kolorów projektów: 20 barw (od miedzi, przez zieleń i błękit, po fiolet i róż; czerwień
+     i bursztyn zostają dla stanów) w dwóch tonach — jaśniejszym i głębszym.
      Kolejne numery projektów dostają kolory odległe o ~94° barwy (krok 7 w permutacji),
      więc 40 projektów w roku różni się od siebie i sąsiednie nigdy nie są podobne. */
   var PALETTE_SIZE = 40;
   var HUES = 20;
-  var HUE_FROM = 125;
-  var HUE_TO = 350;
+  // Barwy rozmieszczone tak, by ciepłe (miedź, brąz) nie wypadały przy kolejnych numerach; pominięte okolice czerwieni i bursztynu (zarezerwowane dla stanów)
+  // oraz oliwki (brudna). Miedź i brąz wnoszą ciepło, którego brakowało zielono-niebieskiej palecie.
+  var HUE_LIST = [36, 145, 157, 169, 181, 48, 193, 205, 217, 229, 60, 241, 253, 265, 277, 291, 305, 319, 335, 350];
+  // Tryb „według rodzaju”: każdy rodzaj ma swoją rodzinę barw, a numer projektu tylko ją odcienia.
+  var KIND_HUE = { survey: 322, pump: 280, hydro: 190, dam: 262, weir: 212, levee: 48, retention: 150, reservoir: 172, river: 240, other: 350 };
+  var mode = 'number';
+  var kindOf = {};
   var PERM_STEP = 7;
   var overrides = {};
 
   function swatch(index) {
     var i = ((Number(index) % PALETTE_SIZE) + PALETTE_SIZE) % PALETTE_SIZE;
     var h = i % HUES;
-    return { index: i, hue: Math.round(HUE_FROM + h * (HUE_TO - HUE_FROM) / (HUES - 1)), tone: i < HUES ? 1 : -1 };
+    return { index: i, hue: HUE_LIST[h], tone: i < HUES ? 1 : -1 };
   }
 
   function swatches() {
@@ -60,10 +65,32 @@
   /** Zapamiętuje wybrane przez użytkownika kolory (kod → indeks), by każdy widok brał je automatycznie. */
   function setColors(projects) {
     var map = {};
+    var kinds = {};
+    var Kinds = root.ETROM && root.ETROM.Kinds;
     (projects || []).forEach(function (p) {
-      if (p && validIndex(p.color)) map[String(p.code).toUpperCase()] = p.color;
+      if (!p) return;
+      var key = String(p.code).toUpperCase();
+      if (validIndex(p.color)) map[key] = p.color;
+      else if (Kinds) kinds[key] = Kinds.of(p);
     });
     overrides = map;
+    kindOf = kinds;
+  }
+
+  function setMode(value) { mode = value === 'kind' ? 'kind' : 'number'; }
+
+  function seq(code) {
+    var m = /(\d{2})\s*$/.exec(String(code == null ? '' : code));
+    return m ? Number(m[1]) : hash(code);
+  }
+
+  /** Barwa i ton według rodzaju: rodzina barw rodzaju, drobne przesunięcie i ton z numeru. */
+  function kindSwatch(code) {
+    var key = String(code == null ? '' : code).toUpperCase();
+    var kind = kindOf[key];
+    if (mode !== 'kind' || !kind || Object.prototype.hasOwnProperty.call(overrides, key)) return null;
+    var n = seq(code);
+    return { hue: (KIND_HUE[kind] || KIND_HUE.other) + ((n % 5) - 2) * 6, tone: n % 2 ? 1 : -1 };
   }
 
   function colorIndex(code) {
@@ -72,8 +99,8 @@
   }
 
   /** @returns {number} barwa (oklch) kafla projektu */
-  function tileHue(code) { return swatch(colorIndex(code)).hue; }
-  function tileTone(code) { return swatch(colorIndex(code)).tone; }
+  function tileHue(code) { var k = kindSwatch(code); return k ? k.hue : swatch(colorIndex(code)).hue; }
+  function tileTone(code) { var k = kindSwatch(code); return k ? k.tone : swatch(colorIndex(code)).tone; }
 
   /**
    * Zmienne CSS okładki projektu: dwa przygaszone odcienie i kąt warstwic.
@@ -108,7 +135,7 @@
     return { '--seg-h': String(tileHue(code)), '--seg-t': String(tileTone(code)) };
   }
 
-  var api = { PALETTE_SIZE: PALETTE_SIZE, swatch: swatch, swatches: swatches, autoIndex: autoIndex, validIndex: validIndex, setColors: setColors, colorIndex: colorIndex, tileTone: tileTone, segStyle: segStyle, hue: hue, tileHue: tileHue, hueStyle: hueStyle, coverStyle: coverStyle, initials: initials };
+  var api = { PALETTE_SIZE: PALETTE_SIZE, swatch: swatch, swatches: swatches, autoIndex: autoIndex, validIndex: validIndex, setColors: setColors, setMode: setMode, colorIndex: colorIndex, tileTone: tileTone, segStyle: segStyle, hue: hue, tileHue: tileHue, hueStyle: hueStyle, coverStyle: coverStyle, initials: initials };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Identity = api; }

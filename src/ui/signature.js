@@ -10,21 +10,25 @@
   /* ---------- Rzędna ▽ ---------- */
 
   // Kształt różni poziomy także bez koloru: kontur, wypełnienie, wypełnienie ze znakiem.
+  // Znak stanu projektu: okrąg zamiast trójkąta, bo trójkąt kojarzy się z ostrzeżeniem drogowym i hałasował na kolorowych kaflach.
+  // Alarm = pełne czerwone koło z wykrzyknikiem, uwaga = bursztynowy pierścień z wykrzyknikiem,
+  // w normie = mała spokojna kropka, zakończony = pierścień z haczykiem. Kształt różni się nie tylko barwą.
   function datumPaths(level) {
-    var tri = 'M2.2 3.2h11.6L8 12.4Z';
-    var line = D.svg('path', { d: 'M4 14.6h8', 'stroke-width': '1.5', fill: 'none' });
+    var bang = function (color) {
+      return [D.svg('path', { d: 'M8 4.6v4', stroke: color, 'stroke-width': '1.8', fill: 'none' }),
+        D.svg('circle', { cx: '8', cy: '11.2', r: '1', fill: color, stroke: 'none' })];
+    };
     if (level === 'alarm') {
-      return [D.svg('path', { d: tri, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': '1.2', 'stroke-linejoin': 'round' }),
-        D.svg('path', { d: 'M8 5.2v3', stroke: 'var(--datum-mark, #fff)', 'stroke-width': '1.6', fill: 'none' }),
-        line];
+      return [D.svg('circle', { cx: '8', cy: '8', r: '7', fill: 'currentColor', stroke: 'none' })].concat(bang('var(--datum-mark, #fff)'));
     }
     if (level === 'warning') {
-      return [D.svg('path', { d: tri, fill: 'currentColor', stroke: 'currentColor', 'stroke-width': '1.2', 'stroke-linejoin': 'round' }), line];
+      return [D.svg('circle', { cx: '8', cy: '8', r: '6.2', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8' })].concat(bang('currentColor'));
     }
     if (level === 'closed') {
-      return [D.svg('path', { d: tri, fill: 'none', stroke: 'currentColor', 'stroke-width': '1.3', 'stroke-linejoin': 'round' })];
+      return [D.svg('circle', { cx: '8', cy: '8', r: '6.2', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4' }),
+        D.svg('path', { d: 'm5.4 8.2 1.8 1.8 3.4-3.6', stroke: 'currentColor', 'stroke-width': '1.5', fill: 'none', 'stroke-linejoin': 'round' })];
     }
-    return [D.svg('path', { d: tri, fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4', 'stroke-linejoin': 'round' }), line];
+    return [D.svg('circle', { cx: '8', cy: '8', r: '3', fill: 'currentColor', stroke: 'none' })];
   }
 
   /**

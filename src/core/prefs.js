@@ -61,7 +61,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
     };
   }
 
@@ -108,6 +108,7 @@
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
       hdr: source.hdr !== false,
       tilesFull: source.tilesFull === true,
+      colorBy: source.colorBy === 'kind' ? 'kind' : 'number',
       vivid: clampInt(source.vivid, VIVID_MIN, VIVID_MAX, VIVID_DEFAULT),
       contrast: clampInt(source.contrast, 0, 100, CONTRAST_DEFAULT),
       dayTarget: clampInt(source.dayTarget, 120, 720, 480),

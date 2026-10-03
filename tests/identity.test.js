@@ -51,7 +51,8 @@ test('paleta ma 40 różnych kolorów, poza czerwienią i bursztynem', () => {
   const all = Identity.swatches();
   assert.equal(all.length, 40);
   assert.equal(new Set(all.map((c) => c.hue + ':' + c.tone)).size, 40);
-  assert.ok(all.every((c) => c.hue >= 125 && c.hue <= 350));
+  assert.ok(all.every((c) => (c.hue >= 36 && c.hue <= 60) || (c.hue >= 145 && c.hue <= 350)), 'bez czerwieni, bursztynu i oliwki');
+  assert.ok(new Set(all.map((c) => c.hue)).size === 20);
 });
 
 test('kolejne numery projektów w roku dostają różne kolory (40 z rzędu bez powtórki)', () => {
@@ -71,4 +72,17 @@ test('kolor wybrany ręcznie wygrywa z automatycznym', () => {
   assert.equal(Identity.colorIndex('2602'), Identity.autoIndex('2602'), 'zły indeks jest ignorowany');
   Identity.setColors([]);
   assert.equal(Identity.tileHue('2601'), Identity.tileHue('2601'));
+});
+
+test('tryb „według rodzaju”: ten sam rodzaj ma jedną rodzinę barw, a numer tylko ją odcienia', () => {
+  global.ETROM = { Kinds: { of: (p) => p.kind } };
+  Identity.setColors([{ code: '2601', kind: 'pump' }, { code: '2602', kind: 'pump' }, { code: '2603', kind: 'weir' }, { code: '2604', kind: 'pump', color: 5 }]);
+  Identity.setMode('kind');
+  const a = Identity.tileHue('2601'), b = Identity.tileHue('2602'), c = Identity.tileHue('2603');
+  assert.ok(Math.abs(a - b) <= 24, 'dwie pompownie w jednej rodzinie');
+  assert.ok(Math.abs(a - c) > 40, 'jaz ma inną rodzinę');
+  assert.equal(Identity.tileHue('2604'), Identity.swatch(5).hue, 'ręczny wybór wygrywa');
+  Identity.setMode('number');
+  assert.equal(Identity.tileHue('2601'), Identity.swatch(Identity.autoIndex('2601')).hue);
+  Identity.setColors([]); delete global.ETROM;
 });

@@ -1529,6 +1529,7 @@
     var el = document.documentElement;
     if (!look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
     else el.setAttribute('data-palette', look.palette);
+    if (E.Identity && E.Identity.setMode) E.Identity.setMode(look.colorBy);
     if (look.tilesFull) el.setAttribute('data-tiles', 'full');
     else el.removeAttribute('data-tiles');
     if (look.hdr === false) el.setAttribute('data-hdr', 'off');

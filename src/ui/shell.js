@@ -33,7 +33,7 @@
     { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },
     { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' }
   ];
-  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, tilesFull: false, vivid: 100, contrast: 50 };
+  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
 
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
   function logo(markOnly) {
@@ -90,7 +90,7 @@
     });
 
     // ---- Wygląd: motyw kolorystyczny, HDR, intensywność i kontrast ----
-    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast, tilesFull: prefs.tilesFull };
+    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast, tilesFull: prefs.tilesFull, colorBy: prefs.colorBy };
     var palButtons = PALETTES.map(function (pal) {
       return D.el('button', {
         class: 'pal-swatch',
@@ -109,6 +109,12 @@
       id: 'look-tiles', label: 'Kafle z połyskiem', checked: !!look.tilesFull,
       attrs: { 'data-fk': 'look-tiles', 'aria-describedby': 'look-tiles-hint' },
       onChange: function (on) { look.tilesFull = on; actions.setPref({ tilesFull: on }); syncLook(); }
+    });
+    var colorBySelect = UI.select({
+      id: 'look-colorby', value: look.colorBy || 'number',
+      options: [{ value: 'number', label: 'według numeru projektu' }, { value: 'kind', label: 'według rodzaju projektu' }],
+      on: { change: function () { look.colorBy = colorBySelect.value; actions.setPref({ colorBy: look.colorBy }); syncLook(); } },
+      attrs: { 'data-fk': 'look-colorby', 'aria-label': 'Barwa kafla projektu' }
     });
     function slider(o) {
       var out = D.el('output', { class: 'look-slider__val t-num', attrs: { for: o.id } });
@@ -137,6 +143,7 @@
       palButtons.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === look.palette)); });
       hdrSwitch.input.checked = !!look.hdr;
       tilesSwitch.input.checked = !!look.tilesFull;
+      colorBySelect.value = look.colorBy || 'number';
       [vividSlider, contrastSlider].forEach(function (sl) { sl.input.value = String(sl.o.get()); sl.out.textContent = sl.o.format(sl.o.get()); });
       actions.previewLook(look);
     }
@@ -181,6 +188,7 @@
         D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
       ]),
       D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
+      D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Barwa kafla' }), colorBySelect, D.el('span', { class: 'settings__hint', text: 'kolor ręcznie wybrany w projekcie ma pierwszeństwo' })]),
       D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie jednolity kolor, bez połysku i cieniowania' })]),
       vividSlider.node,
       contrastSlider.node,

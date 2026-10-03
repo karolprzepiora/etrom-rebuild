@@ -503,3 +503,10 @@ Karta czasu i plan obciążenia używają tej samej siatki co mapa cieplna w Ana
 - Na urządzeniach dotykowych (`pointer: coarse`) małe kontrolki (checkbox, przełącznik, strzałka rozwinięcia, sortowanie) mają pole trafienia ok. 36 px bez zmiany wyglądu.
 - Wydruk (`@media print`): A4 poziomo, bez paneli i przycisków, kolory zachowane — karta czasu i plan nadają się do wydrukowania.
 - Usunięto nieużywane reguły CSS (stare kafle, „na żywo”, stary pasek rodzajów) oraz zdublowane zrzuty ekranu z katalogu głównego.
+
+## Stan projektu i paleta (v2)
+
+- **Znak stanu** (`Sig.datum`) to okrąg, nie trójkąt: alarm = pełne czerwone koło z wykrzyknikiem, uwaga = bursztynowy pierścień z wykrzyknikiem, w normie = mała kropka, zakończony = pierścień z haczykiem. Kształt różni się nie tylko barwą.
+- **Brak kolorowych obramowań** kafli i wierszy dla stanu. Stan niesie znak, plakietka „Alarm / Uwaga” i powód.
+- **Paleta 40 kolorów**: 20 barw (miedź i brąz, zieleń, błękity, fiolety, róż) × 2 tony; czerwień, bursztyn i oliwka pominięte. Ciepłe barwy stoją w liście tak, by nie wypadały przy kolejnych numerach.
+- **Barwa kafla** (Ustawienia → Wygląd): „według numeru projektu” (domyślnie) albo „według rodzaju projektu” (rodzina barw rodzaju, numer tylko ją odcienia). Kolor wybrany ręcznie w projekcie ma pierwszeństwo.
