@@ -480,8 +480,6 @@
       meterTrack(parts, now, 'dmtrack--big'),
       D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + hoursLabel(DAY_TARGET)) }),
       parts.length ? projectShares(parts) : null,
-      dayAxis(entries, ctx, new Date()),
-      weekStrip(ctx, now),
       resumeButton(ctx),
       entries.length
         ? D.el('details', { class: 'etoday__log', attrs: entries.length <= 4 ? { open: 'open' } : {} }, [

@@ -674,8 +674,8 @@ async function main() {
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
     check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
       await evaluate('return document.querySelectorAll(".etoday .eproj__row").length >= 1 && !!document.querySelector(".etoday .dmtrack--big");'));
-    check('panel „Dzisiaj” pokazuje tydzień z kolumną dzisiejszego dnia',
-      await evaluate('return document.querySelectorAll(".etoday .eweek__day").length >= 5 && !!document.querySelector(".etoday .eweek__day.is-today");'));
+    check('panel „Dzisiaj” jest zwięzły: bez osi dnia i tygodnia (są na pasku u góry i w „Czas”)',
+      await evaluate('return !document.querySelector(".etoday .eweek") && !document.querySelector(".etoday .dayaxis") && !!document.querySelector(".dribbon");'));
     check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
       await evaluate('return !!document.querySelector(".etoday__resume");'));
     await pressKey('t');
