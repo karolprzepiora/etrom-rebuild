@@ -58,7 +58,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
     };
   }
 
@@ -94,6 +94,7 @@
       customViews: customViews(source.customViews),
       projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,
+      railCollapsed: source.railCollapsed === true,
       pinned: ids(source.pinned, MAX_PINNED),
       recent: ids(source.recent, MAX_RECENT),
       // Kim jest osoba przy tym urządzeniu (identyfikator z katalogu zespołu).

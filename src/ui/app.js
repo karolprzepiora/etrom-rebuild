@@ -2424,6 +2424,7 @@
 
     nodes.portfolio.hidden = true;
     nodes.railWrap.hidden = !all.length;
+    nodes.railWrap.parentNode.classList.toggle('is-rail-collapsed', !!state.prefs.railCollapsed);
     nodes.viewsBar.hidden = !all.length;
     var pctx = { state: state, people: people(), actions: actions };
     if (all.length) {

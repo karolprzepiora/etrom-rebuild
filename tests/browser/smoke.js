@@ -1371,6 +1371,14 @@ async function main() {
     await click('[data-fk="rail-filter-late"]');
     await sleep(250);
     check('drugi klik zdejmuje filtr radaru', (await state('s.filters.health')) === 'all');
+    await click('[data-fk="rail-toggle"]');
+    await sleep(300);
+    check('panel „Najbliższe terminy” zwija się do paska z licznikiem i pamięta wybór',
+      (await state('s.prefs.railCollapsed')) === true && await evaluate('return !!document.querySelector(".pf-layout.is-rail-collapsed") && !!document.querySelector(".pf-rail__vcount") && !document.querySelector(".pf-rail__sec");'));
+    await click('[data-fk="rail-toggle"]');
+    await sleep(300);
+    check('panel terminów da się rozwinąć z powrotem', (await state('s.prefs.railCollapsed')) === false && await evaluate('return !!document.querySelector(".pf-rail__sec");'));
+    check('wiersze tabeli i kafle mają barwę projektu', await evaluate('const r = document.querySelector("tr.prow-project"); return !!r && /^\\d+$/.test(r.style.getPropertyValue("--hue"));'));
     await go('#/zespol');
     await sleep(500);
     check('Zespół (zarząd): obciążenie w procentach z paskiem i godzinami zamiast kresek',

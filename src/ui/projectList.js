@@ -229,6 +229,7 @@
       class: 'table__row prow-project level-' + health.level + (project.status === 'done' ? ' is-closed' : '') + (ctx.motion && ctx.motion.flashProject === project.id ? ' is-flash' : ''),
       attrs: { 'aria-selected': selected ? 'true' : null },
       dataset: { projectCode: project.code, projectId: project.id },
+      style: { '--hue': String(E.Identity.tileHue(project.code)) },
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label, [role="menu"]')) return;
@@ -500,8 +501,23 @@
       ]);
     });
 
+    var collapsed = !!ctx.state.prefs.railCollapsed;
+    var toggle = D.el('button', {
+      class: 'pf-rail__toggle',
+      attrs: { type: 'button', 'aria-expanded': String(!collapsed), 'aria-label': collapsed ? 'Rozwiń panel Najbliższe terminy' : 'Zwiń panel Najbliższe terminy', 'data-tooltip': collapsed ? 'Rozwiń panel' : 'Zwiń panel', 'data-fk': 'rail-toggle' },
+      on: { click: function () { act.setPref({ railCollapsed: !collapsed }); } }
+    }, [Icons.icon(collapsed ? 'chevronLeft' : 'chevronRight', 16)]);
+    if (collapsed) {
+      var late = buckets.late.length;
+      return D.el('div', { class: 'pf-rail__inner pf-rail__inner--collapsed' }, [
+        toggle,
+        D.el('span', { class: 'pf-rail__vtitle', text: 'Najbliższe terminy' }),
+        items.length ? D.el('span', { class: 'pf-rail__vcount t-num' + (late ? ' is-late' : ''), text: String(late || items.length), attrs: { 'aria-label': late ? late + ' po terminie' : items.length + ' terminów' } }) : null
+      ]);
+    }
+
     return D.el('div', { class: 'pf-rail__inner' }, [
-      D.el('h2', { class: 'pf-rail__title', text: 'Najbliższe terminy' })
+      D.el('div', { class: 'pf-rail__head' }, [D.el('h2', { class: 'pf-rail__title', text: 'Najbliższe terminy' }), toggle])
     ].concat(sections.length ? sections : [D.el('p', { class: 'cockpit__empty', text: 'Brak terminów w najbliższych 60 dniach.' })]).concat([biuroDzis(projects, ctx)]));
   }
 

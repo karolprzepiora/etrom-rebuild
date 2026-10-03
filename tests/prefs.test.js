@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0 };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -44,6 +44,8 @@ test('grupowanie i zwinięty panel boczny', () => {
   assert.equal(Prefs.normalize({ groupBy: 'kolor' }).groupBy, 'none');
   assert.equal(Prefs.normalize({ sidebarCollapsed: 'tak' }).sidebarCollapsed, false);
   assert.equal(Prefs.normalize({ sidebarCollapsed: true }).sidebarCollapsed, true);
+  assert.equal(Prefs.normalize({ railCollapsed: 'tak' }).railCollapsed, false);
+  assert.equal(Prefs.normalize({ railCollapsed: true }).railCollapsed, true);
 });
 
 test('normalize odrzuca nieznane wartości', () => {
