@@ -540,7 +540,7 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 /* ---------- Ekran Czas: siatka jak mapa cieplna w Analizie ---------- */
 .ts-hm .an-hm__row, .pl-hm .an-hm__row { grid-template-columns: var(--cols); }
 .ts-hm, .pl-hm { gap: 4px; padding-bottom: 2px; }
-.ts-hm .an-hm__c, .pl-hm .an-hm__c { height: 2.1rem; border-radius: 8px; }
+.ts-hm .an-hm__c, .pl-hm .an-hm__c { height: 1.9rem; border-radius: 6px; }
 .ts-hm__who { gap: var(--space-2); }
 .ts-hm__who .ts-toggle { width: auto; height: auto; flex: none; padding: 2px; border-radius: 6px; }
 .ts-hm__who .ts-toggle:hover { background: var(--wash); }
