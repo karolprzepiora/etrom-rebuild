@@ -523,6 +523,9 @@ async function main() {
     check('widok kart: jedna karta na projekt, bez paska postępu',
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === 0, JSON.stringify(cardsCheck));
 
+    const gridCheck = await evaluate('var c = document.querySelectorAll(".pcard"); return { cols: getComputedStyle(document.querySelector(".pcard-grid")).gridTemplateColumns.split(" ").length, w0: c[0].getBoundingClientRect().width, vw: document.documentElement.clientWidth };');
+    check('widok kart: kafle układają się w kolumny (nie jeden na całą szerokość)', gridCheck.cols >= 2 && gridCheck.w0 < gridCheck.vw * 0.6, JSON.stringify(gridCheck));
+
     await click('#action-settings');
     await sleep(150);
     await evaluate('document.querySelector(\'.settings .segmented__btn[data-value="dark"]\').click(); return true;');

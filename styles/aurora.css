@@ -605,3 +605,8 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
   .sheet, .sheet__scroll, .app, main.page { background: #fff !important; box-shadow: none !important; border-radius: 0 !important; }
   .ts-bar, .ts-bar *, .seg, .segmented { visibility: hidden; height: 0; margin: 0; padding: 0; overflow: hidden; }
 }
+
+/* Widok kafli: siatka kart projektów (przywrócona po porządkach) */
+.pcard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: var(--space-4); }
+.pcard__spacer { flex: 1; }
+.pcard__more, .pcard .datum, .pcard .status, .pcard [data-tooltip] { position: relative; z-index: 1; }
