@@ -492,9 +492,9 @@ Pomiar komputowanych stylów na wszystkich ekranach wykazał rozjazdy; ujednolic
 - **Kreskowa grafika** (`ui/kindArt.js`, siatka 120×80, kontur `currentColor`): jasny znak wodny w rogu kafla i banera projektu, mała ikona obok numeru na liście. Kolor tła zostaje do rozróżniania numerów, grafika mówi o typie.
 - **Kafle w jednolitym kolorze** (domyślnie): płaski, średnio nasycony kolor projektu, bez połysku, warstwic i poświaty. Wersja z gradientem i połyskiem: Ustawienia → Wygląd → „Kafle z połyskiem” (`data-tiles="full"`).
 
-## Ekran Czas w standardzie Analizy
+## Mapa cieplna: jeden standard (Analiza, Czas, Plan)
 
-Karta czasu i plan obciążenia używają tej samej siatki co mapa cieplna w Analizie (`.an-hm`): karta `an-card` z tytułem i objaśnieniem, zaokrąglone komórki, nazwa po lewej, podsumowanie (godziny i procent) po prawej. Barwa komórki karty czasu = barwa projektu, nasycenie = udział w dniu pracy; wiersz „Razem” i plan obciążenia używają skali obciążenia z Analizy (spokojna → bursztyn → czerwień).
+Trzy siatki — obciążenie w Analizie, karta czasu i plan obciążenia — mają identyczny wygląd: karta `an-card` z tytułem i jednozdaniowym opisem, komórki `an-hm__c` (1,9 rem, zaokrąglenie 6 px, odstęp 3 px), nagłówki kolumn w jednym wierszu (jasne, bez pogrubień; dzisiejszy dzień akcentem), podsumowanie po prawej (godziny + procent). **Jedna skala barw** dla wszystkich: spokojna → bursztyn (>85%) → czerwień (>105%), natężenie rośnie z udziałem. Kolor projektu niesie tylko plakietka z numerem. W gęstym widoku miesiąca godziny są zaokrąglone do całych, a dokładna wartość jest w podpowiedzi.
 
 ## Audyt: układ, dotyk, wydruk
 

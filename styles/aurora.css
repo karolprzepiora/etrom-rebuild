@@ -539,22 +539,16 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .ts-hm__row--task .an-hm__who { padding-left: 2.6rem; color: var(--ink-3); font-size: var(--fs-xs); }
 .ts-hm__row--task .an-hm__c { height: 1.6rem; border-radius: 6px; }
 .ts-hm__row--task .an-hm__sum b { font-weight: 500; font-size: var(--fs-xs); }
-.ts-hm__day { display: grid; justify-items: center; line-height: 1.15; }
-.ts-hm__day small { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
-.ts-hm__num { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; border-radius: 50%; font-weight: 600; color: var(--ink-2); }
-.ts-hm__day.is-today .ts-hm__num { color: #fff; background: linear-gradient(135deg, var(--aurora-1), var(--aurora-2)); }
+.ts-hm__day.is-today { color: var(--flow-ink); font-weight: 650; }
 .ts-hm__day.is-weekend { opacity: .6; }
-.ts-hm__c.has-time { background: color-mix(in srgb, oklch(calc(.6 + .06 * var(--tone, 0)) calc(.14 * var(--kp)) var(--hue)) calc(20% + 62% * var(--t)), transparent); font-weight: 600; }
-.ts-hm__c.has-time.is-strong { color: #fff; text-shadow: 0 1px 1px rgb(0 0 0 / .25); }
-.ts-hm__c.is-weekend:not(.has-time):not(.ts-hm__total) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
-.ts-hm__c.is-today:not(.has-time):not(.ts-hm__total) { background: color-mix(in srgb, var(--flow) 9%, transparent); }
-.ts-hm__c.is-today.has-time, .ts-hm__total.is-today { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--flow) 70%, transparent); }
+.ts-hm__c.is-weekend:not(.ts-hm__total) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
 .ts-hm__foot { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
 .ts-hm__total { font-weight: 600; }
+.ts-hm .an-hm__c { overflow: hidden; }
 .pl-hm .an-hm__row--head .pl-week { display: grid; justify-items: center; line-height: 1.2; }
-.pl-hm .pl-week span { font-weight: 650; color: var(--ink-2); }
-.pl-hm .pl-week small { color: var(--ink-3); }
-.pl-hm .pl-week.is-current span { color: var(--flow-ink); }
+.pl-hm .pl-week span { font-weight: 400; color: var(--ink-3); font-size: var(--fs-xs, 11px); }
+.pl-hm .pl-week small { color: var(--ink-4); font-size: 10px; }
+.pl-hm .pl-week.is-current span { color: var(--flow-ink); font-weight: 650; }
 .pl-btn { all: unset; box-sizing: border-box; cursor: pointer; }
 .pl-hm .pl-btn { display: grid; place-items: center; height: 2.1rem; border-radius: 8px; background: var(--wash); color: var(--ink); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 .pl-hm .pl-btn:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 25%, transparent); }

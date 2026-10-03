@@ -75,13 +75,16 @@
     return { background: 'color-mix(in srgb, ' + tone + ' ' + Math.round(14 + Math.min(1, ratio) * 62) + '%, transparent)' };
   }
 
+  // Jak w Analizie: jedna skala barw (spokojna → bursztyn → czerwień) i całe godziny w gęstym widoku miesiąca.
+  var compact = false;
+  function cellText(minutes) { return minutes ? (compact ? String(Math.round(minutes / 60)) : h(minutes)) : ''; }
+
   function heatCell(minutes, hue, tone, target, day, label) {
-    var t = Math.max(0, Math.min(1, minutes / (target || 480)));
     return D.el('span', {
-      class: 'an-hm__c ts-hm__c' + (minutes ? ' has-time' : '') + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : '') + (t > 0.6 ? ' is-strong' : ''),
-      style: minutes ? { '--hue': String(hue), '--tone': String(tone), '--t': String(t) } : null,
+      class: 'an-hm__c ts-hm__c' + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : ''),
+      style: minutes ? loadStyle(minutes / (target || 480)) : null,
       attrs: { role: 'cell', 'data-tooltip': minutes ? label + ': ' + TL.duration(minutes) : null }
-    }, [minutes ? h(minutes) : '']);
+    }, [cellText(minutes)]);
   }
 
   function sumCell(minutes, share, bad) {
@@ -95,14 +98,13 @@
     var open = state.timeOpen || {};
     var a = ctx.actions;
     var n = sheet.days.length;
+    compact = n > 10;
     var cols = 'minmax(10rem, 15rem) repeat(' + n + ', minmax(' + (n > 10 ? '1.35rem' : '2.4rem') + ', 1fr)) 6.5rem';
     var rowStyle = { '--cols': cols, minWidth: (n > 10 ? 10 + n * 1.5 + 6.5 : 34) + 'rem' };
 
     var head = D.el('div', { class: 'an-hm__row an-hm__row--head ts-hm__head', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who' })]
       .concat(sheet.days.map(function (d) {
-        return D.el('span', { class: 'an-hm__wk ts-hm__day' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''), attrs: { role: 'columnheader', 'aria-label': d.label + ' ' + d.number } }, [
-          D.el('small', { text: n > 10 ? '' : d.label }), D.el('span', { class: 'ts-hm__num t-num', text: String(d.number) })
-        ]);
+        return D.el('span', { class: 'an-hm__wk ts-hm__day' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''), text: n > 10 ? String(d.number) : d.label + ' ' + d.number, attrs: { role: 'columnheader', 'aria-label': d.label + ' ' + d.number } });
       }), [D.el('span', { class: 'an-hm__sum', text: 'Razem' })]));
 
     var body = [];
@@ -143,7 +145,7 @@
           class: 'an-hm__c ts-hm__c ts-hm__total' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
           style: loadStyle(d.weekend ? 0 : d.minutes / sheet.dayTarget) || (d.minutes ? loadStyle(d.minutes / sheet.dayTarget) : null),
           attrs: { role: 'cell', 'data-tooltip': d.minutes ? d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') : null }
-        }, [d.minutes ? h(d.minutes) : '']);
+        }, [cellText(d.minutes)]);
       }), [sumCell(sheet.total, targetPct, targetPct !== null && targetPct > 105)]));
 
     return D.el('div', { class: 'an-hm ts-hm', attrs: { role: 'table', 'aria-label': 'Karta czasu', tabindex: '0' } }, [head].concat(body, [foot]));
@@ -176,7 +178,7 @@
         stat('Średnio na dzień', avg ? TL.duration(avg) : '—', 'w dniach z zapisem')
       ]),
       sheet.rows.length
-        ? card('Godziny w okresie', 'barwa = projekt, nasycenie = udział w dniu pracy (' + TL.duration(sheet.dayTarget) + '); w wierszu „Razem” barwa = obciążenie dnia', sheetTable(sheet, state, ctx))
+        ? card('Godziny w okresie', 'godziny zapisane przez dzień; barwa = udział w dniu pracy (' + TL.duration(sheet.dayTarget) + ')', sheetTable(sheet, state, ctx))
         : UI.emptyState({ icon: 'clock', title: 'Brak zapisanego czasu w tym okresie', text: 'Włącz zegar przy zadaniu (▶), dopisz czas z menu zadania albo zaznacz przedział na osi dnia w Mojej pracy.' })
     ];
     return { body: body, sheet: sheet, summary: sheet.period.title + ' · ' + TL.duration(sheet.total) + (sheet.target ? ' z ' + TL.duration(sheet.target) : '') };
@@ -200,7 +202,7 @@
       style: loadStyle(ratio),
       attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + personId + '-' + index, 'data-tooltip': cell.planned ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.state === 'over' ? ' — przeciążenie' : '') : 'Brak zaplanowanej pracy' },
       on: { click: function () { ctx.actions.setTime({ planCell: isSel ? null : { personId: personId, week: index } }); } }
-    }, [cell.planned ? D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: hh(cell.planned) }), D.el('small', { text: ' / ' + hh(cell.capacity) })]) : '']);
+    }, [cell.planned ? String(Math.round(cell.planned)) : '']);
   }
 
   function planDetail(selected, plan, people, ctx) {
@@ -238,7 +240,7 @@
     var rowStyle = { '--cols': 'minmax(10rem, 14rem) repeat(' + (plan.weeks.length + 1) + ', minmax(4.2rem, 1fr))', minWidth: '44rem' };
     var head = D.el('div', { class: 'an-hm__row an-hm__row--head', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who' })]
       .concat(plan.weeks.map(function (w) {
-        return D.el('span', { class: 'an-hm__wk pl-week' + (w.current ? ' is-current' : ''), attrs: { role: 'columnheader' } }, [D.el('span', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays + ' dni rob.') })]);
+        return D.el('span', { class: 'an-hm__wk pl-week' + (w.current ? ' is-current' : ''), attrs: { role: 'columnheader' } }, [D.el('span', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays !== 5 ? w.workdays + ' dni rob.' : '') })]);
       }), [D.el('span', { class: 'an-hm__wk pl-week', attrs: { role: 'columnheader' } }, [D.el('span', { text: 'Bez terminu' }), D.el('small', { text: 'nie wliczone' })])]));
     var body = plan.rows.map(function (row) {
       var person = Team.findPerson(people, row.personId);
