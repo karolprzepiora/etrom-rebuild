@@ -158,12 +158,14 @@
   function header(project, ctx, now) {
     var health = Insight.health(project, now);
     return D.el('header', { class: 'pd-head' }, [
-      D.el('div', { class: 'pd-head__id' }, [
-        D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + project.code }),
-        statusControl(project, ctx)
+      D.el('div', { class: 'pd-hero', style: E.Identity.hueStyle(project.code) }, [
+        D.el('div', { class: 'pd-head__id' }, [
+          D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + project.code }),
+          statusControl(project, ctx)
+        ]),
+        D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),
+        D.el('p', { class: 'pd-head__client', text: project.client || 'Bez zamawiającego' })
       ]),
-      D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),
-      D.el('p', { class: 'pd-head__client', text: project.client || 'Bez zamawiającego' }),
       propertyRow(project, ctx, now, health)
     ]);
   }

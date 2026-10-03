@@ -46,7 +46,7 @@
           'data-tooltip': entry.fn.label + ' — ' + entry.project.name + ' (' + h.label.toLowerCase() + ')',
           'aria-label': entry.fn.label + ' w projekcie ' + entry.project.code + ' ' + entry.project.name
         }
-      }, [Sig.datum(h.level, { size: 11, label: false }), D.el('span', { class: 'role-link__code', text: entry.project.code }), D.el('span', { class: 'role-link__fn', text: entry.fn.short })]);
+      }, [Sig.datum(h.level, { size: 11, label: false }), D.el('span', { class: 'role-link__code', style: E.Identity.hueStyle(entry.project.code), text: entry.project.code }), D.el('span', { class: 'role-link__fn', text: entry.fn.short })]);
     });
     if (rest > 0) {
       children.push(D.el('span', {

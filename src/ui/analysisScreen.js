@@ -218,7 +218,7 @@
   function detail(p, data, ctx, now, bare) {
     return D.el('div', { class: 'an-detail' + (bare ? ' an-detail--bare' : ''), dataset: { projectId: p.id } }, [
       bare ? D.el('header', { class: 'an-detail__head' }, [pill(p.verdict), D.el('span', { class: 't-meta', text: 'Zużycie, prognoza i opłacalność tego projektu' })]) : D.el('header', { class: 'an-detail__head' }, [
-        D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + p.code }),
+        D.el('span', { class: 'pf-num pf-num--pill t-num', style: E.Identity.hueStyle(p.code), text: '#' + p.code }),
         D.el('h2', { class: 'an-detail__title', text: p.name }),
         pill(p.verdict),
         UI.button({ label: 'Otwórz projekt', variant: 'ghost', size: 'sm', icon: 'arrowUpRight', onClick: function () { ctx.actions.openProject(p.id); } })
@@ -251,7 +251,7 @@
       D.el('div', { class: 'an-tr an-tr--head', attrs: { role: 'row' } }, ['Projekt', 'Stan', 'Postęp', 'Budżet', 'Czas umowy', 'Prognoza'].concat(data.management ? ['Marża'] : []).map(function (h) { return D.el('span', { text: h, attrs: { role: 'columnheader' } }); })),
       D.el('div', { class: 'an-trows' }, rows.map(function (p) {
         return D.el('button', { class: 'an-tr an-tr--row' + (p.id === selected ? ' is-selected' : ''), attrs: { type: 'button', role: 'row', 'data-fk': 'an-row-' + p.id }, dataset: { projectId: p.id }, on: { click: function () { ctx.actions.setAnalysisProject(p.id); } } }, [
-          D.el('span', { class: 'an-tr__name', attrs: { role: 'cell' } }, [D.el('span', { class: 'pf-num pf-num--pill t-num', text: p.code }), D.el('span', { class: 'truncate', text: p.name })]),
+          D.el('span', { class: 'an-tr__name', attrs: { role: 'cell' } }, [D.el('span', { class: 'pf-num pf-num--pill t-num', style: E.Identity.hueStyle(p.code), text: p.code }), D.el('span', { class: 'truncate', text: p.name })]),
           D.el('span', { attrs: { role: 'cell' } }, [pill(p.verdict)]),
           D.el('span', { attrs: { role: 'cell' } }, [bar(p.earnedPct, 'flow')]),
           D.el('span', { attrs: { role: 'cell' } }, [bar(p.usagePct, p.usagePct > 100 ? 'bad' : (p.usagePct >= 80 ? 'warn' : 'ink'))]),
@@ -288,7 +288,7 @@
     var max = o.max || Math.max.apply(null, rows.map(function (r) { return Math.max(r.value, r.mark || 0); }).concat([1]));
     return D.el('ul', { class: 'an-hb' }, rows.map(function (r) {
       return D.el('li', { class: 'an-hb__row' }, [
-        D.el('span', { class: 'an-hb__label truncate' }, [r.code ? D.el('span', { class: 'pf-num pf-num--pill t-num', text: r.code }) : null, D.el('span', { class: 'truncate', text: r.label })]),
+        D.el('span', { class: 'an-hb__label truncate' }, [r.code ? D.el('span', { class: 'pf-num pf-num--pill t-num', style: E.Identity.hueStyle(r.code), text: r.code }) : null, D.el('span', { class: 'truncate', text: r.label })]),
         D.el('span', { class: 'an-hb__track', attrs: r.tip ? { 'data-tooltip': r.tip } : {} }, [
           D.el('i', { class: 'an-hb__fill an-hb__fill--' + (r.tone || 'flow'), style: { width: Math.min(100, (Math.max(0, r.value) / max) * 100) + '%' } }),
           r.mark ? D.el('i', { class: 'an-hb__mark', style: { left: Math.min(100, (r.mark / max) * 100) + '%' } }) : null
@@ -305,7 +305,7 @@
     return D.el('ul', { class: 'an-hb an-hb--div' }, rows.map(function (r) {
       var w = (Math.abs(r.value) / max) * 50;
       return D.el('li', { class: 'an-hb__row' }, [
-        D.el('span', { class: 'an-hb__label truncate' }, [D.el('span', { class: 'pf-num pf-num--pill t-num', text: r.code }), D.el('span', { class: 'truncate', text: r.label })]),
+        D.el('span', { class: 'an-hb__label truncate' }, [D.el('span', { class: 'pf-num pf-num--pill t-num', style: E.Identity.hueStyle(r.code), text: r.code }), D.el('span', { class: 'truncate', text: r.label })]),
         D.el('span', { class: 'an-hb__track an-hb__track--div', attrs: r.tip ? { 'data-tooltip': r.tip } : {} }, [
           D.el('i', { class: 'an-hb__zero' }),
           D.el('i', { class: 'an-hb__fill an-hb__fill--' + (r.value < 0 ? 'bad' : (r.tone || 'flow')), style: r.value < 0 ? { width: w + '%', right: '50%' } : { width: w + '%', left: '50%' } })
@@ -364,7 +364,7 @@
         D.el('div', { class: 'an-stack' }, [
           card('Najwięcej uwagi', 'projekty w toku, od najbardziej zagrożonych', D.el('ul', { class: 'an-focus' }, attention.slice(0, 5).map(function (p) {
             return D.el('li', null, [D.el('button', { class: 'an-focus__b', attrs: { type: 'button', 'data-fk': 'an-focus-' + p.id }, on: { click: function () { ctx.actions.openAnalysisProject(p.id); } } }, [
-              D.el('span', { class: 'pf-num pf-num--pill t-num', text: p.code }), D.el('span', { class: 'an-focus__t' }, [D.el('b', { class: 'truncate', text: p.name }), D.el('span', { class: 't-meta', text: short(p) })]), pill(p.verdict)
+              D.el('span', { class: 'pf-num pf-num--pill t-num', style: E.Identity.hueStyle(p.code), text: p.code }), D.el('span', { class: 'an-focus__t' }, [D.el('b', { class: 'truncate', text: p.name }), D.el('span', { class: 't-meta', text: short(p) })]), pill(p.verdict)
             ])]);
           }).concat(attention.length ? [] : [D.el('li', { class: 'an-empty', text: 'Wszystkie projekty w toku są w normie.' })]))),
           card('Najbliższe terminy', 'umowy projektów w toku', hbars(data.deadlines.slice(0, 5).map(function (d) {

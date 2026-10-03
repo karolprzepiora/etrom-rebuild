@@ -60,7 +60,7 @@
   function row(item, ctx, now) {
     var date = dateOf(item);
     var context = [
-      D.el('a', { class: 'mrow__project', text: item.project.code, attrs: { href: E.ProjectList.projectHref(item.project), 'data-tooltip': item.project.name } }),
+      D.el('a', { class: 'mrow__project', style: E.Identity.hueStyle(item.project.code), text: item.project.code, attrs: { href: E.ProjectList.projectHref(item.project), 'data-tooltip': item.project.name } }),
       item.stage ? D.el('span', { class: 'truncate', text: E.Model.describeStage(item.stage).name }) : null,
       item.detail ? D.el('span', { class: 'truncate ibx__detail', text: item.detail }) : null
     ];

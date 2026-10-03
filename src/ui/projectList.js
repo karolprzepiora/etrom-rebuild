@@ -492,7 +492,7 @@
             D.el('span', { class: 'pf-due-item__icon', attrs: { 'aria-hidden': 'true' } }, [Icons.icon(item.kind === 'mail' ? 'mail' : (item.kind === 'project' ? 'flag' : 'checklist'), 14)]),
             D.el('span', { class: 'pf-due-item__what' }, [
               D.el('span', { class: 'pf-due-item__title', text: item.label }),
-              D.el('span', { class: 'pf-due-item__proj truncate' }, [D.el('span', { class: 'pf-due-item__code t-num', text: shortCode(item.project.code) }), D.el('span', { class: 'truncate', text: item.project.name })])
+              D.el('span', { class: 'pf-due-item__proj truncate' }, [D.el('span', { class: 'pf-due-item__code t-num', style: E.Identity.hueStyle(item.project.code), text: shortCode(item.project.code) }), D.el('span', { class: 'truncate', text: item.project.name })])
             ]),
             D.el('span', { class: 'pf-due-item__when t-num' }, [D.el('b', { text: F.date(item.date) }), D.el('span', { text: relDays(item.days) })])
           ])]);

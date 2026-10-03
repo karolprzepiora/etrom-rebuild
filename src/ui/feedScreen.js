@@ -62,7 +62,7 @@
 
   function projectChip(project) {
     if (!project) return D.el('span', { class: 'fd__chip fd__chip--office', text: 'Całe biuro' });
-    return D.el('a', { class: 'fd__chip', text: project.code + ' · ' + project.name, attrs: { href: E.ProjectList.projectHref(project) } });
+    return D.el('a', { class: 'fd__chip fd__chip--project', style: E.Identity.hueStyle(project.code), text: project.code + ' · ' + project.name, attrs: { href: E.ProjectList.projectHref(project) } });
   }
 
   function headline(item, people) {
@@ -320,7 +320,7 @@
         var level = E.Insight.health(p, now).level;
         return D.el('li', null, [D.el('button', { class: 'fd__prow', attrs: { type: 'button', 'data-fk': 'fd-story-' + p.id, 'data-tooltip': p.name }, on: { click: function () { ctx.actions.openProject(p.id, 'etapy'); } } }, [
           E.Sig.datum(level, { label: false }),
-          D.el('span', { class: 'fd__pcode t-num', text: shortCode(p.code) }),
+          D.el('span', { class: 'fd__pcode t-num', style: E.Identity.hueStyle(p.code), text: shortCode(p.code) }),
           D.el('span', { class: 'fd__pname truncate', text: p.name })
         ])]);
       }))) : null,

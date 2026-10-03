@@ -366,23 +366,69 @@ body, .app {
 .mrow2__main { min-width: 0; }
 .insp-mail { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--wash); color: var(--ink-2); font-size: var(--fs-sm); cursor: pointer; border: 0; font-family: inherit; }
 
-/* ---------- Tabela: wiersze w barwie projektu, stan jako ramka ---------- */
+/* ---------- Tabela: wiersze w pełnym kolorze projektu, stan jako zewnętrzna ramka ---------- */
+.pf-table .table { border-spacing: 0 10px; }
 .pf-table .table tbody tr.table__row {
   --hue: 210;
-  --row-line: light-dark(hsl(var(--hue) 40% 38% / .15), hsl(var(--hue) 45% 70% / .16));
-  --row-bg: light-dark(hsl(var(--hue) 45% 96.8%), hsl(var(--hue) 20% 12%));
+  --ink: #fff; --ink-2: rgb(255 255 255 / .9); --ink-3: rgb(255 255 255 / .74); --ink-4: rgb(255 255 255 / .6);
+  --line: rgb(255 255 255 / .22); --alarm-ink: #fff; --warn-ink: #fff; --pc-accent: #fff;
+  --row-a: light-dark(hsl(var(--hue) 62% 40%), hsl(var(--hue) 52% 33%));
+  --row-b: light-dark(hsl(calc(var(--hue) + 22) 66% 31%), hsl(calc(var(--hue) + 22) 55% 25%));
+  color: #fff;
+  filter: drop-shadow(0 8px 12px hsl(var(--hue) 70% 30% / .22));
 }
-.pf-table .table tbody tr.table__row > td { background: var(--row-bg); background-size: 100% 100%; box-shadow: inset 0 1px 0 var(--row-line), inset 0 -1px 0 var(--row-line); }
-.pf-table .table tbody tr.table__row > td:first-child { box-shadow: inset 1px 0 0 var(--row-line), inset 0 1px 0 var(--row-line), inset 0 -1px 0 var(--row-line); }
-.pf-table .table tbody tr.table__row > td:last-child { box-shadow: inset -1px 0 0 var(--row-line), inset 0 1px 0 var(--row-line), inset 0 -1px 0 var(--row-line); }
-.pf-table .table tbody tr.table__row:hover > td { background: var(--row-bg); filter: brightness(.975); }
-.pf-table .pf-num--pill { background: light-dark(hsl(var(--hue) 38% 28%), hsl(var(--hue) 35% 72%)); color: light-dark(#fff, hsl(var(--hue) 40% 12%)); }
-/* alarm / uwaga: ramka wokół całego wiersza zamiast paska z lewej */
-.pf-table .table tbody tr.level-alarm { --row-line: var(--alarm); }
-.pf-table .table tbody tr.level-warning { --row-line: color-mix(in srgb, var(--warn) 70%, transparent); }
-.pf-table .table tbody tr.level-alarm > td { box-shadow: inset 0 2px 0 var(--row-line), inset 0 -2px 0 var(--row-line); }
-.pf-table .table tbody tr.level-alarm > td:first-child { box-shadow: inset 2px 0 0 var(--row-line), inset 0 2px 0 var(--row-line), inset 0 -2px 0 var(--row-line); }
-.pf-table .table tbody tr.level-alarm > td:last-child { box-shadow: inset -2px 0 0 var(--row-line), inset 0 2px 0 var(--row-line), inset 0 -2px 0 var(--row-line); }
-.pf-table .table tbody tr.level-warning > td { box-shadow: inset 0 1.5px 0 var(--row-line), inset 0 -1.5px 0 var(--row-line); }
-.pf-table .table tbody tr.level-warning > td:first-child { box-shadow: inset 1.5px 0 0 var(--row-line), inset 0 1.5px 0 var(--row-line), inset 0 -1.5px 0 var(--row-line); }
-.pf-table .table tbody tr.level-warning > td:last-child { box-shadow: inset -1.5px 0 0 var(--row-line), inset 0 1.5px 0 var(--row-line), inset 0 -1.5px 0 var(--row-line); }
+.pf-table .table tbody tr.table__row > td { background: linear-gradient(90deg, var(--row-a), var(--row-b)); background-attachment: fixed; background-size: 100% 100%; color: #fff; box-shadow: none; }
+.pf-table .table tbody tr.table__row > td:first-child { border-radius: 14px 0 0 14px; box-shadow: none; }
+.pf-table .table tbody tr.table__row > td:last-child { border-radius: 0 14px 14px 0; box-shadow: none; }
+.pf-table .table tbody tr.table__row:hover { filter: drop-shadow(0 10px 16px hsl(var(--hue) 70% 30% / .32)) brightness(1.06); }
+.pf-table .table tbody tr.table__row:hover > td { background: linear-gradient(90deg, var(--row-a), var(--row-b)); }
+.pf-table .table tbody tr.table__row.is-closed { --row-a: light-dark(#6b7780, #46515a); --row-b: light-dark(#505b64, #363f46); filter: none; }
+.pf-table .project-link, .pf-table .table tbody tr.table__row a { color: #fff; }
+.pf-table .pf-num--pill { background: rgb(255 255 255 / .94); color: hsl(var(--hue) 55% 24%); }
+.pf-table .pc-ribbon__track { background: rgb(255 255 255 / .25); }
+.pf-table .pc-ribbon.is-late .pc-ribbon__fill { background: #fff; }
+.pf-table .pf-reason, .pf-table .pf-reason--alarm, .pf-table .pf-reason--warning { color: #fff; }
+.pf-table .pf-due.is-overdue .pf-due__rel, .pf-table .pf-due.is-overdue .pf-due__date { color: #fff; }
+.pf-table .pf-due.is-overdue .pf-due__rel { font-weight: 700; }
+.pf-table .avatar { box-shadow: 0 0 0 2px #fff; }
+/* stan: ramka wokół całego wiersza (outline segmentowany przez cienie komórek, na zewnątrz kolorowego tła) */
+.pf-table .table tbody tr.level-alarm > td { box-shadow: 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm); }
+.pf-table .table tbody tr.level-alarm > td:first-child { box-shadow: -3px 0 0 var(--alarm), 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm); }
+.pf-table .table tbody tr.level-alarm > td:last-child { box-shadow: 3px 0 0 var(--alarm), 0 -3px 0 var(--alarm), 0 3px 0 var(--alarm); }
+.pf-table .table tbody tr.level-warning > td { box-shadow: 0 -3px 0 var(--warn), 0 3px 0 var(--warn); }
+.pf-table .table tbody tr.level-warning > td:first-child { box-shadow: -3px 0 0 var(--warn), 0 -3px 0 var(--warn), 0 3px 0 var(--warn); }
+.pf-table .table tbody tr.level-warning > td:last-child { box-shadow: 3px 0 0 var(--warn), 0 -3px 0 var(--warn), 0 3px 0 var(--warn); }
+.pf-table .pick .statebtn { padding: 4px; border-radius: 999px; background: #fff; }
+.pf-table .pick .statebtn:hover { text-decoration: none; filter: brightness(.95); }
+
+/* ---------- Barwa projektu w całej aplikacji: pełne, nasycone znaczki ---------- */
+.pf-num--pill, .fd__pcode, .pf-due-item__code, .mrow__project, .code.pcode, .fd__chip--project, .role-link__code {
+  --hue: 210;
+  background: light-dark(hsl(var(--hue) 62% 38%), hsl(var(--hue) 50% 36%));
+  color: #fff; box-shadow: none; border-radius: 999px;
+}
+.mrow__project, .code.pcode, .role-link__code { padding: 0 7px; font-weight: 600; text-decoration: none; }
+.mrow__project:hover { text-decoration: none; filter: brightness(1.1); }
+.fd__chip--project { padding: 2px 10px; font-weight: 600; }
+a.fd__chip--project:hover { background: light-dark(hsl(var(--hue) 62% 32%), hsl(var(--hue) 50% 42%)); color: #fff; }
+.pf-num--pill { font-weight: 600; }
+.nav__item--project { box-shadow: inset 3px 0 0 light-dark(hsl(var(--hue, 210) 62% 42%), hsl(var(--hue, 210) 55% 52%)); }
+.nav__item--project[aria-current="page"] { box-shadow: inset 3px 0 0 light-dark(hsl(var(--hue, 210) 62% 42%), hsl(var(--hue, 210) 55% 52%)), 0 0 0 1px light-dark(rgb(16 26 34 / .06), rgb(255 255 255 / .07)), 0 8px 18px -10px var(--shadow-tint); }
+
+/* nagłówek projektu: pełnokolorowy baner */
+.pd-hero {
+  --hue: 210;
+  --ink: #fff; --ink-2: rgb(255 255 255 / .92); --ink-3: rgb(255 255 255 / .76); --ink-4: rgb(255 255 255 / .6);
+  --line: rgb(255 255 255 / .25); --on-ink: hsl(var(--hue) 55% 22%);
+  position: relative; overflow: hidden; isolation: isolate; color: #fff;
+  display: grid; gap: var(--space-2); padding: var(--space-6) var(--space-6) var(--space-5);
+  border-radius: 22px;
+  background: linear-gradient(150deg, light-dark(hsl(var(--hue) 62% 40%), hsl(var(--hue) 52% 33%)), light-dark(hsl(calc(var(--hue) + 22) 66% 30%), hsl(calc(var(--hue) + 22) 55% 24%)));
+  box-shadow: 0 18px 36px -22px hsl(var(--hue) 70% 30% / .7);
+}
+.pd-hero::before { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: repeating-radial-gradient(circle at 104% -10%, transparent 0 22px, rgb(255 255 255 / .12) 22px 23px);
+  -webkit-mask-image: radial-gradient(circle at 104% -10%, #000, transparent 65%); mask-image: radial-gradient(circle at 104% -10%, #000, transparent 65%); }
+.pd-hero .pf-num--pill, .pd-head__id .pd-hero .pf-num--pill { background: rgb(255 255 255 / .95); color: hsl(var(--hue) 55% 24%); }
+.pd-hero .pd-head__title, .pd-hero .pd-head__client { color: #fff; }
+.pd-hero .detail__status, .pd-hero .detail__status * { color: #fff; }

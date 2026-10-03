@@ -419,3 +419,10 @@ Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toas
 - **Radar terminów jako filtr.** Nagłówki sekcji (`.pf-rail__filter`) wywołują `filterPortfolio`: Po terminie → `health: overdue`, Ten tydzień / Później → `horizon` 7 / 60 dni; drugi klik zdejmuje filtr (`aria-pressed`).
 - **Obciążenie osób** (zarząd): `.load--cap` — procent (średnia godzin z 4 tygodni wobec 40 h), pasek, godziny i opis; progi: <40% wolna przepustowość, 85–110% pełne obłożenie, >110% przeciążenie. Pozostali widzą tylko liczbę zadań.
 - **Zdarzenia w Aktualnościach.** `Events.detect` porównuje odcisk stanu (status projektu, statusy etapów, poziom stanu) i zapisuje w `social.events` (limit 200) oraz `social.health` (ostatnio widziane poziomy, wykrywanie zmian między sesjami). Zmiany hurtowe (dane przykładowe, wczytanie kopii) nie generują zdarzeń (`quietly`). Ten sam poziom nie wraca częściej niż co 12 h. Karta zdarzenia ma szynę w kolorze poziomu, ikonę systemową i kontekst „kod → etap”.
+
+## Barwa projektu: pełny kolor, stan jako ramka
+
+- Każdy projekt ma stałą barwę z kodu (`Identity.tileHue`, zakres 150–290: zielenie–fiolety). Czerwień i bursztyn są zarezerwowane dla stanu.
+- Kafle i wiersze tabeli to pełnokolorowe gradienty z białym tekstem; nagłówek projektu to pełnokolorowy baner (`.pd-hero`); kody projektów wszędzie (`Aktualności`, `Moja praca`, `Analiza`, `Zespół`, panel terminów) to nasycone pigułki; w panelu bocznym projekt ma kolorowy znacznik.
+- Stan (alarm / uwaga) to zewnętrzna ramka z odstępem i pełna plakietka, nigdy poświata ani pasek wewnątrz koloru projektu.
+- Barwę przekazuje się przez zmienną `--hue` (`Identity.hueStyle(kod)`).

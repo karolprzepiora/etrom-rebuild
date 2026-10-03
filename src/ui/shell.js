@@ -183,7 +183,8 @@
         href: E.ProjectList.projectHref(project),
         'aria-current': route.name === 'project' && route.projectId === project.id ? 'page' : null,
         'data-tooltip': project.code + ' — ' + state.label
-      }
+      },
+      style: E.Identity.hueStyle(project.code)
     }, [
       Sig.datum(state.level, { label: false }),
       D.el('span', { class: 'nav__label', text: project.name })

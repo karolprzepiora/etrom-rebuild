@@ -50,7 +50,12 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toLocaleUpperCase('pl');
   }
 
-  var api = { hue: hue, tileHue: tileHue, coverStyle: coverStyle, initials: initials };
+  /** Zmienna CSS --hue dla znaczków i kafli projektu. */
+  function hueStyle(code) {
+    return { '--hue': String(tileHue(code)) };
+  }
+
+  var api = { hue: hue, tileHue: tileHue, hueStyle: hueStyle, coverStyle: coverStyle, initials: initials };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Identity = api; }

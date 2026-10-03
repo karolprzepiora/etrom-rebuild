@@ -104,7 +104,7 @@
         D.el('span', { class: 'mproject__text' }, [
           D.el('span', { class: 'mproject__name truncate', text: project.name }),
           D.el('span', { class: 'mproject__meta truncate' }, [
-            D.el('span', { class: 'code', text: project.code }),
+            D.el('span', { class: 'code pcode', style: E.Identity.hueStyle(project.code), text: project.code }),
             D.el('span', { text: entry.functions.map(function (fn) { return fn.label; }).join(', ') })
           ]),
           project.deadline ? D.el('span', { class: 'mproject__due' }, [
