@@ -27,8 +27,8 @@
   var node = typeof module !== 'undefined' && module.exports;
   var Catalog = node ? require('./catalog.js') : root.ETROM.Catalog;
 
-  // Własna biblioteka biura: zadania etapów i udziały (w % całego projektu) nadpisują standard.
-  var custom = { tasks: {}, shares: {} };
+  // Własna biblioteka biura: lista zadań każdego etapu nadpisuje standard.
+  var custom = { tasks: {} };
   var MAX_TASKS = 30;
   var MAX_NAME = 120;
 
@@ -38,7 +38,7 @@
   /** Czyści zapisaną bibliotekę: tylko znane etapy, unikalne nazwy, dodatnie udziały. */
   function normalize(raw) {
     var src = raw && typeof raw === 'object' ? raw : {};
-    var out = { tasks: {}, shares: {} };
+    var out = { tasks: {} };
     var tasks = src.tasks && typeof src.tasks === 'object' ? src.tasks : {};
     Object.keys(tasks).forEach(function (id) {
       if (!Catalog.find(id) || !Array.isArray(tasks[id])) return;
@@ -51,11 +51,6 @@
         list.push({ name: name });
       });
       out.tasks[id] = list;
-    });
-    var shares = src.shares && typeof src.shares === 'object' ? src.shares : {};
-    Object.keys(shares).forEach(function (id) {
-      var n = Number(shares[id]);
-      if (Catalog.find(id) && Number.isFinite(n) && n > 0 && n <= 100) out.shares[id] = Math.round(n * 10) / 10;
     });
     return out;
   }
@@ -73,9 +68,8 @@
     return list.map(function (t) { return { name: t.name, reserve: false }; });
   }
 
-  /** Waga etapu przy rozdziale budżetu: własny udział biura albo standard z katalogu. */
+  /** Waga etapu przy rozdziale budżetu: standard z katalogu (udziały ustawia się przy zakładaniu projektu). */
   function weightOf(stageId) {
-    if (has(custom.shares, stageId)) return custom.shares[stageId];
     var entry = Catalog.find(stageId);
     return entry ? entry.defaultHours : 0;
   }
@@ -100,7 +94,7 @@
     return out;
   }
 
-  function isCustomized(stageId) { return has(custom.tasks, stageId) || has(custom.shares, stageId); }
+  function isCustomized(stageId) { return has(custom.tasks, stageId); }
 
   /* --- zmiany (zwracają nową bibliotekę, bez modyfikacji obecnej) --- */
 
@@ -135,28 +129,12 @@
     list.splice(index, 1);
     return withTasks(lib, stageId, list);
   }
-  /** Ustawia udział jednego etapu (%), pozostałe skalują się proporcjonalnie do 100%. */
-  function setShare(lib, stageId, pct) {
-    var p = Number(pct);
-    if (!Number.isFinite(p) || p <= 0 || p >= 100) return { library: normalize(lib), error: 'Podaj udział większy od 0 i mniejszy od 100%.' };
-    var saved = custom;
-    custom = normalize(lib);
-    var ids = Catalog.all.map(function (e) { return e.id; });
-    var others = ids.filter(function (id) { return id !== stageId; });
-    var restSum = others.reduce(function (t, id) { return t + weightOf(id); }, 0);
-    var next = normalize(lib);
-    others.forEach(function (id) { next.shares[id] = Math.max(0.1, Math.round(weightOf(id) / restSum * (100 - p) * 10) / 10); });
-    next.shares[stageId] = Math.round(p * 10) / 10;
-    custom = saved;
-    return { library: normalize(next), error: '' };
-  }
-  /** Przywraca standard jednego etapu (zadania). Udziały wracają wszystkie naraz: wartości są od siebie zależne. */
+  /** Przywraca standardowe zadania etapu. */
   function resetTasks(lib, stageId) {
     var next = normalize(lib);
     delete next.tasks[stageId];
     return next;
   }
-  function resetShares(lib) { var next = normalize(lib); next.shares = {}; return next; }
 
   /** Pozycje biblioteki, których etap jeszcze nie ma (po nazwie, bez względu na wielkość liter). */
   function missing(stage) {
@@ -168,7 +146,7 @@
   var api = {
     TASKS: TASKS, forStage: forStage, missing: missing, normalize: normalize, configure: configure, current: current,
     defaultTasks: defaultTasks, weightOf: weightOf, sharePct: sharePct, sharesFor: sharesFor, isCustomized: isCustomized,
-    addTask: addTask, renameTask: renameTask, removeTask: removeTask, setShare: setShare, resetTasks: resetTasks, resetShares: resetShares
+    addTask: addTask, renameTask: renameTask, removeTask: removeTask, resetTasks: resetTasks
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Library = api; }

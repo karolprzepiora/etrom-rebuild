@@ -801,9 +801,7 @@
   function libAddTask(stageId, name) { libraryChange(function (lib) { return E.Library.addTask(lib, stageId, name); }); }
   function libRenameTask(stageId, index, name) { libraryChange(function (lib) { return E.Library.renameTask(lib, stageId, index, name); }); }
   function libRemoveTask(stageId, index) { libraryChange(function (lib) { return E.Library.removeTask(lib, stageId, index); }); }
-  function libSetShare(stageId, value) { libraryChange(function (lib) { return E.Library.setShare(lib, stageId, String(value).replace(',', '.')); }); }
   function libResetTasks(stageId) { libraryChange(function (lib) { return E.Library.resetTasks(lib, stageId); }); }
-  function libResetShares() { libraryChange(function (lib) { return E.Library.resetShares(lib); }); }
 
   function deleteMail(id) {
     var list = mailList();
@@ -2571,7 +2569,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libSetShare: libSetShare, libResetTasks: libResetTasks, libResetShares: libResetShares,
+    libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,

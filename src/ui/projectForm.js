@@ -178,10 +178,10 @@
         budgetNote.classList.add('is-off');
         budgetNote.textContent = 'Udziały dają ' + String(Math.round(sum * 10) / 10).replace('.', ',') + '%, więc przeliczę je proporcjonalnie do 100%.';
       } else if (total > 0) budgetNote.textContent = 'Budżet ' + F.hours(total) + ' podzielony na etapy wg udziałów.';
-      else budgetNote.textContent = 'Wpisz budżet projektu, a podzielę go na etapy wg udziałów. Udziały standardowe ustawisz w Bibliotece.';
+      else budgetNote.textContent = 'Wpisz budżet projektu, a podzielę go na etapy wg udziałów.';
     }
 
-    /** Ustawia udziały zaznaczonych etapów ze standardu biblioteki (suma 100%). */
+    /** Ustawia udziały zaznaczonych etapów ze standardu (suma 100%). */
     function distribute() {
       var list = picked();
       var split = E.Library.sharesFor(list.map(function (entry) { return entry.id; }));
@@ -284,7 +284,7 @@
 
     if (!editing) {
       body.push(D.el('hr', { class: 'form__divider' }));
-      body.push(section('Etapy i podział budżetu', 'Wpisz budżet godzin, wybierz etapy i ustaw udział każdego w procentach. Domyślne udziały bierzesz z Biblioteki. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-scope', label: 'Zakres opracowania', control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia. Etapy poniżej możesz potem zmienić.' }), scopeNote, D.el('div', { class: 'pf-procs__wrap' }, [D.el('span', { class: 'settings__label', text: 'Procedury formalne' }), procRow]), UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h. Drobne korekty zrobisz potem w Planie wstępnym.' }), budgetNote, stagePicker]));
+      body.push(section('Etapy i podział budżetu', 'Wpisz budżet godzin, wybierz etapy i ustaw udział każdego w procentach. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-scope', label: 'Zakres opracowania', control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia. Etapy poniżej możesz potem zmienić.' }), scopeNote, D.el('div', { class: 'pf-procs__wrap' }, [D.el('span', { class: 'settings__label', text: 'Procedury formalne' }), procRow]), UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h. Drobne korekty zrobisz potem w Planie wstępnym.' }), budgetNote, stagePicker]));
     }
 
     var form = E.Dialog.drawerForm({

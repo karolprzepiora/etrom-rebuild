@@ -1,6 +1,5 @@
-/* ETROM — Biblioteka: standard biura dla nowych projektów.
-   Dla każdego etapu: udział w budżecie (%) i typowe zadania. Nowy projekt bierze z niej udziały,
-   a Plan wstępny podpowiada zadania. Zmiany zapisują się od razu; edytuje zarząd. */
+/* ETROM — Biblioteka: lista wszystkich typowych zadań biura, pogrupowana wg etapów.
+   Plan wstępny podpowiada z niej zadania. Zmiany zapisują się od razu; edytuje zarząd. */
 (function (root) {
   'use strict';
 
@@ -27,13 +26,6 @@
 
   function stageTile(stage, editable, a) {
     var names = L.forStage(stage.id).map(function (t) { return t.name; });
-    var share = editable
-      ? UI.input({
-        id: 'lb-share-' + stage.id, value: pct(L.sharePct(stage.id)), class: 'lb-share', placeholder: '%',
-        attrs: { inputmode: 'decimal', 'aria-label': 'Udział etapu w budżecie, %: ' + stage.name, 'data-fk': 'lb-share-' + stage.id },
-        on: { change: function () { a.libSetShare(stage.id, share.value); } }
-      })
-      : D.el('span', { class: 't-num', text: pct(L.sharePct(stage.id)) });
     var add = editable ? UI.input({
       id: 'lb-add-' + stage.id, placeholder: 'Dodaj zadanie i naciśnij Enter',
       attrs: { 'aria-label': 'Nowe zadanie w etapie ' + stage.name, 'data-fk': 'lb-add-' + stage.id },
@@ -43,8 +35,7 @@
       D.el('div', { class: 'lb-stage__head' }, [
         D.el('span', { class: 't-num t-muted', text: stage.number }),
         D.el('h3', { class: 'lb-stage__name truncate', text: stage.name }),
-        stage.kind === 'decision' ? D.el('span', { class: 'bp-tag', text: 'postępowanie' }) : null,
-        D.el('span', { class: 'lb-stage__share' }, [share, D.el('span', { class: 't-muted', text: ' %' })])
+        stage.kind === 'decision' ? D.el('span', { class: 'bp-tag', text: 'postępowanie' }) : null
       ]),
       D.el('ul', { class: 'lb-tasks' }, names.length ? names.map(function (n, i) { return taskRow(stage, n, i, editable, a); }) : [D.el('li', { class: 't-muted', text: 'Brak zadań w standardzie.' })]),
       editable ? D.el('div', { class: 'lb-stage__foot' }, [
@@ -59,17 +50,13 @@
   function view(state, ctx) {
     var editable = !!E.Budget.isManagement(state.prefs.me, state.workspace.people || []);
     var a = ctx.actions;
-    var lib = L.current();
-    var sum = Catalog.all.reduce(function (t, e) { return t + L.sharePct(e.id); }, 0);
-    if (Math.abs(sum - 100) < 0.5) sum = 100;
-    var sharesCustom = Object.keys(lib.shares).length > 0;
+        var total = Catalog.all.reduce(function (t, e) { return t + L.forStage(e.id).length; }, 0);
     var bar = D.el('div', { class: 'lb-bar' }, [
-      D.el('span', { class: 'lb-bar__sum' }, [D.el('span', { class: 't-num', text: pct(sum) + '%' }), D.el('span', { class: 't-muted', text: ' suma udziałów etapów' })]),
-      editable && sharesCustom ? UI.button({ label: 'Przywróć standardowe udziały', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'lb-reset-shares' }, onClick: function () { a.libResetShares(); } }) : null,
+      D.el('span', { class: 'lb-bar__sum' }, [D.el('span', { class: 't-num', text: String(total) }), D.el('span', { class: 't-muted', text: ' zadań w bibliotece' })]),
       !editable ? D.el('span', { class: 't-muted', text: 'Bibliotekę zmienia zarząd.' }) : null
     ]);
     return {
-      summary: 'Standard biura: udział etapu w budżecie i typowe zadania.',
+      summary: 'Wszystkie typowe zadania biura wg etapów. Dopisuj nowe, a Plan wstępny je podpowie.',
       body: D.el('div', { class: 'lb' }, [bar, D.el('div', { class: 'lb-grid' }, Catalog.all.map(function (stage) { return stageTile(stage, editable, a); }))])
     };
   }

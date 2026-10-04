@@ -46,26 +46,13 @@ test('własna biblioteka: dodawanie, zmiana nazwy, usuwanie i przywracanie zada�
   Library.configure(null);
 });
 
-test('udziały etapów: standard z katalogu, zmiana jednego skaluje resztę do 100%', () => {
+test('udziały standardowe: suma wybranych etapów to 100%', () => {
   Library.configure(null);
-  const total = Catalog.all.reduce((t, e) => t + Library.sharePct(e.id), 0);
-  assert.ok(Math.abs(total - 100) < 0.6);
-  const r = Library.setShare(Library.normalize(null), 'concept', 30);
-  assert.equal(r.error, '');
-  Library.configure(r.library);
-  assert.equal(Library.sharePct('concept'), 30);
-  assert.ok(Math.abs(Catalog.all.reduce((t, e) => t + Library.sharePct(e.id), 0) - 100) < 0.6);
-  assert.ok(Library.setShare(Library.normalize(null), 'concept', 0).error);
-  assert.ok(Library.setShare(Library.normalize(null), 'concept', 100).error);
   const picked = Library.sharesFor(['concept', 'water-docs', 'handover']);
   assert.equal(Math.round(Object.values(picked).reduce((a, b) => a + b, 0) * 10) / 10, 100);
-  Library.configure(Library.resetShares(r.library));
-  assert.notEqual(Library.sharePct('concept'), 30);
-  Library.configure(null);
 });
 
-test('normalizacja biblioteki odrzuca nieznane etapy i złe udziały', () => {
-  const n = Library.normalize({ tasks: { nieznany: [{ name: 'x' }], concept: [{ name: 'A' }, { name: 'a' }, 5, { name: '' }] }, shares: { concept: 'x', 'water-docs': 20, land: -1 } });
+test('normalizacja biblioteki odrzuca nieznane etapy i powtórzone nazwy', () => {
+  const n = Library.normalize({ tasks: { nieznany: [{ name: 'x' }], concept: [{ name: 'A' }, { name: 'a' }, 5, { name: '' }] } });
   assert.deepEqual(n.tasks, { concept: [{ name: 'A' }, { name: '5' }] });
-  assert.deepEqual(n.shares, { 'water-docs': 20 });
 });

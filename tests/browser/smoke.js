@@ -1427,25 +1427,19 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
     await go('#/biblioteka');
     await sleep(400);
-    check('Biblioteka: ekran z kafelkami etapów, udziałem % i zadaniami; suma udziałów 100%',
+    check('Biblioteka: ekran z kafelkami etapów i listą zadań, bez udziałów procentowych',
       (await evaluate('return document.querySelectorAll(".lb-stage").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;'))
-      && /100%/.test(await evaluate('return document.querySelector(".lb-bar").textContent;'))
-      && !!(await evaluate('return document.querySelector("[data-fk=lb-share-concept]") && document.querySelector("[data-fk=lb-t-concept-0]");')));
+      && !(await evaluate('return !!document.querySelector("[data-fk^=lb-share-]");'))
+      && !!(await evaluate('return document.querySelector("[data-fk=lb-t-concept-0]");')));
     await evaluate('const i = document.querySelector("[data-fk=lb-add-concept]"); i.value = "Analiza wariantów (smoke)"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
     await sleep(400);
     check('dodane zadanie trafia do biblioteki (zapisane w danych) i jest podpowiadane w Planie wstępnym',
       (await state('s.workspace.library.tasks.concept.map(t => t.name).join("|")')) === 'Koncepcja techniczna|Analiza wariantów (smoke)'
       && (await evaluate('return window.ETROM.Library.forStage("concept").length === 2;')));
-    await evaluate('const i = document.querySelector("[data-fk=lb-share-concept]"); i.value = "25"; i.dispatchEvent(new Event("change", { bubbles: true })); return true;');
-    await sleep(400);
-    check('zmiana udziału etapu zapisuje się i skaluje pozostałe do 100%',
-      (await state('s.workspace.library.shares.concept')) === 25
-      && Math.abs((await evaluate('return window.ETROM.Catalog.all.reduce((t, e) => t + window.ETROM.Library.sharePct(e.id), 0);')) - 100) < 0.6);
-    await click('[data-fk=lb-reset-shares]');
     await click('[data-fk=lb-reset-concept]');
     await sleep(400);
-    check('„Przywróć” wraca do standardu biura',
-      (await state('Object.keys(s.workspace.library.shares).length')) === 0 && (await state('(s.workspace.library.tasks.concept || []).length')) === 0);
+    check('„Przywróć zadania standardowe” wraca do standardu biura',
+      (await state('(s.workspace.library.tasks.concept || []).length')) === 0);
 
     /* 38h. Zdarzenia projektowe w Aktualnościach, wyjaśnienie stanu, radar jako filtr, obciążenie zespołu */
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
