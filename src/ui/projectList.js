@@ -438,6 +438,11 @@
   }
 
   function biuroDzis(projects, ctx) {
+    // Czas przepracowany przez całe biuro widzą tylko zarząd i liderzy projektów.
+    var people = (ctx.state.workspace && ctx.state.workspace.people) || [];
+    var meId = ctx.state.prefs && ctx.state.prefs.me;
+    var planner = E.Budget.isManagement(meId, people) || projects.some(function (p) { return p.team && p.team.leader === meId; });
+    if (!planner) return null;
     var all = (ctx.state.workspace && ctx.state.workspace.entries) || [];
     var now = new Date();
     var key = E.TimeLog.dayKey(now.getTime());

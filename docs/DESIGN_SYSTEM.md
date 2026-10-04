@@ -613,3 +613,6 @@ Polskie święta nie są dniami roboczymi: zmniejszają pojemność tygodnia w P
 
 ### Opis czasu zadania u pracownika
 W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od startu do terminu już minęło, to samo wypełnia pasek) i pod spodem „do pt 9 paź · 3 dni” (termin i dni robocze do niego). Po terminie: „po terminie”. To upływ czasu, nie postęp pracy ani budżet; budżet godzin pracownik nie widzi.
+
+### Czas całego biura tylko dla zarządu i liderów
+„Biuro dziś” (łączny czas przepracowany dziś przez wszystkich) na liście Projekty widzą tylko zarząd i liderzy projektów. W Aktualnościach cudze wpisy czasu pracy widzi tylko ten, kto ma prawo do godzin w danym projekcie; pracownik widzi własne.

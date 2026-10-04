@@ -789,6 +789,15 @@ async function main() {
     await click('[data-fk="cv-today"]');
     await sleep(250);
     check('„Dziś” w kalendarzu wraca do bieżącego miesiąca', (await evaluate('return document.querySelector(".cv-title").textContent;')) === calTitle);
+    await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
+    await go('#/projekty');
+    await sleep(300);
+    check('lista Projekty: „Biuro dziś” (czas całego biura) jest ukryte przed pracownikiem',
+      await evaluate('return !/Biuro dziś/.test(document.getElementById("view-projects").textContent);'));
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
+    await go('#/projekty');
+    await sleep(300);
+    check('lista Projekty: zarząd widzi „Biuro dziś”', await evaluate('return /Biuro dziś/.test(document.getElementById("view-projects").textContent);'));
     await go('#/plan');
     await sleep(300);
     check('oś planu ma nagłówki dni z numerem tygodnia, a „Kwartał” rozciąga okno do 12 tygodni',
