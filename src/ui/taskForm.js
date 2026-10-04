@@ -16,7 +16,8 @@
    * @param {{onSubmit: Function, onCancel: Function, onEditTeam?: Function}} handlers
    * @param {Array} roster osoby z zespołu projektu
    */
-  function taskForm(draft, errors, handlers, roster, fromMail) {
+  function taskForm(draft, errors, handlers, roster, fromMail, opts) {
+    var showHours = !(opts && opts.hideHours);
     var values = draft || {};
     var problems = errors || {};
     var editing = values.id != null;
@@ -91,8 +92,8 @@
             UI.field({ id: 'tk-start', label: 'Start', optional: true, control: start, error: problems.start }),
             UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline })
           ]),
-          UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload }),
-          UI.field({ id: 'tk-estimate', label: 'Czas pracy, dni robocze', optional: true, control: estimate, error: problems.estimate, hint: 'Ile dni z puli etapu zajmie zadanie (dzień = ' + String(dayH).replace('.', ',') + ' h). Na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }),
+          showHours ? UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload }) : null,
+          showHours ? UI.field({ id: 'tk-estimate', label: 'Czas pracy, dni robocze', optional: true, control: estimate, error: problems.estimate, hint: 'Ile dni z puli etapu zajmie zadanie (dzień = ' + String(dayH).replace('.', ',') + ' h). Na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }) : null,
           draftBox,
           reserveBox,
           important

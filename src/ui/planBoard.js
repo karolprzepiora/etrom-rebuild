@@ -517,6 +517,14 @@
     if (!me) {
       return { summary: 'Plan pracy zespołu w kolejnych tygodniach.', body: E.Welcome.card(state, ctx, 'Plan pokazuje, kto nad czym pracuje w kolejnych tygodniach. Wybierz, kim jesteś.') };
     }
+    var people = state.workspace.people || [];
+    var leads = (state.workspace.projects || []).some(function (p) { return p.team && p.team.leader === me.id; });
+    if (!Budget.isManagement(me.id, people) && !leads) {
+      return {
+        summary: 'Plan pracy zespołu jest dla zarządu i liderów projektów.',
+        body: UI.emptyState({ icon: 'calendar', title: 'Twoje zadania są w Moja praca', text: 'Termin i upływ czasu każdego zadania zobaczysz w Moja praca → Tygodnie.' })
+      };
+    }
     var part = view(state, ctx, new Date());
     var todays = E.TimeLog.forDay(state.workspace.entries || [], me.id, new Date());
     return {

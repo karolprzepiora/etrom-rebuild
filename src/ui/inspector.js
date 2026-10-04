@@ -301,8 +301,9 @@
     }
 
     var rows = { progress: progressRow, hours: hoursRow, schedule: scheduleRow };
-    var order = ['progress', 'hours', 'schedule'];
-    if (v.primary) order = [v.primary].concat(order.filter(function (k) { return k !== v.primary; }));
+    // Godziny widzą tylko zarząd i lider projektu; pracownik widzi postęp i termin.
+    var order = E.Budget.canSeeHours(ctx.me, project, ctx.people) ? ['progress', 'hours', 'schedule'] : ['progress', 'schedule'];
+    if (v.primary && order.indexOf(v.primary) >= 0) order = [v.primary].concat(order.filter(function (k) { return k !== v.primary; }));
 
     return {
       title: 'Plan i odchylenia',

@@ -1567,7 +1567,7 @@
 
   function canPlan(project) {
     var state = store.getState();
-    return !!project && E.Budget.canSeeHours(state.prefs.me, project, state.workspace.people || []);
+    return !!project && E.Budget.canSeeHours(currentMe(), project, people());
   }
 
   /** Szkice zadań widzi tylko zarząd i lider projektu; pozostałym ekranom podajemy stan bez nich. */
@@ -1748,7 +1748,7 @@
   function freezeBaseline(projectId) {
     var state = store.getState();
     var project = findProject(projectId);
-    if (!project || !E.Budget.canSeeHours(state.prefs.me, project, state.workspace.people || [])) return;
+    if (!project || !E.Budget.canSeeHours(currentMe(), project, people())) return;
     var before = project.baseline || null;
     var base = E.Analysis.makeBaseline(project, state.workspace.people || [], new Date(), state.prefs.hourlyCost);
     setWorkspace(function (list) { return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { baseline: base }) : p; }); });
@@ -3071,7 +3071,7 @@
         : [];
       settings.title = current.draft.id != null ? 'Edytuj zadanie' : 'Nowe zadanie';
       settings.subtitle = (project ? project.code : '') + (stage ? ' · ' + Model.describeStage(stage).name : '');
-      settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster, current.fromMail ? { mail: current.fromMail, stageId: current.stageId, stages: (project ? project.stages : []).map(function (st) { return { value: st.id, label: Model.describeStage(st).name }; }) } : null);
+      settings.content = E.TaskForm.taskForm(current.draft, current.errors, { onSubmit: submitTask, onCancel: function () { store.set({ taskForm: null }); } }, roster, current.fromMail ? { mail: current.fromMail, stageId: current.stageId, stages: (project ? project.stages : []).map(function (st) { return { value: st.id, label: Model.describeStage(st).name }; }) } : null, { hideHours: !(project && E.Budget.canSeeHours(currentMe(), project, people())) });
     } else if (current === state.timeForm) {
       var logged = findProject(current.projectId);
       var loggedTask = taskOf(current.projectId, current.stageId, current.taskId);

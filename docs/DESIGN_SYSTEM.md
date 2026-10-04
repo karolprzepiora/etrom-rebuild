@@ -570,3 +570,4 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 - Każde zadanie ma własny wiersz. Lewa kolumna: kod projektu (kolor projektu), pełna nazwa (do dwóch linii), a dla zarządu i liderów „przepracowano / zaplanowano h” z paskiem postępu. Prawa strona to sam pasek (start, termin, przeciąganie).
 - Znaczniki obłożenia tygodnia (np. 93/40) stoją w nagłówku osoby i są tylko dla zarządu i liderów.
 - Pracownik (Moja praca → Tygodnie) nigdy nie widzi obciążenia, zaplanowanych ani przepracowanych godzin. Zamiast tego widzi upływ czasu: procent okna od startu do terminu i „zostało N dni”. Pasek i licznik żółkną od 75%, a po terminie robią się czerwone. Paski są tylko do odczytu.
+- Godziny zadań (szacunek, nakład pracy w formularzu, wiersz „Godziny” w planie i odchyleniach) widzą tylko zarząd i lider projektu. Zakładka „Plan” otwarta przez osobę bez takiej roli pokazuje tylko wskazówkę, gdzie są jej zadania.

@@ -1495,6 +1495,18 @@ async function main() {
     await sleep(350);
     check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 4 tygodnie',
       await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 4 && document.querySelectorAll(".pb--solo .pb-person[data-person]").length === 1;'));
+    const plainWorker = await evaluate('const w = ETROM.app.store.getState().workspace; const lead = new Set(w.projects.map(p => p.team && p.team.leader)); const x = w.people.find(p => !lead.has(p.id) && !ETROM.Budget.isManagement(p.id, w.people)); return x ? x.id : "";');
+    if (plainWorker) {
+      const meBefore = await state('s.prefs.me');
+      await evaluate('ETROM.app.actions.setPref({ me: "' + plainWorker + '" }); return true;');
+      await go('#/plan');
+      await sleep(300);
+      check('pracownik bez roli lidera nie widzi planu zespołu ani godzin (zakładka Plan jest dla zarządu i liderów)',
+        await evaluate('const v = document.getElementById("view-plan"); return !v.querySelector(".pb") && !/\\d\\s?h\\b/.test(v.innerText);'));
+      await evaluate('ETROM.app.actions.setPref({ me: "' + meBefore + '" }); return true;');
+      await go('#/moja-praca');
+      await sleep(300);
+    }
     check('pracownik w Tygodniach nie widzi obciążenia ani godzin, tylko upływ czasu w procentach',
       await evaluate('const b = document.querySelector(".pb--solo"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s?h\\b/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!b.querySelector(".pb-tn__time b") && /%/.test(b.querySelector(".pb-tn__time b").textContent)));'));
     await click('[data-fk="mywork-view-all"]');
