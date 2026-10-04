@@ -774,7 +774,7 @@ async function main() {
     await go('#/plan');
     await sleep(300);
     check('ekran „Plan” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
-      await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-row[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
+      await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-person[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
     await evaluate('const b = document.querySelector(".pb-load:not(.is-empty)"); if (b) b.click(); return !!b;');
     await sleep(200);
     check('kliknięcie znacznika tygodnia pokazuje zadania z godzinami',
@@ -808,14 +808,14 @@ async function main() {
     await sleep(300);
     check('„Cofnij” przywraca poprzednie okno zadania', (await taskOfBar()) === afterDrag);
     check('pasek pokazuje godziny pracy zadania i gęstość pracy (cienka praca rozciągnięta w czasie nie wygląda jak pełne obłożenie)',
-      await evaluate('const el = document.querySelector(".pb-bar.is-editable"); return /\\d/.test(el.querySelector(".pb-bar__hours").textContent) && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__fill") && el.style.getPropertyValue("--d").length > 0;'));
+      await evaluate('const el = document.querySelector(".pb-bar.is-editable"); const tn = document.querySelector(".pb-tn[data-task-id=\\"" + el.dataset.taskId + "\\"][data-project-id=\\"" + el.dataset.projectId + "\\"]"); return /\\d/.test(tn.querySelector(".pb-bar__hours").textContent) && /h/.test(tn.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__fill") && el.style.getPropertyValue("--d").length > 0;'));
     const estBefore = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
-    await evaluate('const sel = \'.pb-bar[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"] [data-fk^="pb-hours-"]\'; document.querySelector(sel).click(); const i = document.querySelector("[data-fk=pb-hours-input]"); i.value = "7"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await evaluate('const sel = \'.pb-tn[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"] [data-fk^="pb-hours-"]\'; document.querySelector(sel).click(); const i = document.querySelector("[data-fk=pb-hours-input]"); i.value = "7"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
     await sleep(350);
     const estAfter = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
     check('klik w godziny na pasku pozwala je zmienić (zapisuje szacunek zadania)', estAfter >= 7 && estAfter !== estBefore);
     check('etykieta paska ma pełną nazwę zadania i godziny (przepracowano / zaplanowano), a menu ma pozycję „Plan”',
-      await evaluate('const el = document.querySelector(".pb-bar .pb-bar__label"); const name = el.querySelector(".pb-bar__name"); return name.scrollWidth <= name.clientWidth + 1 && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__prog") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
+      await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-tn__meter") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
     const projectOptions = await evaluate('const s = document.getElementById("pb-project"); return s ? s.options.length : 0;');
     if (projectOptions > 2) {
       await evaluate('const s = document.getElementById("pb-project"); s.value = s.options[1].value; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
@@ -1494,7 +1494,9 @@ async function main() {
     await click('[data-fk="mywork-view-weeks"]');
     await sleep(350);
     check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 4 tygodnie',
-      await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 4 && document.querySelectorAll(".pb--solo .pb-row[data-person]").length === 1;'));
+      await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 4 && document.querySelectorAll(".pb--solo .pb-person[data-person]").length === 1;'));
+    check('pracownik w Tygodniach nie widzi obciążenia ani godzin, tylko upływ czasu w procentach',
+      await evaluate('const b = document.querySelector(".pb--solo"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s?h\\b/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!b.querySelector(".pb-tn__time b") && /%/.test(b.querySelector(".pb-tn__time b").textContent)));'));
     await click('[data-fk="mywork-view-all"]');
     await sleep(250);
 
