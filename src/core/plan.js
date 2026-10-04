@@ -14,13 +14,15 @@
   var node = typeof module !== 'undefined' && module.exports;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
   var Absences = node ? require('./absences.js') : root.ETROM.Absences;
+  var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
 
   var DEFAULT_HOURS = { small: 4, medium: 12, large: 32, veryLarge: 64 };
   var TIGHT_AT = 0.85;
 
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
-  function isWorkday(d) { return d.getDay() !== 0 && d.getDay() !== 6; }
+  /** Dzień roboczy: bez weekendów i polskich świąt. */
+  function isWorkday(d) { return d.getDay() !== 0 && d.getDay() !== 6 && !Cal.isHoliday(Cal.isoOf(d)); }
   function mondayOf(d) { return addDays(startOfDay(d), -((d.getDay() + 6) % 7)); }
 
   /** Szacunek godzin zadania. */

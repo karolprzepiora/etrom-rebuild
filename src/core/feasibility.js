@@ -8,12 +8,13 @@
   var Plan = node ? require('./plan.js') : root.ETROM.Plan;
   var Team = node ? require('./team.js') : root.ETROM.Team;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
+  var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
 
   var DAY = 86400000;
 
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
-  function isWorkday(d) { return d.getDay() !== 0 && d.getDay() !== 6; }
+  function isWorkday(d) { return d.getDay() !== 0 && d.getDay() !== 6 && !Cal.isHoliday(Cal.isoOf(d)); }
   function mondayOf(d) { return addDays(startOfDay(d), -((d.getDay() + 6) % 7)); }
   function dayDate(text) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(text || '');

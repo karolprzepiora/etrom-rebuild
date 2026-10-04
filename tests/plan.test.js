@@ -203,3 +203,13 @@ test('nieobecność zmniejsza pojemność tygodnia i omija dni urlopu przy rozk�
   const squeezed = Plan.build({ projects: [{ id: 1, code: '2601', stages: [{ id: 's1', hours: 100, tasks: [tight] }] }], people, entries: [], now, weeks: 2, absences }).rows[0];
   assert.equal(squeezed.bars[0].squeezed, true, '30 h na 3 dniach po 8 h to za mało czasu');
 });
+
+test('święto zmniejsza pojemność tygodnia i nie dostaje godzin zadania', () => {
+  const nov = new Date(2026, 10, 9, 9, 0);                // poniedziałek 9 lis; środa 11 lis to święto
+  const plan = Plan.build({ projects: [project([task('t1', { estimate: 16, deadline: '2026-11-13T15:00' })])], people, entries: [], now: nov, target: 480, weeks: 2 });
+  const w = rowOf(plan, 'p-1').weeks;
+  assert.equal(plan.weeks[0].workdays, 4);
+  assert.equal(w[0].capacity, 32);
+  assert.equal(w[0].planned, 16);
+  assert.ok(!plan.weeks[0].dayKeys.includes('2026-11-11'));
+});

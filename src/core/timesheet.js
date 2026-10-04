@@ -6,6 +6,7 @@
   var node = typeof module !== 'undefined' && module.exports;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
   var Absences = node ? require('./absences.js') : root.ETROM.Absences;
+  var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
 
   var DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
@@ -47,7 +48,7 @@
    * 'run' (dziś, jeszcze w trakcie), 'off' (weekend, przyszłość, dni sprzed pierwszego wpisu osoby).
    */
   function dayState(day, target, firstKey) {
-    if (day.weekend || day.future) return 'off';
+    if (day.weekend || day.holiday || day.future) return 'off';
     if (day.today) return day.minutes >= target ? 'ok' : 'run';
     if (!firstKey || day.key < firstKey) return 'off';
     if (day.minutes >= target) return 'ok';
@@ -75,7 +76,7 @@
     var days = p.days.map(function (d, i) {
       var key = TL.dayKey(d.getTime());
       index[key] = i;
-      return { key: key, date: d.getTime(), label: DAYS[d.getDay()], number: d.getDate(), weekend: d.getDay() === 0 || d.getDay() === 6, today: key === todayKey, future: key > todayKey, minutes: 0 };
+      return { key: key, date: d.getTime(), label: DAYS[d.getDay()], number: d.getDate(), weekend: d.getDay() === 0 || d.getDay() === 6, holiday: Cal.holidayName(key), today: key === todayKey, future: key > todayKey, minutes: 0 };
     });
     var rows = {};
     var order = [];
@@ -115,7 +116,7 @@
       };
     }).sort(function (a, b) { return b.minutes - a.minutes; });
     var total = days.reduce(function (sum, d) { return sum + d.minutes; }, 0);
-    var workdays = days.filter(function (d) { return !d.weekend; }).length;
+    var workdays = days.filter(function (d) { return !d.weekend && !d.holiday; }).length;
     // Ocena dnia: zielony od celu dnia, żółty do godziny poniżej, czerwony niżej. Dziś liczy się dopiero po osiągnięciu celu.
     var settled = 0;
     days.forEach(function (d) {

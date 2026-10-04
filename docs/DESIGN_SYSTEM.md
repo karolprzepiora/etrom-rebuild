@@ -603,4 +603,10 @@ Ekran `#/przeglad`: 6 sekcji spraw wymagających decyzji (np. przeterminowane, b
 - **Pole daty:** każde `UI.input({ type: 'date' })` jest polem z kalendarzem (`src/ui/datePicker.js`). `.value` pozostaje datą ISO, więc formularze nic nie zmieniają. Klik albo strzałka w dół otwiera kalendarz; można też wpisać „jutro”, „16.10”, „pn”, „+2t”. Kalendarz ma numery tygodni, święta, skróty (Dziś, Jutro, Pon., +1 tydz., +2 tyg.), „Bez terminu” i obsługę klawiatury (strzałki, Home/End, PageUp/PageDown, Esc).
 - **Termin projektu** w nagłówku projektu otwiera ten sam kalendarz (bez „Bez terminu”).
 - **Nieobecności:** formularz pokazuje liczbę dni roboczych w wybranym zakresie.
-- **Uwaga:** święta są na razie tylko oznaczone. Pojemność tygodnia w Planie nadal liczy je jak zwykłe dni robocze.
+- **Święta są też uwzględniane w pojemności (patrz „Święta w liczeniu”).
+
+### Ekran Kalendarz
+Pozycja „Kalendarz” w menu (`#/kalendarz`): miesiąc z numerami tygodni, świętami i oznaczonym dniem „dziś”. Terminy mają kolor projektu: pełny pasek to termin umowy, średni to termin etapu (tylko zarząd i lider), jasny to własne zadanie, kreskowany to nieobecność. Klik w dzień pokazuje jego listę i najbliższe terminy z boku, klik w termin otwiera projekt albo zadanie (nieobecność edytuje zarząd). Zakres wg roli: zarząd wszystko, lider swoje projekty i ich osoby, pracownik własne zadania, terminy swoich projektów i własne nieobecności. Bez godzin i obciążenia. Dane: `src/core/calview.js`.
+
+### Święta w liczeniu
+Polskie święta nie są dniami roboczymi: zmniejszają pojemność tygodnia w Planie, nie dostają godzin zadań, nie liczą się do nieobecności ani do celu dnia w karcie czasu (dzień świąteczny jest neutralny).

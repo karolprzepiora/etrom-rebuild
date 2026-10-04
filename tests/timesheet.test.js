@@ -97,3 +97,12 @@ test('dzień nieobecności jest neutralny, chyba że osoba i tak osiągnęła ce
   assert.deepEqual(sheet.days.slice(0, 4).map(d => d.state), ['ok', 'off', 'off', 'bad']);
   assert.equal(sheet.days[1].absent, 'leave');
 });
+
+test('dzień świąteczny nie wymaga godzin i nie liczy się do celu tygodnia', () => {
+  const now = at(2026, 11, 13, 18);                       // piątek po święcie 11 listopada
+  const r = TS.build([], 'p-1', now, { mode: 'week', offset: 0, target: 480 });
+  const hol = r.days.filter((d) => d.holiday)[0];
+  assert.equal(hol.number, 11);
+  assert.equal(hol.state, 'off');
+  assert.equal(r.workdays, 4);
+});

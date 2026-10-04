@@ -3,6 +3,9 @@
 (function (root) {
   'use strict';
 
+  var node = typeof module !== 'undefined' && module.exports;
+  var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
+
   var KINDS = { leave: 'Urlop', sick: 'Zwolnienie', training: 'Szkolenie', other: 'Inna nieobecność' };
 
   function isDay(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v + 'T00:00:00')); }
@@ -51,7 +54,7 @@
     (list || []).forEach(function (a) {
       if (a.personId !== personId) return;
       for (var d = dayOf(a.from); isoOf(d) <= a.to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-        if (d.getDay() !== 0 && d.getDay() !== 6) out[isoOf(d)] = a.kind;
+        if (d.getDay() !== 0 && d.getDay() !== 6 && !Cal.isHoliday(isoOf(d))) out[isoOf(d)] = a.kind;
       }
     });
     return out;

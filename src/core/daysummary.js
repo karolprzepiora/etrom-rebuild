@@ -7,6 +7,7 @@
   var node = typeof module !== 'undefined' && module.exports;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
   var TS = node ? require('./timesheet.js') : root.ETROM.Timesheet;
+  var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
 
   var DAY = 86400000;
   var EVENING_HOUR = 16;   // od tej godziny brak celu dnia ocenia się jak zamknięty dzień
@@ -28,7 +29,7 @@
   function workdaysLeft(from, to) {
     var n = 0;
     for (var d = new Date(from.getTime()); d.getTime() < to.getTime(); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-      if (d.getDay() !== 0 && d.getDay() !== 6) n += 1;
+      if (d.getDay() !== 0 && d.getDay() !== 6 && !Cal.isHoliday(Cal.isoOf(d))) n += 1;
     }
     return n;
   }

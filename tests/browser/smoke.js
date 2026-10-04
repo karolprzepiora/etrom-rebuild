@@ -777,6 +777,18 @@ async function main() {
     await sleep(300);
     check('ekran „Przegląd” pokazuje 6 sekcji spraw do decyzji z klikalnymi wierszami i ma pozycję w menu',
       await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 6 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
+    await go('#/kalendarz');
+    await sleep(300);
+    check('ekran „Kalendarz”: siatka miesiąca 42 dni z numerami tygodni, wybrany dzień i lista najbliższych terminów',
+      await evaluate('const v = document.getElementById("view-calendar"); return !v.hidden && v.querySelectorAll(".cv-c").length === 42 && v.querySelectorAll(".cv-grid > .cv-wk[aria-hidden]").length === 6 && v.querySelectorAll(".cv-c.is-today").length === 1 && !!v.querySelector(".cv-side") && !!document.querySelector(".nav a[href=\\"#/kalendarz\\"]");'));
+    const calTitle = await evaluate('return document.querySelector(".cv-title").textContent;');
+    await click('[data-fk="cv-next"]');
+    await sleep(250);
+    check('strzałka „Następny miesiąc” zmienia miesiąc w kalendarzu, a „Dziś” wraca do bieżącego',
+      (await evaluate('return document.querySelector(".cv-title").textContent;')) !== calTitle && (await state('s.calOffset')) === 1);
+    await click('[data-fk="cv-today"]');
+    await sleep(250);
+    check('„Dziś” w kalendarzu wraca do bieżącego miesiąca', (await evaluate('return document.querySelector(".cv-title").textContent;')) === calTitle);
     await go('#/plan');
     await sleep(300);
     check('oś planu ma nagłówki dni z numerem tygodnia, a „Kwartał” rozciąga okno do 12 tygodni',
