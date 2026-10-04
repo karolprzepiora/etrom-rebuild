@@ -596,3 +596,11 @@ Ekran `#/przeglad`: 6 sekcji spraw wymagających decyzji (np. przeterminowane, b
 
 ### Czy zmieści się w zespole (Budżet → sekcja 3)
 12 słupków tygodni: linia pojemności zespołu, szary udział innych projektów, kolor projektu = godziny jego etapów rozłożone do terminów. Tydzień ponad pojemność ma czerwoną ramkę i liczbę. Etapy bez terminu są wyliczone pod wykresem. Bez sugestii rozwiązań. Logika: `src/core/feasibility.js`.
+
+## Kalendarz w całej aplikacji
+- **Jedno źródło dat:** `src/core/calendar.js` (polskie święta stałe i ruchome, numer tygodnia ISO, dni robocze bez weekendów i świąt, wpisywanie dat tekstem). Plan, formularze i wybieracz korzystają z niego, nie liczą dat po swojemu.
+- **Oś planu (Plan i Moja praca → Tygodnie):** nagłówek tygodnia „Tydz. NN” + dni (pn–pt, numer dnia). Dzisiejszy dzień ma wypełnioną pigułkę i podświetloną kolumnę, święta kreskowane i z kropką (nazwa w podpowiedzi), delikatna siatka dni w tle. Weekendy są pominięte na osi (oś to dni robocze). Zoom: 2, 4, 6, 8 tygodni i „Kwartał” (12 tygodni); od 8 tygodni dni są w trybie zwartym (same numery).
+- **Pole daty:** każde `UI.input({ type: 'date' })` jest polem z kalendarzem (`src/ui/datePicker.js`). `.value` pozostaje datą ISO, więc formularze nic nie zmieniają. Klik albo strzałka w dół otwiera kalendarz; można też wpisać „jutro”, „16.10”, „pn”, „+2t”. Kalendarz ma numery tygodni, święta, skróty (Dziś, Jutro, Pon., +1 tydz., +2 tyg.), „Bez terminu” i obsługę klawiatury (strzałki, Home/End, PageUp/PageDown, Esc).
+- **Termin projektu** w nagłówku projektu otwiera ten sam kalendarz (bez „Bez terminu”).
+- **Nieobecności:** formularz pokazuje liczbę dni roboczych w wybranym zakresie.
+- **Uwaga:** święta są na razie tylko oznaczone. Pojemność tygodnia w Planie nadal liczy je jak zwykłe dni robocze.

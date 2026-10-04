@@ -311,7 +311,7 @@
   }
 
   function input(o) {
-    return D.el('input', {
+    var field = D.el('input', {
       class: cx('input', o.class),
       attrs: Object.assign({
         id: o.id, type: o.type || 'text', value: o.value == null ? '' : o.value,
@@ -322,6 +322,8 @@
       }, o.attrs || {}),
       on: o.on
     });
+    if (o.type === 'date' && E.DatePicker) E.DatePicker.enhance(field, { allowClear: o.required !== true });
+    return field;
   }
 
   function textarea(o) {

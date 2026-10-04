@@ -95,17 +95,15 @@
     var done = project.status === 'done';
     var days = project.deadline ? Progress.daysUntil(project.deadline, now) : null;
     var overdue = !done && days !== null && days < 0;
-    var input = D.el('input', { class: 'pd-date', attrs: { type: 'date', tabindex: '-1', 'aria-hidden': 'true', value: project.deadline || '' } });
-    input.addEventListener('change', function () { if (input.value) ctx.actions.setProjectDeadline(project.id, input.value); });
     var btn = D.el('button', {
       class: 'pd-edit' + (overdue ? ' is-overdue' : ''),
       attrs: { type: 'button', 'data-fk': 'project-deadline', 'aria-label': 'Termin umowy: ' + (project.deadline ? F.dateLong(project.deadline) : 'brak') + '. Zmień datę' },
-      on: { click: function () { if (input.showPicker) { try { input.showPicker(); return; } catch (e) { /* wpadamy do formularza */ } } ctx.actions.editProject(project.id); } }
+      on: { click: function () { E.DatePicker.open({ anchor: btn, value: project.deadline || '', label: 'Termin umowy', allowClear: false, onPick: function (iso) { if (iso) ctx.actions.setProjectDeadline(project.id, iso); } }); } }
     }, [
       D.el('span', { class: 't-num', text: project.deadline ? F.date(project.deadline, { year: 'always' }) : 'Ustaw termin' }),
       !done && days !== null ? D.el('span', { class: 'pd-prop__sub', text: PL.relDays(days).replace('po terminie', 'po terminie') }) : null
     ]);
-    return [btn, input];
+    return [btn];
   }
 
   function propertyRow(project, ctx, now, health) {

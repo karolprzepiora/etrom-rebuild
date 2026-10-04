@@ -779,6 +779,8 @@ async function main() {
       await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 6 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
     await go('#/plan');
     await sleep(300);
+    check('oś planu ma nagłówki dni z numerem tygodnia, a „Kwartał” rozciąga okno do 12 tygodni',
+      await evaluate('return document.querySelectorAll(".pb-row--head .pb-dh").length === document.querySelectorAll(".pb-row--head .pb-wk--head").length * 5 && /^Tydz\\. \\d+$/.test(document.querySelector(".pb-wk__top b").textContent) && [...document.querySelectorAll(".pb-toolbar .segmented button")].some(b => b.textContent === "Kwartał");'));
     check('ekran „Plan” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
       await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-person[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
     await evaluate('const b = document.querySelector(".pb-load:not(.is-empty)"); if (b) b.click(); return !!b;');
@@ -791,7 +793,7 @@ async function main() {
       (await state('s.planOffset')) > 0 && (await evaluate('return document.querySelector(".pb-wk--head.is-current") === null;')));
     await click('[data-fk="pb-today"]');
     await sleep(200);
-    await click('.pb-toolbar .segmented button:nth-child(3)');
+    await click('.pb-toolbar .segmented button:nth-child(4)');
     await sleep(250);
     check('przełącznik 8 tygodni zmienia liczbę kolumn',
       await evaluate('return document.querySelectorAll(".pb-wk--head").length === 8;'));
@@ -837,6 +839,14 @@ async function main() {
     const capBefore = await evaluate('return document.querySelector(".pb-load[data-fk^=pl-cell-]") ? document.querySelector(".pb-load[data-fk^=pl-cell-]").getAttribute("data-fk") : "";');
     await evaluate('document.querySelector("[data-fk^=pb-absence-add-]").click(); return true;');
     await sleep(350);
+    await click('#ab-from');
+    await sleep(300);
+    check('klik w pole daty otwiera polski kalendarz z numerami tygodni i 42 dniami',
+      await evaluate('const p = document.querySelector(".popover--date"); return !!p && p.querySelectorAll(".dpk__d").length === 42 && p.querySelectorAll(".dpk__wk[aria-hidden]").length === 6 && /^(styczeń|luty|marzec|kwiecień|maj|czerwiec|lipiec|sierpień|wrzesień|październik|listopad|grudzień) \\d{4}$/.test(p.querySelector(".dpk__title").textContent);'));
+    await click('[data-fk=dpk-q-tomorrow]');
+    await sleep(250);
+    check('skrót „Jutro” wpisuje jutrzejszą datę ISO, a pole pokazuje ją po polsku',
+      await evaluate('const n = new Date(Date.now() + 86400000); const k = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0"); const f = document.getElementById("ab-from"); return f.value === k && /^(nd|pn|wt|śr|cz|pt|sb) \\d{1,2} [a-ząćęłńóśźż]{3} \\d{4}$/.test(f.getAttribute("value") === null ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").get.call(f) : Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").get.call(f)) && !document.querySelector(".popover--date");'));
     await evaluate('const from = new Date(); from.setDate(from.getDate() + 21); const d = from.getFullYear() + "-" + String(from.getMonth() + 1).padStart(2, "0") + "-" + String(from.getDate()).padStart(2, "0"); document.getElementById("ab-from").value = d; document.getElementById("ab-to").value = d; document.getElementById("absence-form").requestSubmit(); return true;');
     await sleep(450);
     check('formularz nieobecności dodaje wpis, a plan rysuje pasmo w wierszu osoby',
@@ -1181,7 +1191,7 @@ async function main() {
     check('status i stan to dwa osobne wymiary: status jest przyciskiem, stan nie',
       await evaluate('return !!document.querySelector(".pd-head__id .detail__status") && !document.querySelector(".pd-state button");'));
     check('termin umowy i lider da się zmienić w miejscu',
-      await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader") && !!document.querySelector(".pd-date");'));
+      await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader");'));
     check('zakładki projektu: Plan, Budżet, Zadania, Korespondencja, Zespół, Czas, Aktywność',
       await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,korespondencja,zespol,czas,analiza,aktywnosc";'));
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
@@ -1253,9 +1263,9 @@ async function main() {
       await evaluate('const n = document.querySelector(".pd-attention__item--alarm"); return !!n && /Termin umowy minął/.test(n.textContent) && /Zmień termin/.test(n.textContent);'));
     await click('[data-fk="attn-deadline-passed-deadline"]');
     await sleep(450);
-    check('„Zmień termin” otwiera wybór daty albo formularz edycji projektu',
-      await evaluate('return !!document.querySelector("dialog.drawer[open], .drawer") && /PO-TERMINIE/.test(document.body.textContent);'));
-    await evaluate('window.ETROM.app.store.set({ form: null }); return true;');
+    check('„Zmień termin” otwiera kalendarz z terminem projektu',
+      await evaluate('return !!document.querySelector(".popover--date .dpk__d") && /PO-TERMINIE/.test(document.body.textContent);'));
+    await evaluate('window.ETROM.app.Menu ? 0 : 0; window.ETROM.Menu.close(); window.ETROM.app.store.set({ form: null }); return true;');
     await sleep(450);
     await evaluate(`window.ETROM.app.store.update((s) => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.filter((p) => p.code !== 'PO-TERMINIE') }) })); return true;`);
     await go('#/projekty/' + id2);

@@ -13,10 +13,12 @@
   var Budget = E.Budget;
   var Plan = E.Plan;
   var Identity = E.Identity;
+  var Cal = E.Calendar;
 
   var DAY = 86400000;
   var MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
-  var RANGES = [4, 6, 8, 12];
+  var RANGES = [2, 4, 6, 8, 12];
+  var DOWS = ['pn', 'wt', 'śr', 'cz', 'pt'];
   var LANE_H = 2.1; // rem
   var pendingFocus = null;
   var pendingPrio = null;
@@ -455,9 +457,25 @@
           return el;
         }).filter(Boolean);
       }
+      var holSlots = [];
+      for (var hs = 0; hs < N; hs += 1) {
+        if (Cal.isHoliday(Plan.isoDay(dateOfSlot(plan.first, hs)))) holSlots.push(hs);
+      }
+      function holColEls() {
+        return holSlots.map(function (i) { return D.el('span', { class: 'pb-holcol', style: { left: (i / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }); });
+      }
       function trackOf(inner, bands) {
         var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
-        return D.el('div', { class: 'pb-track' }, [weekCols, todaySlot >= 0 && todaySlot < N ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null].concat(bands === undefined ? bandEls(false) : bands, inner));
+        var inTrack = todaySlot >= 0 && todaySlot < N;
+        var colTint = inTrack && !Cal.isWeekend(Plan.isoDay(new Date(plan.today)));
+        var children = [weekCols].concat(
+          holColEls(),
+          [colTint ? D.el('span', { class: 'pb-todaycol', style: { left: (todaySlot / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
+          [inTrack ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
+          bands === undefined ? bandEls(false) : bands,
+          inner
+        );
+        return D.el('div', { class: 'pb-track' }, children);
       }
       var rows = [];
       if (!solo) {
@@ -493,10 +511,30 @@
     }
 
     /* ---------- nagłówek, pasek narzędzi ---------- */
+    var compact = weeksN >= 8;
+    var todayKey = Plan.isoDay(new Date(plan.today));
+    var todayWork = !Cal.isWeekend(todayKey);
+    function dayCells(wi) {
+      var out = [];
+      for (var k = 0; k < 5; k += 1) {
+        var slot = wi * 5 + k;
+        var key = Plan.isoDay(dateOfSlot(plan.first, slot));
+        var hol = Cal.holidayName(key);
+        out.push(D.el('span', {
+          class: 'pb-dh' + (todayWork && slot === todaySlot ? ' is-today' : '') + (hol ? ' is-hol' : ''),
+          attrs: hol ? { 'data-tooltip': hol } : {}
+        }, compact ? [D.el('b', { text: String(Number(key.slice(8))) })] : [D.el('small', { text: DOWS[k] }), D.el('b', { text: String(Number(key.slice(8))) })]));
+      }
+      return D.el('span', { class: 'pb-days' }, out);
+    }
     var head = D.el('div', { class: 'pb-row pb-row--head' }, [
       D.el('div', { class: 'pb-label' }),
-      D.el('div', { class: 'pb-cell' }, [D.el('div', { class: 'pb-track pb-track--head' }, [D.el('div', { class: 'pb-wks pb-wks--head' }, plan.weeks.map(function (w) {
-        return D.el('span', { class: 'pb-wk pb-wk--head' + (w.current ? ' is-current' : '') }, [D.el('b', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays !== 5 && w.workdays > 0 ? w.workdays + ' dni' : ' ') })]);
+      D.el('div', { class: 'pb-cell' }, [D.el('div', { class: 'pb-track pb-track--head' }, [D.el('div', { class: 'pb-wks pb-wks--head' }, plan.weeks.map(function (w, wi) {
+        var wkKey = Plan.isoDay(new Date(w.start));
+        return D.el('span', { class: 'pb-wk pb-wk--head' + (w.current ? ' is-current' : '') }, [
+          D.el('span', { class: 'pb-wk__top', attrs: { 'data-tooltip': 'Tydzień ' + Cal.weekNumber(wkKey) + ': ' + weekLabel(w.start) } }, [D.el('b', { text: 'Tydz. ' + Cal.weekNumber(wkKey) }), weeksN >= 6 ? null : D.el('small', { text: weekLabel(w.start) + (w.current ? ' · bieżący' : '') })]),
+          dayCells(wi)
+        ]);
       }))])])
     ]);
 
@@ -580,7 +618,7 @@
       solo ? null : projectFilter(),
       UI.segmented({
         label: 'Liczba tygodni', value: weeksN,
-        items: RANGES.map(function (n) { return { value: n, label: n + ' tyg.' }; }),
+        items: RANGES.map(function (n) { return { value: n, label: n === 12 ? 'Kwartał' : n + ' tyg.' }; }),
         onChange: function (v) { ctx.actions.setTime(Object.fromEntries([[K.weeks, Number(v)]])); }
       }).node,
       solo ? null : D.el('div', { class: 'pl-legend pb-legend', attrs: { 'aria-hidden': 'true' } }, [
@@ -591,7 +629,7 @@
       ])
     ]);
 
-    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : ''), style: { '--n': String(N), '--weeks': String(weeksN) }, attrs: { 'aria-label': 'Plan tygodni' } }, [
+    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN) }, attrs: { 'aria-label': 'Plan tygodni' } }, [
       D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(plan.rows.map(personRow)))])
     ]);
 
