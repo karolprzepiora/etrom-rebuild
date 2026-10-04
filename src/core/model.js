@@ -458,7 +458,8 @@
         contractValue: Number.isFinite(Number(item.contractValue)) && item.contractValue !== null && Number(item.contractValue) >= 0 ? Number(item.contractValue) : null,
         color: Number.isInteger(item.color) && item.color >= 0 && item.color < 40 ? item.color : null,
         kind: Kinds.isKey(item.kind) ? item.kind : null,
-        scope: Catalog.isScope(item.scope) ? item.scope : null,
+        // Dawny rodzaj „Ekspertyza / OST” to dziś zakres opracowania, nie obiekt.
+        scope: Catalog.isScope(item.scope) ? item.scope : (item.kind === 'survey' ? 'assessment' : null),
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

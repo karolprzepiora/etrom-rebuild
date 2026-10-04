@@ -514,3 +514,9 @@ Trzy siatki — obciążenie w Analizie, karta czasu i plan obciążenia — maj
 ## Zakres opracowania i procedury
 
 Projekt ma dwa niezależne opisy: **rodzaj projektu** (co projektujemy: jaz, pompownia, staw… — grafika i barwa kafla) oraz **zakres opracowania** (co klient zamawia). Zakres: pełny projekt, projekt okrojony (np. remont na zgłoszenie z dokumentacją wykonawczą i kosztorysową), koncepcja, ekspertyza / ocena stanu, inny (ręcznie). Zakres nie jest szablonem: tylko ustawia domyślny zaznaczony zestaw etapów z jednego standardu (`Catalog.SCOPES`, `Catalog.stagesFor`). Cztery **procedury formalne** (środowiskowe, lokalizacyjne, wodnoprawne, pozwolenie na budowę) to przełączniki, z których każdy dokłada parę „dokumentacja + postępowanie”. Wszystko można ręcznie zmienić w formularzu i potem w planie projektu; nowe zakresy to jeden wpis w katalogu, nie kolejny szablon. Standard liczy 17 etapów (dodany: „Ocena stanu istniejącego i ekspertyza”).
+
+## Rodzaje projektu (obiekty) i znak na kaflu
+
+Rodzaj opisuje **obiekt**: pompownia, mała elektrownia wodna, zapora, jaz, wały przeciwpowodziowe, mała retencja leśna, staw, zbiornik wodny, przepust / most, rzeka / ciek / kanał, kilka obiektów, inny. „Ekspertyza / OST” nie jest obiektem, tylko **zakresem** (dawny rodzaj „survey” przy wczytaniu zamienia się na zakres „Ekspertyza / ocena stanu”), więc „OST Jaz rz. Uherka” to jaz z zakresem ekspertyzy. Rodzaj rozpoznaje się z nazwy po słowach kluczowych (pierwsze trafienie wygrywa; „zbiornik retencyjny” to zbiornik, „mała retencja leśna” to retencja) albo wybiera ręcznie.
+
+Każdy rodzaj ma własny kreskowy znak (`KindArt`). Zasada czytelności: **znak nigdy nie leży pod tekstem**. Na kaflu to stała ikona w prawym górnym rogu, w rzędzie z numerem i plakietką stanu; w nagłówku projektu tekst ma zarezerwowane miejsce obok znaku; na liście to mała ikona w komórce numeru.

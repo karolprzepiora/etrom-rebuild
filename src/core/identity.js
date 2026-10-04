@@ -32,7 +32,7 @@
   // oraz oliwki (brudna). Miedź i brąz wnoszą ciepło, którego brakowało zielono-niebieskiej palecie.
   var HUE_LIST = [36, 145, 157, 169, 181, 48, 193, 205, 217, 229, 60, 241, 253, 265, 277, 291, 305, 319, 335, 350];
   // Tryb „według rodzaju”: każdy rodzaj ma swoją rodzinę barw, a numer projektu tylko ją odcienia.
-  var KIND_HUE = { survey: 322, pump: 280, hydro: 190, dam: 262, weir: 212, levee: 48, retention: 150, reservoir: 172, river: 240, other: 350 };
+  var KIND_HUE = { pump: 280, hydro: 190, dam: 262, weir: 212, levee: 48, retention: 150, pond: 168, reservoir: 232, culvert: 308, river: 246, multi: 328, other: 350 };
   var mode = 'number';
   var kindOf = {};
   var PERM_STEP = 7;

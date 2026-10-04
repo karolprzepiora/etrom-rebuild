@@ -528,6 +528,15 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .kind-icon svg { display: block; width: 100%; height: auto; stroke-width: 2.2; }
 @media (max-width: 40rem) { .kind-art { width: 8rem; } .pd-hero > .kind-art { width: 9rem; } }
 
+/* Znak rodzaju nigdy nie leży pod tekstem: na kaflu to stała ikona w prawym górnym rogu (w rzędzie
+   z numerem i plakietką), w nagłówku projektu tekst ma zarezerwowane miejsce obok znaku. */
+.pc > .kind-art { z-index: auto; top: 1rem; right: 1rem; bottom: auto; width: 4.5rem; color: rgb(255 255 255 / .9); }
+.pc > .kind-art svg { stroke-width: 2.1; }
+@media (min-width: 40.01rem) {
+  .pd-hero > .kind-art { width: 11rem; color: rgb(255 255 255 / .22); }
+  .pd-hero .pd-head__title, .pd-hero .pd-head__client { max-width: calc(100% - 12.5rem); }
+}
+
 /* ---------- Ekran Czas: siatka jak mapa cieplna w Analizie ---------- */
 .ts-hm .an-hm__row, .pl-hm .an-hm__row { grid-template-columns: var(--cols); }
 .ts-hm, .pl-hm { gap: 4px; padding-bottom: 2px; }

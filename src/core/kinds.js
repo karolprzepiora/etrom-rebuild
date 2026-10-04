@@ -4,16 +4,21 @@
 (function (root) {
   'use strict';
 
+  /* Rodzaj = OBIEKT, który projektujemy. To, co klient zamawia (pełny projekt, ekspertyza, koncepcja…),
+     opisuje osobno „zakres opracowania”. Kolejność ma znaczenie: pierwsze trafienie słowa wygrywa,
+     więc „Zbiornik retencyjny” to zbiornik, a „Mała retencja leśna” to retencja. */
   var KINDS = [
-    { key: 'survey', label: 'Ekspertyza / OST', words: ['ekspertyz', 'ost', 'okst', 'ocena stanu', 'przeglad', 'inwentaryzac'] },
-    { key: 'pump', label: 'Pompownia', words: ['pompown', 'pompy', 'pomp '] },
-    { key: 'hydro', label: 'Elektrownia wodna', words: ['elektrown', 'mew', 'turbin', 'hydroelektr'] },
+    { key: 'pump', label: 'Pompownia', words: ['pompown', 'przepompown', 'pompy', 'pomp '] },
+    { key: 'hydro', label: 'Mała elektrownia wodna', words: ['elektrown', 'mew', 'turbin', 'hydroelektr'] },
     { key: 'dam', label: 'Zapora', words: ['zapor'] },
-    { key: 'weir', label: 'Jaz', words: ['jaz', 'jazy', 'jazu', 'stopien wodny', 'stopnia wodnego'] },
+    { key: 'weir', label: 'Jaz', words: ['jaz', 'jazy', 'jazu', 'stopien wodny', 'stopnia wodnego', 'zastawk', 'budowl piet', 'budowla piet'] },
     { key: 'levee', label: 'Wały przeciwpowodziowe', words: ['waly', 'wal ', 'walow', 'obwalowan', 'przeciwpowodz'] },
-    { key: 'retention', label: 'Mała retencja', words: ['retencj', 'lesna', 'lesnej'] },
-    { key: 'reservoir', label: 'Zbiornik / staw', words: ['zbiornik', 'staw', 'zalew', 'jezior', 'stawy'] },
-    { key: 'river', label: 'Rzeka / przepust', words: ['rzeki', 'rzeka', 'rz.', 'regulacj', 'potok', 'koryt', 'przepust', 'odmulen', 'kanal', 'most'] },
+    { key: 'retention', label: 'Mała retencja leśna', words: ['mala retencj', 'retencja lesna', 'lesna', 'lesnej'] },
+    { key: 'pond', label: 'Staw', words: ['staw', 'stawy', 'stawu', 'stawow'] },
+    { key: 'reservoir', label: 'Zbiornik wodny', words: ['zbiornik', 'zalew', 'jezior'] },
+    { key: 'culvert', label: 'Przepust / most', words: ['przepust', 'most', 'kladk', 'przejscie'] },
+    { key: 'river', label: 'Rzeka / ciek / kanał', words: ['rzeki', 'rzeka', 'rz.', 'regulacj', 'potok', 'koryt', 'odmulen', 'kanal', 'rowu', 'rowy'] },
+    { key: 'multi', label: 'Kilka obiektów', words: ['kompleks', 'zespol obiektow'] },
     { key: 'other', label: 'Inny', words: [] }
   ];
 
