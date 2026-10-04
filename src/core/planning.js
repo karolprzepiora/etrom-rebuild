@@ -13,6 +13,7 @@
 
   var node = typeof module !== 'undefined' && module.exports;
   var Catalog = node ? require('./catalog.js') : root.ETROM.Catalog;
+  var Library = node ? require('./library.js') : root.ETROM.Library;
 
   var rules = { dayHours: 8, reservePct: 15 };
 
@@ -38,7 +39,7 @@
     var w = Number(stage && stage.weight);
     if (w > 0) return w;
     var entry = stage && Catalog.find(stage.id);
-    if (entry) return entry.defaultHours;
+    if (entry) return Library.weightOf(stage.id);
     return Number(stage && stage.hours) > 0 ? Number(stage.hours) : 8;
   }
 

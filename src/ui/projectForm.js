@@ -135,13 +135,24 @@
 
     /* --- etapy i budżet godzin (tylko nowy projekt) --- */
     var stageBoxes = {};
-    var hourInputs = {};
+    var pctInputs = {};
+    var hourLabels = {};
     var pickedCount = D.el('span', { class: 'grow', attrs: { 'aria-live': 'polite' } });
     var budget = UI.input({ id: 'pf-budget', type: 'number', value: values.budgetHours == null ? '' : String(values.budgetHours), placeholder: 'np. 500', attrs: { min: '0', step: '10', inputmode: 'numeric' } });
     var budgetNote = D.el('div', { class: 'pf-budget__note', attrs: { 'aria-live': 'polite' } });
 
     function picked() { return Catalog.all.filter(function (entry) { return stageBoxes[entry.id] && stageBoxes[entry.id].checked; }); }
-    function hoursOf(id) { var n = Number(String(hourInputs[id].value).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; }
+    function pctOf(id) { var n = Number(String(pctInputs[id].value).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; }
+
+    /** Godziny etapów: budżet dzielony wg udziałów; bez budżetu — godziny standardu. */
+    function hoursMap() {
+      var list = picked();
+      var total = Number(budget.value);
+      var out = {};
+      if (total > 0 && list.length) return Model.distributeHours(total, list.map(function (entry) { return { id: entry.id, weight: pctOf(entry.id) }; }));
+      list.forEach(function (entry) { out[entry.id] = entry.defaultHours; });
+      return out;
+    }
 
     function syncProcs() {
       Catalog.PROCEDURES.forEach(function (proc) {
@@ -152,27 +163,29 @@
     function refreshCount() {
       syncProcs();
       var list = picked();
-      var sum = list.reduce(function (t, entry) { return t + hoursOf(entry.id); }, 0);
+      var sum = list.reduce(function (t, entry) { return t + pctOf(entry.id); }, 0);
       var total = Number(budget.value);
-      pickedCount.textContent = 'Wybrano ' + list.length + ' z ' + Catalog.all.length + (list.length ? ' · ' + F.hours(sum) : '');
-      Catalog.all.forEach(function (entry) { hourInputs[entry.id].disabled = !stageBoxes[entry.id].checked; });
+      var hours = hoursMap();
+      pickedCount.textContent = 'Wybrano ' + list.length + ' z ' + Catalog.all.length + (list.length ? ' · suma udziałów ' + String(Math.round(sum * 10) / 10).replace('.', ',') + '%' : '');
+      Catalog.all.forEach(function (entry) {
+        var on = stageBoxes[entry.id].checked;
+        pctInputs[entry.id].disabled = !on;
+        hourLabels[entry.id].textContent = on && total > 0 ? F.hours(hours[entry.id] || 0) : '';
+      });
       budgetNote.className = 'pf-budget__note';
-      if (!list.length) budgetNote.textContent = 'Zaznacz etapy, a podzielę na nie budżet godzin.';
-      else if (total > 0 && Math.round(sum) !== Math.round(total)) {
+      if (!list.length) budgetNote.textContent = 'Zaznacz etapy, a podzielę na nie budżet wg udziałów.';
+      else if (Math.abs(sum - 100) > 0.5) {
         budgetNote.classList.add('is-off');
-        budgetNote.textContent = 'Suma etapów: ' + F.hours(sum) + ' — ' + (sum > total ? 'o ' + F.hours(sum - total) + ' więcej' : 'o ' + F.hours(total - sum) + ' mniej') + ' niż budżet projektu.';
-      } else if (total > 0) budgetNote.textContent = 'Suma etapów zgadza się z budżetem projektu: ' + F.hours(sum) + '.';
-      else budgetNote.textContent = 'Wpisz budżet projektu, a podzielę go na etapy proporcjonalnie do standardu. Godziny każdego etapu możesz zmienić.';
+        budgetNote.textContent = 'Udziały dają ' + String(Math.round(sum * 10) / 10).replace('.', ',') + '%, więc przeliczę je proporcjonalnie do 100%.';
+      } else if (total > 0) budgetNote.textContent = 'Budżet ' + F.hours(total) + ' podzielony na etapy wg udziałów.';
+      else budgetNote.textContent = 'Wpisz budżet projektu, a podzielę go na etapy wg udziałów. Udziały standardowe ustawisz w Bibliotece.';
     }
 
-    /** Dzieli budżet na zaznaczone etapy wg godzin standardu; bez budżetu przywraca wartości standardu. */
+    /** Ustawia udziały zaznaczonych etapów ze standardu biblioteki (suma 100%). */
     function distribute() {
       var list = picked();
-      var total = Number(budget.value);
-      if (total > 0 && list.length) {
-        var split = Model.distributeHours(total, list.map(function (entry) { return { id: entry.id, weight: entry.defaultHours }; }));
-        list.forEach(function (entry) { hourInputs[entry.id].value = String(split[entry.id]); });
-      } else list.forEach(function (entry) { hourInputs[entry.id].value = String(entry.defaultHours); });
+      var split = E.Library.sharesFor(list.map(function (entry) { return entry.id; }));
+      list.forEach(function (entry) { pctInputs[entry.id].value = String(split[entry.id]); });
       refreshCount();
     }
 
@@ -181,7 +194,7 @@
       distribute();
     }
 
-    budget.addEventListener('input', function () { if (Number(budget.value) > 0) distribute(); else refreshCount(); });
+    budget.addEventListener('input', refreshCount);
 
     function applyScope() {
       var sc = Catalog.scope(scopeSelect.value);
@@ -213,12 +226,14 @@
         var id = 'pf-stage-' + entry.id;
         var box = UI.checkbox({ id: id, value: entry.id, on: { change: distribute } });
         stageBoxes[entry.id] = box;
-        var hours = D.el('input', { class: 'input choice-list__hours', attrs: { type: 'number', min: '0', step: '1', value: String(entry.defaultHours), disabled: 'disabled', 'aria-label': 'Godziny etapu: ' + entry.name, inputmode: 'decimal' }, on: { input: refreshCount, click: function (e) { e.stopPropagation(); } } });
-        hourInputs[entry.id] = hours;
+        var pct = D.el('input', { class: 'input choice-list__hours', attrs: { type: 'number', min: '0', max: '100', step: '0.5', value: String(E.Library.sharePct(entry.id)), disabled: 'disabled', 'aria-label': 'Udział etapu w budżecie, %: ' + entry.name, inputmode: 'decimal' }, on: { input: refreshCount, click: function (e) { e.stopPropagation(); } } });
+        pctInputs[entry.id] = pct;
+        var hl = D.el('span', { class: 'choice-list__h t-muted t-num' });
+        hourLabels[entry.id] = hl;
         return D.el('label', { class: 'choice-list__item choice-list__item--hours', attrs: { for: id } }, [
           box,
           D.el('span', { class: 'truncate' }, [D.el('span', { class: 'choice-list__no', text: entry.number }), entry.name]),
-          D.el('span', { class: 'choice-list__meta' }, [hours, ' h'])
+          D.el('span', { class: 'choice-list__meta' }, [hl, pct, ' %'])
         ]);
       }))
     ]);
@@ -240,7 +255,8 @@
         kind: kindSelect.value,
         scope: scopeSelect.value,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
-        stageHours: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = hoursOf(id); return acc; }, {}),
+        stageHours: editing ? {} : hoursMap(),
+        stageWeights: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = pctOf(id); return acc; }, {}),
         budgetHours: editing ? undefined : budget.value,
         team: resultTeam
       };
@@ -268,7 +284,7 @@
 
     if (!editing) {
       body.push(D.el('hr', { class: 'form__divider' }));
-      body.push(section('Etapy i budżet godzin', 'Wpisz budżet projektu, a podzielę go na wybrane etapy. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-scope', label: 'Zakres opracowania', control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia. Etapy poniżej możesz potem zmienić.' }), scopeNote, D.el('div', { class: 'pf-procs__wrap' }, [D.el('span', { class: 'settings__label', text: 'Procedury formalne' }), procRow]), UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h.' }), budgetNote, stagePicker]));
+      body.push(section('Etapy i podział budżetu', 'Wpisz budżet godzin, wybierz etapy i ustaw udział każdego w procentach. Domyślne udziały bierzesz z Biblioteki. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-scope', label: 'Zakres opracowania', control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia. Etapy poniżej możesz potem zmienić.' }), scopeNote, D.el('div', { class: 'pf-procs__wrap' }, [D.el('span', { class: 'settings__label', text: 'Procedury formalne' }), procRow]), UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h. Drobne korekty zrobisz potem w Planie wstępnym.' }), budgetNote, stagePicker]));
     }
 
     var form = E.Dialog.drawerForm({

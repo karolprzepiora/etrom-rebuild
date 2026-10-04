@@ -695,3 +695,18 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .bp-sum { list-style: none; margin: 0; padding: 0; display: grid; }
 .bp-sum__row { display: grid; grid-template-columns: minmax(0, 1fr) 6rem 14rem; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
 @media (max-width: 40rem) { .bp-sum__row { grid-template-columns: minmax(0, 1fr) auto; } .bp-sum__row > :last-child { display: none; } }
+
+/* Biblioteka zadań */
+.lb { display: grid; gap: var(--space-4); }
+.lb-bar { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.lb-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); align-items: start; }
+.lb-stage { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-3, 12px); background: var(--surface); }
+.lb-stage__head { display: flex; gap: var(--space-3); align-items: center; min-width: 0; }
+.lb-stage__name { flex: 1 1 auto; margin: 0; font-size: 1rem; font-weight: 600; min-width: 0; }
+.lb-stage__share { display: flex; align-items: center; gap: .25rem; white-space: nowrap; }
+.lb-share { width: 4.5rem; text-align: right; }
+.lb-tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.lb-task { display: flex; gap: var(--space-2); align-items: center; min-width: 0; }
+.lb-task .input { flex: 1 1 auto; }
+.lb-stage__foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.lb-stage__foot .input { flex: 1 1 14rem; }

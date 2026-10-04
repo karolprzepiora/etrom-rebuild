@@ -81,6 +81,7 @@
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
     if (parts[0] === 'zespol') return { name: 'team' };
+    if (parts[0] === 'biblioteka') return { name: 'library' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
@@ -94,11 +95,12 @@
   }
 
   function screenOf(route) {
-    return route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
+    if (route.name === 'library') return '#/biblioteka';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
@@ -181,7 +183,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -375,7 +377,7 @@
     var picked = Array.isArray(values.stageIds) ? values.stageIds : [];
     var stages = Catalog.all
       .filter(function (entry) { return picked.indexOf(entry.id) >= 0; })
-      .map(function (entry) { return Model.createStage(entry.id, { hours: values.stageHours && values.stageHours[entry.id] }); });
+      .map(function (entry) { return Model.createStage(entry.id, { hours: values.stageHours && values.stageHours[entry.id], weight: values.stageWeights && values.stageWeights[entry.id] }); });
     var created = null;
     setWorkspace(function (list) {
       created = Model.createProject(Object.assign({}, check.value, { stages: stages, team: team }), list);
@@ -385,8 +387,8 @@
     Toast.show({
       message: 'Utworzono projekt ' + created.code,
       tone: 'success',
-      actionLabel: 'Otwórz',
-      onAction: function () { openProject(created.id); },
+      actionLabel: stages.length ? 'Zaplanuj' : 'Otwórz',
+      onAction: function () { openProject(created.id, stages.length && canPlan(created) ? 'budzet' : undefined); },
       timeout: 6000
     });
   }
@@ -778,6 +780,30 @@
   function toggleMailAction(id) {
     setMail(function (current) { return current.map(function (e) { return e.id === id ? Object.assign({}, e, { needsAction: !e.needsAction }) : e; }); });
   }
+
+  /* ---------- biblioteka ---------- */
+
+  function setLibrary(producer) {
+    updateWorkspace(function (workspace) {
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, library: producer(E.Library.normalize(workspace.library)) });
+    });
+  }
+  function canEditLibrary() {
+    var st = store.getState();
+    return E.Budget.isManagement(st.prefs.me, st.workspace.people || []);
+  }
+  function libraryChange(compute) {
+    if (!canEditLibrary()) { Toast.show({ message: 'Bibliotekę zmienia zarząd. Wybierz siebie w Zespole.', tone: 'danger' }); return; }
+    var error = '';
+    setLibrary(function (lib) { var r = compute(lib); if (r && r.error !== undefined) { error = r.error; return r.library; } return r; });
+    if (error) Toast.show({ message: error, tone: 'danger' });
+  }
+  function libAddTask(stageId, name) { libraryChange(function (lib) { return E.Library.addTask(lib, stageId, name); }); }
+  function libRenameTask(stageId, index, name) { libraryChange(function (lib) { return E.Library.renameTask(lib, stageId, index, name); }); }
+  function libRemoveTask(stageId, index) { libraryChange(function (lib) { return E.Library.removeTask(lib, stageId, index); }); }
+  function libSetShare(stageId, value) { libraryChange(function (lib) { return E.Library.setShare(lib, stageId, String(value).replace(',', '.')); }); }
+  function libResetTasks(stageId) { libraryChange(function (lib) { return E.Library.resetTasks(lib, stageId); }); }
+  function libResetShares() { libraryChange(function (lib) { return E.Library.resetShares(lib); }); }
 
   function deleteMail(id) {
     var list = mailList();
@@ -2545,6 +2571,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
+    libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libSetShare: libSetShare, libResetTasks: libResetTasks, libResetShares: libResetShares,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
@@ -2914,6 +2941,12 @@
     D.patch(nodes.teamList, [E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state))]);
   }
 
+  function renderLibrary(state) {
+    var screen = E.LibraryScreen.view(state, { actions: actions });
+    nodes.librarySummary.textContent = screen.summary;
+    D.patch(nodes.libraryBody, [screen.body]);
+  }
+
   function renderMyWork(state) {
     var screen = E.MyWork.view(state, { actions: actions, find: locateEntry });
     var meNow = Team.findPerson(people(), state.prefs.me);
@@ -3053,6 +3086,8 @@
     nodes.views.projects.hidden = route.name !== 'projects';
     nodes.views.project.hidden = route.name !== 'project';
     nodes.views.team.hidden = route.name !== 'team';
+    nodes.views.library.hidden = route.name !== 'library';
+    E.Library.configure(state.workspace.library);
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.feed.hidden = route.name !== 'feed';
     nodes.views.analysis.hidden = route.name !== 'analysis';
@@ -3085,6 +3120,9 @@
     } else if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
       renderMyWork(state);
+    } else if (route.name === 'library') {
+      document.title = 'Biblioteka · ETROM';
+      renderLibrary(state);
     } else if (route.name === 'team') {
       document.title = 'Zespół · ETROM';
       renderTeam(state);
@@ -3256,6 +3294,8 @@
     nodes.teamSummary = D.byId('team-summary');
     nodes.timerSlot = D.byId('timer-slot');
     nodes.myworkSummary = D.byId('mywork-summary');
+    nodes.librarySummary = D.byId('library-summary');
+    nodes.libraryBody = D.byId('library-body');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
     nodes.feedSummary = D.byId('feed-summary');
@@ -3267,7 +3307,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

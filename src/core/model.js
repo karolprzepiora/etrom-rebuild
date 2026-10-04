@@ -28,6 +28,10 @@
     ? require('./mail.js')
     : root.ETROM.Mail;
 
+  var Library = (typeof module !== 'undefined' && module.exports)
+    ? require('./library.js')
+    : root.ETROM.Library;
+
   var WORKSPACE_VERSION = 8;
 
   var PROJECT_STATUS = {
@@ -162,7 +166,7 @@
     options = options || {};
     var hours = Number(options.hours);
     if (!Number.isFinite(hours) || hours <= 0) hours = entry.defaultHours;
-    return {
+    var stage = {
       id: entry.id,
       source: 'catalog',
       status: 'todo',
@@ -171,6 +175,8 @@
       adjustments: [],
       tasks: []
     };
+    if (Number(options.weight) > 0) stage.weight = Number(options.weight);
+    return stage;
   }
 
   /**
@@ -493,11 +499,11 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social) };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library) };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty() };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null) };
   }
 
   var api = {

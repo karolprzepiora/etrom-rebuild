@@ -801,22 +801,25 @@ async function main() {
       '["preparation", "water-docs", "handover"].forEach(function (id) { const b = document.getElementById("pf-stage-" + id); b.checked = true; b.dispatchEvent(new Event("change", { bubbles: true })); });' +
       'const bud = document.getElementById("pf-budget"); bud.value = "500"; bud.dispatchEvent(new Event("input", { bubbles: true })); return true;'
     );
-    check('budżet godzin projektu dzieli się na zaznaczone etapy, a suma równa się budżetowi',
-      await evaluate('const v = ["preparation", "water-docs", "handover"].map(id => Number(document.querySelector("#pf-stage-" + id).closest("label").querySelector(".choice-list__hours").value)); return v.every(n => n > 0) && v.reduce((a, b) => a + b, 0) === 500 && /zgadza się/.test(document.querySelector(".pf-budget__note").textContent);'));
-    await evaluate('const i = document.querySelector("#pf-stage-preparation").closest("label").querySelector(".choice-list__hours"); i.value = String(Number(i.value) + 20); i.dispatchEvent(new Event("input", { bubbles: true })); return true;');
-    check('ręczna zmiana godzin etapu pokazuje różnicę względem budżetu',
-      await evaluate('return /o 20 h więcej/.test(document.querySelector(".pf-budget__note").textContent.replace(/\u00a0/g, " "));'));
+    check('udziały zaznaczonych etapów ze standardu sumują się do 100%, a budżet dzieli się wg nich na 500 h',
+      await evaluate('const ids = ["preparation", "water-docs", "handover"]; const v = ids.map(id => Number(document.querySelector("#pf-stage-" + id).closest("label").querySelector(".choice-list__hours").value)); const h = ids.map(id => document.querySelector("#pf-stage-" + id).closest("label").querySelector(".choice-list__h").textContent); return v.every(n => n > 0) && Math.abs(v.reduce((a, b) => a + b, 0) - 100) < 0.2 && h.every(t => /\\d/.test(t)) && /podzielony/.test(document.querySelector(".pf-budget__note").textContent);'));
+    await evaluate('const i = document.querySelector("#pf-stage-preparation").closest("label").querySelector(".choice-list__hours"); i.value = "60"; i.dispatchEvent(new Event("input", { bubbles: true })); return true;');
+    check('ręczna zmiana udziału zmienia godziny etapu, a suma udziałów ≠ 100% jest zgłoszona',
+      await evaluate('return /przeliczę/.test(document.querySelector(".pf-budget__note").textContent) && Number(document.querySelector("#pf-stage-preparation").closest("label").querySelector(".choice-list__h").textContent.replace(/[^0-9]/g, "")) > 200;'));
     await evaluate('document.getElementById("project-form").requestSubmit(); return true;');
     await sleep(300);
     check('utworzony projekt ma godziny etapów z formularza',
-      await state('(s.workspace.projects.filter(p => p.code === "PICK-1")[0] || {stages: []}).stages.reduce((t, st) => t + st.hours, 0)') === 520);
+      await state('(s.workspace.projects.filter(p => p.code === "PICK-1")[0] || {stages: []}).stages.reduce((t, st) => t + st.hours, 0)') === 500
+      && (await state('(s.workspace.projects.filter(p => p.code === "PICK-1")[0] || {stages: []}).stages.every(st => st.weight > 0)')));
     await sleep(300);
     check('projekt dostaje tylko wybrane etapy, w kolejności standardu',
       (await state('(s.workspace.projects.find(x => x.code === "PICK-1") || { stages: [] }).stages.map(st => st.id).join(",")')) === 'preparation,water-docs,handover');
     await click('[data-toast-action]');
     await sleep(500);
     const pid = await projectId('PICK-1');
-    check('„Otwórz” w powiadomieniu prowadzi do nowego projektu', (await evaluate('return location.hash;')) === '#/projekty/' + pid);
+    check('„Zaplanuj” w powiadomieniu prowadzi do nowego projektu (Plan wstępny dla zarządu i lidera)', /^#\/projekty\/\d+(\/budzet)?$/.test(await evaluate('return location.hash;')) && (await evaluate('return location.hash;')).indexOf('/' + pid) > 0);
+    await go('#/projekty/' + pid);
+    await sleep(300);
 
     /* 23. Etap spoza standardu */
     await openMenu('[data-fk="add-stage"]', 'Etap własny');
@@ -1419,6 +1422,30 @@ async function main() {
     await evaluate('document.querySelector("#mail-form [data-fk=cancel], #mail-form .btn--ghost") && 0; window.ETROM.app.store.set({ mailForm: null }); return true;');
     await sleep(250);
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+
+    /* Biblioteka: udziały etapów i zadania standardowe */
+    await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
+    await go('#/biblioteka');
+    await sleep(400);
+    check('Biblioteka: ekran z kafelkami etapów, udziałem % i zadaniami; suma udziałów 100%',
+      (await evaluate('return document.querySelectorAll(".lb-stage").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;'))
+      && /100%/.test(await evaluate('return document.querySelector(".lb-bar").textContent;'))
+      && !!(await evaluate('return document.querySelector("[data-fk=lb-share-concept]") && document.querySelector("[data-fk=lb-t-concept-0]");')));
+    await evaluate('const i = document.querySelector("[data-fk=lb-add-concept]"); i.value = "Analiza wariantów (smoke)"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(400);
+    check('dodane zadanie trafia do biblioteki (zapisane w danych) i jest podpowiadane w Planie wstępnym',
+      (await state('s.workspace.library.tasks.concept.map(t => t.name).join("|")')) === 'Koncepcja techniczna|Analiza wariantów (smoke)'
+      && (await evaluate('return window.ETROM.Library.forStage("concept").length === 2;')));
+    await evaluate('const i = document.querySelector("[data-fk=lb-share-concept]"); i.value = "25"; i.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(400);
+    check('zmiana udziału etapu zapisuje się i skaluje pozostałe do 100%',
+      (await state('s.workspace.library.shares.concept')) === 25
+      && Math.abs((await evaluate('return window.ETROM.Catalog.all.reduce((t, e) => t + window.ETROM.Library.sharePct(e.id), 0);')) - 100) < 0.6);
+    await click('[data-fk=lb-reset-shares]');
+    await click('[data-fk=lb-reset-concept]');
+    await sleep(400);
+    check('„Przywróć” wraca do standardu biura',
+      (await state('Object.keys(s.workspace.library.shares).length')) === 0 && (await state('(s.workspace.library.tasks.concept || []).length')) === 0);
 
     /* 38h. Zdarzenia projektowe w Aktualnościach, wyjaśnienie stanu, radar jako filtr, obciążenie zespołu */
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');

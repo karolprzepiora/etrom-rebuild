@@ -118,6 +118,16 @@
             <div id="mywork-body"></div>
           </section>
 
+          <section class="view" id="view-library" hidden aria-labelledby="library-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="library-title">Biblioteka</h1>
+                <p class="page-header__description" id="library-summary"></p>
+              </div>
+            </header>
+            <div id="library-body"></div>
+          </section>
+
           <section class="view" id="view-team" hidden aria-labelledby="team-title">
             <header class="page-header">
               <div class="page-header__main">
@@ -148,6 +158,7 @@
   <!-- Klasyczne skrypty w kolejności zależności: działa po dwukliku z dysku (file://),
        bez serwera i bez kompilacji. Moduły ES nie zadziałałyby z file:// (CORS). -->
   <script src="src/core/catalog.js"></script>
+  <script src="src/core/library.js"></script>
   <script src="src/core/team.js"></script>
   <script src="src/core/tasks.js"></script>
   <script src="src/core/timelog.js"></script>
@@ -173,7 +184,6 @@
   <script src="src/core/timesheet.js"></script>
   <script src="src/core/plan.js"></script>
   <script src="src/core/planning.js"></script>
-  <script src="src/core/library.js"></script>
   <script src="src/ui/dom.js"></script>
   <script src="src/ui/icons.js"></script>
   <script src="src/ui/kindArt.js"></script>
@@ -206,6 +216,7 @@
   <script src="src/ui/charts.js"></script>
   <script src="src/ui/analysisScreen.js"></script>
   <script src="src/ui/budgetScreen.js"></script>
+  <script src="src/ui/libraryScreen.js"></script>
   <script src="src/ui/timeScreen.js"></script>
   <script src="src/ui/inspector.js"></script>
   <script src="src/ui/shell.js"></script>
