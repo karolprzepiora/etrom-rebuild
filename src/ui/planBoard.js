@@ -635,5 +635,5 @@
     };
   }
 
-  E.PlanBoard = { view: view, screen: screen, slotOf: slotOf, dateOfSlot: dateOfSlot };
+  E.PlanBoard = { view: view, screen: screen, slotOf: slotOf, dateOfSlot: dateOfSlot, weekLabel: weekLabel };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

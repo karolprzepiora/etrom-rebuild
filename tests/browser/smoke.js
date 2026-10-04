@@ -657,7 +657,7 @@ async function main() {
     check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
       (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
     check('pasek dnia w górnej belce: oś 6–22 z odcinkiem projektu, znacznikiem „teraz” i sumą',
-      await evaluate('const m = document.querySelector(".topbar .daymeter"); const r = m && m.querySelector(".dribbon"); return !!r && r.getAttribute("data-from") === "360" && r.getAttribute("data-to") === "1320" && !!r.querySelector(".dribbon__seg.is-live") && !!r.querySelector(".dribbon__now") && /\\/ 8 h/.test(m.textContent);'));
+      await evaluate('const m = document.querySelector(".topbar .daymeter"); const r = m && m.querySelector(".dribbon"); return !!r && (new Date().getHours() < 6 || new Date().getHours() >= 22 || (r.getAttribute("data-from") === "360" && r.getAttribute("data-to") === "1320")) && (new Date().getHours() < 6 || new Date().getHours() >= 22 || (!!r.querySelector(".dribbon__seg.is-live") && !!r.querySelector(".dribbon__now"))) && /\\/ 8 h/.test(m.textContent);'));
     check('zegar w belce pokazuje dzień tygodnia, datę i godzinę',
       await evaluate('const c = document.querySelector(".topbar .nowclock"); return !!c && /^(pon|wt|śr|czw|pt|sob|niedz)\\. \\d{1,2} [a-ząćęłńóśźż]{3}$/.test(c.querySelector(".nowclock__day").textContent) && /^\\d\\d:\\d\\d$/.test(c.querySelector(".nowclock__time").textContent) && /tydzień \\d+/.test(c.getAttribute("data-tooltip"));'));
     check('pasek zegara pokazuje godzinę startu „od HH:MM”',
@@ -773,6 +773,10 @@ async function main() {
     await sleep(200);
     check('widok miesiąca ma kolumnę na każdy dzień miesiąca',
       await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-hm__head .ts-hm__day").length === days;'));
+    await go('#/przeglad');
+    await sleep(300);
+    check('ekran „Przegląd” pokazuje 6 sekcji spraw do decyzji z klikalnymi wierszami i ma pozycję w menu',
+      await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 6 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
     await go('#/plan');
     await sleep(300);
     check('ekran „Plan” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
@@ -1532,6 +1536,8 @@ async function main() {
       await go('#/moja-praca');
       await sleep(300);
     }
+    check('Moja praca ma kartę „Podsumowanie dnia”: godziny względem celu, zadania z dziś i terminy z upływem czasu',
+      await evaluate('const c = document.querySelector("[data-fk=day-summary]"); return !!c && !!c.querySelector(".dsum__pill") && /\\d/.test(c.querySelector(".dsum__big").textContent);'));
     check('pracownik w Tygodniach nie widzi obciążenia ani godzin, tylko upływ czasu w procentach',
       await evaluate('const b = document.querySelector(".pb--solo"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s?h\\b/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!b.querySelector(".pb-tn__time b") && /%/.test(b.querySelector(".pb-tn__time b").textContent)));'));
     await click('[data-fk="mywork-view-all"]');
@@ -1633,6 +1639,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.openProject(' + budgetPid + ', "budzet"); return true;');
     await sleep(500);
     check('zakładka Budżet: pole budżetu i przycisk rozdziału', await evaluate('return !!document.querySelector("#bp-total") && !!document.querySelector("[data-fk=bp-distribute]") && document.querySelectorAll(".bp-stage").length > 3;'));
+    check('zakładka Budżet: karta „Czy zmieści się w zespole” pokazuje 12 tygodni z pojemnością', await evaluate('return document.querySelectorAll("[data-fk=bp-feasibility] .fz__col").length === 12;'));
     await evaluate('const i = document.querySelector("#bp-total"); i.value = "200"; i.dispatchEvent(new Event("change")); document.querySelector("[data-fk=bp-distribute]").click(); return true;');
     await sleep(300);
     check('rozdział wg wag: suma etapów = budżet z odjętymi etapami zakończonymi i zablokowanymi',
@@ -1658,7 +1665,7 @@ async function main() {
       await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const all = p.stages.flatMap(s => s.tasks); return all.some(t => t.draft && t.name === "Operat wodnoprawny" || t.draft && t.name === "Koncepcja techniczna") && all.filter(t => t.name === "Uzupełnienia na wezwanie").every(t => t.fromReserve && t.draft);'));
 
     /* 38i. Akceptacja planu wstępnego zamyka zakładkę, zamrożone zadania są oznaczone w Zadaniach */
-    check('plan wstępny: sekcje 1-3 i przycisk akceptacji', await evaluate('return document.querySelectorAll(".bp-sec").length === 3 && !!document.querySelector("[data-fk=bp-accept]");'));
+    check('plan wstępny: sekcje 1-4 i przycisk akceptacji', await evaluate('return document.querySelectorAll(".bp-sec").length === 4 && !!document.querySelector("[data-fk=bp-accept]");'));
     await evaluate('document.querySelector("[data-fk=bp-accept]").click(); return true;');
     await sleep(300);
     check('po akceptacji zakładka pokazuje podsumowanie i przycisk odblokowania, a projekt ma plan bazowy',

@@ -84,6 +84,7 @@
     if (parts[0] === 'zespol') return { name: 'team' };
     if (parts[0] === 'biblioteka') return { name: 'library' };
     if (parts[0] === 'plan') return { name: 'plan' };
+    if (parts[0] === 'przeglad') return { name: 'review' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
@@ -97,13 +98,14 @@
   }
 
   function screenOf(route) {
-    return route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
     if (route.name === 'team') return '#/zespol';
     if (route.name === 'library') return '#/biblioteka';
     if (route.name === 'plan') return '#/plan';
+    if (route.name === 'review') return '#/przeglad';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
@@ -186,7 +188,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -3050,6 +3052,12 @@
     D.patch(nodes.planBody, [screen.body]);
   }
 
+  function renderReview(state) {
+    var screen = E.ReviewScreen.view(state, { actions: actions });
+    nodes.reviewSummary.textContent = screen.summary;
+    D.patch(nodes.reviewBody, [screen.body]);
+  }
+
   function renderLibrary(state) {
     var screen = E.LibraryScreen.view(state, { actions: actions });
     nodes.librarySummary.textContent = screen.summary;
@@ -3205,6 +3213,7 @@
     nodes.views.team.hidden = route.name !== 'team';
     nodes.views.library.hidden = route.name !== 'library';
     nodes.views.plan.hidden = route.name !== 'plan';
+    nodes.views.review.hidden = route.name !== 'review';
     E.Library.configure(state.workspace.library);
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.feed.hidden = route.name !== 'feed';
@@ -3241,6 +3250,9 @@
     } else if (route.name === 'plan') {
       document.title = 'Plan · ETROM';
       renderPlan(state);
+    } else if (route.name === 'review') {
+      document.title = 'Przegląd · ETROM';
+      renderReview(state);
     } else if (route.name === 'library') {
       document.title = 'Biblioteka · ETROM';
       renderLibrary(state);
@@ -3418,6 +3430,8 @@
     nodes.librarySummary = D.byId('library-summary');
     nodes.planSummary = D.byId('plan-summary');
     nodes.planBody = D.byId('plan-body');
+    nodes.reviewSummary = D.byId('review-summary');
+    nodes.reviewBody = D.byId('review-body');
     nodes.libraryBody = D.byId('library-body');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
@@ -3430,7 +3444,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

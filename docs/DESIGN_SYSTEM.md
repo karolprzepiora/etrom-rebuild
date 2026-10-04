@@ -587,3 +587,12 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 - Zarząd dodaje nieobecność (urlop, zwolnienie, szkolenie, inna) przyciskiem „+” w wierszu osoby w Planie albo klikając pasmo. Zapis w `workspace.absences` (`Absences`, wersja przestrzeni 9).
 - Plan: pojemność tygodnia = dni robocze bez nieobecności × cel dnia, praca zadań rozkłada się tylko na dni obecności. Zadanie, któremu brakuje dni, dostaje „za mało czasu”. Pasma nieobecności są szarym kreskowaniem na osi osoby.
 - Karta czasu: dzień nieobecności jest neutralny w wierszu „Razem”, chyba że osoba i tak osiągnęła cel dnia.
+
+### Podsumowanie dnia (Moja praca)
+Karta w kolumnie bocznej: przepracowane godziny z celem dnia, brakujące do celu (czerwone/żółte wg progów), tydzień w rozliczonych dniach, lista „Dziś pracowałeś nad” i „Czas ucieka” (procent czasu zadań, bez godzin planu). Logika: `src/core/daysummary.js`. Pracownik nie widzi obciążenia ani godzin zadań.
+
+### Przegląd (zarząd i liderzy)
+Ekran `#/przeglad`: 6 sekcji spraw wymagających decyzji (np. przeterminowane, bez właściciela, przeciążenia), każdy wiersz prowadzi do zadania lub projektu. Tylko fakty, bez podpowiedzi rozwiązań. Logika: `src/core/review.js`.
+
+### Czy zmieści się w zespole (Budżet → sekcja 3)
+12 słupków tygodni: linia pojemności zespołu, szary udział innych projektów, kolor projektu = godziny jego etapów rozłożone do terminów. Tydzień ponad pojemność ma czerwoną ramkę i liczbę. Etapy bez terminu są wyliczone pod wykresem. Bez sugestii rozwiązań. Logika: `src/core/feasibility.js`.

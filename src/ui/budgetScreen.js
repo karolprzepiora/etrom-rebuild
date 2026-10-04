@@ -151,7 +151,7 @@
         ]),
         D.el('div', { class: 'bp-done__act' }, [
           D.el('a', { class: 'btn btn--primary', attrs: { href: E.ProjectList.projectHref(project, 'zadania'), 'data-fk': 'bp-go-tasks' }, text: 'Przejdź do zadań' }),
-          UI.button({ label: 'Plan tygodni', variant: 'secondary', attrs: { 'data-fk': 'bp-go-weeks' }, onClick: function () { a.setTime({ timeTab: 'plan' }); a.goTo('time'); } }),
+          UI.button({ label: 'Plan tygodni', variant: 'secondary', attrs: { 'data-fk': 'bp-go-weeks' }, onClick: function () { a.goTo('plan'); } }),
           UI.button({ label: 'Odblokuj plan wstępny', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'bp-reopen' }, onClick: function () { a.reopenPlan(project.id); } })
         ])
       ]),
@@ -164,6 +164,38 @@
           D.el('span', { class: 't-muted', text: n ? plTasks(n) + (p.reserve > 0 ? ' · rezerwa ' + fmt(P.toDays(p.reserve)) : '') : 'bez zadań' })
         ]);
       }))
+    ]);
+  }
+
+  /** Obraz obciążenia zespołu projektu: pojemność, cudze zadania i godziny etapów tydzień po tygodniu (bez podpowiedzi). */
+  function feasibilityCard(project, ctx) {
+    var st = ctx.state;
+    var r = E.Feasibility.build({
+      project: project, projects: st.workspace.projects || [], people: st.workspace.people || [], entries: st.workspace.entries || [],
+      absences: st.workspace.absences || [], now: new Date(), target: st.prefs.dayTarget, weeks: 12
+    });
+    if (!r.team.length) return D.el('div', { class: 'an-card fz' }, [D.el('p', { class: 't-muted', text: 'Dodaj zespół projektu, żeby zobaczyć, jak plan układa się na tle obciążenia osób.' })]);
+    var max = Math.max.apply(null, r.weeks.map(function (w) { return Math.max(w.capacity, w.total, 1); }));
+    var cols = r.weeks.map(function (w) {
+      var tip = E.PlanBoard.weekLabel(w.start) + ': pojemność ' + fmt(w.capacity) + ' h, inne projekty ' + fmt(w.others) + ' h, ten projekt ' + fmt(w.own) + ' h';
+      return D.el('div', { class: 'fz__col is-' + w.state, attrs: { 'data-tooltip': tip, 'aria-label': tip, tabindex: '0' } }, [
+        D.el('div', { class: 'fz__bar' }, [
+          D.el('i', { class: 'fz__cap', style: { bottom: (w.capacity / max * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }),
+          D.el('i', { class: 'fz__others', style: { height: (w.others / max * 100) + '%' } }),
+          D.el('i', { class: 'fz__own', style: Object.assign({ height: (w.own / max * 100) + '%' }, E.Identity.hueStyle(project.code)) })
+        ]),
+        D.el('span', { class: 'fz__num t-num', text: fmt(w.total) + '/' + fmt(w.capacity) }),
+        D.el('span', { class: 'fz__wk', text: E.PlanBoard.weekLabel(w.start) })
+      ]);
+    });
+    return D.el('div', { class: 'an-card fz', attrs: { 'data-fk': 'bp-feasibility' } }, [
+      D.el('div', { class: 'fz__legend t-meta' }, [
+        D.el('span', { class: 'fz__k fz__k--cap', text: 'pojemność zespołu' }),
+        D.el('span', { class: 'fz__k fz__k--others', text: 'inne projekty' }),
+        D.el('span', { class: 'fz__k fz__k--own', style: E.Identity.hueStyle(project.code), text: 'ten projekt (godziny etapów do terminów)' })
+      ]),
+      D.el('div', { class: 'fz__cols' }, cols),
+      D.el('p', { class: 't-meta', text: 'Zespół: ' + E.Format.count(r.team.length, 'osoba', 'osoby', 'osób') + ' · tygodni ponad pojemność: ' + r.overWeeks + (r.unscheduled ? ' · etapy bez terminu: ' + fmt(r.unscheduled) + ' h poza wykresem' : '') })
     ]);
   }
 
@@ -206,7 +238,8 @@
         D.el('div', { class: 'bp-lib-top' }, [libAll, D.el('span', { class: 't-meta', text: 'Biblioteka podpowiada typowe zadania etapu. Możesz też dopisać własne albo usunąć zbędne.' })]),
         D.el('div', { class: 'bp-stages' }, project.stages.map(function (stage, i) { return stageBlock(project, stage, i, ctx, totalWeight); }))
       ]),
-      section('3', 'Akceptacja', 'po akceptacji nie wracasz do tej zakładki', [
+      section('3', 'Czy zmieści się w zespole', 'godziny etapów rozłożone do ich terminów, na tle pojemności osób i ich innych projektów', [feasibilityCard(project, ctx)]),
+      section('4', 'Akceptacja', 'po akceptacji nie wracasz do tej zakładki', [
         D.el('div', { class: 'an-card bp-accept' }, [
           D.el('p', { class: 'bp-accept__text', text: 'Budżet ' + fmt(P.toDays(total)) + ' dni · ' + frozen + ' zamrożonych zadań' + (overStages ? ' · ' + overStages + ' etap(y) ponad pulę' : '') + '. Zamrożone zadania trafią do Planu i Zadań (widzisz je tylko Ty i lider), a budżet zostanie zapisany jako bazowy.' }),
           accept

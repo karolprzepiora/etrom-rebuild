@@ -278,6 +278,7 @@
           D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
           D.el('li', null, [navItem('time', 'clock', 'Czas', '#/czas')]),
           D.el('li', { class: 'nav__plan' }, [navItem('plan', 'calendar', 'Plan', '#/plan')]),
+          D.el('li', { class: 'nav__review' }, [navItem('review', 'flag', 'Przegląd', '#/przeglad')]),
           D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
           D.el('li', null, [navItem('analysis', 'chart', 'Analiza', '#/analiza')]),
           D.el('li', null, [(function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()]),
@@ -316,6 +317,7 @@
     if (route.name === 'team') return [{ label: 'Zespół' }];
     if (route.name === 'library') return [{ label: 'Biblioteka' }];
     if (route.name === 'plan') return [{ label: 'Plan' }];
+    if (route.name === 'review') return [{ label: 'Przegląd' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
     if (route.name === 'time') return [{ label: 'Czas' }];
@@ -326,7 +328,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
+    var section = route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
     Object.keys(nodes.nav).forEach(function (key) {
       var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
@@ -336,10 +338,12 @@
     nodes.counts.projects.textContent = String(projects.length);
     if (nodes.counts.library) nodes.counts.library.hidden = true;
     if (nodes.counts.plan) nodes.counts.plan.hidden = true;
+    if (nodes.counts.review) nodes.counts.review.hidden = true;
     (function () {
       var meNow = E.Team.findPerson(state.workspace.people || [], state.prefs.me);
       var may = !!meNow && (E.Budget.isManagement(meNow.id, state.workspace.people || []) || projects.some(function (p) { return p.team && p.team.leader === meNow.id && p.status !== 'done'; }));
       if (nodes.nav.plan && nodes.nav.plan.parentNode) nodes.nav.plan.parentNode.hidden = !may;
+      if (nodes.nav.review && nodes.nav.review.parentNode) nodes.nav.review.parentNode.hidden = !may;
     })();
     nodes.counts.team.textContent = String((state.workspace.people || []).filter(function (p) { return p.active !== false; }).length);
 
