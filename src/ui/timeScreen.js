@@ -82,13 +82,13 @@
   function heatCell(minutes, hue, tone, target, day, label) {
     return D.el('span', {
       class: 'an-hm__c ts-hm__c' + (day.today ? ' is-today' : '') + (day.weekend ? ' is-weekend' : ''),
-      style: minutes ? loadStyle(minutes / (target || 480)) : null,
+      style: minutes ? { background: 'color-mix(in srgb, var(--flow) ' + Math.round(14 + Math.min(1, minutes / (target || 480)) * 22) + '%, transparent)' } : null,
       attrs: { role: 'cell', 'data-tooltip': minutes ? label + ': ' + TL.duration(minutes) : null }
     }, [cellText(minutes)]);
   }
 
-  function sumCell(minutes, share, bad) {
-    return D.el('span', { class: 'an-hm__sum t-num', attrs: { role: 'cell' } }, [
+  function sumCell(minutes, share, bad, state) {
+    return D.el('span', { class: 'an-hm__sum t-num' + (state && state !== 'off' ? ' is-' + state : ''), attrs: { role: 'cell' } }, [
       D.el('b', { text: minutes ? TL.duration(minutes) : '—' }),
       share !== null ? D.el('span', { class: 'an-hm__pct' + (bad ? ' is-bad' : ''), text: share + '%' }) : null
     ]);
@@ -141,12 +141,12 @@
     var foot = D.el('div', { class: 'an-hm__row ts-hm__row ts-hm__foot', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who ts-hm__who', attrs: { role: 'rowheader' } }, [D.el('b', { text: 'Razem' })])]
       .concat(sheet.days.map(function (d) {
         var over = d.minutes > sheet.dayTarget;
+        var verdict = { ok: 'Cel dnia osiągnięty', warn: 'Do celu brakuje mniej niż godziny', bad: 'Poniżej celu dnia', run: 'Dzień w trakcie: jeszcze ' + TL.duration(Math.max(0, sheet.dayTarget - d.minutes)) }[d.state] || '';
         return D.el('span', {
-          class: 'an-hm__c ts-hm__c ts-hm__total' + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
-          style: loadStyle(d.weekend ? 0 : d.minutes / sheet.dayTarget) || (d.minutes ? loadStyle(d.minutes / sheet.dayTarget) : null),
-          attrs: { role: 'cell', 'data-tooltip': d.minutes ? d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') : null }
-        }, [cellText(d.minutes)]);
-      }), [sumCell(sheet.total, targetPct, targetPct !== null && targetPct > 105)]));
+          class: 'an-hm__c ts-hm__c ts-hm__total is-' + d.state + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
+          attrs: { role: 'cell', 'data-tooltip': (d.minutes ? d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') : d.label + ' ' + d.number + ': brak zapisanego czasu') + (verdict ? ' · ' + verdict : '') }
+        }, [d.state === 'run' ? TL.hoursOf(d.minutes).toString().replace('.', ',') + ' / ' + TL.hoursOf(sheet.dayTarget).toString().replace('.', ',') : (d.state === 'bad' || d.state === 'warn' || d.minutes ? cellText(d.minutes) || '0' : '')]);
+      }), [sumCell(sheet.total, targetPct, false, sheet.state)]));
 
     return D.el('div', { class: 'an-hm ts-hm', attrs: { role: 'table', 'aria-label': 'Karta czasu', tabindex: '0' } }, [head].concat(body, [foot]));
   }
@@ -178,7 +178,7 @@
         stat('Średnio na dzień', avg ? TL.duration(avg) : '—', 'w dniach z zapisem')
       ]),
       sheet.rows.length
-        ? card('Godziny w okresie', 'godziny zapisane przez dzień; barwa = udział w dniu pracy (' + TL.duration(sheet.dayTarget) + ')', sheetTable(sheet, state, ctx))
+        ? card('Godziny w okresie', 'wiersz „Razem”: zielony od ' + TL.duration(sheet.dayTarget) + ', żółty do godziny poniżej, czerwony niżej', sheetTable(sheet, state, ctx))
         : UI.emptyState({ icon: 'clock', title: 'Brak zapisanego czasu w tym okresie', text: 'Włącz zegar przy zadaniu (▶), dopisz czas z menu zadania albo zaznacz przedział na osi dnia w Mojej pracy.' })
     ];
     return { body: body, sheet: sheet, summary: sheet.period.title + ' · ' + TL.duration(sheet.total) + (sheet.target ? ' z ' + TL.duration(sheet.target) : '') };

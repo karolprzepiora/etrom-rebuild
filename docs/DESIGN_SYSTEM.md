@@ -571,3 +571,8 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 - Znaczniki obłożenia tygodnia (np. 93/40) stoją w nagłówku osoby i są tylko dla zarządu i liderów.
 - Pracownik (Moja praca → Tygodnie) nigdy nie widzi obciążenia, zaplanowanych ani przepracowanych godzin. Zamiast tego widzi upływ czasu: procent okna od startu do terminu i „zostało N dni”. Pasek i licznik żółkną od 75%, a po terminie robią się czerwone. Paski są tylko do odczytu.
 - Godziny zadań (szacunek, nakład pracy w formularzu, wiersz „Godziny” w planie i odchyleniach) widzą tylko zarząd i lider projektu. Zakładka „Plan” otwarta przez osobę bez takiej roli pokazuje tylko wskazówkę, gdzie są jej zadania.
+
+### Znaczenie paska i kolory karty czasu
+
+- **Pasek zespołu (zarząd, liderzy):** kolor = projekt; wypełnienie = zrobione (przepracowano / zaplanowano); czarny znacznik = gdzie powinno być dziś (upływ czasu); znacznik robi się czerwony, gdy zrobiono o ponad 10 p.p. mniej, niż wynika z upływu czasu. Czerwona ramka = po terminie, kreskowanie = za mało czasu. Gęstość pracy nie jest już rysowana (godziny są w lewej kolumnie).
+- **Karta czasu (Czas):** w wierszu „Razem” dzień jest zielony od celu dnia (8 h), żółty od godziny poniżej celu (7 h), czerwony niżej, także gdy nie ma wpisu. Dzisiaj do osiągnięcia celu pokazuje zieloną ramkę z postępem „3,5 / 8”. Weekendy, dni przyszłe i dni sprzed pierwszego wpisu osoby są neutralne. Suma okresu ocenia godziny ze zakończonych dni względem ich celu. Komórki projektów i zadań mają stały, neutralny kolor. Logika w `Timesheet.build` (`day.state`, `sheet.state`).

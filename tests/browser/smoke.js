@@ -760,6 +760,8 @@ async function main() {
     await go('#/czas');
     check('ekran „Czas” pokazuje kartę czasu z macierzą dni i sumą',
       await evaluate('return !!document.querySelector(".ts-hm") && document.querySelectorAll(".ts-hm__head .ts-hm__day").length === 7 && !!document.querySelector(".ts-hm__foot .an-hm__sum") && document.querySelector("#view-time").hidden === false;'));
+    check('wiersz „Razem” w karcie czasu ocenia dni kolorem względem celu dnia (is-ok / is-warn / is-bad / is-run / is-off)',
+      await evaluate('const c = [...document.querySelectorAll(".ts-hm__total")]; return c.length >= 7 && c.every(x => /\\bis-(ok|warn|bad|run|off)\\b/.test(x.className)) && c.some(x => x.classList.contains("is-off"));'));
     check('pozycja „Czas” w menu bocznym jest zaznaczona',
       await evaluate('return document.querySelector(\'.sidebar a[href="#/czas"]\').getAttribute("aria-current") === "page";'));
     await click('[data-fk="ts-prev"]');

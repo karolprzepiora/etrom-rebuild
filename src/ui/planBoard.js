@@ -184,18 +184,31 @@
       el.classList.toggle('is-clipr', cr);
     }
 
+    /** Ile pracy zrobiono (przepracowane / zaplanowane), w procentach. */
+    function donePct(b) { return b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0; }
+
+    /** Znacznik „gdzie powinno być dziś”: czerwony, gdy zrobiono wyraźnie mniej niż wynika z upływu czasu. */
+    function paceTick(b, item) {
+      var pct = elapsedOf(b);
+      if (b.overdue || pct <= 0 || pct >= 100 || todaySlot < item.s || todaySlot > item.e) return null;
+      var from = Math.max(0, item.s), to = Math.min(N - 1, item.e);
+      var left = (todaySlot - from) / (to - from + 1) * 100;
+      var lag = donePct(b) < pct - 10;
+      return D.el('span', { class: 'pb-bar__tick' + (lag ? ' is-lag' : ''), style: { left: left + '%' }, attrs: { 'aria-hidden': 'true', 'data-tooltip': lag ? 'Praca jest za znacznikiem: zrobiono mniej, niż wynika z upływu czasu' : 'Gdzie powinno być dziś' } });
+    }
+
     function barEl(b, person, item) {
       var editable = !solo && canEdit(b.projectId);
       var pct = elapsedOf(b);
-      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : '');
+      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
-      var dens = Math.max(0.14, Math.min(1, b.density || 0));
       var el = D.el('div', {
-        class: cls, style: Object.assign({ '--d': (solo ? pct : dens * 100) + '%' }, Identity.hueStyle(b.code)),
+        class: cls, style: Object.assign({ '--d': (solo ? pct : donePct(b)) + '%' }, Identity.hueStyle(b.code)),
         attrs: { tabindex: '0', role: 'button', 'data-fk': 'pb-bar-' + b.taskId, 'data-tooltip': barTip(b), 'aria-label': barTip(b) + (editable ? '. Strzałki przesuwają, Shift i Alt zmieniają termin i start.' : ''), 'data-key': key },
         dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId, personId: person.id }
       }, [
         D.el('span', { class: 'pb-bar__clip', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: 'pb-bar__fill' })]),
+        solo ? null : paceTick(b, item),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null
       ]);
@@ -493,7 +506,8 @@
       solo ? null : D.el('div', { class: 'pl-legend pb-legend', attrs: { 'aria-hidden': 'true' } }, [
         D.el('span', { class: 'pl-legend__i pl-legend__i--ok', text: 'do 85% pojemności' }),
         D.el('span', { class: 'pl-legend__i pl-legend__i--tight', text: 'napięty' }),
-        D.el('span', { class: 'pl-legend__i pl-legend__i--over', text: 'przeciążenie' })
+        D.el('span', { class: 'pl-legend__i pl-legend__i--over', text: 'przeciążenie' }),
+        D.el('span', { class: 'pl-legend__i pb-legend__i', text: 'wypełnienie = zrobione · znacznik = gdzie powinno być dziś' })
       ])
     ]);
 

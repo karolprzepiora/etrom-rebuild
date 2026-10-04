@@ -71,3 +71,20 @@ test('summaryRows i entryRows: nagłówki, sumy i opisy z resolvera', () => {
   assert.equal(list[1][10], 'rysunki');
   assert.equal(list[1][11], 'ręcznie');
 });
+
+test('ocena dnia: zielony od celu, żółty do godziny poniżej, czerwony niżej, dziś w trakcie, weekendy i dni przed pierwszym wpisem neutralne', () => {
+  const now = at(2026, 10, 2, 14);                       // piątek, dzień w trakcie
+  const entries = [
+    mk('w', 'p-1', 1, 't-1', at(2026, 9, 28, 8), at(2026, 9, 28, 16)),      // pon 8 h
+    mk('x', 'p-1', 1, 't-1', at(2026, 9, 29, 8), at(2026, 9, 29, 15)),      // wt 7 h
+    mk('y', 'p-1', 1, 't-1', at(2026, 9, 30, 8), at(2026, 9, 30, 14)),      // śr 6 h
+    mk('z', 'p-1', 1, 't-1', at(2026, 10, 2, 8), at(2026, 10, 2, 10))       // pt 2 h, dziś
+  ];
+  const sheet = TS.build(entries, 'p-1', now, { mode: 'week' });
+  assert.deepEqual(sheet.days.map(d => d.state), ['ok', 'warn', 'bad', 'bad', 'run', 'off', 'off']);
+  const later = TS.build(entries, 'p-1', at(2026, 10, 6, 12), { mode: 'week', offset: 0 });
+  assert.equal(later.days[3].state, 'off', 'przyszłość jest neutralna');
+  const early = TS.build([mk('q', 'p-1', 1, 't-1', at(2026, 9, 30, 8), at(2026, 9, 30, 16))], 'p-1', now, { mode: 'week' });
+  assert.deepEqual(early.days.slice(0, 3).map(d => d.state), ['off', 'off', 'ok'], 'dni przed pierwszym wpisem nie świecą na czerwono');
+  assert.equal(sheet.state, 'bad', 'tydzień: 8+7+6+0 godzin z 32 oczekiwanych to czerwony');
+});
