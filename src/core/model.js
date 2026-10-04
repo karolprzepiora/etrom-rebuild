@@ -32,7 +32,11 @@
     ? require('./library.js')
     : root.ETROM.Library;
 
-  var WORKSPACE_VERSION = 8;
+  var Absences = (typeof module !== 'undefined' && module.exports)
+    ? require('./absences.js')
+    : root.ETROM.Absences;
+
+  var WORKSPACE_VERSION = 9;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -500,11 +504,11 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library) };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences) };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null) };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null), absences: [] };
   }
 
   var api = {

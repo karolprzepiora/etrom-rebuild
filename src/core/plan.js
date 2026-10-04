@@ -13,6 +13,7 @@
 
   var node = typeof module !== 'undefined' && module.exports;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
+  var Absences = node ? require('./absences.js') : root.ETROM.Absences;
 
   var DEFAULT_HOURS = { small: 4, medium: 12, large: 32, veryLarge: 64 };
   var TIGHT_AT = 0.85;
@@ -106,6 +107,11 @@
     return { start: isoDay(ns), deadline: isoDay(ne) + 'T' + (time ? time[1] : '16:00') };
   }
 
+  /** Pasma nieobecności osoby do narysowania w planie: [{from, to, kind, note, id}] (daty ISO). */
+  function absenceBands(list, personId) {
+    return (list || []).filter(function (a) { return a.personId === personId; }).map(function (a) { return { id: a.id, from: a.from, to: a.to, kind: a.kind, note: a.note || '' }; });
+  }
+
   function deadlineDate(task) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(task && task.deadline || '');
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
@@ -140,7 +146,7 @@
     for (var w = 0; w < count; w += 1) {
       var start = addDays(first, w * 7);
       var days = workdaysBetween(start, addDays(start, 6)).filter(function (d) { return d.getTime() >= today.getTime(); });
-      weeks.push({ start: start.getTime(), workdays: days.length, capacity: days.length * targetH * pct, current: start.getTime() <= today.getTime() && addDays(start, 7).getTime() > today.getTime() });
+      weeks.push({ start: start.getTime(), workdays: days.length, dayKeys: days.map(isoDay), capacity: days.length * targetH * pct, current: start.getTime() <= today.getTime() && addDays(start, 7).getTime() > today.getTime() });
     }
     var weekIndex = function (d) { return Math.floor((mondayOf(d).getTime() - first.getTime()) / (7 * 86400000)); };
     var curIdx = offset === 0 ? Math.max(0, weekIndex(today)) : weekIndex(today);
@@ -155,12 +161,18 @@
       loggedByStage[sk] = (loggedByStage[sk] || 0) + min;
     });
 
+    var absentOf = {};
+    (input.absences || []).forEach(function (a) { if (!absentOf[a.personId]) absentOf[a.personId] = Absences.daysOf(input.absences, a.personId); });
     var rowsById = {};
     var people = (input.people || []).filter(function (p) { return p.active !== false && (!input.personIds || input.personIds.indexOf(p.id) >= 0); });
     people.forEach(function (p) {
       rowsById[p.id] = {
         personId: p.id,
-        weeks: weeks.map(function (wk) { return { start: wk.start, capacity: wk.capacity, planned: 0, ratio: 0, state: 'ok', tasks: [] }; }),
+        weeks: weeks.map(function (wk) {
+          var gone = wk.dayKeys.filter(function (k) { return absentOf[p.id] && absentOf[p.id][k]; }).length;
+          return { start: wk.start, capacity: (wk.dayKeys.length - gone) * targetH * pct, absentDays: gone, planned: 0, ratio: 0, state: 'ok', tasks: [] };
+        }),
+        absences: absenceBands(input.absences, p.id),
         bars: [],
         unscheduled: { hours: 0, tasks: [] }, total: 0
       };
@@ -201,30 +213,40 @@
           } else {
             var days = workdaysBetween(from, due);
             if (!days.length) days = [snapWorkday(due, -1)];
-            var per = share / days.length;
             windowDays = days.length;
-            // Okno za krótkie: ile dni roboczych pracy potrzeba osobie wobec dni do terminu.
-            var needDays = Math.ceil(share / targetH - 1e-9);
-            if (needDays > days.length) ref.squeezed = true;
-            else if (needDays === days.length && needDays >= 2) ref.mustStartNow = true;
-            var byWeek = {};
-            days.forEach(function (d) { var i = offset === 0 ? Math.max(0, weekIndex(d)) : weekIndex(d); byWeek[i] = (byWeek[i] || 0) + per; });
-            buckets = Object.keys(byWeek).map(function (i) { return { week: Number(i), hours: byWeek[i] }; });
+            buckets = 'per-person';
             bar = { start: (explicitStart || today).getTime(), end: due.getTime() };
           }
+          var allDays = buckets === 'per-person' ? workdaysBetween(from, due).length ? workdaysBetween(from, due) : [snapWorkday(due, -1)] : null;
           assignees.forEach(function (id) {
             var row = rowsById[id];
-            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, days: windowDays, density: share / windowDays / targetH, workers: (task.assignees || []).length || 1, logged: loggedH, planned: plannedTotal, status: task.status }, ref));
-            if (!buckets) {
+            var myRef = ref;
+            var myBuckets = buckets;
+            if (buckets === 'per-person') {
+              var gone = absentOf[id] || {};
+              var mine = allDays.filter(function (d) { return !gone[isoDay(d)]; });
+              var effective = mine.length ? mine : allDays;
+              var needDays = Math.ceil(share / targetH - 1e-9);
+              myRef = Object.assign({}, ref);
+              if (needDays > effective.length || !mine.length) myRef.squeezed = true;
+              else if (needDays === effective.length && needDays >= 2) myRef.mustStartNow = true;
+              if (mine.length < allDays.length) myRef.absentDays = allDays.length - mine.length;
+              var per = share / effective.length;
+              var byWeek = {};
+              effective.forEach(function (d) { var i = offset === 0 ? Math.max(0, weekIndex(d)) : weekIndex(d); byWeek[i] = (byWeek[i] || 0) + per; });
+              myBuckets = Object.keys(byWeek).map(function (i) { return { week: Number(i), hours: byWeek[i] }; });
+            }
+            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, days: windowDays, density: share / windowDays / targetH, workers: (task.assignees || []).length || 1, logged: loggedH, planned: plannedTotal, status: task.status }, myRef));
+            if (!myBuckets) {
               row.unscheduled.hours += share;
               row.unscheduled.tasks.push(Object.assign({ hours: share }, ref));
               return;
             }
-            buckets.forEach(function (b) {
+            myBuckets.forEach(function (b) {
               if (b.week < 0 || b.week >= weeks.length) return;
               var cell = row.weeks[b.week];
               cell.planned += b.hours;
-              cell.tasks.push(Object.assign({ hours: b.hours }, ref));
+              cell.tasks.push(Object.assign({ hours: b.hours }, myRef));
             });
           });
         });

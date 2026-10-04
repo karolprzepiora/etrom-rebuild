@@ -581,3 +581,9 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 
 - Zarząd ustawia kolejność projektów w rzędzie „Priorytety” nad planem: chipy w kolorach projektów z numerem, przeciągane albo przesuwane strzałkami ←/→. Zapis w `project.priority` (1 = najważniejszy, 0 = bez numeru, takie projekty idą na końcu po kodzie), zmianę można cofnąć.
 - Kolejność porządkuje zadania w wierszach osób w Planie i w Moja praca → Tygodnie. Aplikacja niczego nie podpowiada przy przeciążeniu: priorytet jest świadomą decyzją zarządu.
+
+### Nieobecności
+
+- Zarząd dodaje nieobecność (urlop, zwolnienie, szkolenie, inna) przyciskiem „+” w wierszu osoby w Planie albo klikając pasmo. Zapis w `workspace.absences` (`Absences`, wersja przestrzeni 9).
+- Plan: pojemność tygodnia = dni robocze bez nieobecności × cel dnia, praca zadań rozkłada się tylko na dni obecności. Zadanie, któremu brakuje dni, dostaje „za mało czasu”. Pasma nieobecności są szarym kreskowaniem na osi osoby.
+- Karta czasu: dzień nieobecności jest neutralny w wierszu „Razem”, chyba że osoba i tak osiągnęła cel dnia.

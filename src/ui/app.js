@@ -55,6 +55,7 @@
     feedOpen: [],
     myView: 'all',
     taskForm: null,
+    absenceForm: null,
     expandedStages: {},
     showDone: {},
     stageGroup: false,
@@ -1600,6 +1601,35 @@
     });
   }
 
+  /** Nieobecności osób: zmienia je tylko zarząd. */
+  function openAbsence(personId, id) {
+    if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Nieobecności wpisuje zarząd.', tone: 'danger' }); return; }
+    var found = id ? (store.getState().workspace.absences || []).filter(function (a) { return a.id === id; })[0] : null;
+    var day = E.Absences.isoOf(new Date());
+    store.set({ absenceForm: { draft: found ? Object.assign({}, found) : { personId: personId || '', from: day, to: day, kind: 'leave', note: '' }, errors: {} } });
+  }
+
+  function setAbsences(producer) {
+    updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: producer(workspace.absences || []) }); });
+  }
+
+  function submitAbsence(values) {
+    var form = store.getState().absenceForm;
+    if (!form) return;
+    var res = E.Absences.save(store.getState().workspace.absences || [], values, people());
+    if (!res.valid) { store.set({ absenceForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
+    setAbsences(function () { return res.list; });
+    store.set({ absenceForm: null });
+    Toast.show({ message: values.id ? 'Zmieniono nieobecność' : 'Dodano nieobecność', tone: 'success', timeout: 3000 });
+  }
+
+  function deleteAbsence(id) {
+    var before = store.getState().workspace.absences || [];
+    setAbsences(function (list) { return E.Absences.remove(list, id); });
+    store.set({ absenceForm: null });
+    Toast.show({ message: 'Usunięto nieobecność', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
+  }
+
   /** Priorytety projektów: kolejność identyfikatorów (pierwszy = najważniejszy). Tylko zarząd, do cofnięcia. */
   function setProjectOrder(ids) {
     if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Priorytety projektów ustala zarząd.', tone: 'danger' }); return false; }
@@ -2157,6 +2187,23 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: list });
     });
+    // Przykładowe nieobecności (względem dziś), żeby plan pokazywał mniejszą pojemność tygodni.
+    updateWorkspace(function (workspace) {
+      if ((workspace.absences || []).length) return workspace;
+      var rows = [
+        { who: 2, from: 3, to: 4, kind: 'leave', note: 'Wyjazd rodzinny' },
+        { who: 3, from: 9, to: 15, kind: 'leave', note: 'Urlop' },
+        { who: 5, from: 6, to: 6, kind: 'training', note: 'Szkolenie z hydrauliki' }
+      ];
+      var list = [];
+      rows.forEach(function (r) {
+        var who = demoPersonId(r.who);
+        if (!who) return;
+        var res = E.Absences.save(list, { personId: who, from: iso(r.from), to: iso(r.to), kind: r.kind, note: r.note }, workspace.people || []);
+        if (res.valid) list = res.list;
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
+    });
     // Zadania wywołane pismami: łączymy po temacie pisma (task.mailId), żeby widać było pismo → zadanie → czas.
     updateWorkspace(function (workspace) {
       var changed = false;
@@ -2626,7 +2673,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
@@ -3066,7 +3113,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -3096,6 +3143,14 @@
       settings.subtitle = current.choices ? 'Wybierz zadanie, na które pracowałeś' : (logged ? logged.code + ' · ' : '') + (loggedTask ? loggedTask.name : 'Zadanie');
       settings.content = E.Timer.timeForm({ mode: current.mode, draft: current.draft, errors: current.errors, hint: current.hint, choices: current.choices },
         { onSubmit: submitTime, onCancel: function () { store.set({ timeForm: null }); } });
+    } else if (current === state.absenceForm) {
+      settings.title = current.draft.id ? 'Zmień nieobecność' : 'Nowa nieobecność';
+      settings.subtitle = 'Pojemność tygodnia w planie zmniejsza się o dni robocze nieobecności.';
+      settings.content = E.AbsenceForm.absenceForm(current.draft, current.errors, {
+        onSubmit: submitAbsence,
+        onCancel: function () { store.set({ absenceForm: null }); },
+        onDelete: current.draft.id ? function () { deleteAbsence(current.draft.id); } : null
+      }, (state.workspace.people || []).filter(function (p) { return p.active !== false; }));
     } else if (current === state.mailForm) {
       var mailProject = findProject(current.projectId);
       settings.title = current.mode === 'edit' ? 'Edytuj wpis w dzienniku' : (current.draft.direction === 'out' ? 'Pismo wychodzące' : 'Pismo przychodzące');
@@ -3136,8 +3191,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null });
         }
       }
     }));

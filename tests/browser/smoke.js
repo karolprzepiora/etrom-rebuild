@@ -829,6 +829,16 @@ async function main() {
       check('„Cofnij” przywraca poprzednie priorytety',
         (await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();')) === orderBefore);
     }
+    const absBefore = await state('(s.workspace.absences || []).length');
+    const capBefore = await evaluate('return document.querySelector(".pb-load[data-fk^=pl-cell-]") ? document.querySelector(".pb-load[data-fk^=pl-cell-]").getAttribute("data-fk") : "";');
+    await evaluate('document.querySelector("[data-fk^=pb-absence-add-]").click(); return true;');
+    await sleep(350);
+    await evaluate('const from = new Date(); from.setDate(from.getDate() + 21); const d = from.getFullYear() + "-" + String(from.getMonth() + 1).padStart(2, "0") + "-" + String(from.getDate()).padStart(2, "0"); document.getElementById("ab-from").value = d; document.getElementById("ab-to").value = d; document.getElementById("absence-form").requestSubmit(); return true;');
+    await sleep(450);
+    check('formularz nieobecności dodaje wpis, a plan rysuje pasmo w wierszu osoby',
+      (await state('(s.workspace.absences || []).length')) === absBefore + 1 && !!(await evaluate('return document.querySelector(".pb-absent.is-head") !== null;')));
+    await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); if (b) b.click(); return true;');
+    await sleep(200);
     check('etykieta paska ma pełną nazwę zadania i godziny (przepracowano / zaplanowano), a menu ma pozycję „Plan”',
       await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-tn__meter") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
     const projectOptions = await evaluate('const s = document.getElementById("pb-project"); return s ? s.options.length : 0;');

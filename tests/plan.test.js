@@ -183,3 +183,23 @@ test('priorytety projektów: numerowane najpierw, reszta po kodzie, zakończone 
   assert.deepEqual(Plan.moveInOrder([4, 2, 1], 4, 9), [2, 1, 4], 'poza zakresem trafia na koniec');
   assert.deepEqual(Plan.moveInOrder([4, 2], 99, 0), [4, 2], 'nieznany projekt nic nie zmienia');
 });
+
+test('nieobecność zmniejsza pojemność tygodnia i omija dni urlopu przy rozkładaniu pracy', () => {
+  const people = [{ id: 'p-1', active: true }];
+  const task = { id: 't1', name: 'Zadanie', status: 'todo', assignees: ['p-1'], estimate: 16, start: '2026-10-05', deadline: '2026-10-09T16:00' };
+  const projects = [{ id: 1, code: '2601', stages: [{ id: 's1', hours: 100, tasks: [task] }] }];
+  const now = new Date(2026, 9, 5, 8);
+  const plain = Plan.build({ projects, people, entries: [], now, weeks: 2 }).rows[0];
+  assert.equal(plain.weeks[0].capacity, 40);
+  assert.equal(plain.weeks[0].planned, 16);
+  const absences = [{ id: 'a-1', personId: 'p-1', from: '2026-10-07', to: '2026-10-08', kind: 'leave', note: '' }];
+  const row = Plan.build({ projects, people, entries: [], now, weeks: 2, absences }).rows[0];
+  assert.equal(row.weeks[0].capacity, 24, 'dwa dni urlopu odejmują 16 h');
+  assert.equal(row.weeks[0].absentDays, 2);
+  assert.equal(row.weeks[0].planned, 16, 'praca nadal się mieści, tylko na trzech dniach');
+  assert.equal(row.bars[0].absentDays, 2);
+  assert.equal(row.absences.length, 1);
+  const tight = { ...task, estimate: 30 };
+  const squeezed = Plan.build({ projects: [{ id: 1, code: '2601', stages: [{ id: 's1', hours: 100, tasks: [tight] }] }], people, entries: [], now, weeks: 2, absences }).rows[0];
+  assert.equal(squeezed.bars[0].squeezed, true, '30 h na 3 dniach po 8 h to za mało czasu');
+});

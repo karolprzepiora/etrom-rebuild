@@ -141,7 +141,7 @@
     var foot = D.el('div', { class: 'an-hm__row ts-hm__row ts-hm__foot', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who ts-hm__who', attrs: { role: 'rowheader' } }, [D.el('b', { text: 'Razem' })])]
       .concat(sheet.days.map(function (d) {
         var over = d.minutes > sheet.dayTarget;
-        var verdict = { ok: 'Cel dnia osiągnięty', warn: 'Do celu brakuje mniej niż godziny', bad: 'Poniżej celu dnia', run: 'Dzień w trakcie: jeszcze ' + TL.duration(Math.max(0, sheet.dayTarget - d.minutes)) }[d.state] || '';
+        var verdict = d.absent && d.state === 'off' ? ((E.Absences.KINDS[d.absent] || 'Nieobecność') + ': dzień bez normy') : { ok: 'Cel dnia osiągnięty', warn: 'Do celu brakuje mniej niż godziny', bad: 'Poniżej celu dnia', run: 'Dzień w trakcie: jeszcze ' + TL.duration(Math.max(0, sheet.dayTarget - d.minutes)) }[d.state] || '';
         return D.el('span', {
           class: 'an-hm__c ts-hm__c ts-hm__total is-' + d.state + (d.today ? ' is-today' : '') + (d.weekend ? ' is-weekend' : ''),
           attrs: { role: 'cell', 'data-tooltip': (d.minutes ? d.label + ' ' + d.number + ': ' + TL.duration(d.minutes) + ' z ' + TL.duration(sheet.dayTarget) + (over ? ' (+' + TL.duration(d.minutes - sheet.dayTarget) + ')' : '') : d.label + ' ' + d.number + ': brak zapisanego czasu') + (verdict ? ' · ' + verdict : '') }
@@ -165,7 +165,7 @@
     var canPick = Budget.isManagement(me.id, people);
     var personId = canPick && state.timePerson && Team.findPerson(people, state.timePerson) ? state.timePerson : me.id;
     var who = Team.findPerson(people, personId);
-    var sheet = TS.build(state.workspace.entries || [], personId, now, { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget });
+    var sheet = TS.build(state.workspace.entries || [], personId, now, { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [] });
     var pct = sheet.target ? Math.round(sheet.total / sheet.target * 100) : 0;
     var avg = sheet.activeDays ? Math.round(sheet.total / sheet.activeDays) : 0;
     var body = [

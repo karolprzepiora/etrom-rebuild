@@ -5,6 +5,7 @@
 
   var node = typeof module !== 'undefined' && module.exports;
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
+  var Absences = node ? require('./absences.js') : root.ETROM.Absences;
 
   var DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
@@ -79,6 +80,7 @@
     var rows = {};
     var order = [];
     var firstKey = '';
+    var gone = Absences.daysOf(o.absences || [], personId);
     (entries || []).forEach(function (entry) {
       if (entry.personId !== personId) return;
       var k = TL.dayKey(entry.start);
@@ -117,7 +119,9 @@
     // Ocena dnia: zielony od celu dnia, żółty do godziny poniżej, czerwony niżej. Dziś liczy się dopiero po osiągnięciu celu.
     var settled = 0;
     days.forEach(function (d) {
-      d.state = dayState(d, target, firstKey);
+      var iso = Absences.isoOf(new Date(d.date));
+      d.absent = gone[iso] || '';
+      d.state = d.absent && d.minutes < target ? 'off' : dayState(d, target, firstKey);
       if (d.state === 'ok' || d.state === 'warn' || d.state === 'bad') settled += 1;
     });
     var expected = settled * target;

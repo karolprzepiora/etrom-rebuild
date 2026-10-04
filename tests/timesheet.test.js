@@ -88,3 +88,12 @@ test('ocena dnia: zielony od celu, żółty do godziny poniżej, czerwony niżej
   assert.deepEqual(early.days.slice(0, 3).map(d => d.state), ['off', 'off', 'ok'], 'dni przed pierwszym wpisem nie świecą na czerwono');
   assert.equal(sheet.state, 'bad', 'tydzień: 8+7+6+0 godzin z 32 oczekiwanych to czerwony');
 });
+
+test('dzień nieobecności jest neutralny, chyba że osoba i tak osiągnęła cel', () => {
+  const now = at(2026, 10, 2, 14);
+  const entries = [mk('w', 'p-1', 1, 't-1', at(2026, 9, 28, 8), at(2026, 9, 28, 16))];
+  const absences = [{ id: 'a-1', personId: 'p-1', from: '2026-09-29', to: '2026-09-30', kind: 'leave' }, { id: 'a-2', personId: 'p-1', from: '2026-09-28', to: '2026-09-28', kind: 'training' }];
+  const sheet = TS.build(entries, 'p-1', now, { mode: 'week', absences });
+  assert.deepEqual(sheet.days.slice(0, 4).map(d => d.state), ['ok', 'off', 'off', 'bad']);
+  assert.equal(sheet.days[1].absent, 'leave');
+});

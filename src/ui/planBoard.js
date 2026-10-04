@@ -90,8 +90,8 @@
   function chipText(cell) { return cell.planned ? Math.round(cell.planned) + '/' + Math.round(cell.capacity) : ''; }
   function chipTip(cell) {
     return cell.planned
-      ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.state === 'over' ? ' — przeciążenie (' + hh(cell.planned - cell.capacity) + ' h za dużo)' : '')
-      : 'Brak zaplanowanej pracy';
+      ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.absentDays ? ' (nieobecność: ' + cell.absentDays + ' dni)' : '') + (cell.state === 'over' ? ' — przeciążenie (' + hh(cell.planned - cell.capacity) + ' h za dużo)' : '')
+      : (cell.absentDays ? 'Nieobecność: ' + cell.absentDays + ' dni robocze' : 'Brak zaplanowanej pracy');
   }
 
   function detail(selected, plan, people, ctx) {
@@ -138,7 +138,7 @@
     var baseInput = {
       projects: projects, people: people, entries: state.workspace.entries || [], now: now,
       target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset,
-      personIds: visibleIds
+      personIds: visibleIds, absences: state.workspace.absences || []
     };
     var plan = Plan.build(baseInput);
     var N = weeksN * 5;
@@ -438,9 +438,26 @@
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
       items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
-      function trackOf(inner) {
+      function bandEls(interactive) {
+        return (row.absences || []).map(function (a) {
+          var bs = slotOf(plan.first, new Date(a.from + 'T00:00').getTime(), 1);
+          var be = slotOf(plan.first, new Date(a.to + 'T00:00').getTime(), -1);
+          if (be < 0 || bs >= N || be < bs) return null;
+          var s0 = Math.max(0, bs), e0 = Math.min(N - 1, be);
+          var tip = (E.Absences.KINDS[a.kind] || 'Nieobecność') + ' · ' + a.from.slice(8) + '.' + a.from.slice(5, 7) + ' – ' + a.to.slice(8) + '.' + a.to.slice(5, 7) + (a.note ? ' · ' + a.note : '') + (interactive && management ? ' — kliknij, żeby zmienić' : '');
+          var el = D.el(interactive && management ? 'button' : 'span', {
+            class: 'pb-absent' + (interactive ? ' is-head' : ''),
+            style: { left: (s0 / N * 100) + '%', width: ((e0 - s0 + 1) / N * 100) + '%' },
+            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip } : { 'aria-hidden': 'true' },
+            text: interactive && (e0 - s0 + 1) >= 2 ? (E.Absences.KINDS[a.kind] || '') : ''
+          });
+          if (interactive && management) el.addEventListener('click', function () { ctx.actions.openAbsence(row.personId, a.id); });
+          return el;
+        }).filter(Boolean);
+      }
+      function trackOf(inner, bands) {
         var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
-        return D.el('div', { class: 'pb-track' }, [weekCols, todaySlot >= 0 && todaySlot < N ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null].concat(inner));
+        return D.el('div', { class: 'pb-track' }, [weekCols, todaySlot >= 0 && todaySlot < N ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null].concat(bands === undefined ? bandEls(false) : bands, inner));
       }
       var rows = [];
       if (!solo) {
@@ -457,9 +474,10 @@
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
         var label = D.el('div', { class: 'pb-label' }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })])
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })]),
+          management ? UI.iconButton({ icon: 'plus', label: 'Dodaj nieobecność: ' + Team.fullName(person), size: 'sm', attrs: { 'data-fk': 'pb-absence-add-' + row.personId, 'data-tooltip': 'Dodaj nieobecność' }, onClick: function () { ctx.actions.openAbsence(row.personId); } }) : null
         ]);
-        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf([loads])])]));
+        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf([loads], bandEls(true))])]));
       }
       items.forEach(function (it) {
         var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, person, it)]);
