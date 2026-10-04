@@ -781,9 +781,33 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-chip.is-editable { cursor: grab; }
 .pb-chip:focus-visible { box-shadow: var(--focus-ring); }
 @media (max-width: 40rem) { .pb-grid { min-width: calc(8rem + var(--n) * 1.75rem); } .pb-row { grid-template-columns: 8rem minmax(0, 1fr); } }
-.pb-bar.is-short .pb-bar__code { display: none; }
-.pb-bar.is-short .pb-bar__name { display: none; }
-.pb-bar.is-narrow .pb-bar__label { margin: 0 .15rem; padding: 0 .15rem; }
 .pb--solo .pb-row { grid-template-columns: minmax(0, 1fr); }
 .pb--solo .pb-label { display: none; }
 .pb--solo .pb-grid { min-width: calc(var(--n) * 1.75rem); }
+
+/* Przycisk zwijania panelu bocznego: wyraźny na każdym ekranie (Moja praca, Czas, Plan, Projekty). */
+.rl__toggle { width: 2rem; height: 2rem; border-radius: 10px; background: var(--accent); color: var(--on-accent, #fff); box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 70%, transparent); }
+.rl__toggle:hover { background: color-mix(in srgb, var(--accent) 85%, #000); color: var(--on-accent, #fff); }
+.rl__toggle svg { stroke-width: 2.2; }
+.rl.is-collapsed .rl__inner { background: color-mix(in srgb, var(--accent) 10%, var(--wash)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, var(--line)); padding: var(--space-3) 0; }
+.rl__vtitle { color: var(--ink); }
+
+/* Plan tygodni: pełna nazwa zadania i godziny (przepracowano / zaplanowano) na etykiecie, wychodzącej poza pasek. */
+.pb-bar { overflow: visible; background: transparent; box-shadow: none; }
+.pb-bar__clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; background: color-mix(in oklab, var(--solid) 16%, var(--sheet)); box-shadow: inset 0 0 0 1.5px var(--solid); }
+.pb-bar.is-late .pb-bar__clip { box-shadow: inset 0 0 0 2px var(--alarm); }
+.pb-bar.is-now .pb-bar__clip { box-shadow: inset 0 0 0 2px var(--warn); }
+.pb-bar.is-late, .pb-bar.is-now, .pb-bar:focus-visible, .pb-bar.is-drag { box-shadow: none; }
+.pb-bar:focus-visible .pb-bar__clip { box-shadow: inset 0 0 0 1.5px var(--solid), var(--focus-ring); }
+.pb-bar.is-drag .pb-bar__clip { box-shadow: inset 0 0 0 1.5px var(--solid), 0 10px 24px -6px rgb(0 0 0 / .45); }
+.pb-bar.is-implicit .pb-bar__clip { border-left: 3px dashed var(--solid); }
+.pb-bar.is-dim { opacity: .28; }
+.pb-bar.is-dim:hover, .pb-bar.is-dim:focus-visible { opacity: 1; }
+.pb-bar__label { position: absolute; left: .45rem; top: 50%; transform: translateY(-50%); margin: 0; max-width: none; white-space: nowrap; z-index: 3; box-shadow: 0 1px 3px rgb(0 0 0 / .18); overflow: hidden; }
+.pb-bar__name { flex: none; min-width: 0; }
+.pb-bar__prog { position: absolute; left: 0; bottom: 0; height: 3px; width: var(--p, 0%); background: var(--solid); border-radius: 0 2px 2px 0; }
+.pb-bar.is-over .pb-bar__hours { color: var(--alarm-ink); }
+.pb-bar.is-over .pb-bar__prog { background: var(--alarm); }
+.pb-bar.is-clipl .pb-bar__clip { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.pb-bar.is-clipr .pb-bar__clip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.pb-toolbar .select { width: auto; min-width: 9rem; max-width: 13rem; }

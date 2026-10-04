@@ -188,19 +188,7 @@
 
   /* ---------- Plan obciążenia ---------- */
 
-  function planView(state, ctx, now) {
-    return E.PlanBoard.view(state, ctx, now);
-  }
-
   /* ---------- Całość ---------- */
-
-  function tabsBar(tab, ctx) {
-    var items = [['sheet', 'Karta czasu'], ['plan', 'Plan obciążenia']];
-    return D.el('div', { class: 'an-tabs', attrs: { role: 'tablist', 'aria-label': 'Widoki czasu' } }, items.map(function (it) {
-      var on = tab === it[0];
-      return D.el('button', { class: 'an-tabs__tab' + (on ? ' is-active' : ''), attrs: { type: 'button', role: 'tab', 'aria-selected': String(on), 'data-fk': 'time-tab-' + it[0] }, on: { click: function () { ctx.actions.setTime({ timeTab: it[0] }); } } }, [D.el('span', { text: it[1] })]);
-    }));
-  }
 
   function view(state, ctx) {
     var now = new Date();
@@ -208,32 +196,22 @@
     if (!me) {
       return { summary: 'Karta czasu i plan obciążenia.', tools: null, body: E.Welcome.card(state, ctx, 'Karta czasu zbiera godziny zapisane przez Ciebie, a plan obciążenia pokazuje, ile pracy czeka w kolejnych tygodniach.') };
     }
-    var tab = state.timeTab === 'plan' ? 'plan' : 'sheet';
-    var tools = null;
-    var part;
-    if (tab === 'plan') {
-      part = planView(state, ctx, now);
-    } else {
-      part = sheetView(state, ctx, me, now);
-      var sheet = part.sheet;
-      var personId = Budget.isManagement(me.id, state.workspace.people || []) && state.timePerson && Team.findPerson(state.workspace.people || [], state.timePerson) ? state.timePerson : me.id;
-      tools = D.el('div', { class: 'ts-export' }, [
-        UI.button({ label: 'Pobierz CSV', icon: 'download', variant: 'secondary', attrs: { 'data-fk': 'ts-export-menu' }, class: 'ts-export__btn' })
-      ]);
-      var trigger = tools.firstChild;
-      E.Menu.bind(trigger, function () {
-        return {
-          label: 'Eksport karty czasu', items: [
-            { label: 'Podsumowanie okresu (projekty i zadania × dni)', icon: 'download', onSelect: function () { ctx.actions.exportTime('summary', personId); } },
-            { label: 'Wszystkie wpisy okresu (do rozliczeń)', icon: 'download', onSelect: function () { ctx.actions.exportTime('entries', personId); } }
-          ]
-        };
-      });
-      void sheet;
-    }
+    var part = sheetView(state, ctx, me, now);
+    var personId = Budget.isManagement(me.id, state.workspace.people || []) && state.timePerson && Team.findPerson(state.workspace.people || [], state.timePerson) ? state.timePerson : me.id;
+    var tools = D.el('div', { class: 'ts-export' }, [
+      UI.button({ label: 'Pobierz CSV', icon: 'download', variant: 'secondary', attrs: { 'data-fk': 'ts-export-menu' }, class: 'ts-export__btn' })
+    ]);
+    E.Menu.bind(tools.firstChild, function () {
+      return {
+        label: 'Eksport karty czasu', items: [
+          { label: 'Podsumowanie okresu (projekty i zadania × dni)', icon: 'download', onSelect: function () { ctx.actions.exportTime('summary', personId); } },
+          { label: 'Wszystkie wpisy okresu (do rozliczeń)', icon: 'download', onSelect: function () { ctx.actions.exportTime('entries', personId); } }
+        ]
+      };
+    });
     var todays = TL.forDay(state.workspace.entries || [], me.id, now);
     var minutes = TL.sum(todays, now);
-    var main = D.el('div', { class: 'ts' }, [tabsBar(tab, ctx)].concat(part.body.filter(Boolean)));
+    var main = D.el('div', { class: 'ts' }, part.body.filter(Boolean));
     return {
       summary: part.summary, tools: tools,
       body: UI.railLayout({

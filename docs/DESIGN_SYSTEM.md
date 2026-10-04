@@ -539,7 +539,7 @@ Widoczna dla zarządu i lidera projektu. Jedno miejsce, trzy kroki: **1 Budżet*
 - Waga etapu: `stage.weight`, a bez niej domyślne godziny z katalogu. Etap zablokowany (`stage.locked`) i zakończony nie zmieniają dni przy rozdziale (`Planning.distribute`).
 - Pula etapu (`Planning.pool`): budżet − rezerwa − zadania zaplanowane − szkice. Zadanie „uzupełnienie” (`task.fromReserve`) zużywa rezerwę postępowania (`stage.reserve` albo % z ustawień, domyślnie 15%).
 - Szkic (`task.draft`): bez osób i terminu; widoczny tylko dla zarządu i lidera (`visibleState` w app.js). Odmrożenie = edycja zadania z odznaczonym „Szkic”.
-- Dni zadania to `task.estimate` w godzinach; Plan zespołu (Czas → Plan) liczy z nich obłożenie i oznacza zadania „za mało czasu” oraz „musi ruszyć teraz”.
+- Dni zadania to `task.estimate` w godzinach; Plan zespołu (zakładka Plan) liczy z nich obłożenie i oznacza zadania „za mało czasu” oraz „musi ruszyć teraz”.
 
 Przepływ jednorazowy: **1 Budżet** → **2 Zadania w etapach** (biblioteka, szkice) → **3 Akceptacja** (`acceptPlan`: zapisuje plan bazowy i `project.planAcceptedAt`). Po akceptacji zakładka pokazuje tylko podsumowanie; praca toczy się w Planie i Zadaniach, gdzie zamrożone zadania mają plakietkę „Zamrożone”, kreskowane tło i przycisk „Odmroź”. Biblioteka trzyma wnioski w etapach-postępowaniach (nie w dokumentacji) i najwyżej dwa–trzy duże zadania na etap.
 
@@ -552,11 +552,11 @@ Kolejność pracy jest jedna: **Biblioteka** (standard biura) → **Nowy projekt
 - **Nowy projekt**: sekcja „Etapy i podział budżetu” — budżet godzin, wybór etapów (zakres i procedury ustawiają domyślny zestaw), udział % każdego etapu (domyślnie standard biura, przeskalowany do 100% dla wybranych etapów) i wyliczone godziny. Udział zapisuje się w etapie jako waga (`stage.weight`), więc Plan wstępny i późniejszy rozdział budżetu trzymają się tych samych proporcji. Po utworzeniu powiadomienie „Zaplanuj” otwiera Plan wstępny (zarząd i lider).
 - **Plan wstępny** podpowiada zadania z Biblioteki (własnej, nie tylko standardowej) (Biblioteka nie zawiera udziałów ani godzin).
 
-## Plan tygodni (Czas → Plan obciążenia, Moja praca → Tygodnie)
+## Plan tygodni (zakładka Plan, Moja praca → Tygodnie)
 
 Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start–termin, kiedy realnie pracujemy) i **obłożenie** (ile godzin to daje w tygodniu).
 
-- **Widok zespołu** (Czas → Plan obciążenia; zarząd widzi wszystkich, reszta siebie): kolumna na tydzień (4/6/8/12 tygodni, strzałki i „Dziś”), wiersz na osobę. U góry wiersza znaczniki obłożenia tygodnia (godziny/pojemność; zielony do 85%, żółty napięty, czerwony przeciążenie), pod nimi zadania jako paski od startu do terminu, w kolorze projektu. Klik znacznika pokazuje składniki tygodnia.
+- **Widok zespołu** (osobna zakładka „Plan” w menu, widoczna dla zarządu i liderów; zarząd widzi wszystkich, lider ludzi ze swoich projektów i edytuje tylko ich zadania; Czas to już tylko karta czasu; filtr projektu przygasza pozostałe paski; przycisk panelu dnia to wypełniony przycisk akcentu): kolumna na tydzień (4/6/8/12 tygodni, strzałki i „Dziś”), wiersz na osobę. U góry wiersza znaczniki obłożenia tygodnia (godziny/pojemność; zielony do 85%, żółty napięty, czerwony przeciążenie), pod nimi zadania jako paski od startu do terminu, w kolorze projektu, z pełną nazwą zadania, godzinami „przepracowano / zaplanowano h” i paskiem postępu. Klik znacznika pokazuje składniki tygodnia.
 - **Interakcja** (zmienia zarząd i lider projektu): przeciągnięcie paska przesuwa start i termin razem, uchwyty na brzegach zmieniają start albo termin, upuszczenie na innej osobie przenosi zadanie (osoba musi być w zespole projektu). Podczas przeciągania znaczniki obłożenia liczą się na bieżąco. Klawiatura: ←/→ cały pasek, Shift+←/→ termin, Alt+←/→ start. Każda zmiana ma „Cofnij”. Zadania bez terminu czekają w tacce „Bez terminu” i da się je upuścić na oś (start = dzień upuszczenia, termin = start + dni potrzebne wg godzin).
 - **Godziny zadania**: własny szacunek albo równa część tego, co zostało w puli etapu (budżet etapu − zapisany czas − szacunki innych zadań); dopiero bez budżetu etapu — wartość z nakładu pracy. Praca rozkłada się równo na dni robocze od startu (bez startu: od dziś) do terminu.
 - **Pojemność tygodnia** = dni robocze × cel dnia (cały tydzień jest planowalny, bez bufora). Przeciążenie to świadoma decyzja zarządu: aplikacja niczego nie podpowiada, tylko pokazuje.

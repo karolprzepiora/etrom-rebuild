@@ -165,6 +165,8 @@
           else left = remainingHours(task, loggedByTask[project.id + '|' + stage.id + '|' + task.id]);
           if (left <= 0) return;
           var share = left / (task.assignees || []).length;
+          var loggedH = (loggedByTask[project.id + '|' + stage.id + '|' + task.id] || 0) / 60;
+          var plannedTotal = Number(task.estimate) > 0 ? Number(task.estimate) : loggedH + (fromPool ? poolShare : left);
           var due = deadlineDate(task);
           var explicitStart = dayDate(task.start);
           var ref = { projectId: project.id, stageId: stage.id, taskId: task.id, name: task.name, code: project.code, overdue: !!due && due.getTime() < today.getTime(), fromPool: fromPool, explicitStart: !!explicitStart };
@@ -192,7 +194,7 @@
           }
           assignees.forEach(function (id) {
             var row = rowsById[id];
-            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, days: windowDays, density: share / windowDays / targetH, workers: (task.assignees || []).length || 1, logged: (loggedByTask[project.id + '|' + stage.id + '|' + task.id] || 0) / 60, status: task.status }, ref));
+            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, days: windowDays, density: share / windowDays / targetH, workers: (task.assignees || []).length || 1, logged: loggedH, planned: plannedTotal, status: task.status }, ref));
             if (!buckets) {
               row.unscheduled.hours += share;
               row.unscheduled.tasks.push(Object.assign({ hours: share }, ref));

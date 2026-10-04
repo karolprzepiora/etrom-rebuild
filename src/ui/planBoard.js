@@ -50,7 +50,7 @@
     items.forEach(function (it) {
       var lane = 0;
       while (ends[lane] !== undefined && ends[lane] >= it.s) lane += 1;
-      ends[lane] = it.e;
+      ends[lane] = it.reach !== undefined ? it.reach : it.e;
       it.lane = lane;
     });
     return ends.length || 1;
@@ -124,10 +124,20 @@
     var management = Budget.isManagement(me.id, people) && !solo;
     var weeksN = RANGES.indexOf(state[K.weeks]) >= 0 ? state[K.weeks] : (solo ? 4 : 6);
     var offset = Number(state[K.offset]) || 0;
+    // Zarząd widzi wszystkich, lider osoby ze swoich projektów, pozostali tylko siebie.
+    var led = projects.filter(function (p) { return p.team && p.team.leader === me.id && p.status !== 'done'; });
+    var visibleIds = null;
+    if (!management) {
+      var set = {};
+      set[me.id] = true;
+      if (!solo) led.forEach(function (p) { Team.projectPeople(p.team).forEach(function (id) { set[id] = true; }); });
+      visibleIds = Object.keys(set);
+    }
+    var focusProject = !solo && state.planProject ? Number(state.planProject) : 0;
     var baseInput = {
       projects: projects, people: people, entries: state.workspace.entries || [], now: now,
       target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset,
-      personIds: management ? null : [me.id]
+      personIds: visibleIds
     };
     var plan = Plan.build(baseInput);
     var N = weeksN * 5;
@@ -144,12 +154,13 @@
     var drag = null;
 
     /* ---------- pasek ---------- */
+    function workedText(b) { return (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h'; }
     function barTip(b, span) {
       var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
       var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
       var late = b.overdue ? ' · po terminie' : (b.squeezed ? ' · za mało czasu' : (b.mustStartNow ? ' · musi ruszyć teraz' : ''));
       var perDay = b.days ? ' · ok. ' + hh(b.hours / b.days) + ' h dziennie' : '';
-      return b.code + ' · ' + b.name + ' · ' + hh(b.hours) + ' h pracy (' + (b.fromPool ? 'z puli etapu' : 'szacunek zadania') + ') · ' + shortDate(s0) + ' – ' + shortDate(e0) + perDay + late;
+      return b.code + ' · ' + b.name + ' · zaplanowano ' + hh(b.planned) + ' h (' + (b.fromPool ? 'z puli etapu' : 'szacunek zadania') + '), przepracowano ' + hh(b.logged) + ' h, zostało ' + hh(b.hours * b.workers) + ' h · ' + shortDate(s0) + ' – ' + shortDate(e0) + perDay + late;
     }
 
     function paintBar(el, ns, ne) {
@@ -157,29 +168,29 @@
       var s = Math.max(0, ns), e = Math.min(N - 1, ne);
       el.style.left = (s / N * 100) + '%';
       el.style.width = (Math.max(1, e - s + 1) / N * 100) + '%';
-      el.classList.toggle('is-narrow', e - s < 1);
-      el.classList.toggle('is-short', e - s < 3);
       el.classList.toggle('is-clipl', cl);
       el.classList.toggle('is-clipr', cr);
     }
 
     function barEl(b, person, item) {
       var editable = canEdit(b.projectId);
-      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (b.squeezed ? ' is-tight' : '') + (b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '');
+      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (b.squeezed ? ' is-tight' : '') + (b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (b.logged > b.planned + 0.05 ? ' is-over' : '');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
       var dens = Math.max(0.14, Math.min(1, b.density || 0));
-      var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num', text: hh(b.hours) + ' h', attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Godziny pracy do zrobienia — kliknij, żeby zmienić' } : {} });
+      var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num', text: workedText(b), attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Przepracowano / zaplanowano — kliknij, żeby zmienić zaplanowane godziny' } : {} });
+      var pctDone = b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0;
       var el = D.el('div', {
         class: cls, style: Object.assign({ top: item.lane * LANE_H + 'rem', '--d': (dens * 100) + '%' }, Identity.hueStyle(b.code)),
         attrs: { tabindex: '0', role: 'button', 'data-fk': 'pb-bar-' + b.taskId, 'data-tooltip': barTip(b), 'aria-label': barTip(b) + (editable ? '. Strzałki przesuwają, Shift i Alt zmieniają termin i start.' : ''), 'data-key': key },
         dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId, personId: person.id }
       }, [
-        D.el('span', { class: 'pb-bar__fill', attrs: { 'aria-hidden': 'true' } }),
+        D.el('span', { class: 'pb-bar__clip', attrs: { 'aria-hidden': 'true' } }, [D.el('span', { class: 'pb-bar__fill' })]),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
         D.el('span', { class: 'pb-bar__label' }, [
           D.el('span', { class: 'pb-bar__code', text: b.code }),
-          D.el('span', { class: 'pb-bar__name truncate', text: b.name }),
-          hoursBtn
+          D.el('span', { class: 'pb-bar__name', text: b.name }),
+          hoursBtn,
+          D.el('span', { class: 'pb-bar__prog', style: { '--p': pctDone + '%' }, attrs: { 'aria-hidden': 'true' } })
         ]),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null
       ]);
@@ -212,14 +223,14 @@
       btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        var input = D.el('input', { class: 'input pb-hours-input', attrs: { type: 'text', inputmode: 'decimal', value: hh(b.hours), 'aria-label': 'Godziny pracy zadania ' + b.name, 'data-fk': 'pb-hours-input' } });
+        var input = D.el('input', { class: 'input pb-hours-input', attrs: { type: 'text', inputmode: 'decimal', value: hh(b.planned), 'aria-label': 'Zaplanowane godziny zadania ' + b.name, 'data-fk': 'pb-hours-input' } });
         var done = false;
         function commit() {
           if (done) return; done = true;
           var n = Number(String(input.value).trim().replace(',', '.'));
           if (!(n > 0) || n > 2000) { E.Toast.show({ message: 'Podaj liczbę godzin, np. 8 albo 12,5.', tone: 'danger' }); input.replaceWith(btn); return; }
-          if (Math.abs(n - b.hours) < 0.05) { input.replaceWith(btn); return; }
-          ctx.actions.setTaskHours(b.projectId, b.stageId, b.taskId, n * (b.workers || 1) + (b.logged || 0));
+          if (Math.abs(n - b.planned) < 0.05) { input.replaceWith(btn); return; }
+          ctx.actions.setTaskHours(b.projectId, b.stageId, b.taskId, n);
         }
         ['pointerdown', 'click', 'keyup'].forEach(function (t) { input.addEventListener(t, function (ev) { ev.stopPropagation(); }); });
         input.addEventListener('keydown', function (ev) {
@@ -380,7 +391,11 @@
         return { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1) };
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
-      var laneCount = lanes(items.map(function (it) { return it; }));
+      items.forEach(function (it) {
+        var labelRem = 3 + it.b.code.length * 0.5 + it.b.name.length * 0.56 + 4.5;
+        it.reach = Math.max(it.e, it.s + Math.ceil(labelRem / 1.75) - 1);
+      });
+      var laneCount = lanes(items);
       var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
       var loads = D.el('div', { class: 'pb-loads', attrs: { role: 'row' } }, row.weeks.map(function (cell, i) {
         var isSel = selected && selected.personId === row.personId && selected.week === i;
@@ -419,12 +434,27 @@
       }))])])
     ]);
 
+    function projectFilter() {
+      var used = {};
+      plan.rows.forEach(function (r) { r.bars.forEach(function (b) { used[b.projectId] = b.code; }); });
+      var ids = Object.keys(used);
+      if (ids.length < 2) return null;
+      var select = UI.select({
+        id: 'pb-project', value: focusProject ? String(focusProject) : '',
+        options: [{ value: '', label: 'Wszystkie projekty' }].concat(ids.sort(function (a, b) { return used[a] < used[b] ? -1 : 1; }).map(function (id) { return { value: id, label: used[id] }; })),
+        attrs: { 'data-fk': 'pb-project', 'aria-label': 'Wyróżnij projekt' },
+        on: { change: function () { ctx.actions.setTime({ planProject: select.value }); } }
+      });
+      return select;
+    }
+
     var toolbar = D.el('div', { class: 'pb-toolbar' }, [
       D.el('div', { class: 'pb-nav' }, [
         UI.iconButton({ icon: 'chevronLeft', label: 'Wcześniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-prev' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset - Math.max(1, weeksN - 2)]])); } }),
         UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, 0]])); } }),
         UI.iconButton({ icon: 'chevronRight', label: 'Późniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-next' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset + Math.max(1, weeksN - 2)]])); } })
       ]),
+      solo ? null : projectFilter(),
       UI.segmented({
         label: 'Liczba tygodni', value: weeksN,
         items: RANGES.map(function (n) { return { value: n, label: n + ' tyg.' }; }),
@@ -451,5 +481,26 @@
     };
   }
 
-  E.PlanBoard = { view: view, slotOf: slotOf, dateOfSlot: dateOfSlot };
+  /** Ekran „Plan” w menu: nagłówek składa aplikacja. */
+  function screen(state, ctx) {
+    var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
+    if (!me) {
+      return { summary: 'Plan pracy zespołu w kolejnych tygodniach.', body: E.Welcome.card(state, ctx, 'Plan pokazuje, kto nad czym pracuje w kolejnych tygodniach. Wybierz, kim jesteś.') };
+    }
+    var part = view(state, ctx, new Date());
+    var todays = E.TimeLog.forDay(state.workspace.entries || [], me.id, new Date());
+    return {
+      summary: part.summary,
+      body: UI.railLayout({
+        id: 'time', title: 'Panel dnia', cls: 'rl--time',
+        collapsed: (state.prefs.collapsedRails || []).indexOf('time') >= 0,
+        onToggle: function () { ctx.actions.toggleRail('time'); },
+        badge: '',
+        main: [D.el('div', { class: 'ts' }, part.body.filter(Boolean))],
+        side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])]
+      })
+    };
+  }
+
+  E.PlanBoard = { view: view, screen: screen, slotOf: slotOf, dateOfSlot: dateOfSlot };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
