@@ -176,7 +176,7 @@ test('identyfikatory etapów własnych nie powtarzają się w projekcie', () => 
 
 test('describeStage daje jednolity opis dla obu rodzajów etapów', () => {
   const fromCatalog = Model.describeStage(Model.createStage('water-docs'));
-  assert.equal(fromCatalog.catalogNumber, '09');
+  assert.equal(fromCatalog.catalogNumber, '10');
   assert.equal(fromCatalog.isCustom, false);
   assert.equal(fromCatalog.name, 'Dokumentacja wodnoprawna');
 
@@ -259,7 +259,7 @@ test('starsze dane bez oznaczenia źródła są traktowane jako katalogowe', () 
     }]
   });
   assert.equal(result.projects[0].stages[0].source, 'catalog');
-  assert.equal(Model.describeStage(result.projects[0].stages[0]).catalogNumber, '09');
+  assert.equal(Model.describeStage(result.projects[0].stages[0]).catalogNumber, '10');
 });
 
 test('etap spoza katalogu i bez nazwy nadal jest odrzucany', () => {

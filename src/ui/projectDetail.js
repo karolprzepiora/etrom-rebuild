@@ -165,7 +165,7 @@
           statusControl(project, ctx)
         ]),
         D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),
-        D.el('p', { class: 'pd-head__client', text: project.client || 'Bez zamawiającego' })
+        D.el('p', { class: 'pd-head__client', text: (project.client || 'Bez zamawiającego') + (E.Catalog.isScope(project.scope) ? ' · ' + E.Catalog.scopeLabel(project.scope) : '') })
       ]),
       propertyRow(project, ctx, now, health)
     ]);

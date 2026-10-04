@@ -241,7 +241,7 @@ async function main() {
     check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 7);
 
     check('każdy projekt przykładowy ma komplet etapów ze standardu w katalogowej kolejności',
-      await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.all.length)'));
+      await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.stagesFor("full", window.ETROM.Catalog.defaultProcedures("full")).length)'));
 
     /* 3. Zapis lokalny */
     const stored = await evaluate('const raw = localStorage.getItem("etrom.v3"); return raw ? JSON.parse(raw).projects.length : -1;');
@@ -374,13 +374,13 @@ async function main() {
       await evaluate('const b = document.getElementById("show-done"); return !!b && /11\\u00a0etapów zakończonych/.test(b.textContent);'));
     await click('#show-done');
     await sleep(200);
-    check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".plan-item[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.all.length;')));
+    check('po rozwinięciu przebieg pokazuje wszystkie etapy standardu', (await evaluate('return document.querySelectorAll(".plan-item[data-stage-id]").length;')) === (await evaluate('return window.ETROM.Catalog.stagesFor("full", window.ETROM.Catalog.defaultProcedures("full")).length;')));
     /* 9. Zmiana statusu etapu przelicza postęp */
     const progressNow = () => state('window.ETROM.Progress.projectProgress(s.workspace.projects.find(x => x.code === "2602")).percent');
     const before = await progressNow();
     await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
-    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "2602").stages[15].status')) === 'working');
+    check('klik na status etapu przechodzi Do wykonania → W toku', (await state('s.workspace.projects.find(x => x.code === "2602").stages[s.workspace.projects.find(x => x.code === "2602").stages.length - 1].status')) === 'working');
     await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); rows[rows.length - 1].querySelector(".srow__status").click(); return true;');
     await sleep(150);
     const after = await progressNow();
@@ -390,7 +390,7 @@ async function main() {
     await pressKey('enter');
     check('fokus klawiatury zostaje na przycisku statusu po przerysowaniu',
       await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
-      && (await state('s.workspace.projects.find(x => x.code === "2602").stages[15].status')) === 'todo');
+      && (await state('s.workspace.projects.find(x => x.code === "2602").stages[s.workspace.projects.find(x => x.code === "2602").stages.length - 1].status')) === 'todo');
 
     /* 10. Wstecz w przeglądarce */
     await evaluate('history.back(); return true;');
@@ -726,6 +726,16 @@ async function main() {
       (await state('(s.workspace.entries || []).length')) === beforeRange + 1
       && await evaluate('const e = window.ETROM.app.store.getState().workspace.entries.filter(x => x.source === "manual").sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0]; return window.ETROM.TimeLog.minutes(e) === 30 && new Date(e.start).getHours() === 3 && new Date(e.start).getMinutes() === 10;'));
 
+    /* 21e. Zakres opracowania i procedury w formularzu nowego projektu */
+    {
+      await click('#action-new');
+      await sleep(500);
+      const sc = await evaluate('var n = function () { return document.querySelectorAll("#pf-stage-picker input:checked").length; }; var out = { full: n() }; var sel = document.getElementById("pf-scope"); sel.value = "limited"; sel.dispatchEvent(new Event("change", { bubbles: true })); out.limited = n(); var w = document.getElementById("pf-proc-water"); w.click(); out.water = n(); out.waterOn = w.checked; return out;');
+      check('formularz: zakres ustawia etapy (pełny 16, okrojony 5, + wodnoprawne 7), przełącznik procedury dokłada parę', sc && sc.full === 16 && sc.limited === 5 && sc.water === 7 && sc.waterOn === true, JSON.stringify(sc));
+      await evaluate('var b = Array.from(document.querySelectorAll("button")).filter(function (x) { return x.textContent.trim() === "Anuluj"; })[0]; if (b) b.click(); return 1;');
+      await sleep(300);
+    }
+
     /* 21d. Panel boczny, kolor projektu, jeden kafel wskaźnika */
     await go('#/czas');
     check('Czas ma wysuwany panel boczny, który zwija się i zapamiętuje stan',
@@ -781,8 +791,9 @@ async function main() {
     /* 22. Wybór etapów przy zakładaniu projektu */
     await go('#/projekty');
     await pressKey('n');
-    check('formularz pokazuje listę etapów do wyboru, domyślnie pustą',
-      await evaluate('const boxes = [...document.querySelectorAll("#pf-stage-picker input[type=checkbox]")]; return boxes.length === window.ETROM.Catalog.all.length && boxes.every(b => !b.checked);'));
+    check('formularz pokazuje listę etapów do wyboru, domyślnie zakres „Pełny projekt” (16 z 17)',
+      await evaluate('const boxes = [...document.querySelectorAll("#pf-stage-picker input[type=checkbox]")]; return boxes.length === window.ETROM.Catalog.all.length && boxes.filter(b => b.checked).length === 16 && document.getElementById("pf-scope").value === "full";'));
+    await evaluate('const b = [...document.querySelectorAll("#pf-stage-picker .choice-list__head button")].find(x => /Wyczyść/.test(x.textContent)); b.click(); return true;');
     await evaluate(
       'document.getElementById("pf-code").value = "PICK-1";' +
       'document.getElementById("pf-name").value = "Projekt z wyborem etapów";' +
@@ -824,7 +835,7 @@ async function main() {
     check('etap spoza standardu dopisuje się z własną nazwą i dziedziną',
       custom.count === 4 && custom.source === 'custom' && custom.name === 'Uzgodnienie z PKP' && custom.domain === 'location', JSON.stringify(custom));
     check('wiersz etapu własnego jest oznaczony w podpowiedzi (własny / standard)',
-      await evaluate('const metas = [...document.querySelectorAll(".plan-row__main")].map(n => n.getAttribute("data-tooltip") || ""); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 09$/.test(m));'));
+      await evaluate('const metas = [...document.querySelectorAll(".plan-row__main")].map(n => n.getAttribute("data-tooltip") || ""); return metas.some(m => /własny$/.test(m)) && metas.some(m => /standard 10$/.test(m));'));
 
     /* 23b. Plan to tabela etapów: bez paska rodzajów, osi i grupowania */
     check('plan nie pokazuje paska rodzajów pracy ani przełącznika grupowania',

@@ -510,3 +510,7 @@ Trzy siatki — obciążenie w Analizie, karta czasu i plan obciążenia — maj
 - **Brak kolorowych obramowań** kafli i wierszy dla stanu. Stan niesie znak, plakietka „Alarm / Uwaga” i powód.
 - **Paleta 40 kolorów**: 20 barw (miedź i brąz, zieleń, błękity, fiolety, róż) × 2 tony; czerwień, bursztyn i oliwka pominięte. Ciepłe barwy stoją w liście tak, by nie wypadały przy kolejnych numerach.
 - **Barwa kafla** (Ustawienia → Wygląd): „według numeru projektu” (domyślnie) albo „według rodzaju projektu” (rodzina barw rodzaju, numer tylko ją odcienia). Kolor wybrany ręcznie w projekcie ma pierwszeństwo.
+
+## Zakres opracowania i procedury
+
+Projekt ma dwa niezależne opisy: **rodzaj projektu** (co projektujemy: jaz, pompownia, staw… — grafika i barwa kafla) oraz **zakres opracowania** (co klient zamawia). Zakres: pełny projekt, projekt okrojony (np. remont na zgłoszenie z dokumentacją wykonawczą i kosztorysową), koncepcja, ekspertyza / ocena stanu, inny (ręcznie). Zakres nie jest szablonem: tylko ustawia domyślny zaznaczony zestaw etapów z jednego standardu (`Catalog.SCOPES`, `Catalog.stagesFor`). Cztery **procedury formalne** (środowiskowe, lokalizacyjne, wodnoprawne, pozwolenie na budowę) to przełączniki, z których każdy dokłada parę „dokumentacja + postępowanie”. Wszystko można ręcznie zmienić w formularzu i potem w planie projektu; nowe zakresy to jeden wpis w katalogu, nie kolejny szablon. Standard liczy 17 etapów (dodany: „Ocena stanu istniejącego i ekspertyza”).

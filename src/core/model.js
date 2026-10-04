@@ -110,6 +110,13 @@
       else if (Kinds.isKey(rawKind)) value.kind = rawKind;
       else errors.kind = 'Wybierz rodzaj z listy.';
     }
+    // Zakres opracowania: klucz z katalogu albo brak.
+    if (Object.prototype.hasOwnProperty.call(input, 'scope')) {
+      var rawScope = text(String(input.scope == null ? '' : input.scope));
+      if (!rawScope) value.scope = null;
+      else if (Catalog.isScope(rawScope)) value.scope = rawScope;
+      else errors.scope = 'Wybierz zakres z listy.';
+    }
     // Kolor projektu: indeks palety 0–39 albo brak (kolor z numeru projektu).
     if (Object.prototype.hasOwnProperty.call(input, 'color')) {
       var rawColor = input.color === '' || input.color == null ? null : Number(input.color);
@@ -367,6 +374,7 @@
       contractValue: v.contractValue == null ? null : v.contractValue,
       color: v.color == null ? null : v.color,
       kind: v.kind == null ? null : v.kind,
+      scope: v.scope == null ? null : v.scope,
       createdAt: new Date().toISOString()
     };
   }
@@ -450,6 +458,7 @@
         contractValue: Number.isFinite(Number(item.contractValue)) && item.contractValue !== null && Number(item.contractValue) >= 0 ? Number(item.contractValue) : null,
         color: Number.isInteger(item.color) && item.color >= 0 && item.color < 40 ? item.color : null,
         kind: Kinds.isKey(item.kind) ? item.kind : null,
+        scope: Catalog.isScope(item.scope) ? item.scope : null,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

@@ -347,7 +347,7 @@
       form: {
         draft: {
           id: project.id, code: project.code, name: project.name, client: project.client,
-          status: project.status, deadline: project.deadline, contractValue: project.contractValue, color: project.color, kind: project.kind,
+          status: project.status, deadline: project.deadline, contractValue: project.contractValue, color: project.color, kind: project.kind, scope: project.scope,
           team: Object.assign(Team.emptyTeam(), project.team)
         },
         errors: {}
@@ -1660,12 +1660,18 @@
     'water-docs', 'water-process', 'land', 'building-docs', 'building-process', 'technical', 'estimates', 'handover'];
   var DEMO_PATHS = { todo: [], working: ['working'], review: ['review'], changes: ['review', 'changes'], done: ['done'] };
 
+  /** Projekty przykładowe to pełne projekty: standard z procedurami, bez etapu ekspertyzy. */
+  function demoCatalog() {
+    var ids = Catalog.stagesFor('full', Catalog.defaultProcedures('full'));
+    return Catalog.all.filter(function (entry) { return ids.indexOf(entry.id) >= 0; });
+  }
+
   var DEMO = [
     { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 7, working: 2 },
     { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
     { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
     { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
-    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: Catalog.all.length, working: 0 },
+    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: 16, working: 0 },
     { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', deadline: demoDate(75), done: 6, working: 2, scale: 1.25, age: 70 },
     { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', deadline: demoDate(150), done: 3, working: 1, scale: 0.7, age: 20 }
   ];
@@ -1826,7 +1832,7 @@
       var result = projects.slice();
       DEMO.forEach(function (row) {
         if (result.some(function (p) { return p.code.toUpperCase() === row.code; })) return;
-        var stages = Catalog.all.map(function (entry, index) {
+        var stages = demoCatalog().map(function (entry, index) {
           var stage = Model.createStage(entry.id, { deadline: demoDate(index * 10 - 20), hours: row.scale ? Math.round(entry.defaultHours * row.scale) : undefined });
           if (index < row.done) stage.status = 'done';
           else if (index < row.done + row.working) stage.status = 'working';
@@ -1836,7 +1842,7 @@
         demoTasksFor(row.code, stages, team);
         var created = Model.createProject({
           code: row.code, name: row.name, client: row.client, status: row.status,
-          deadline: row.deadline, stages: stages, team: team
+          deadline: row.deadline, stages: stages, team: team, scope: 'full'
         }, result);
         created.createdAt = new Date(Date.now() - (row.age != null ? row.age : 14 + added * 11) * 86400000).toISOString();
         freshCodes[row.code] = true;

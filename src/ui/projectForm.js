@@ -52,6 +52,14 @@
       id: 'pf-kind', value: E.Kinds.isKey(values.kind) ? values.kind : '',
       options: [{ value: '', label: 'Rozpoznaj z nazwy' }].concat(E.Kinds.KINDS.map(function (k) { return { value: k.key, label: k.label }; }))
     });
+    /* --- zakres opracowania: ustawia domyślny zestaw etapów (tylko nowy projekt) --- */
+    var scopeSelect = UI.select({
+      id: 'pf-scope',
+      value: editing ? (Catalog.isScope(values.scope) ? values.scope : '') : (values.scope === undefined ? 'full' : (Catalog.isScope(values.scope) ? values.scope : '')),
+      options: [{ value: '', label: 'Nie określono' }].concat(Catalog.SCOPES.map(function (sc) { return { value: sc.id, label: sc.label }; }))
+    });
+    var scopeNote = D.el('div', { class: 't-meta', attrs: { 'aria-live': 'polite' } });
+    var procSwitches = {};
     var kindHint = D.el('span', { class: 't-meta' });
     function paintKind() { kindHint.textContent = kindSelect.value ? '' : 'Teraz: ' + E.Kinds.label(E.Kinds.detect(name.value)); }
     name.addEventListener('input', paintKind);
@@ -135,7 +143,14 @@
     function picked() { return Catalog.all.filter(function (entry) { return stageBoxes[entry.id] && stageBoxes[entry.id].checked; }); }
     function hoursOf(id) { var n = Number(String(hourInputs[id].value).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; }
 
+    function syncProcs() {
+      Catalog.PROCEDURES.forEach(function (proc) {
+        if (procSwitches[proc.id]) procSwitches[proc.id].input.checked = proc.stages.every(function (id) { return stageBoxes[id] && stageBoxes[id].checked; });
+      });
+    }
+
     function refreshCount() {
+      syncProcs();
       var list = picked();
       var sum = list.reduce(function (t, entry) { return t + hoursOf(entry.id); }, 0);
       var total = Number(budget.value);
@@ -168,6 +183,26 @@
 
     budget.addEventListener('input', function () { if (Number(budget.value) > 0) distribute(); else refreshCount(); });
 
+    function applyScope() {
+      var sc = Catalog.scope(scopeSelect.value);
+      scopeNote.textContent = sc ? sc.hint : '';
+      if (!sc || sc.id === 'other') return;
+      var ids = Catalog.stagesFor(sc.id, Catalog.defaultProcedures(sc.id));
+      Object.keys(stageBoxes).forEach(function (id) { stageBoxes[id].checked = ids.indexOf(id) >= 0; });
+      distribute();
+    }
+    scopeSelect.addEventListener('change', function () { if (!editing) applyScope(); });
+
+    var procRow = D.el('div', { class: 'pf-procs', attrs: { role: 'group', 'aria-label': 'Procedury formalne' } }, Catalog.PROCEDURES.map(function (proc) {
+      var sw = UI.switchControl({
+        id: 'pf-proc-' + proc.id, label: proc.label, checked: false,
+        attrs: { 'data-fk': 'pf-proc-' + proc.id },
+        onChange: function (on) { proc.stages.forEach(function (id) { stageBoxes[id].checked = on; }); distribute(); }
+      });
+      procSwitches[proc.id] = sw;
+      return sw.node;
+    }));
+
     var stagePicker = D.el('div', { class: 'choice-list', attrs: { id: 'pf-stage-picker' } }, [
       D.el('div', { class: 'choice-list__head' }, [
         pickedCount,
@@ -187,7 +222,7 @@
         ]);
       }))
     ]);
-    refreshCount();
+    if (!editing) applyScope(); else refreshCount();
 
     function collect() {
       var resultTeam = Team.emptyTeam();
@@ -203,6 +238,7 @@
         contractValue: contract ? contract.value : undefined,
         color: chosenColor === null ? '' : chosenColor,
         kind: kindSelect.value,
+        scope: scopeSelect.value,
         stageIds: editing ? [] : Object.keys(stageBoxes).filter(function (id) { return stageBoxes[id].checked; }),
         stageHours: editing ? {} : Object.keys(stageBoxes).reduce(function (acc, id) { if (stageBoxes[id].checked) acc[id] = hoursOf(id); return acc; }, {}),
         budgetHours: editing ? undefined : budget.value,
@@ -218,6 +254,7 @@
         ]),
         UI.field({ id: 'pf-name', label: 'Nazwa', required: true, control: name, error: problems.name }),
         UI.field({ id: 'pf-kind', label: 'Rodzaj projektu', optional: true, control: kindSelect, error: problems.kind, hint: 'Decyduje o grafice na kaflu (jaz, zapora, pompownia…). Domyślnie wynika z nazwy.' }),
+        editing ? UI.field({ id: 'pf-scope', label: 'Zakres opracowania', optional: true, control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia: pełny projekt, okrojony, koncepcja, ekspertyza.' }) : null,
         UI.field({ id: 'pf-color', label: 'Kolor projektu', optional: true, control: colorPicker, error: problems.color, hint: 'Ten kolor mają kafel projektu, paski czasu i znaczki. Automatyczny wynika z numeru projektu.' }),
         D.el('div', { class: 'form__row' }, [
           UI.field({ id: 'pf-client', label: 'Zamawiający', required: true, control: client, error: problems.client }),
@@ -231,7 +268,7 @@
 
     if (!editing) {
       body.push(D.el('hr', { class: 'form__divider' }));
-      body.push(section('Etapy i budżet godzin', 'Wpisz budżet projektu, a podzielę go na wybrane etapy. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h.' }), budgetNote, stagePicker]));
+      body.push(section('Etapy i budżet godzin', 'Wpisz budżet projektu, a podzielę go na wybrane etapy. Etapy spoza standardu dopiszesz po założeniu projektu.', [UI.field({ id: 'pf-scope', label: 'Zakres opracowania', control: scopeSelect, error: problems.scope, hint: 'Co klient zamawia. Etapy poniżej możesz potem zmienić.' }), scopeNote, D.el('div', { class: 'pf-procs__wrap' }, [D.el('span', { class: 'settings__label', text: 'Procedury formalne' }), procRow]), UI.field({ id: 'pf-budget', label: 'Budżet godzin projektu', optional: true, control: budget, hint: 'Łącznie na wszystkie etapy, np. 500 h.' }), budgetNote, stagePicker]));
     }
 
     var form = E.Dialog.drawerForm({
