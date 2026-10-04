@@ -139,7 +139,8 @@
         attrs: { type: 'button', 'aria-label': 'Szczegóły zadania: ' + task.name, 'data-fk': 'task-name-' + task.id },
         on: { click: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } }
       }),
-      task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null
+      task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null,
+      task.draft ? UI.badge(task.fromReserve ? 'Zamrożone · z rezerwy' : 'Zamrożone', 'outline', { icon: 'clock', attrs: { 'data-tooltip': 'Szkic planu: bez osób i terminu, widzi go tylko zarząd i lider. Odmroź, aby dodać realizatorów.' } }) : null
     ]);
 
     var body = [title];
@@ -153,11 +154,13 @@
     var meta = [];
     var logged = actions.taskMinutes ? actions.taskMinutes(task.id) : 0;
     if (logged > 0) meta.push(D.el('span', { class: 't-num', text: 'zapisano ' + E.TimeLog.duration(logged) }));
-    stepButtons(project, stage, task, actions).forEach(function (b) { meta.push(b); });
+    if (task.draft) {
+      meta.push(D.el('button', { class: 'trow__step', text: 'Odmroź', attrs: { type: 'button', 'data-fk': 'task-unfreeze-' + task.id, 'data-tooltip': 'Dodaj realizatorów i termin' }, on: { click: function () { actions.editTask(project.id, stage.id, task.id); } } }));
+    } else stepButtons(project, stage, task, actions).forEach(function (b) { meta.push(b); });
     if (meta.length) body.push(D.el('p', { class: 'trow__meta t-meta' }, meta));
 
     return D.el('li', {
-      class: 'trow row trow--' + task.status + (motion && motion.flashTask === task.id ? ' is-flash' : '') + (actions.isInspected && actions.isInspected('task', task.id) ? ' is-inspected' : ''),
+      class: 'trow row trow--' + task.status + (task.draft ? ' trow--frozen' : '') + (motion && motion.flashTask === task.id ? ' is-flash' : '') + (actions.isInspected && actions.isInspected('task', task.id) ? ' is-inspected' : ''),
       dataset: { taskId: task.id }
     }, [
       statusControl(project, stage, task, actions),
@@ -167,7 +170,7 @@
         : [D.el('span', { class: 't-meta', text: 'Bez realizatora' })]),
       D.el('span', { class: 'trow__load t-meta', text: Tasks.WORKLOAD[task.workload], attrs: { 'data-tooltip': 'Nakład pracy' } }),
       D.el('span', { class: 'trow__deadline' }, [deadlineBlock(task, info)]),
-      E.Timer.timerButton(project, stage, task, actions),
+      task.draft ? D.el('span') : E.Timer.timerButton(project, stage, task, actions),
       taskMenu(project, stage, task, actions)
     ]);
   }

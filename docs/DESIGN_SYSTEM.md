@@ -531,7 +531,7 @@ Zasady są w Ustawieniach → „Budżet i postęp” i działają w całej apli
 - **Progi**: Uwaga od +10%, Alarm od +25% prognozowanego przekroczenia budżetu (edytowalne). Alarm także przy zużyciu >100% lub czasie >100%.
 - **Plan bazowy**: przycisk „Zamroź plan bazowy” w Analizie projektu zapisuje godziny etapów i koszt wg średniej stawki zespołu (`project.baseline`). Późniejsze zmiany budżetu etapów pokazują się jako „zmiana zakresu”, a nie przekroczenie.
 
-## Planowanie budżetu w dniach (zakładka „Budżet”)
+## Plan wstępny (zakładka „Plan wstępny”)
 
 Widoczna dla zarządu i lidera projektu. Jedno miejsce, trzy kroki: **1 Budżet** (całość w dniach roboczych → „Rozdziel według wag”), **2 Szkice** (zadania dopisane do etapów, bez osób i terminów), **3 Odmrożenie** (osoby, termin, dni z puli etapu).
 
@@ -540,3 +540,5 @@ Widoczna dla zarządu i lidera projektu. Jedno miejsce, trzy kroki: **1 Budżet*
 - Pula etapu (`Planning.pool`): budżet − rezerwa − zadania zaplanowane − szkice. Zadanie „uzupełnienie” (`task.fromReserve`) zużywa rezerwę postępowania (`stage.reserve` albo % z ustawień, domyślnie 15%).
 - Szkic (`task.draft`): bez osób i terminu; widoczny tylko dla zarządu i lidera (`visibleState` w app.js). Odmrożenie = edycja zadania z odznaczonym „Szkic”.
 - Dni zadania to `task.estimate` w godzinach; Plan zespołu (Czas → Plan) liczy z nich obłożenie i oznacza zadania „za mało czasu” oraz „musi ruszyć teraz”.
+
+Przepływ jednorazowy: **1 Budżet** → **2 Zadania w etapach** (biblioteka, szkice) → **3 Akceptacja** (`acceptPlan`: zapisuje plan bazowy i `project.planAcceptedAt`). Po akceptacji zakładka pokazuje tylko podsumowanie; praca toczy się w Planie i Zadaniach, gdzie zamrożone zadania mają plakietkę „Zamrożone”, kreskowane tło i przycisk „Odmroź”. Biblioteka trzyma wnioski w etapach-postępowaniach (nie w dokumentacji) i najwyżej dwa–trzy duże zadania na etap.

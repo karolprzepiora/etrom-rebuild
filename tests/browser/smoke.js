@@ -1544,6 +1544,17 @@ async function main() {
     check('biblioteka: szkice mają znacznik szkicu, a uzupełnienia pochodzą z rezerwy',
       await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const all = p.stages.flatMap(s => s.tasks); return all.some(t => t.draft && t.name === "Operat wodnoprawny" || t.draft && t.name === "Koncepcja techniczna") && all.filter(t => t.name === "Uzupełnienia na wezwanie").every(t => t.fromReserve && t.draft);'));
 
+    /* 38i. Akceptacja planu wstępnego zamyka zakładkę, zamrożone zadania są oznaczone w Zadaniach */
+    check('plan wstępny: sekcje 1-3 i przycisk akceptacji', await evaluate('return document.querySelectorAll(".bp-sec").length === 3 && !!document.querySelector("[data-fk=bp-accept]");'));
+    await evaluate('document.querySelector("[data-fk=bp-accept]").click(); return true;');
+    await sleep(300);
+    check('po akceptacji zakładka pokazuje podsumowanie i przycisk odblokowania, a projekt ma plan bazowy',
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); return !!p.planAcceptedAt && !!p.baseline && !!document.querySelector("[data-fk=bp-reopen]") && !document.querySelector("#bp-total");'));
+    await evaluate('window.ETROM.app.actions.openProject(' + budgetPid + ', "zadania"); return true;');
+    await sleep(400);
+    check('zamrożone zadania w Zadaniach mają plakietkę „Zamrożone” i przycisk Odmroź',
+      await evaluate('return !!document.querySelector(".trow--frozen .badge") && !!document.querySelector("[data-fk^=task-unfreeze-]");'));
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

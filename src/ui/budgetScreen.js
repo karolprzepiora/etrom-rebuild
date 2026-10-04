@@ -1,4 +1,4 @@
-/* ETROM — zakładka „Budżet” w projekcie: jedno miejsce do planowania.
+/* ETROM — zakładka „Plan wstępny” w projekcie: jednorazowe założenia przed startem.
    Krok 1: całość budżetu w dniach i rozdział na etapy wg wag.
    Krok 2: w każdym etapie szkice zadań (bez osób i terminów, widoczne tylko dla zarządu i lidera).
    Krok 3: odmrażanie szkicu — osoby, termin i dni z puli etapu.
@@ -84,7 +84,7 @@
     var a = ctx.actions;
     var meta = Model.describeStage(stage);
     var p = P.pool(stage);
-    var open = !!ctx.state.expandedStages['bp:' + project.id + ':' + stage.id];
+    var open = ctx.state.expandedStages['bp:' + project.id + ':' + stage.id] !== false;
     var weightPct = totalWeight > 0 ? Math.round((P.weightOf(stage) / totalWeight) * 100) : 0;
     var locked = stage.locked || stage.status === 'done';
     var tasks = stage.tasks || [];
@@ -128,7 +128,46 @@
     return D.el('section', { class: 'bp-stage' + (p.over ? ' is-over' : ''), dataset: { stageId: stage.id } }, [head, poolBar(p), legend(p), body]);
   }
 
+  function plTasks(n) { return n === 1 ? '1 zadanie' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20) ? n + ' zadania' : n + ' zadań'); }
+
+  function section(n, title, hint, children) {
+    return D.el('section', { class: 'bp-sec' }, [
+      D.el('header', { class: 'bp-sec__head' }, [D.el('b', { class: 'bp-step__n', text: n }), D.el('h3', { class: 'bp-sec__title', text: title }), hint ? D.el('span', { class: 't-meta', text: hint }) : null])
+    ].concat(children));
+  }
+
+  /** Po akceptacji zakładka jest tylko podsumowaniem; praca toczy się w Planie i Zadaniach. */
+  function acceptedView(project, ctx) {
+    var a = ctx.actions;
+    var sum = P.summary(project);
+    var frozen = project.stages.reduce(function (t, s) { return t + (s.tasks || []).filter(function (x) { return x.draft; }).length; }, 0);
+    var base = project.baseline;
+    return D.el('section', { class: 'section bp' }, [
+      D.el('div', { class: 'an-card bp-done' }, [
+        D.el('div', { class: 'bp-done__main' }, [
+          D.el('h3', { class: 'bp-done__title', text: 'Plan wstępny zaakceptowany' }),
+          D.el('p', { class: 't-meta', text: E.Format.date(project.planAcceptedAt.slice(0, 10), { year: 'always' }) + ' · budżet ' + fmt(P.toDays(sum.budget)) + ' dni' + (base ? ' (' + fmt(base.hours) + ' h, ' + E.Format.number(base.cost) + ' zł wg stawek zespołu)' : '') + ' · ' + frozen + ' zamrożonych zadań' }),
+          D.el('p', { class: 'bp-done__note', text: 'Dalsze zmiany, nowe zadania, osoby i terminy wprowadzasz w Planie i Zadaniach — tam żyje projekt. Zamrożone zadania widzisz tylko Ty (zarząd i lider); pracownik zobaczy zadanie dopiero po odmrożeniu i dodaniu go do realizacji.' })
+        ]),
+        D.el('div', { class: 'bp-done__act' }, [
+          D.el('a', { class: 'btn btn--primary', attrs: { href: E.ProjectList.projectHref(project, 'zadania'), 'data-fk': 'bp-go-tasks' }, text: 'Przejdź do zadań' }),
+          UI.button({ label: 'Odblokuj plan wstępny', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'bp-reopen' }, onClick: function () { a.reopenPlan(project.id); } })
+        ])
+      ]),
+      D.el('ul', { class: 'bp-sum' }, project.stages.map(function (st) {
+        var p = P.pool(st);
+        var n = (st.tasks || []).length;
+        return D.el('li', { class: 'bp-sum__row' }, [
+          D.el('span', { class: 'truncate', text: Model.describeStage(st).name }),
+          D.el('span', { class: 't-num', text: fmt(P.toDays(st.hours)) + ' dni' }),
+          D.el('span', { class: 't-muted', text: n ? plTasks(n) + (p.reserve > 0 ? ' · rezerwa ' + fmt(P.toDays(p.reserve)) : '') : 'bez zadań' })
+        ]);
+      }))
+    ]);
+  }
+
   function budgetTab(project, ctx) {
+    if (project.planAcceptedAt) return acceptedView(project, ctx);
     var a = ctx.actions;
     var total = project.stages.reduce(function (t, s) { return t + (Number(s.hours) || 0); }, 0);
     var sum = P.summary(project);
@@ -143,29 +182,35 @@
       a.distributeBudget(project.id, P.toHours(n));
     } });
     var dayH = P.getRules().dayHours;
-    var drafts = project.stages.reduce(function (t, s) { return t + (s.tasks || []).filter(function (x) { return x.draft; }).length; }, 0);
-    var libAll = UI.button({ label: 'Wstaw typowe szkice do wszystkich etapów', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'bp-lib-project' }, onClick: function () { a.addLibraryTasks(project.id, null); } });
-    var steps = D.el('ol', { class: 'bp-steps' }, [
-      ['1', 'Budżet', 'wpisz dni i rozdziel na etapy'],
-      ['2', 'Szkice', 'dopisz zadania do etapów, bez osób i terminów'],
-      ['3', 'Odmrożenie', 'gdy projekt rusza: osoby, termin, dni z puli']
-    ].map(function (s) { return D.el('li', { class: 'bp-step' }, [D.el('b', { class: 'bp-step__n', text: s[0] }), D.el('span', null, [D.el('b', { text: s[1] + ' ' }), D.el('span', { class: 't-muted', text: s[2] })])]); }));
+    var frozen = project.stages.reduce(function (t, s) { return t + (s.tasks || []).filter(function (x) { return x.draft; }).length; }, 0);
+    var overStages = project.stages.filter(function (s) { return P.pool(s).over; }).length;
+    var libAll = UI.button({ label: 'Wstaw zadania z biblioteki', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'bp-lib-project' }, onClick: function () { a.addLibraryTasks(project.id, null); } });
+    var accept = UI.button({ label: 'Zaakceptuj plan i zamknij', variant: 'primary', icon: 'check', attrs: { 'data-fk': 'bp-accept' }, onClick: function () { a.acceptPlan(project.id); } });
     return D.el('section', { class: 'section bp' }, [
-      D.el('div', { class: 'an-card bp-head' }, [
-        D.el('div', { class: 'bp-head__main' }, [
-          D.el('label', { class: 'bp-head__label', attrs: { for: 'bp-total' }, text: 'Budżet projektu' }),
-          D.el('div', { class: 'bp-head__row' }, [input, D.el('span', { class: 'bp-head__unit', text: 'dni roboczych' }), distribute]),
-          D.el('div', { class: 'bp-head__lib' }, [libAll]),
-          D.el('p', { class: 't-meta', text: '= ' + fmt(total) + ' h · dzień = ' + fmt(dayH) + ' h (zmienisz w Ustawieniach: Cel dnia) · zablokowane etapy zachowują swoje dni' })
-        ]),
-        D.el('dl', { class: 'bp-head__stats' }, [
-          ['Zaplanowane w zadaniach', sum.plannedPct + '%'],
-          ['Szkice do odmrożenia', String(drafts)],
-          ['Wolne do rozplanowania', fmt(P.toDays(sum.free)) + ' dni']
-        ].map(function (r) { return D.el('div', null, [D.el('dd', { class: 't-num', text: r[1] }), D.el('dt', { class: 't-muted', text: r[0] })]); }))
+      section('1', 'Budżet', 'całość w dniach roboczych, rozdzielona na etapy wg wag', [
+        D.el('div', { class: 'an-card bp-head' }, [
+          D.el('div', { class: 'bp-head__main' }, [
+            D.el('label', { class: 'bp-head__label', attrs: { for: 'bp-total' }, text: 'Budżet projektu' }),
+            D.el('div', { class: 'bp-head__row' }, [input, D.el('span', { class: 'bp-head__unit', text: 'dni roboczych' }), distribute]),
+            D.el('p', { class: 't-meta', text: '= ' + fmt(total) + ' h · dzień = ' + fmt(dayH) + ' h (Ustawienia → Cel dnia) · zablokowane etapy zachowują swoje dni' })
+          ]),
+          D.el('dl', { class: 'bp-head__stats' }, [
+            ['Zaplanowane w zadaniach', sum.plannedPct + '%'],
+            ['Zamrożone zadania', String(frozen)],
+            ['Wolne do rozplanowania', fmt(P.toDays(sum.free)) + ' dni']
+          ].map(function (r) { return D.el('div', null, [D.el('dd', { class: 't-num', text: r[1] }), D.el('dt', { class: 't-muted', text: r[0] })]); }))
+        ])
       ]),
-      steps,
-      D.el('div', { class: 'bp-stages' }, project.stages.map(function (stage, i) { return stageBlock(project, stage, i, ctx, totalWeight); }))
+      section('2', 'Zadania w etapach', 'mało, duże, bez osób i terminów — to zamrożone szkice; wnioski są w etapach-postępowaniach', [
+        D.el('div', { class: 'bp-lib-top' }, [libAll, D.el('span', { class: 't-meta', text: 'Biblioteka podpowiada typowe zadania etapu. Możesz też dopisać własne albo usunąć zbędne.' })]),
+        D.el('div', { class: 'bp-stages' }, project.stages.map(function (stage, i) { return stageBlock(project, stage, i, ctx, totalWeight); }))
+      ]),
+      section('3', 'Akceptacja', 'po akceptacji nie wracasz do tej zakładki', [
+        D.el('div', { class: 'an-card bp-accept' }, [
+          D.el('p', { class: 'bp-accept__text', text: 'Budżet ' + fmt(P.toDays(total)) + ' dni · ' + frozen + ' zamrożonych zadań' + (overStages ? ' · ' + overStages + ' etap(y) ponad pulę' : '') + '. Zamrożone zadania trafią do Planu i Zadań (widzisz je tylko Ty i lider), a budżet zostanie zapisany jako bazowy.' }),
+          accept
+        ])
+      ])
     ]);
   }
 

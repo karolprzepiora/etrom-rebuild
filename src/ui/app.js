@@ -1601,9 +1601,24 @@
     store.update(function (state) {
       var open = Object.assign({}, state.expandedStages);
       var key = 'bp:' + projectId + ':' + stageId;
-      open[key] = !open[key];
+      open[key] = open[key] === false;
       return Object.assign({}, state, { expandedStages: open });
     });
+  }
+
+  /** Akceptacja planu wstępnego: zamraża budżet bazowy i zamyka zakładkę. Dalej projekt żyje w Planie i Zadaniach. */
+  function acceptPlan(projectId) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    var state = store.getState();
+    var base = E.Analysis.makeBaseline(project, state.workspace.people || [], new Date(), state.prefs.hourlyCost);
+    withUndo(projectId, 'Plan wstępny ' + project.code + ' zaakceptowany', function (p) { return Object.assign({}, p, { baseline: base, planAcceptedAt: new Date().toISOString() }); });
+  }
+
+  function reopenPlan(projectId) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    withUndo(projectId, 'Plan wstępny odblokowany', function (p) { return Object.assign({}, p, { planAcceptedAt: null }); });
   }
 
   function addDraftTask(projectId, stageId, name) {
@@ -2565,6 +2580,8 @@
     freezeBaseline: freezeBaseline,
     distributeBudget: distributeBudget,
     patchStage: patchStage,
+    acceptPlan: acceptPlan,
+    reopenPlan: reopenPlan,
     addDraftTask: addDraftTask,
     addLibraryTasks: addLibraryTasks,
     toggleBudgetStage: toggleBudgetStage,

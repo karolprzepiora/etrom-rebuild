@@ -21,7 +21,7 @@
 
   var TABS = [
     { value: 'etapy', label: 'Plan' },
-    { value: 'budzet', label: 'Budżet' },
+    { value: 'budzet', label: 'Plan wstępny' },
     { value: 'zadania', label: 'Zadania' },
     { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' },
@@ -387,8 +387,8 @@
     var me = ctx.state.prefs.me;
     return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
       icon: 'layers',
-      title: me ? 'Budżet planuje zarząd i lider projektu' : 'Wybierz, kim jesteś',
-      text: me ? 'Budżet w dniach, szkice zadań i biblioteka są widoczne dla osób z zarządu oraz lidera tego projektu. Pracownik widzi swoje zadania i terminy.'
+      title: me ? 'Plan wstępny przygotowuje zarząd i lider projektu' : 'Wybierz, kim jesteś',
+      text: me ? 'Budżet w dniach i zamrożone zadania planu widzi zarząd oraz lider tego projektu. Pracownik widzi swoje zadania i terminy.'
         : 'Budżet i szkice zadań widzi zarząd oraz lider projektu. W Zespole dodaj siebie z rolą zarządu, a w „Mojej pracy” wybierz, że pracujesz jako ta osoba.'
     })])]);
   }

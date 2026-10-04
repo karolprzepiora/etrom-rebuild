@@ -6,23 +6,24 @@
 
   var UPD = { name: 'Uzupełnienia na wezwanie', reserve: true };
 
+  // Dokumentacja i postępowanie to osobne etapy: wnioski i uzupełnienia należą do etapów-postępowań.
   var TASKS = {
     preparation: [{ name: 'Dane wyjściowe i warunki techniczne' }],
-    survey: [{ name: 'MDCP' }, { name: 'Prawa do gruntów i zgody' }, { name: 'Pomiary specjalne (np. batymetria)' }],
-    studies: [{ name: 'Opinia geotechniczna' }, { name: 'Analiza hydrologiczno-hydrauliczna' }, { name: 'Inwentaryzacja stanu istniejącego' }],
-    assessment: [{ name: 'Inwentaryzacja i ocena stanu' }, { name: 'Ekspertyza techniczna' }],
-    concept: [{ name: 'Koncepcja techniczna' }, { name: 'Aktualizacja koncepcji' }],
-    'environment-docs': [{ name: 'Karta Informacyjna Przedsięwzięcia' }, { name: 'Wniosek o decyzję środowiskową' }, { name: 'Zgłoszenie art. 118' }, { name: 'Wycinka drzew i nasadzenia' }],
-    'environment-process': [UPD],
-    'location-docs': [{ name: 'Wniosek o decyzję lokalizacyjną' }],
-    'location-process': [UPD],
-    'water-docs': [{ name: 'Operat wodnoprawny' }, { name: 'Wniosek o pozwolenie wodnoprawne' }, { name: 'Zwolnienie z zakazu (art. 176)' }],
-    'water-process': [UPD],
+    survey: [{ name: 'Mapa do celów projektowych (MDCP)' }, { name: 'Prawa do gruntów i zgody' }],
+    studies: [{ name: 'Opinia geotechniczna' }, { name: 'Analiza hydrologiczno-hydrauliczna' }],
+    assessment: [{ name: 'Ekspertyza techniczna' }],
+    concept: [{ name: 'Koncepcja techniczna' }],
+    'environment-docs': [{ name: 'Karta Informacyjna Przedsięwzięcia' }],
+    'environment-process': [{ name: 'Wniosek o decyzję środowiskową' }, UPD],
+    'location-docs': [{ name: 'Opracowanie do wniosku lokalizacyjnego' }],
+    'location-process': [{ name: 'Wniosek o decyzję lokalizacyjną' }, UPD],
+    'water-docs': [{ name: 'Operat wodnoprawny' }],
+    'water-process': [{ name: 'Wniosek o pozwolenie wodnoprawne' }, UPD],
     land: [{ name: 'Uzgodnienia i zgody terenowe' }],
-    'building-docs': [{ name: 'Projekt zagospodarowania terenu' }, { name: 'Projekt architektoniczno-budowlany' }, { name: 'Wniosek o pozwolenie na budowę' }],
-    'building-process': [UPD],
-    technical: [{ name: 'Projekt techniczny i wykonawczy' }, { name: 'Uzgodnienia branżowe' }],
-    estimates: [{ name: 'Przedmiar i kosztorys' }, { name: 'STWiORB' }],
+    'building-docs': [{ name: 'Projekt zagospodarowania terenu' }, { name: 'Projekt architektoniczno-budowlany' }],
+    'building-process': [{ name: 'Wniosek o pozwolenie na budowę' }, UPD],
+    technical: [{ name: 'Projekt techniczny i wykonawczy' }],
+    estimates: [{ name: 'Przedmiary, kosztorysy i STWiORB' }],
     handover: [{ name: 'Przekazanie i odbiór dokumentacji' }]
   };
 
