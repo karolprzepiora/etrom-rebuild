@@ -170,3 +170,16 @@ test('pasek niesie godziny i gęstość pracy: 8 h rozciągnięte na 4 tygodnie 
   // obciążenie tygodni wynika z godzin, a nie z długości paska
   assert.ok(rowOf(plan, 'p-1').weeks[0].planned < 40 + 8 / 21 * 5 + 1);
 });
+
+test('priorytety projektów: numerowane najpierw, reszta po kodzie, zakończone pominięte; przesunięcie zachowuje pozostałe', () => {
+  const list = [
+    { id: 1, code: '2601', status: 'active', priority: 0 },
+    { id: 2, code: '2602', status: 'active', priority: 2 },
+    { id: 3, code: '2603', status: 'done', priority: 1 },
+    { id: 4, code: '2604', status: 'planned', priority: 1 }
+  ];
+  assert.deepEqual(Plan.rankProjects(list).map(p => p.id), [4, 2, 1]);
+  assert.deepEqual(Plan.moveInOrder([4, 2, 1], 1, 0), [1, 4, 2]);
+  assert.deepEqual(Plan.moveInOrder([4, 2, 1], 4, 9), [2, 1, 4], 'poza zakresem trafia na koniec');
+  assert.deepEqual(Plan.moveInOrder([4, 2], 99, 0), [4, 2], 'nieznany projekt nic nie zmienia');
+});

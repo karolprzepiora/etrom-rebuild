@@ -1600,6 +1600,22 @@
     });
   }
 
+  /** Priorytety projektów: kolejność identyfikatorów (pierwszy = najważniejszy). Tylko zarząd, do cofnięcia. */
+  function setProjectOrder(ids) {
+    if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Priorytety projektów ustala zarząd.', tone: 'danger' }); return false; }
+    var before = store.getState().workspace.projects.map(function (p) { return p.id; });
+    var prev = {};
+    store.getState().workspace.projects.forEach(function (p) { prev[p.id] = p.priority || 0; });
+    setWorkspace(function (list) {
+      return list.map(function (p) { var i = ids.indexOf(p.id); return i < 0 ? p : Object.assign({}, p, { priority: i + 1 }); });
+    });
+    Toast.show({
+      message: 'Zmieniono priorytety projektów', actionLabel: 'Cofnij', timeout: 6000,
+      onAction: function () { setWorkspace(function (list) { return list.map(function (p) { return before.indexOf(p.id) < 0 ? p : Object.assign({}, p, { priority: prev[p.id] || 0 }); }); }); }
+    });
+    return true;
+  }
+
   /** Plan tygodni: zmiana okna zadania (start i termin), do cofnięcia. Tylko zarząd i lider projektu. */
   function setTaskSpan(projectId, stageId, taskId, start, deadline, extra) {
     var project = findProject(projectId);
@@ -1902,13 +1918,13 @@
   }
 
   var DEMO = [
-    { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', deadline: demoDate(21), done: 7, working: 2 },
-    { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', deadline: demoDate(-6), done: 11, working: 1 },
+    { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', priority: 2, deadline: demoDate(21), done: 7, working: 2 },
+    { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', priority: 1, deadline: demoDate(-6), done: 11, working: 1 },
     { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
     { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
     { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: 16, working: 0 },
-    { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', deadline: demoDate(75), done: 6, working: 2, scale: 1.25, age: 70 },
-    { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', deadline: demoDate(150), done: 3, working: 1, scale: 0.7, age: 20 }
+    { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', priority: 3, deadline: demoDate(75), done: 6, working: 2, scale: 1.25, age: 70 },
+    { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', priority: 4, deadline: demoDate(150), done: 3, working: 1, scale: 0.7, age: 20 }
   ];
 
   var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130, 'Marta Testowa': 160, 'Tomasz Testowy': 110 };
@@ -2080,6 +2096,7 @@
           deadline: row.deadline, stages: stages, team: team, scope: 'full'
         }, result);
         created.createdAt = new Date(Date.now() - (row.age != null ? row.age : 14 + added * 11) * 86400000).toISOString();
+        if (row.priority) created.priority = row.priority;
         freshCodes[row.code] = true;
         result = result.concat([created]);
         added += 1;
@@ -2609,7 +2626,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },

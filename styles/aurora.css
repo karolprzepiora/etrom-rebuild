@@ -853,3 +853,13 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-bar__tick.is-lag { background: var(--alarm); box-shadow: 0 0 0 2px color-mix(in srgb, var(--alarm) 30%, transparent); }
 .pb-bar.is-tight .pb-bar__clip { background-image: repeating-linear-gradient(135deg, transparent 0 .5rem, rgb(0 0 0 / .14) .5rem 1rem); }
 .pb-bar.is-tight .pb-bar__fill { background-image: none; }
+
+/* Priorytety projektów: rząd chipów w kolorach projektów, kolejność = ważność. */
+.pb-prio { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pb-prio__l { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-right: var(--space-1); }
+.pb-prio__c { all: unset; box-sizing: border-box; --solid: oklch(calc(.5 + .07 * var(--tone, 0)) calc(.15 * var(--kp, 1)) var(--hue, 250)); display: inline-flex; align-items: center; gap: .45rem; padding: .2rem .65rem .2rem .25rem; border-radius: 99px; background: var(--solid); color: #fff; font-size: var(--fs-xs); font-weight: 700; cursor: grab; touch-action: none; user-select: none; transition: transform .12s, box-shadow .12s; }
+.pb-prio__c:hover { box-shadow: 0 4px 12px -4px rgb(0 0 0 / .4); }
+.pb-prio__c:focus-visible { box-shadow: var(--focus-ring); }
+.pb-prio__c.is-drag { cursor: grabbing; z-index: 5; box-shadow: 0 10px 22px -6px rgb(0 0 0 / .5); transition: none; }
+.pb-prio__n { display: grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: rgb(255 255 255 / .92); color: var(--solid); font-size: .72rem; }
+.pb-prio__code { font-family: var(--font-mono, ui-monospace, monospace); }

@@ -68,6 +68,26 @@
   }
 
   /**
+   * Kolejność priorytetów projektów: najpierw projekty z numerem priorytetu (1 = najważniejszy), potem reszta po kodzie.
+   * Zakończone projekty są pomijane. @returns {Array} projekty w kolejności
+   */
+  function rankProjects(projects) {
+    return (projects || []).filter(function (p) { return p.status !== 'done'; }).slice().sort(function (a, b) {
+      var pa = a.priority > 0 ? a.priority : 1e9;
+      var pb = b.priority > 0 ? b.priority : 1e9;
+      return pa !== pb ? pa - pb : String(a.code).localeCompare(String(b.code));
+    });
+  }
+
+  /** Nowa kolejność identyfikatorów po przeniesieniu projektu `id` na miejsce `toIndex` (0 = najważniejszy). */
+  function moveInOrder(ids, id, toIndex) {
+    var list = ids.filter(function (x) { return x !== id; });
+    if (ids.indexOf(id) < 0) return ids.slice();
+    list.splice(Math.max(0, Math.min(list.length, toIndex)), 0, id);
+    return list;
+  }
+
+  /**
    * Przesuwa okno zadania. mode: 'move' (cały pasek), 'start' (lewy brzeg), 'end' (prawy brzeg); delta w dniach roboczych.
    * Bez własnego startu pasek zaczyna się w dniu `from` (zwykle dziś lub najwcześniejszy dzień osi).
    * @returns {{start: string, deadline: string}|null} nowe wartości pól zadania (deadline zachowuje godzinę)
@@ -228,7 +248,7 @@
     return { weeks: weeks, rows: rows, first: first.getTime(), today: today.getTime() };
   }
 
-  var api = { shiftSpan: shiftSpan, addWorkdays: addWorkdays, workdayDiff: workdayDiff, snapWorkday: snapWorkday, isoDay: isoDay, DEFAULT_HOURS: DEFAULT_HOURS, TIGHT_AT: TIGHT_AT, estimateHours: estimateHours, remainingHours: remainingHours, build: build };
+  var api = { shiftSpan: shiftSpan, rankProjects: rankProjects, moveInOrder: moveInOrder, addWorkdays: addWorkdays, workdayDiff: workdayDiff, snapWorkday: snapWorkday, isoDay: isoDay, DEFAULT_HOURS: DEFAULT_HOURS, TIGHT_AT: TIGHT_AT, estimateHours: estimateHours, remainingHours: remainingHours, build: build };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Plan = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

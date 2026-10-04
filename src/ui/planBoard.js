@@ -19,6 +19,7 @@
   var RANGES = [4, 6, 8, 12];
   var LANE_H = 2.1; // rem
   var pendingFocus = null;
+  var pendingPrio = null;
 
   function hh(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
   function dayStart(ms) { var d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -149,6 +150,9 @@
       var p = projects.filter(function (x) { return x.id === projectId; })[0];
       return !!p && Budget.canSeeHours(me.id, p, people);
     };
+    var ranked = Plan.rankProjects(projects);
+    var rankOf = {};
+    ranked.forEach(function (p, i) { rankOf[p.id] = i + 1; });
     var chips = {};      // 'personId:week' → element
     var rowEls = {};     // personId → element
     var drag = null;
@@ -433,6 +437,7 @@
         return { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0 };
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
+      items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
       function trackOf(inner) {
         var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
         return D.el('div', { class: 'pb-track' }, [weekCols, todaySlot >= 0 && todaySlot < N ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null].concat(inner));
@@ -491,6 +496,63 @@
       return select;
     }
 
+    /** Priorytety projektów (tylko zarząd): przeciągnij chip albo użyj strzałek ←/→; kolejność porządkuje zadania w planie. */
+    function priorityStrip() {
+      if (solo || !management || ranked.length < 2) return null;
+      var order = ranked.map(function (p) { return p.id; });
+      var strip = D.el('div', { class: 'pb-prio', attrs: { role: 'list', 'aria-label': 'Priorytety projektów' } }, [D.el('span', { class: 'pb-prio__l', text: 'Priorytety' })]);
+      var chipsEls = {};
+      var dragging = null;
+      function commit(ids) { if (ids.join() !== order.join()) ctx.actions.setProjectOrder(ids); }
+      ranked.forEach(function (p, i) {
+        var chip = D.el('button', {
+          class: 'pb-prio__c', style: Identity.hueStyle(p.code),
+          attrs: { type: 'button', role: 'listitem', 'data-fk': 'pb-prio-' + p.code, 'data-tooltip': p.name + ' · priorytet ' + (i + 1) + ' — przeciągnij albo użyj strzałek ←/→', 'aria-label': 'Priorytet ' + (i + 1) + ': ' + p.code + ' ' + p.name + '. Strzałki zmieniają kolejność.' }
+        }, [D.el('span', { class: 'pb-prio__n', text: String(i + 1) }), D.el('span', { class: 'pb-prio__code', text: p.code })]);
+        chipsEls[p.id] = chip;
+        chip.addEventListener('keydown', function (e) {
+          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+          e.preventDefault();
+          var at = order.indexOf(p.id) + (e.key === 'ArrowRight' ? 1 : -1);
+          if (at < 0 || at >= order.length) return;
+          pendingPrio = p.id;
+          commit(Plan.moveInOrder(order, p.id, at));
+        });
+        chip.addEventListener('pointerdown', function (e) {
+          if (e.button !== 0) return;
+          dragging = { id: p.id, x0: e.clientX, moved: false, to: i };
+          try { chip.setPointerCapture(e.pointerId); } catch (err) { /* testy */ }
+          e.preventDefault();
+        });
+        chip.addEventListener('pointermove', function (e) {
+          if (!dragging) return;
+          var dx = e.clientX - dragging.x0;
+          if (!dragging.moved && Math.abs(dx) < 4) return;
+          dragging.moved = true;
+          chip.classList.add('is-drag');
+          chip.style.transform = 'translateX(' + dx + 'px)';
+          var others = order.filter(function (id) { return id !== p.id; });
+          var to = 0;
+          others.forEach(function (id) { var r = chipsEls[id].getBoundingClientRect(); if (e.clientX > r.left + r.width / 2) to += 1; });
+          dragging.to = to;
+        });
+        function end(e, cancel) {
+          if (!dragging) return;
+          var d = dragging; dragging = null;
+          try { chip.releasePointerCapture(e.pointerId); } catch (err) { /* brak */ }
+          chip.classList.remove('is-drag'); chip.style.transform = '';
+          if (!d.moved || cancel) return;
+          pendingPrio = p.id;
+          commit(Plan.moveInOrder(order, p.id, d.to));
+        }
+        chip.addEventListener('pointerup', function (e) { end(e, false); });
+        chip.addEventListener('pointercancel', function (e) { end(e, true); });
+        strip.appendChild(chip);
+        if (pendingPrio === p.id) { pendingPrio = null; window.setTimeout(function () { chip.focus({ preventScroll: true }); }, 30); }
+      });
+      return strip;
+    }
+
     var toolbar = D.el('div', { class: 'pb-toolbar' }, [
       D.el('div', { class: 'pb-nav' }, [
         UI.iconButton({ icon: 'chevronLeft', label: 'Wcześniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-prev' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset - Math.max(1, weeksN - 2)]])); } }),
@@ -519,6 +581,7 @@
       summary: management ? (overCount ? E.Format.count(overCount, 'osoba przeciążona', 'osoby przeciążone', 'osób przeciążonych') + ' w oknie planu' : 'Nikt nie jest przeciążony w oknie planu') : 'Twój plan na najbliższe tygodnie',
       body: [
         toolbar,
+        priorityStrip(),
         plan.rows.length ? board : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
         solo ? null : detail(selected, plan, people, ctx)
       ]

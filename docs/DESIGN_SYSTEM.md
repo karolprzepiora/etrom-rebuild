@@ -576,3 +576,8 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 
 - **Pasek zespołu (zarząd, liderzy):** kolor = projekt; wypełnienie = zrobione (przepracowano / zaplanowano); czarny znacznik = gdzie powinno być dziś (upływ czasu); znacznik robi się czerwony, gdy zrobiono o ponad 10 p.p. mniej, niż wynika z upływu czasu. Czerwona ramka = po terminie, kreskowanie = za mało czasu. Gęstość pracy nie jest już rysowana (godziny są w lewej kolumnie).
 - **Karta czasu (Czas):** w wierszu „Razem” dzień jest zielony od celu dnia (8 h), żółty od godziny poniżej celu (7 h), czerwony niżej, także gdy nie ma wpisu. Dzisiaj do osiągnięcia celu pokazuje zieloną ramkę z postępem „3,5 / 8”. Weekendy, dni przyszłe i dni sprzed pierwszego wpisu osoby są neutralne. Suma okresu ocenia godziny ze zakończonych dni względem ich celu. Komórki projektów i zadań mają stały, neutralny kolor. Logika w `Timesheet.build` (`day.state`, `sheet.state`).
+
+### Priorytety projektów
+
+- Zarząd ustawia kolejność projektów w rzędzie „Priorytety” nad planem: chipy w kolorach projektów z numerem, przeciągane albo przesuwane strzałkami ←/→. Zapis w `project.priority` (1 = najważniejszy, 0 = bez numeru, takie projekty idą na końcu po kodzie), zmianę można cofnąć.
+- Kolejność porządkuje zadania w wierszach osób w Planie i w Moja praca → Tygodnie. Aplikacja niczego nie podpowiada przy przeciążeniu: priorytet jest świadomą decyzją zarządu.

@@ -482,6 +482,7 @@
         // Dawny rodzaj „Ekspertyza / OST” to dziś zakres opracowania, nie obiekt.
         scope: Catalog.isScope(item.scope) ? item.scope : (item.kind === 'survey' ? 'assessment' : null),
         baseline: cleanBaseline(item.baseline),
+        priority: Number.isInteger(item.priority) && item.priority > 0 ? item.priority : 0,
         planAcceptedAt: typeof item.planAcceptedAt === 'string' && !Number.isNaN(Date.parse(item.planAcceptedAt)) ? item.planAcceptedAt : null,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });

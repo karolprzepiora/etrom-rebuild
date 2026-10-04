@@ -816,6 +816,19 @@ async function main() {
     await sleep(350);
     const estAfter = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
     check('klik w godziny na pasku pozwala je zmienić (zapisuje szacunek zadania)', estAfter >= 7 && estAfter !== estBefore);
+    const prioFirst = await evaluate('const c = document.querySelector(".pb-prio__c"); return c ? c.getAttribute("data-fk") : "";');
+    if (prioFirst) {
+      const orderBefore = await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();');
+      await evaluate('document.querySelector(".pb-prio__c").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); return true;');
+      await sleep(350);
+      const orderAfter = await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();');
+      check('strzałka → na chipie priorytetu przesuwa projekt o jedno miejsce niżej i zapisuje kolejność',
+        orderBefore !== orderAfter && orderAfter.split(',')[1] === orderBefore.split(',')[0] && (await state('s.workspace.projects.filter(p => p.priority > 0).length')) >= 2);
+      await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
+      await sleep(300);
+      check('„Cofnij” przywraca poprzednie priorytety',
+        (await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();')) === orderBefore);
+    }
     check('etykieta paska ma pełną nazwę zadania i godziny (przepracowano / zaplanowano), a menu ma pozycję „Plan”',
       await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-tn__meter") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
     const projectOptions = await evaluate('const s = document.getElementById("pb-project"); return s ? s.options.length : 0;');
