@@ -389,21 +389,21 @@ test('dueItems: zadania, odpowiedzi na pisma i termin umowy w jednym zestawieniu
     task({ id: 'c', name: 'Gotowe', status: 'done', deadline: '2026-10-03T12:00' })
   ])];
   const p = project({ deadline: '2026-10-20', stages });
-  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'Zapytanie', replyDue: '2026-10-05', registeredDate: '2026-09-30' }];
+  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'Zapytanie', needsAction: true, registeredDate: '2026-09-30' }];
   const items = Insight.dueItems([p], mail, NOW, 60);
-  assert.deepEqual(items.map((i) => i.kind + ':' + i.days), ['task:-3', 'mail:3', 'task:7', 'project:18']);
+  assert.deepEqual(items.map((i) => i.kind + ':' + i.days), ['task:-3', 'task:7', 'project:18']);
   assert.equal(items[0].overdue, true);
-  assert.equal(Insight.dueItems([p], mail, NOW, 5).length, 2);
+  assert.equal(Insight.dueItems([p], mail, NOW, 5).length, 1);
   assert.equal(Insight.dueItems([project({ status: 'done' })], [], NOW, 60).length, 0);
 });
 
-test('hasOverdue: termin umowy, zadanie albo pismo po terminie', () => {
+test('hasOverdue: termin umowy albo zadanie po terminie; pismo nigdy', () => {
   assert.equal(Insight.hasOverdue(project(), NOW, []), false);
   assert.equal(Insight.hasOverdue(project({ deadline: '2026-09-26' }), NOW, []), true);
   const late = project({ stages: [stage('preparation', 'working', 40, '', [task({ deadline: '2026-09-29T12:00' })])] });
   assert.equal(Insight.hasOverdue(late, NOW, []), true);
-  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'X', replyDue: '2026-09-30', registeredDate: '2026-09-20' }];
-  assert.equal(Insight.hasOverdue(project(), NOW, mail), true);
+  const mail = [{ id: 'm1', projectId: 1, direction: 'in', subject: 'X', needsAction: true, registeredDate: '2026-09-20' }];
+  assert.equal(Insight.hasOverdue(project(), NOW, mail), false);
   assert.equal(Insight.hasOverdue(project({ status: 'done', deadline: '2026-09-26' }), NOW, mail), false);
 });
 

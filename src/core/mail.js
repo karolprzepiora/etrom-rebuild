@@ -81,7 +81,6 @@
     var counterparty = text(data.counterparty);
     var registeredDate = text(data.registeredDate);
     var letterDate = text(data.letterDate);
-    var replyDue = text(data.replyDue);
     var replyTo = text(data.replyTo);
 
     if (!Object.prototype.hasOwnProperty.call(DIRECTIONS, direction)) errors.direction = 'Wybierz kierunek: przychodzące albo wychodzące.';
@@ -92,8 +91,6 @@
     else if (counterparty.length > LIMITS.counterparty) errors.counterparty = 'Najwyżej ' + LIMITS.counterparty + ' znaków.';
     if (!isDate(registeredDate)) errors.registeredDate = direction === 'out' ? 'Podaj datę wysłania.' : 'Podaj datę wpływu.';
     if (letterDate && !isDate(letterDate)) errors.letterDate = 'Użyj poprawnej daty.';
-    if (replyDue && !isDate(replyDue)) errors.replyDue = 'Użyj poprawnej daty.';
-    if (isDate(registeredDate) && isDate(replyDue) && replyDue < registeredDate) errors.replyDue = 'Termin nie może być wcześniejszy niż data pisma w dzienniku.';
     if (text(data.number).length > LIMITS.number) errors.number = 'Najwyżej ' + LIMITS.number + ' znaków.';
     if (text(data.summary).length > LIMITS.summary) errors.summary = 'Najwyżej ' + LIMITS.summary + ' znaków.';
     if (replyTo) {
@@ -107,9 +104,10 @@
       errors: errors,
       value: {
         direction: direction, kind: kind, subject: subject, counterparty: counterparty,
-        registeredDate: registeredDate, letterDate: letterDate, replyDue: replyDue, replyTo: replyTo,
+        registeredDate: registeredDate, letterDate: letterDate, replyTo: replyTo,
         number: text(data.number), summary: text(data.summary), where: text(data.where).slice(0, LIMITS.where),
-        noReply: !!data.noReply
+        // Dziennik jest zwykły; pismo trafia do „Wymaga reakcji” tylko, gdy sam je tak oznaczysz.
+        needsAction: direction === 'in' && data.needsAction === true
       }
     };
   }
@@ -161,15 +159,10 @@
    *  - 'waiting' / 'overdue': termin przed nami / minął (days: ujemne po terminie).
    */
   function replyState(entry, list, now) {
-    if (!entry || !entry.replyDue || entry.noReply) return { state: 'none', due: '', days: null };
+    if (!entry || !entry.needsAction) return { state: 'none', due: '', days: null };
     var answered = (list || []).some(function (e) { return e.replyTo === entry.id; });
-    if (answered) return { state: 'answered', due: entry.replyDue, days: null };
-    var p = entry.replyDue.split('-').map(Number);
-    var due = new Date(p[0], p[1] - 1, p[2]);
-    var ref = now instanceof Date ? now : new Date();
-    var today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
-    var days = Math.round((due - today) / 86400000);
-    return { state: days < 0 ? 'overdue' : 'waiting', due: entry.replyDue, days: days };
+    if (answered) return { state: 'answered', due: '', days: null };
+    return { state: 'waiting', due: '', days: null };
   }
 
   /** Pisma czekające na odpowiedź w projekcie, najpilniejsze pierwsze. */
@@ -178,7 +171,7 @@
       .filter(function (e) { return e.projectId === projectId; })
       .map(function (e) { return { entry: e, reply: replyState(e, list, now) }; })
       .filter(function (x) { return x.reply.state === 'waiting' || x.reply.state === 'overdue'; })
-      .sort(function (a, b) { return a.reply.days - b.reply.days; });
+      .sort(function (a, b) { return a.entry.registeredDate < b.entry.registeredDate ? -1 : (a.entry.registeredDate > b.entry.registeredDate ? 1 : 0); });
   }
 
   function forProject(list, projectId) {
@@ -265,26 +258,11 @@
   function handling(linked) {
     var rows = linked || [];
     if (!rows.length) return 'new';
-    return rows.some(function (r) { return r.task.status !== 'done'; }) ? 'taken' : 'finished';
-  }
-
-  // Podpowiedź terminu odpowiedzi (dni od daty wpływu) wg rodzaju pisma przychodzącego.
-  // null — pismo zwykle nie wymaga odpowiedzi.
-  var REPLY_DAYS = { decision: 14, ruling: 7, summons: 14, notice: null, opinion: 14, application: 30, inquiry: 14, reply: null, contract: null, other: null };
-
-  /** Podpowiedziany termin odpowiedzi (RRRR-MM-DD) albo '' gdy rodzaj zwykle nie wymaga odpowiedzi. */
-  function suggestReplyDue(kind, registeredDate) {
-    var days = Object.prototype.hasOwnProperty.call(REPLY_DAYS, kind) ? REPLY_DAYS[kind] : null;
-    if (days === null || !isDate(registeredDate)) return '';
-    var p = registeredDate.split('-').map(Number);
-    var d = new Date(p[0], p[1] - 1, p[2] + days);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return 'taken';
   }
 
   var api = {
     handling: handling,
-    suggestReplyDue: suggestReplyDue,
-    REPLY_DAYS: REPLY_DAYS,
     linkedTasks: linkedTasks,
     DIRECTIONS: DIRECTIONS,
     KINDS: KINDS,

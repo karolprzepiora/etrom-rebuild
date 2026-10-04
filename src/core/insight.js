@@ -518,9 +518,6 @@
         if (entry.task.status === 'done' || !entry.task.deadline) return;
         push('task', entry.task.deadline, project, entry.task.name, { stage: entry.stage, task: entry.task });
       });
-      Mail.pending(mail || [], project.id, reference).forEach(function (x) {
-        push('mail', x.entry.replyDue, project, 'Odpowiedź: ' + (x.entry.subject || 'pismo'), { entry: x.entry });
-      });
     });
     out.sort(function (a, b) { return a.days - b.days || (a.kind < b.kind ? -1 : 1); });
     return out;

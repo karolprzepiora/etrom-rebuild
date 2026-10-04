@@ -16,7 +16,7 @@
   var ICONS = { approve: 'checkCircle', returned: 'alert', mail: 'mail', project: 'alertCircle' };
 
   function dateOf(item) {
-    if (item.kind === 'mail') return item.entry.replyDue;
+    if (item.kind === 'mail') return '';
     if (item.task) return item.task.deadline;
     return '';
   }
@@ -35,9 +35,6 @@
       ];
     }
     if (item.kind === 'mail') {
-      if (item.handling === 'finished') {
-        return [UI.button({ label: 'Zarejestruj odpowiedź', icon: 'reply', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-reply-' + item.entry.id }, onClick: function () { actions.replyMail(item.entry.id); } })];
-      }
       return [
         UI.button({ label: 'Utwórz zadanie', icon: 'plus', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-mailtask-' + item.entry.id }, onClick: function () { actions.mailTask(item.entry.id); } }),
         UI.button({ label: 'Napisz odpowiedź', icon: 'reply', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-reply-' + item.entry.id }, onClick: function () { actions.replyMail(item.entry.id); } })

@@ -1,12 +1,9 @@
 /* ETROM — biblioteka typowych zadań wg etapów. Zadania są duże (kilka na etap), bez godzin i wag:
-   godziny wynikają z puli etapu, wagi ustawi się później. Wpisy z `reserve` to zadania z rezerwy
-   postępowania („Uzupełnienia na wezwanie”). Źródło: raporty czasu biura (docs/BIBLIOTEKA_ZADAN_PROPOZYCJA.md). */
+   godziny wynikają z puli etapu, wagi ustawi się później. Źródło: raporty czasu biura (docs/BIBLIOTEKA_ZADAN_PROPOZYCJA.md). */
 (function (root) {
   'use strict';
 
-  var UPD = { name: 'Uzupełnienia na wezwanie', reserve: true };
-
-  // Dokumentacja i postępowanie to osobne etapy: wnioski i uzupełnienia należą do etapów-postępowań.
+  // Dokumentacja i postępowanie to osobne etapy: wnioski należą do etapów-postępowań; uzupełnienia na wezwanie powstają z pism, gdy się pojawią.
   var TASKS = {
     preparation: [{ name: 'Dane wyjściowe i warunki techniczne' }],
     survey: [{ name: 'Mapa do celów projektowych (MDCP)' }, { name: 'Prawa do gruntów i zgody' }],
@@ -14,14 +11,14 @@
     assessment: [{ name: 'Ekspertyza techniczna' }],
     concept: [{ name: 'Koncepcja techniczna' }],
     'environment-docs': [{ name: 'Karta Informacyjna Przedsięwzięcia' }],
-    'environment-process': [{ name: 'Wniosek o decyzję środowiskową' }, UPD],
+    'environment-process': [{ name: 'Wniosek o decyzję środowiskową' }],
     'location-docs': [{ name: 'Opracowanie do wniosku lokalizacyjnego' }],
-    'location-process': [{ name: 'Wniosek o decyzję lokalizacyjną' }, UPD],
+    'location-process': [{ name: 'Wniosek o decyzję lokalizacyjną' }],
     'water-docs': [{ name: 'Operat wodnoprawny' }],
-    'water-process': [{ name: 'Wniosek o pozwolenie wodnoprawne' }, UPD],
+    'water-process': [{ name: 'Wniosek o pozwolenie wodnoprawne' }],
     land: [{ name: 'Uzgodnienia i zgody terenowe' }],
     'building-docs': [{ name: 'Projekt zagospodarowania terenu' }, { name: 'Projekt architektoniczno-budowlany' }],
-    'building-process': [{ name: 'Wniosek o pozwolenie na budowę' }, UPD],
+    'building-process': [{ name: 'Wniosek o pozwolenie na budowę' }],
     technical: [{ name: 'Projekt techniczny i wykonawczy' }],
     estimates: [{ name: 'Przedmiary, kosztorysy i STWiORB' }],
     handover: [{ name: 'Przekazanie i odbiór dokumentacji' }]

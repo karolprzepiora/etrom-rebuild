@@ -11,24 +11,9 @@
   var Mail = E.Mail;
   var Menu = E.Menu;
 
-  var STATE_LABEL = { waiting: 'Czeka na odpowiedź', overdue: 'Po terminie', answered: 'Odpowiedziano' };
-  var STATE_TONE = { waiting: 'info', overdue: 'danger', answered: 'success' };
-  // Kto trzyma sprawę, gdy pismo czeka na odpowiedź (Mail.handling).
-  var HANDLING_LABEL = { new: 'Nikt się nie zajął', taken: 'W realizacji', finished: 'Wpisz odpowiedź' };
-
+  
   function options(map, order) {
     return (order || Object.keys(map)).map(function (key) { return { value: key, label: map[key] }; });
-  }
-
-  function replyBlock(entry, list, now) {
-    var r = Mail.replyState(entry, list, now);
-    if (r.state === 'none') return D.el('span', { class: 'due due--none', text: entry.noReply ? 'Bez odpowiedzi' : '—' });
-    var children = [
-      D.el('span', { class: 'tdue__date t-num', text: F.date(r.due, { year: 'always' }) })
-    ];
-    if (r.state === 'answered') children.push(D.el('span', { class: 'countdown countdown--done', text: 'załatwione' }));
-    else children.push(UI.countdown(r.due, { now: now }));
-    return D.el('span', { class: 'tdue' + (r.state === 'answered' ? ' tdue--done' : ''), attrs: { 'data-tooltip': 'Termin odpowiedzi: ' + F.dateLong(r.due) } }, children);
   }
 
   function rowMenu(entry, project, actions) {
@@ -40,6 +25,7 @@
       var items = [
         { label: 'Edytuj wpis', icon: 'edit', onSelect: function () { actions.editMail(entry.id); } }
       ];
+      if (entry.direction === 'in' && !Mail.linkedTasks(project, entry.id, [], new Date()).length) items.push({ label: entry.needsAction ? 'Zdejmij z „Wymaga reakcji”' : 'Oznacz jako wymaga reakcji', icon: 'flag', onSelect: function () { actions.toggleMailAction(entry.id); } });
       if (entry.direction === 'in') items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
       if (entry.direction === 'in') items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
       items.push({ type: 'separator' });
@@ -50,15 +36,14 @@
   }
 
   /** Zadania powstałe z pisma (z czasem pracy) albo przycisk, który je zakłada. */
-  function taskLine(entry, project, ctx, now, r) {
+  function taskLine(entry, project, ctx, now) {
     var linked = Mail.linkedTasks(project, entry.id, ctx.state.workspace.entries, now);
     if (!linked.length) {
-      if (r.state === 'answered' || r.state === 'none' || entry.direction !== 'in') return null;
+      if (entry.direction !== 'in') return null;
       return D.el('span', { class: 'mrow2__tasks' }, [
-        UI.button({ label: 'Utwórz zadanie z pisma', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
+        UI.button({ label: 'Zrób z tego zadanie', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
       ]);
     }
-    var finished = Mail.handling(linked) === 'finished' && (r.state === 'waiting' || r.state === 'overdue');
     return D.el('span', { class: 'mrow2__tasks' }, linked.map(function (row) {
       return D.el('button', {
         class: 'mrow2__task', attrs: { type: 'button', 'data-fk': 'mail-linked-' + row.task.id, 'data-tooltip': 'Otwórz zadanie' },
@@ -68,26 +53,13 @@
         D.el('span', { class: 'truncate', text: row.task.name }),
         D.el('span', { class: 'mrow2__task-meta t-num', text: E.Tasks.TASK_STATUS[row.task.status] + ' · ' + F.hours(row.hours) })
       ]);
-    }).concat(finished ? [
-      UI.button({ label: 'Zarejestruj odpowiedź', icon: 'reply', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'mail-reply-' + entry.id }, onClick: function () { ctx.actions.replyMail(entry.id); } })
-    ] : []).concat([
-      UI.button({ label: 'Kolejne zadanie', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mail-task-' + entry.id }, onClick: function () { ctx.actions.mailTask(entry.id); } })
-    ]));
-  }
-
-  function stateBadge(entry, project, ctx, now, r) {
-    if (r.state === 'none') return D.el('span');
-    if (r.state === 'answered' || entry.direction !== 'in') return UI.badge(STATE_LABEL[r.state], STATE_TONE[r.state]);
-    var h = Mail.handling(Mail.linkedTasks(project, entry.id, ctx.state.workspace.entries, now));
-    var label = r.state === 'overdue' && h === 'new' ? STATE_LABEL.overdue : HANDLING_LABEL[h];
-    return UI.badge(label, r.state === 'overdue' && h !== 'taken' ? 'danger' : (h === 'taken' ? 'neutral' : STATE_TONE[r.state]));
+    }));
   }
 
   function mailRow(entry, list, project, ctx, now) {
-    var r = Mail.replyState(entry, list, now);
     var incoming = entry.direction === 'in';
     var parent = entry.replyTo ? list.filter(function (e) { return e.id === entry.replyTo; })[0] : null;
-    return D.el('div', { class: 'mrow2 mrow2--' + entry.direction + (r.state === 'overdue' ? ' is-overdue' : ''), attrs: { 'data-mail': entry.id } }, [
+    return D.el('div', { class: 'mrow2 mrow2--' + entry.direction, attrs: { 'data-mail': entry.id } }, [
       D.el('span', { class: 'mrow2__dir', attrs: { 'data-tooltip': incoming ? 'Pismo przychodzące' : 'Pismo wychodzące' } }, [
         E.Icons.icon(incoming ? 'arrowDown' : 'arrowUp', 14)
       ]),
@@ -102,10 +74,9 @@
         ])
       ]),
       UI.badge(Mail.KINDS[entry.kind], 'neutral'),
-      replyBlock(entry, list, now),
-      stateBadge(entry, project, ctx, now, r),
+      entry.needsAction ? UI.badge('Wymaga reakcji', 'warning', { icon: 'flag' }) : D.el('span'),
       rowMenu(entry, project, ctx.actions),
-      taskLine(entry, project, ctx, now, r)
+      taskLine(entry, project, ctx, now)
     ]);
   }
 
@@ -114,13 +85,12 @@
     var all = Mail.forProject(ctx.state.workspace.mail || [], project.id);
     var view = ctx.state.mailView || { direction: 'all', waiting: false, query: '' };
     var pending = Mail.pending(all, project.id, now);
-    var overdue = pending.filter(function (x) { return x.reply.state === 'overdue'; }).length;
 
     var toolbar = D.el('div', { class: 'section__head' }, [
       D.el('div', { class: 'section__titles' }, [
         D.el('h2', { class: 'section__title', text: 'Korespondencja' }),
         D.el('span', { class: 'section__meta', text: all.length
-          ? F.count(all.length, 'pismo', 'pisma', 'pism') + (pending.length ? ' · czeka na odpowiedź: ' + pending.length + (overdue ? ' (po terminie: ' + overdue + ')' : '') : '')
+          ? F.count(all.length, 'pismo', 'pisma', 'pism') + (pending.length ? ' · wymaga reakcji: ' + pending.length : '')
           : 'dziennik pusty' })
       ]),
       D.el('div', { class: 'section__tools' }, [
@@ -133,7 +103,7 @@
       return D.el('section', { class: 'section' }, [toolbar, D.el('div', { class: 'card' }, [UI.emptyState({
         icon: 'mail',
         title: 'Dziennik korespondencji jest pusty',
-        text: 'Zapisuj pisma wpływające i wysyłane w tym projekcie: numer w dzienniku nadaje się sam, a przy piśmie z terminem odpowiedzi program przypilnuje, żeby nie umknęło.',
+        text: 'Zapisuj pisma wpływające i wysyłane w tym projekcie: numer w dzienniku nadaje się sam. Gdy pismo wymaga działania, zrób z niego zadanie.',
         actions: [UI.button({ label: 'Zapisz pierwsze pismo', icon: 'plus', variant: 'secondary', onClick: function () { ctx.actions.addMail(project.id, 'in'); } })]
       })])]);
     }
@@ -151,7 +121,7 @@
           { value: 'all', label: 'Wszystkie' },
           { value: 'in', label: 'Przychodzące' },
           { value: 'out', label: 'Wychodzące' },
-          { value: 'waiting', label: 'Czeka na odpowiedź' + (pending.length ? ' (' + pending.length + ')' : '') }
+          { value: 'waiting', label: 'Wymaga reakcji' + (pending.length ? ' (' + pending.length + ')' : '') }
         ],
         onChange: function (value) {
           ctx.actions.setMailView(value === 'waiting' ? { waiting: true, direction: 'all' } : { waiting: false, direction: value });
@@ -183,13 +153,9 @@
     var number = UI.input({ id: 'ml-number', value: d.number, error: er.number, maxlength: 120, placeholder: 'np. KR.ZZ.2.4210.12.2026' });
     var registered = UI.input({ id: 'ml-registered', type: 'date', value: d.registeredDate, error: er.registeredDate });
     var letterDate = UI.input({ id: 'ml-letter', type: 'date', value: d.letterDate, error: er.letterDate });
-    var replyDue = UI.input({ id: 'ml-due', type: 'date', value: d.replyDue, error: er.replyDue });
     var summary = UI.textarea({ id: 'ml-summary', rows: 4, value: d.summary, placeholder: 'O co chodzi, czego pismo wymaga (nieobowiązkowe)', attrs: { maxlength: '2000' } });
     var where = UI.input({ id: 'ml-where', value: d.where, maxlength: 300, placeholder: 'np. segregator 3 · folder na dysku' });
-    // Pismo przychodzące: wprost „czy wymaga odpowiedzi”. „Tak” wymaga terminu (podpowiadamy go z rodzaju pisma),
-    // dzięki czemu pismo nie zginie przez zapomniane pole.
-    var needs = d.needsReply || (d.noReply ? 'no' : (d.replyDue ? 'yes' : 'no'));
-    var needsSel = UI.select({ id: 'ml-needs', value: needs, options: [{ value: 'yes', label: 'Tak — trzeba odpowiedzieć' }, { value: 'no', label: 'Nie — tylko do wiadomości' }] });
+    var needs = incoming ? UI.checkbox({ id: 'ml-needs', checked: !!d.needsAction, label: 'Wymaga reakcji', hint: 'Zwykle zostaw odznaczone. Zaznaczone pismo trafia do „Wymaga reakcji”, dopóki nie zrobisz z niego zadania.' }) : null;
     var replyTo = UI.select({
       id: 'ml-replyto', value: d.replyTo || '',
       options: [{ value: '', label: '— to nie jest odpowiedź —' }].concat(spec.replies || [])
@@ -199,33 +165,13 @@
     var fresh = function () {
       return {
         id: d.id, direction: direction.value, kind: kind.value, counterparty: counterparty.value, subject: subject.value,
-        number: number.value, registeredDate: registered.value, letterDate: letterDate.value, replyDue: replyDue.value,
+        number: number.value, registeredDate: registered.value, letterDate: letterDate.value,
         summary: summary.value, where: where.value,
-        needsReply: incoming ? needsSel.value : '',
-        noReply: incoming && needsSel.value === 'no',
+        needsAction: incoming && needs ? needs.querySelector('input').checked : false,
         replyTo: replyTo.value
       };
     };
     direction.addEventListener('change', function () { handlers.onRedraft(fresh()); });
-    // Zmiana rodzaju lub daty wpływu przelicza podpowiedziany termin, o ile użytkownik go sam nie zmienił.
-    var retune = function () {
-      var next = fresh();
-      if (incoming && (next.replyDue === '' || next.replyDue === Mail.suggestReplyDue(d.kind || 'other', d.registeredDate))) {
-        next.replyDue = Mail.suggestReplyDue(next.kind, next.registeredDate);
-        next.needsReply = next.replyDue ? 'yes' : 'no';
-        next.noReply = !next.replyDue;
-      }
-      handlers.onRedraft(next);
-    };
-    kind.addEventListener('change', retune);
-    registered.addEventListener('change', function () { if (incoming) retune(); });
-    needsSel.addEventListener('change', function () {
-      var next = fresh();
-      if (next.needsReply === 'yes' && !next.replyDue) next.replyDue = Mail.suggestReplyDue(next.kind, next.registeredDate) || Mail.suggestReplyDue('summons', next.registeredDate);
-      if (next.needsReply === 'no') next.replyDue = '';
-      handlers.onRedraft(next);
-    });
-
     return E.Dialog.drawerForm({
       id: 'mail-form',
       submitLabel: spec.mode === 'edit' ? 'Zapisz zmiany' : 'Wpisz do dziennika',
@@ -239,8 +185,7 @@
         UI.field({ id: 'ml-number', label: 'Znak pisma', optional: true, control: number, error: er.number, hint: 'Numer sprawy nadany przez urząd albo przez nas.' }),
         UI.field({ id: 'ml-registered', label: incoming ? 'Data wpływu' : 'Data wysłania', required: true, control: registered, error: er.registeredDate }),
         UI.field({ id: 'ml-letter', label: 'Data pisma', optional: true, control: letterDate, error: er.letterDate, hint: 'Jeśli różni się od daty w dzienniku.' }),
-        incoming ? UI.field({ id: 'ml-needs', label: 'Wymaga odpowiedzi?', required: true, control: needsSel, hint: 'Pismo „Tak” trafia do „Wymaga reakcji” u lidera, dopóki ktoś nie zajmie się nim (zadanie) albo nie wpisze odpowiedzi.' }) : null,
-        (!incoming || needsSel.value === 'yes') ? UI.field({ id: 'ml-due', label: incoming ? 'Termin odpowiedzi' : 'Oczekujemy odpowiedzi do', required: incoming, optional: !incoming, control: replyDue, error: er.replyDue, hint: incoming ? 'Podpowiedź z rodzaju pisma (np. wezwanie 14 dni od wpływu) — popraw wg treści pisma.' : 'Nieobowiązkowe. Do kiedy oczekujemy odpowiedzi na nasze pismo.' }) : null,
+        needs,
         (spec.replies && spec.replies.length) ? UI.field({ id: 'ml-replyto', label: incoming ? 'To jest odpowiedź na nasze pismo' : 'To jest odpowiedź na pismo', optional: true, control: replyTo, error: er.replyTo }) : null,
         UI.field({ id: 'ml-summary', label: 'Streszczenie', optional: true, control: summary, error: er.summary }),
         UI.field({ id: 'ml-where', label: 'Gdzie jest oryginał', optional: true, control: where, hint: 'Segregator, folder na dysku. Załączniki w programie dojdą później.' })

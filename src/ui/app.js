@@ -672,6 +672,8 @@
     } else {
       var created = Tasks.createTask(values, stage.tasks || [], allowed);
       pendingFlash = { projectId: form.projectId, taskId: created.id };
+      // Pismo przerobione na zadanie przestaje wymagać reakcji: sprawę prowadzi zadanie.
+      if (created.mailId) setMail(function (current) { return current.map(function (e) { return e.id === created.mailId ? Object.assign({}, e, { needsAction: false }) : e; }); });
       mapStage(form.projectId, form.stageId, function (current) {
         return Object.assign({}, current, { tasks: (current.tasks || []).concat([created]) });
       });
@@ -716,10 +718,6 @@
 
   function openAddMail(projectId, direction, preset) {
     var draft = Object.assign({ direction: direction || 'in', kind: direction === 'out' ? 'reply' : 'other', registeredDate: Mail.todayKey(new Date()) }, preset || {});
-    if (draft.direction === 'in' && draft.replyDue === undefined) {
-      draft.replyDue = Mail.suggestReplyDue(draft.kind, draft.registeredDate);
-      draft.needsReply = draft.replyDue ? 'yes' : 'no';
-    }
     store.set({ mailForm: { mode: 'new', projectId: projectId, draft: draft, errors: {} } });
   }
 
@@ -753,10 +751,6 @@
     if (!form) return;
     var list = mailList();
     var meta = { personId: currentMe() || '', now: new Date() };
-    if (values.direction === 'in' && values.needsReply === 'yes' && !values.replyDue) {
-      store.set({ mailForm: Object.assign({}, form, { draft: values, errors: { replyDue: 'Podaj termin odpowiedzi albo wybierz „Nie — tylko do wiadomości”.' } }) });
-      return;
-    }
     var result = values.id
       ? Mail.update(list, values.id, values, meta)
       : Mail.create(list, form.projectId, values, meta);
@@ -779,6 +773,10 @@
     } else {
       Toast.show({ message: message, tone: 'success', timeout: 3500 });
     }
+  }
+
+  function toggleMailAction(id) {
+    setMail(function (current) { return current.map(function (e) { return e.id === id ? Object.assign({}, e, { needsAction: !e.needsAction }) : e; }); });
   }
 
   function deleteMail(id) {
@@ -817,7 +815,7 @@
       projectId: project.id, stageId: stage.id, fromMail: { id: entry.id, regNo: entry.regNo, subject: entry.subject, counterparty: entry.counterparty },
       draft: {
         name: verb + entry.regNo + ': ' + entry.subject,
-        deadline: entry.replyDue && !entry.noReply ? entry.replyDue + 'T15:00' : '', workload: 'medium', important: !!entry.replyDue && entry.kind === 'summons',
+        deadline: '', workload: 'medium', important: entry.kind === 'summons',
         description: (entry.direction === 'in' ? 'Pismo od: ' : 'Pismo do: ') + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.',
         assignees: assignees, mailId: entry.id, stageId: stage.id
       },
@@ -2038,28 +2036,28 @@
     };
     var demoMail = {
       '2601': [
-        { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), replyDue: iso(5) },
-        { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), noReply: true },
-        { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14), replyDue: iso(-2) }
+        { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), needsAction: true },
+        { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), needsAction: true },
+        { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14) }
       ],
       '2602': [
-        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30), noReply: true },
-        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), replyDue: iso(11) },
-        { direction: 'out', kind: 'application', counterparty: 'Starostwo Powiatowe', subject: 'Wniosek o pozwolenie wodnoprawne — odcinek III', registeredDate: iso(-12), replyDue: iso(1) }
+        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30) },
+        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3) },
+        { direction: 'out', kind: 'application', counterparty: 'Starostwo Powiatowe', subject: 'Wniosek o pozwolenie wodnoprawne — odcinek III', registeredDate: iso(-12) }
       ],
       '2604': [
-        { direction: 'in', kind: 'opinion', counterparty: 'Regionalna Dyrekcja Ochrony Środowiska', subject: 'Opinia do karty informacyjnej przedsięwzięcia', registeredDate: iso(-6), replyDue: iso(8) },
-        { direction: 'out', kind: 'inquiry', counterparty: 'Spółka Wodna Rudnik', subject: 'Prośba o dane eksploatacyjne pomp', registeredDate: iso(-15), noReply: true }
+        { direction: 'in', kind: 'opinion', counterparty: 'Regionalna Dyrekcja Ochrony Środowiska', subject: 'Opinia do karty informacyjnej przedsięwzięcia', registeredDate: iso(-6) },
+        { direction: 'out', kind: 'inquiry', counterparty: 'Spółka Wodna Rudnik', subject: 'Prośba o dane eksploatacyjne pomp', registeredDate: iso(-15) }
       ],
       '2605': [
-        { direction: 'in', kind: 'decision', counterparty: 'Urząd Miasta', number: 'GK.6740.4.2026', subject: 'Decyzja zatwierdzająca dokumentację', registeredDate: iso(-45), noReply: true }
+        { direction: 'in', kind: 'decision', counterparty: 'Urząd Miasta', number: 'GK.6740.4.2026', subject: 'Decyzja zatwierdzająca dokumentację', registeredDate: iso(-45) }
       ],
       '2606': [
-        { direction: 'out', kind: 'application', counterparty: 'Wody Polskie RZGW', subject: 'Wniosek o uzgodnienie operatu wodnoprawnego', registeredDate: iso(-4), replyDue: iso(24) },
-        { direction: 'in', kind: 'summons', counterparty: 'Gmina Wąwolnica', subject: 'Wezwanie do uzupełnienia danych o osadach', registeredDate: iso(-2), replyDue: iso(4) }
+        { direction: 'out', kind: 'application', counterparty: 'Wody Polskie RZGW', subject: 'Wniosek o uzgodnienie operatu wodnoprawnego', registeredDate: iso(-4) },
+        { direction: 'in', kind: 'summons', counterparty: 'Gmina Wąwolnica', subject: 'Wezwanie do uzupełnienia danych o osadach', registeredDate: iso(-2), needsAction: true }
       ],
       '2607': [
-        { direction: 'in', kind: 'inquiry', counterparty: 'Zarząd Dróg Powiatowych', subject: 'Zapytanie o przepustowość istniejącego przepustu', registeredDate: iso(-5), replyDue: iso(9) }
+        { direction: 'in', kind: 'inquiry', counterparty: 'Zarząd Dróg Powiatowych', subject: 'Zapytanie o przepustowość istniejącego przepustu', registeredDate: iso(-5) }
       ]
     };
     updateWorkspace(function (workspace) {
@@ -2546,6 +2544,7 @@
     editMail: openEditMail,
     replyMail: replyToMail,
     deleteMail: deleteMail,
+    toggleMailAction: toggleMailAction,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,

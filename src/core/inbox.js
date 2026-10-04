@@ -74,11 +74,8 @@
           var linked = Mail.linkedTasks(project, x.entry.id, entries, ref);
           var state = Mail.handling(linked);
           if (state === 'taken') return;
-          var late = x.reply.state === 'overdue';
-          var why = state === 'finished'
-            ? 'Zadanie z tego pisma jest zakończone, ale nie zarejestrowano odpowiedzi. Wpisz wysłane pismo do dziennika, a pismo zniknie stąd.'
-            : (late ? 'Termin odpowiedzi na to pismo minął, a nikt się nim nie zajął. ' : 'Nowe pismo wymaga odpowiedzi i nikt się nim jeszcze nie zajął. ') + 'Jesteś liderem lub koordynatorem projektu. Utwórz zadanie (żeby zapisywać czas i przydzielić osobę) albo od razu napisz odpowiedź.';
-          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: state, project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: linked, why: why, days: x.reply.days, urgent: late });
+          var why = 'Pismo oznaczono jako wymagające reakcji, a nikt się nim nie zajął. Zrób z niego zadanie (żeby przydzielić osobę i zapisywać czas) albo zdejmij oznaczenie w dzienniku korespondencji.';
+          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: state, project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: linked, why: why, days: null, urgent: false });
         });
         if (fns.indexOf('leader') >= 0 && Insight.healthOf(project, ref, mail).level === 'alarm') {
           all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.healthOf(project, ref, mail).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });

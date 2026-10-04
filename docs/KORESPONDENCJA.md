@@ -11,7 +11,7 @@ dziennika ani do terminów bez jednego kliknięcia „Zapisz”.
 `{ id, projectId, direction: 'in'|'out', number (znak pisma), letterDate, receivedOrSentDate,
    counterparty (nadawca/adresat: organ, instytucja), subject, summary (2–3 zdania),
    kind (decyzja, wezwanie, opinia, uzgodnienie, zawiadomienie, odpowiedź…),
-   replyTo (id wpisu, na który odpowiada) , replyDue (termin odpowiedzi),
+   replyTo (id wpisu, na który odpowiada) , needsAction (oznaczenie „Wymaga reakcji”, tylko przychodzące),
    deadlines: [{ date, what }], proceedingId (powiązane postępowanie), taskIds,
    files: [{ name, hash, pages }], extracted: { raw text, confidence per pole },
    status: 'draft'|'confirmed', createdBy, createdAt }`
@@ -70,7 +70,7 @@ Numer własny pism wychodzących: schemat konfigurowalny w biurze (np.
 
 ## Stan wdrożenia (faza 1)
 
-- Wpis: `id (m-N)`, `projectId`, `direction (in|out)`, `regNo`, `kind`, `subject`, `counterparty`, `number` (znak), `registeredDate`, `letterDate`, `replyDue`, `noReply`, `replyTo`, `summary`, `where`, `createdBy/At`, `updatedAt`.
+- Wpis: `id (m-N)`, `projectId`, `direction (in|out)`, `regNo`, `kind`, `subject`, `counterparty`, `number` (znak), `registeredDate`, `letterDate`, `needsAction`, `replyTo`, `summary`, `where`, `createdBy/At`, `updatedAt`.
 - Numer w dzienniku nadaje się sam, osobno dla projektu, kierunku i roku; nie zmienia się przy edycji (zmiana kierunku albo roku nadaje nowy; kierunku nie da się zmienić, gdy są już odpowiedzi).
 - Pismo oczekuje na odpowiedź, dopóki nie powstanie pismo w przeciwnym kierunku wskazujące je w `replyTo`; stany: czeka / po terminie / odpowiedziano / bez odpowiedzi.
 - AI wypełni ten sam formularz: propozycja pól → człowiek zatwierdza → ten sam `Mail.create`. `where` zastąpią załączniki po wdrożeniu serwera.

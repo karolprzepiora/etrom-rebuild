@@ -4,11 +4,11 @@ const assert = require('node:assert/strict');
 const Library = require('../src/core/library.js');
 const Catalog = require('../src/core/catalog.js');
 
-test('biblioteka ma zadania dla etapów katalogu, a postępowania mają uzupełnienia z rezerwy', () => {
+test('biblioteka ma zadania dla etapów katalogu, a postępowania wnioski, bez uzupełnień', () => {
   Catalog.all.forEach((s) => assert.ok(Library.forStage(s.id).length >= 1, s.id));
   Catalog.all.filter((s) => s.kind === 'decision' && s.id.endsWith('-process')).forEach((s) => {
     const list = Library.forStage(s.id);
-    assert.equal(list.filter((x) => x.reserve).length, 1);
+    assert.ok(list.every((x) => !x.reserve && !/uzupełnienia/i.test(x.name)));
     assert.ok(list.some((x) => /^Wniosek/.test(x.name)));
   });
   assert.ok(Library.forStage('water-docs').some((t) => t.name === 'Operat wodnoprawny'));
