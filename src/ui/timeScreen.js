@@ -220,7 +220,7 @@
         return D.el('li', { class: 'pl-task' }, [
           codePill(project, t.projectId),
           D.el('button', { class: 'pl-task__name truncate', attrs: { type: 'button' }, text: t.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: t.projectId, stageId: t.stageId, taskId: t.taskId }); } } }),
-          D.el('span', { class: 'pl-task__late', text: t.overdue ? 'po terminie' : '' }),
+          D.el('span', { class: 'pl-task__late', text: t.overdue ? 'po terminie' : (t.squeezed ? 'za mało czasu' : (t.mustStartNow ? 'musi ruszyć teraz' : '')) }),
           D.el('span', { class: 'pl-task__h t-num', text: hh(t.hours) + ' h' })
         ]);
       })) : D.el('p', { class: 'pl-detail__empty', text: 'Brak zadań w tym okresie.' })

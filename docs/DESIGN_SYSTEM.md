@@ -530,3 +530,13 @@ Zasady są w Ustawieniach → „Budżet i postęp” i działają w całej apli
 - **Prognoza** godzin = budżet ÷ CPI, dopiero od minimalnego postępu (domyślnie 10%). Koszt w zł = godziny każdej osoby × jej stawka (`person.hourlyCost`, zapasowo `prefs.hourlyCost`); widoczny tylko dla zarządu.
 - **Progi**: Uwaga od +10%, Alarm od +25% prognozowanego przekroczenia budżetu (edytowalne). Alarm także przy zużyciu >100% lub czasie >100%.
 - **Plan bazowy**: przycisk „Zamroź plan bazowy” w Analizie projektu zapisuje godziny etapów i koszt wg średniej stawki zespołu (`project.baseline`). Późniejsze zmiany budżetu etapów pokazują się jako „zmiana zakresu”, a nie przekroczenie.
+
+## Planowanie budżetu w dniach (zakładka „Budżet”)
+
+Widoczna dla zarządu i lidera projektu. Jedno miejsce, trzy kroki: **1 Budżet** (całość w dniach roboczych → „Rozdziel według wag”), **2 Szkice** (zadania dopisane do etapów, bez osób i terminów), **3 Odmrożenie** (osoby, termin, dni z puli etapu).
+
+- Jednostka: dzień roboczy = „Cel dnia” z ustawień (domyślnie 8 h); pod spodem zostają godziny. Najmniejszy krok to pół dnia.
+- Waga etapu: `stage.weight`, a bez niej domyślne godziny z katalogu. Etap zablokowany (`stage.locked`) i zakończony nie zmieniają dni przy rozdziale (`Planning.distribute`).
+- Pula etapu (`Planning.pool`): budżet − rezerwa − zadania zaplanowane − szkice. Zadanie „uzupełnienie” (`task.fromReserve`) zużywa rezerwę postępowania (`stage.reserve` albo % z ustawień, domyślnie 15%).
+- Szkic (`task.draft`): bez osób i terminu; widoczny tylko dla zarządu i lidera (`visibleState` w app.js). Odmrożenie = edycja zadania z odznaczonym „Szkic”.
+- Dni zadania to `task.estimate` w godzinach; Plan zespołu (Czas → Plan) liczy z nich obłożenie i oznacza zadania „za mało czasu” oraz „musi ruszyć teraz”.

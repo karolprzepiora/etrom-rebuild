@@ -1103,8 +1103,8 @@ async function main() {
       await evaluate('return !!document.querySelector(".pd-head__id .detail__status") && !document.querySelector(".pd-state button");'));
     check('termin umowy i lider da się zmienić w miejscu',
       await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader") && !!document.querySelector(".pd-date");'));
-    check('zakładki projektu: Plan, Zadania, Korespondencja, Zespół, Czas, Aktywność',
-      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,zadania,korespondencja,zespol,czas,analiza,aktywnosc";'));
+    check('zakładki projektu: Plan, Budżet, Zadania, Korespondencja, Zespół, Czas, Aktywność',
+      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,korespondencja,zespol,czas,analiza,aktywnosc";'));
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',
@@ -1514,6 +1514,26 @@ async function main() {
     await sleep(300);
     check('plan bazowy: przycisk zamraża godziny i koszt projektu',
       await evaluate('return window.ETROM.app.store.getState().workspace.projects.some(p => p.baseline && p.baseline.hours > 0 && p.baseline.cost >= 0);'));
+
+    /* 38g. Zakładka Budżet: rozdział wg wag, szkice, wolna pula, odmrażanie i ukrycie szkiców */
+    const budgetPid = await evaluate('const s = window.ETROM.app.store.getState(); return s.workspace.projects.find(p => p.stages.some(st => st.status !== "done")).id;');
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.openProject(' + budgetPid + ', "budzet"); return true;');
+    await sleep(500);
+    check('zakładka Budżet: pole budżetu i przycisk rozdziału', await evaluate('return !!document.querySelector("#bp-total") && !!document.querySelector("[data-fk=bp-distribute]") && document.querySelectorAll(".bp-stage").length > 3;'));
+    await evaluate('const i = document.querySelector("#bp-total"); i.value = "200"; i.dispatchEvent(new Event("change")); document.querySelector("[data-fk=bp-distribute]").click(); return true;');
+    await sleep(300);
+    check('rozdział wg wag: suma etapów = budżet z odjętymi etapami zakończonymi i zablokowanymi',
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const free = p.stages.filter(s => s.status !== "done" && !s.locked); const sum = p.stages.reduce((a, s) => a + s.hours, 0); return free.every(s => s.hours % 4 === 0) && Math.abs(sum - 1600) <= 4 + p.stages.filter(s => s.status === "done").reduce((a, s) => a + s.hours, 0);'));
+    const openStage = await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); return p.stages.find(s => s.status !== "done").id;');
+    await evaluate('window.ETROM.app.actions.addDraftTask(' + budgetPid + ', ' + JSON.stringify(openStage) + ', "Szkic testowy"); window.ETROM.app.actions.fillStageHours(' + budgetPid + ', ' + JSON.stringify(openStage) + '); return true;');
+    await sleep(300);
+    check('szkic zadania: bez osób i terminu, dostaje dni z wolnej puli etapu',
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const t = p.stages.find(s => s.id === ' + JSON.stringify(openStage) + ').tasks.find(x => x.name === "Szkic testowy"); return t && t.draft === true && t.assignees.length === 0 && !t.deadline && t.estimate > 0;'));
+    await evaluate('const st = window.ETROM.app.store.getState(); const proj = st.workspace.projects.find(x => x.id === ' + budgetPid + '); const other = st.workspace.people.find(pe => !window.ETROM.Budget.canSeeHours(pe.id, proj, st.workspace.people)); window.ETROM.app.actions.setMe(other.id); window.ETROM.app.actions.openProject(' + budgetPid + ', "zadania"); return true;');
+    await sleep(400);
+    const hiddenInfo = await evaluate('const st = window.ETROM.app.store.getState(); return JSON.stringify({ me: st.prefs.me, route: st.route, hits: [...document.querySelectorAll("*")].filter(e => !e.children.length && e.offsetParent !== null && e.textContent.includes("Szkic testowy")).map(e => e.className + "|" + e.parentElement.className) });');
+    check('szkice zadań są ukryte przed osobą spoza zarządu i lidera', JSON.parse(hiddenInfo).hits.length === 0, hiddenInfo);
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
 
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));

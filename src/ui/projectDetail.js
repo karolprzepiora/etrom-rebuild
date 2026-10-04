@@ -21,6 +21,7 @@
 
   var TABS = [
     { value: 'etapy', label: 'Plan' },
+    { value: 'budzet', label: 'Budżet' },
     { value: 'zadania', label: 'Zadania' },
     { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' },
@@ -395,6 +396,7 @@
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else if (tab === 'czas') body = timeTab(project, ctx);
+    else if (tab === 'budzet' && canAnalyse) body = E.BudgetTab.budgetTab(project, ctx);
     else if (tab === 'analiza') body = E.AnalysisScreen.projectView(project, ctx.state, ctx);
     else if (tab === 'aktywnosc') body = activityTab(project, ctx);
     else body = E.StageList.stageList(project, ctx);
@@ -403,7 +405,7 @@
       label: 'Sekcje projektu',
       value: tab,
       class: 'detail__tabs',
-      items: TABS.filter(function (t) { return t.value !== 'analiza' || canAnalyse; }).map(function (t) {
+      items: TABS.filter(function (t) { return (t.value !== 'analiza' && t.value !== 'budzet') || canAnalyse; }).map(function (t) {
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });

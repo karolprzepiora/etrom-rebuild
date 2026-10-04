@@ -162,6 +162,7 @@
     var workingWeight = ruleSelect('rule-weight', 'workingWeight', [0, 10, 25, 30, 40, 50, 60, 75, 90], null, '%');
     var forecastWarn = ruleSelect('rule-warn', 'forecastWarn', [5, 10, 15, 20], null, '%');
     var forecastAlarm = ruleSelect('rule-alarm', 'forecastAlarm', [15, 20, 25, 30, 40, 50], null, '%');
+    var reservePct = ruleSelect('rule-reserve', 'reservePct', [0, 10, 15, 20, 25, 30], null, '%');
     var minProgress = ruleSelect('rule-min', 'minProgress', [0, 5, 10, 15, 20, 30], null, '%');
     var endOptions = [];
     for (var m = 15 * 60; m <= 21 * 60; m += 30) endOptions.push({ value: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), label: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') });
@@ -196,6 +197,7 @@
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-weight' }, text: 'Waga etapu „w toku” bez zadań' }), workingWeight]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-warn' }, text: 'Uwaga od przekroczenia' }), forecastWarn, D.el('span', { class: 'settings__hint', text: 'prognoza godzin wobec budżetu' })]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-alarm' }, text: 'Alarm od przekroczenia' }), forecastAlarm]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-reserve' }, text: 'Rezerwa postępowań' }), reservePct, D.el('span', { class: 'settings__hint', text: 'część budżetu etapu-postępowania na uzupełnienia; dzień roboczy = Cel dnia' })]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-min' }, text: 'Prognoza od postępu' }), minProgress, D.el('span', { class: 'settings__hint', text: 'wcześniej wynik byłby zgadywaniem' })]),
       D.el('div', { class: 'menu__separator' }),
       D.el('p', { class: 'settings__group', text: 'Wygląd' }),

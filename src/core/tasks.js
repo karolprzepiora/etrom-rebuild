@@ -71,11 +71,13 @@
     if (!name) errors.name = 'Podaj nazwę zadania.';
     else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
 
-    if (deadline && !isDateTime(deadline)) errors.deadline = 'Użyj poprawnej daty.';
+    if (deadline && data.draft !== true && !isDateTime(deadline)) errors.deadline = 'Użyj poprawnej daty.';
     if (!Object.prototype.hasOwnProperty.call(WORKLOAD, workload)) errors.workload = 'Wybierz nakład pracy.';
-    if (!Number.isFinite(estimate) || estimate < 0 || estimate > 2000) errors.estimate = 'Podaj liczbę godzin od 0,5 do 2000 albo zostaw puste.';
+    if (!Number.isFinite(estimate) || estimate < 0 || estimate > 2000) errors.estimate = 'Podaj czas pracy od pół godziny do 250 dni albo zostaw puste.';
     else if (estimate > 0 && estimate < 0.5) errors.estimate = 'Najmniejszy szacunek to pół godziny.';
 
+    var isDraft = data.draft === true;
+    if (isDraft) { assignees = []; deadline = ''; }
     var unknown = assignees.filter(function (id) { return allowed.indexOf(id) < 0; });
     if (unknown.length) errors.assignees = 'Realizatorem może być tylko osoba z zespołu projektu.';
 
@@ -93,6 +95,10 @@
         assignees: unique,
         description: text(data.description).slice(0, LIMITS.description),
         important: data.important === true,
+        // Szkic: zadanie zaplanowane z góry, bez osób i terminu; widzi je tylko zarząd i lider.
+        draft: data.draft === true,
+        // Zadanie z rezerwy etapu (np. uzupełnienia w postępowaniu).
+        fromReserve: data.fromReserve === true,
         mailId: text(data.mailId).slice(0, 60)
       }
     };
@@ -341,6 +347,8 @@
         parts: parts,
         description: text(item.description).slice(0, LIMITS.description),
         important: item.important === true,
+        draft: item.draft === true,
+        fromReserve: item.fromReserve === true,
         mailId: text(item.mailId).slice(0, 60),
         feedback: text(item.feedback).slice(0, LIMITS.reason),
         history: history,

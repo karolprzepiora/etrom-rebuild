@@ -76,7 +76,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'zadania', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
+  var TABS = ['etapy', 'budzet', 'zadania', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -625,8 +625,13 @@
     return Team.projectPeople(project.team);
   }
 
+  function taskFormMeta(projectId, stageId) {
+    var stage = stageOf(projectId, stageId);
+    return { procedure: !!stage && E.Planning.isProcedure(stage), dayHours: E.Planning.getRules().dayHours };
+  }
+
   function openAddTask(projectId, stageId) {
-    store.set({ taskForm: { projectId: projectId, stageId: stageId, draft: { workload: 'medium', assignees: [] }, errors: {} } });
+    store.set({ taskForm: { projectId: projectId, stageId: stageId, draft: Object.assign({ workload: 'medium', assignees: [] }, taskFormMeta(projectId, stageId)), errors: {} } });
   }
 
   function openEditTask(projectId, stageId, taskId) {
@@ -637,7 +642,9 @@
         projectId: projectId, stageId: stageId,
         draft: {
           id: task.id, name: task.name, deadline: task.deadline, workload: task.workload, estimate: task.estimate || '',
-          important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || ''
+          important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || '',
+          draft: task.draft === true, fromReserve: task.fromReserve === true,
+          procedure: taskFormMeta(projectId, stageId).procedure, dayHours: E.Planning.getRules().dayHours
         },
         errors: {}
       }
@@ -1528,7 +1535,116 @@
   /** Zasady postępu i prognozy z ustawień trafiają do wspólnej logiki (Postęp, Analiza). */
   function applyRules(prefs) {
     E.Progress.setRules({ method: prefs.progressMethod, workingWeight: (prefs.workingWeight || 0) / 100 });
+    E.Planning.configure({ dayHours: (prefs.dayTarget || 480) / 60, reservePct: prefs.reservePct });
     E.Analysis.configure({ warn: prefs.forecastWarn / 100, alarm: prefs.forecastAlarm / 100, minProgress: prefs.minProgress, rate: prefs.hourlyCost });
+  }
+
+  /* ---------- budżet i plan etapów ---------- */
+
+  function canPlan(project) {
+    var state = store.getState();
+    return !!project && E.Budget.canSeeHours(state.prefs.me, project, state.workspace.people || []);
+  }
+
+  /** Szkice zadań widzi tylko zarząd i lider projektu; pozostałym ekranom podajemy stan bez nich. */
+  var draftViewCache = { ws: null, me: null, out: null };
+  function visibleState(state) {
+    var ws = state.workspace;
+    if (!ws || !(ws.projects || []).length) return state;
+    var hasDraft = ws.projects.some(function (p) { return p.stages.some(function (st) { return (st.tasks || []).some(function (t) { return t.draft; }); }); });
+    if (!hasDraft) return state;
+    if (draftViewCache.ws !== ws || draftViewCache.me !== state.prefs.me) {
+      var people = ws.people || [];
+      var projects = ws.projects.map(function (p) {
+        if (E.Budget.canSeeHours(state.prefs.me, p, people)) return p;
+        return Object.assign({}, p, { stages: p.stages.map(function (st) {
+          return (st.tasks || []).some(function (t) { return t.draft; }) ? Object.assign({}, st, { tasks: st.tasks.filter(function (t) { return !t.draft; }) }) : st;
+        }) });
+      });
+      draftViewCache = { ws: ws, me: state.prefs.me, out: Object.assign({}, ws, { projects: projects }) };
+    }
+    return Object.assign({}, state, { workspace: draftViewCache.out });
+  }
+
+  function withUndo(projectId, message, change) {
+    var before = findProject(projectId);
+    if (!before || !canPlan(before)) return;
+    setWorkspace(function (list) { return list.map(function (p) { return p.id === projectId ? change(p) : p; }); });
+    Toast.show({
+      message: message, actionLabel: 'Cofnij', timeout: 6000,
+      onAction: function () { setWorkspace(function (list) { return list.map(function (p) { return p.id === projectId ? before : p; }); }); }
+    });
+  }
+
+  /** Rozdziela całość budżetu (godziny) na etapy wg wag; zablokowane i zakończone zostają. */
+  function distributeBudget(projectId, totalHours) {
+    var project = findProject(projectId);
+    if (!project) return;
+    var result = E.Planning.distribute(project, totalHours);
+    if (result.overLocked) { Toast.show({ message: 'Zablokowane etapy mają już więcej niż cały budżet.', tone: 'danger' }); return; }
+    withUndo(projectId, 'Budżet rozdzielony: ' + F.hours(result.total) + ' (' + E.Planning.round1(E.Planning.toDays(result.total)) + ' dni)', function (p) {
+      return Object.assign({}, p, { stages: p.stages.map(function (st) { return result.hours[st.id] > 0 ? Object.assign({}, st, { hours: result.hours[st.id] }) : st; }) });
+    });
+  }
+
+  function patchStage(projectId, stageId, patch, message) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    if (message) {
+      withUndo(projectId, message, function (p) { return Object.assign({}, p, { stages: p.stages.map(function (st) { return st.id === stageId ? Object.assign({}, st, patch) : st; }) }); });
+    } else {
+      mapStage(projectId, stageId, function (st) { return Object.assign({}, st, patch); });
+    }
+  }
+
+  function toggleBudgetStage(projectId, stageId) {
+    store.update(function (state) {
+      var open = Object.assign({}, state.expandedStages);
+      var key = 'bp:' + projectId + ':' + stageId;
+      open[key] = !open[key];
+      return Object.assign({}, state, { expandedStages: open });
+    });
+  }
+
+  function addDraftTask(projectId, stageId, name) {
+    var project = findProject(projectId);
+    var stage = stageOf(projectId, stageId);
+    if (!project || !stage || !canPlan(project)) return;
+    var check = Tasks.validateTask({ name: name, draft: true }, projectRoster(project));
+    if (!check.valid) { Toast.show({ message: check.errors.name || 'Podaj nazwę zadania.', tone: 'danger' }); return; }
+    var created = Tasks.createTask({ name: name, draft: true }, stage.tasks || [], projectRoster(project));
+    mapStage(projectId, stageId, function (st) { return Object.assign({}, st, { tasks: (st.tasks || []).concat([created]) }); });
+  }
+
+  function setTaskHours(projectId, stageId, taskId, hours) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    var n = Number(hours);
+    mapTask(projectId, stageId, taskId, function (t) {
+      var next = Object.assign({}, t);
+      if (Number.isFinite(n) && n > 0) next.estimate = Math.round(n * 10) / 10; else delete next.estimate;
+      return next;
+    });
+  }
+
+  function fillStageHours(projectId, stageId) {
+    var stage = stageOf(projectId, stageId);
+    if (!stage) return;
+    var shares = E.Planning.fillShares(stage);
+    if (!Object.keys(shares).length) { Toast.show({ message: 'Brak wolnej puli albo wszystkie zadania mają już czas.' }); return; }
+    withUndo(projectId, 'Wolna pula rozdzielona między ' + Object.keys(shares).length + ' zadań', function (p) {
+      return Object.assign({}, p, { stages: p.stages.map(function (st) {
+        return st.id !== stageId ? st : Object.assign({}, st, { tasks: st.tasks.map(function (t) { return shares[t.id] ? Object.assign({}, t, { estimate: shares[t.id] }) : t; }) });
+      }) });
+    });
+  }
+
+  function removeDraftTask(projectId, stageId, taskId) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    withUndo(projectId, 'Usunięto szkic zadania', function (p) {
+      return Object.assign({}, p, { stages: p.stages.map(function (st) { return st.id !== stageId ? st : Object.assign({}, st, { tasks: st.tasks.filter(function (t) { return t.id !== taskId; }) }); }) });
+    });
   }
 
   /** Zamraża plan bazowy projektu (godziny etapów i koszt wg stawek zespołu). */
@@ -2426,7 +2542,14 @@
     removeView: removeView,
     setLeader: setLeader,
     setProjectDeadline: setProjectDeadline,
-    freezeBaseline: freezeBaseline
+    freezeBaseline: freezeBaseline,
+    distributeBudget: distributeBudget,
+    patchStage: patchStage,
+    addDraftTask: addDraftTask,
+    toggleBudgetStage: toggleBudgetStage,
+    setTaskHours: setTaskHours,
+    fillStageHours: fillStageHours,
+    removeDraftTask: removeDraftTask
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */
@@ -2898,7 +3021,7 @@
     nodes.views.analysis.hidden = route.name !== 'analysis';
     nodes.views.time.hidden = route.name !== 'time';
 
-    var project = route.name === 'project' ? findProject(route.projectId) : null;
+    var project = route.name === 'project' ? (state.workspace.projects.filter(function (p) { return p.id === route.projectId; })[0] || null) : null;
     E.Shell.render(state, project);
     nodes.app.classList.toggle('app--nav-open', !!state.navOpen);
     nodes.navToggle.setAttribute('aria-expanded', String(!!state.navOpen));
@@ -2958,7 +3081,7 @@
   function renderAll(state) {
     E.Identity.setColors(state.workspace && state.workspace.projects);
     renderNotice(state);
-    renderScreen(state);
+    renderScreen(visibleState(state));
     renderInspector(state);
     renderDrawer(state);
     persist(state);

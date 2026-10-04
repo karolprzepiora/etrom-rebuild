@@ -98,6 +98,10 @@
             var days = workdaysBetween(today, due);
             if (!days.length) days = [today];
             var per = share / days.length;
+            // Okno za krótkie: ile dni roboczych pracy potrzeba osobie wobec dni do terminu.
+            var needDays = Math.ceil(share / targetH - 1e-9);
+            if (needDays > days.length) ref.squeezed = true;
+            else if (needDays === days.length && needDays >= 2) ref.mustStartNow = true;
             var byWeek = {};
             days.forEach(function (d) { var i = Math.max(0, weekIndex(d)); byWeek[i] = (byWeek[i] || 0) + per; });
             buckets = Object.keys(byWeek).map(function (i) { return { week: Number(i), hours: byWeek[i] }; });

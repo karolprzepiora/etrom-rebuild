@@ -85,3 +85,12 @@ test('termin w weekend, gdy plan zaczyna się od poniedziałku, nie wychodzi poz
   const plan = Plan.build({ projects: [project([task('t1', { estimate: 10, deadline: '2026-10-04' })])], people, entries: [], now: sat, target: 480, weeks: 2 });
   assert.equal(rowOf(plan, 'p-1').weeks[0].planned, 10, 'termin w niedzielę liczy się do najbliższego tygodnia planu');
 });
+
+test('okno do terminu: zadanie większe niż dostępne dni jest „za mało czasu”, równe — „musi ruszyć teraz”', () => {
+  const now = new Date(2026, 9, 5, 9, 0); // poniedziałek
+  const mk = (estimate, deadline) => ({ projects: [{ id: 1, code: '2601', stages: [{ id: 's', tasks: [{ id: 't', name: 'x', status: 'todo', assignees: ['p-1'], estimate, deadline }] }] }], people: [{ id: 'p-1' }], entries: [], now });
+  const cell = (plan) => plan.rows[0].weeks.flatMap((w) => w.tasks)[0];
+  assert.equal(cell(Plan.build(mk(80, '2026-10-09'))).squeezed, true); // 10 dni pracy, 5 dni w oknie
+  assert.equal(cell(Plan.build(mk(40, '2026-10-09'))).mustStartNow, true); // 5 dni pracy, 5 dni w oknie
+  assert.equal(cell(Plan.build(mk(8, '2026-10-30'))).squeezed, undefined);
+});

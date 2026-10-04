@@ -29,8 +29,12 @@
       id: 'tk-workload', value: values.workload || 'medium',
       options: Object.keys(Tasks.WORKLOAD).map(function (key) { return { value: key, label: Tasks.WORKLOAD[key] }; })
     });
-    var estimate = UI.input({ id: 'tk-estimate', value: values.estimate ? String(values.estimate).replace('.', ',') : '', error: problems.estimate, placeholder: 'np. 16', attrs: { inputmode: 'decimal', autocomplete: 'off' } });
+    var dayH = values.dayHours > 0 ? values.dayHours : 8;
+    var estDays = values.estimate ? Math.round(Number(values.estimate) / dayH * 100) / 100 : '';
+    var estimate = UI.input({ id: 'tk-estimate', value: estDays === '' ? '' : String(estDays).replace('.', ','), error: problems.estimate, placeholder: 'np. 2 lub 0,5', attrs: { inputmode: 'decimal', autocomplete: 'off' } });
     var description = UI.textarea({ id: 'tk-description', value: values.description, placeholder: 'Zakres, ustalenia, odnośniki do rysunków…' });
+    var draftBox = UI.checkbox({ id: 'tk-draft', checked: !!values.draft, label: 'Szkic — zaplanowane z góry', hint: 'Bez osób i terminu; widzisz je tylko Ty (zarząd i lider). Odznacz, aby odmrozić: wtedy wskażesz osoby i termin.' });
+    var reserveBox = values.procedure ? UI.checkbox({ id: 'tk-reserve', checked: !!values.fromReserve, label: 'Uzupełnienie — z rezerwy etapu', hint: 'Zużywa rezerwę postępowania, a nie pulę dni etapu.' }) : null;
     var important = UI.checkbox({ id: 'tk-important', checked: !!values.important, label: 'Zadanie ważne', hint: 'Wyróżnia zadanie na liście etapu.' });
 
     var boxes = {};
@@ -68,7 +72,9 @@
           name: name.value,
           deadline: deadline.value,
           workload: workload.value,
-          estimate: estimate.value,
+          estimate: (function () { var n = String(estimate.value || '').trim().replace(',', '.'); return n === '' || !isFinite(Number(n)) ? estimate.value : String(Math.round(Number(n) * dayH * 10) / 10); })(),
+          draft: draftBox.querySelector('input').checked,
+          fromReserve: reserveBox ? reserveBox.querySelector('input').checked : false,
           important: important.querySelector('input').checked,
           description: description.value,
           assignees: Object.keys(boxes).filter(function (id) { return boxes[id].checked; })
@@ -83,7 +89,9 @@
             UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline }),
             UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload })
           ]),
-          UI.field({ id: 'tk-estimate', label: 'Szacunek godzin', optional: true, control: estimate, error: problems.estimate, hint: 'Pracochłonność całego zadania; na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }),
+          UI.field({ id: 'tk-estimate', label: 'Czas pracy, dni robocze', optional: true, control: estimate, error: problems.estimate, hint: 'Ile dni z puli etapu zajmie zadanie (dzień = ' + String(dayH).replace('.', ',') + ' h). Na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }),
+          draftBox,
+          reserveBox,
           important
         ]),
         D.el('hr', { class: 'form__divider' }),

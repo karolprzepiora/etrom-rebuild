@@ -439,6 +439,9 @@
           hours: Number.isFinite(hours) && hours > 0 ? hours : fallbackHours,
           deadline: isDate(stage.deadline) ? stage.deadline : '',
           adjustments: Budget.normalizeAdjustments(stage.adjustments),
+          weight: Number(stage.weight) > 0 && Number(stage.weight) <= 1000 ? Number(stage.weight) : null,
+          locked: stage.locked === true,
+          reserve: stage.reserve !== null && stage.reserve !== undefined && Number(stage.reserve) >= 0 && Number(stage.reserve) <= 5000 ? Number(stage.reserve) : null,
           // Realizatorem może być tylko ktoś z zespołu projektu.
           tasks: Tasks.normalizeTasks(stage.tasks, roster)
         };
