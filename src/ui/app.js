@@ -1836,27 +1836,27 @@
   // Indeksy etapów odnoszą się do katalogu, indeksy osób do DEMO_PEOPLE.
   var DEMO_TASKS = {
     '2601': [
-      { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', workload: 'medium', hours: 48, people: [0, 2] },
-      { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', workload: 'small', hours: 120, people: [4] },
+      { stage: 5, name: 'Zebrać warunki od zarządcy drogi', status: 'working', est: 24, startDays: -6, work: 14, workload: 'medium', hours: 48, people: [0, 2] },
+      { stage: 6, name: 'Wystąpić o decyzję lokalizacyjną', status: 'todo', est: 6, startDays: 2, workload: 'small', hours: 120, people: [4] },
       { stage: 0, name: 'Zebrać dane wyjściowe od gminy', status: 'done', workload: 'small', hours: -200, people: [2] },
       { stage: 1, name: 'Koncepcja przebudowy przepustu — wariant A i B', status: 'done', workload: 'large', hours: -120, people: [0, 2] },
-      { stage: 2, name: 'Inwentaryzacja przyrodnicza', status: 'review', workload: 'medium', hours: 20, people: [3] },
-      { stage: 3, name: 'Raport o oddziaływaniu na środowisko', status: 'working', workload: 'large', hours: 90, people: [3, 5], important: true, description: 'Wymaga danych z inwentaryzacji przyrodniczej i opinii RDOŚ.' },
+      { stage: 2, name: 'Inwentaryzacja przyrodnicza', status: 'review', est: 30, startDays: -10, work: 28, workload: 'medium', hours: 20, people: [3] },
+      { stage: 3, name: 'Raport o oddziaływaniu na środowisko', status: 'working', est: 60, startDays: -12, work: 34, workload: 'large', hours: 90, people: [3, 5], important: true, description: 'Wymaga danych z inwentaryzacji przyrodniczej i opinii RDOŚ.' },
       { stage: 4, name: 'Zamówić mapę do celów projektowych', status: 'todo', workload: 'small', hours: -30, people: [5] },
-      { stage: 6, name: 'Uzupełnić wniosek o pozwolenie wodnoprawne', status: 'working', workload: 'veryLarge', hours: 96, people: [2, 0], important: true, mail: 'Wezwanie do uzupełnienia wniosku', work: 34, description: 'Zadanie z wezwania RZGW: uzupełnić operat, mapy i obliczenia hydrauliczne.' }
+      { stage: 6, name: 'Uzupełnić wniosek o pozwolenie wodnoprawne', status: 'working', est: 64, startDays: -9, workload: 'veryLarge', hours: 96, people: [2, 0], important: true, mail: 'Wezwanie do uzupełnienia wniosku', work: 34, description: 'Zadanie z wezwania RZGW: uzupełnić operat, mapy i obliczenia hydrauliczne.' }
     ],
     '2602': [
-      { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', workload: 'large', hours: 72, people: [1, 3] },
+      { stage: 9, name: 'Skompletować załączniki do wniosku o pozwolenie', status: 'working', est: 42, startDays: -8, work: 26, workload: 'large', hours: 72, people: [1, 3] },
       { stage: 9, name: 'Uzgodnić kolizję z siecią gazową', status: 'review', workload: 'medium', hours: -36, people: [2] },
-      { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', workload: 'veryLarge', hours: 240, people: [3, 4], important: true },
+      { stage: 11, name: 'Opracować rysunki wykonawcze', status: 'todo', est: 120, startDays: 1, workload: 'veryLarge', hours: 240, people: [3, 4], important: true },
       { stage: 11, name: 'Zestawienie przekrojów odcinka III', status: 'done', workload: 'medium', hours: -50, people: [3] },
       { stage: 7, name: 'Odpowiedzieć na wezwanie w sprawie pozwolenia', status: 'changes', workload: 'medium', hours: 3, people: [2], reason: 'Dopisać analizę wpływu na brzegi.' },
-      { stage: 12, name: 'Przedmiar i kosztorys inwestorski', status: 'todo', workload: 'large', hours: 150, people: [5, 3] },
-      { stage: 13, name: 'Skompletować egzemplarze do przekazania', status: 'todo', workload: 'small', hours: 60, people: [3] }
+      { stage: 12, name: 'Przedmiar i kosztorys inwestorski', status: 'todo', est: 40, startDays: 3, workload: 'large', hours: 150, people: [5, 3] },
+      { stage: 13, name: 'Skompletować egzemplarze do przekazania', status: 'todo', est: 8, startDays: 0, workload: 'small', hours: 60, people: [3] }
     ],
     '2603': [
-      { stage: 0, name: 'Ustalić zakres prac z inwestorem', status: 'todo', workload: 'small', hours: 48, people: [0] },
-      { stage: 1, name: 'Wstępna koncepcja zbiornika', status: 'todo', workload: 'veryLarge', hours: 300, people: [2], important: true }
+      { stage: 0, name: 'Ustalić zakres prac z inwestorem', status: 'todo', est: 6, startDays: 0, workload: 'small', hours: 48, people: [0] },
+      { stage: 1, name: 'Wstępna koncepcja zbiornika', status: 'todo', est: 80, startDays: 2, workload: 'veryLarge', hours: 300, people: [2], important: true }
     ],
     '2604': [
       {
@@ -1864,8 +1864,8 @@
         status: 'changes', workload: 'medium', hours: -12, people: [1],
         reason: 'Uzupełnić opis oddziaływania na wody powierzchniowe.'
       },
-      { stage: 3, name: 'Analiza wariantów pompowni', status: 'working', workload: 'medium', hours: 30, people: [2, 4] },
-      { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', workload: 'small', hours: 240, people: [4] },
+      { stage: 3, name: 'Analiza wariantów pompowni', status: 'working', est: 24, startDays: -3, work: 6, workload: 'medium', hours: 30, people: [2, 4] },
+      { stage: 2, name: 'Pomiary hałasu i wibracji', status: 'todo', est: 16, startDays: 4, workload: 'small', hours: 240, people: [4] },
       { stage: 3, name: 'Uzupełnić kartę informacyjną wg opinii RDOŚ', status: 'done', workload: 'large', hours: 120, people: [1, 2], mail: 'Opinia do karty informacyjnej', work: 18, description: 'Uwagi RDOŚ do oddziaływania na wody powierzchniowe i siedliska.' }
     ],
     '2605': [
@@ -1874,18 +1874,18 @@
     '2606': [
       { stage: 0, name: 'Przygotować program prac', status: 'done', workload: 'small', hours: -400, people: [6] },
       { stage: 4, name: 'Pomiary batymetryczne zbiornika', status: 'done', workload: 'medium', hours: -250, people: [7] },
-      { stage: 6, name: 'Operat wodnoprawny', status: 'working', workload: 'large', hours: 70, people: [6, 2], important: true },
-      { stage: 5, name: 'Wniosek o decyzję lokalizacyjną', status: 'review', workload: 'medium', hours: 10, people: [3] },
-      { stage: 9, name: 'Projekt zagospodarowania osadów', status: 'todo', workload: 'large', hours: 200, people: [2] },
-      { stage: 6, name: 'Uzupełnić dane hydrologiczne', status: 'changes', workload: 'small', hours: -4, people: [6], reason: 'Brakuje przepływów z ostatnich 10 lat.' },
-      { stage: 9, name: 'Uzupełnić dane o osadach (wezwanie gminy)', status: 'todo', workload: 'medium', hours: 60, people: [2, 6], mail: 'Wezwanie do uzupełnienia danych o osadach' }
+      { stage: 6, name: 'Operat wodnoprawny', status: 'working', est: 44, startDays: -5, work: 18, workload: 'large', hours: 70, people: [6, 2], important: true },
+      { stage: 5, name: 'Wniosek o decyzję lokalizacyjną', status: 'review', est: 12, startDays: -7, work: 11, workload: 'medium', hours: 10, people: [3] },
+      { stage: 9, name: 'Projekt zagospodarowania osadów', status: 'todo', est: 56, startDays: 4, workload: 'large', hours: 200, people: [2] },
+      { stage: 6, name: 'Uzupełnić dane hydrologiczne', status: 'changes', est: 10, startDays: -9, work: 8, workload: 'small', hours: -4, people: [6], reason: 'Brakuje przepływów z ostatnich 10 lat.' },
+      { stage: 9, name: 'Uzupełnić dane o osadach (wezwanie gminy)', status: 'todo', est: 12, startDays: 0, workload: 'medium', hours: 60, people: [2, 6], mail: 'Wezwanie do uzupełnienia danych o osadach' }
     ],
     '2607': [
       { stage: 0, name: 'Zebrać wytyczne od zarządcy drogi', status: 'done', workload: 'small', hours: -150, people: [3] },
-      { stage: 1, name: 'Wstępny przekrój przepustu', status: 'working', workload: 'medium', hours: 24, people: [3, 6] },
-      { stage: 4, name: 'Pomiary geodezyjne dojazdu', status: 'working', workload: 'small', hours: 36, people: [7] },
-      { stage: 6, name: 'Obliczenia hydrauliczne', status: 'todo', workload: 'medium', hours: 96, people: [6] },
-      { stage: 7, name: 'Złożyć wniosek o pozwolenie wodnoprawne', status: 'todo', workload: 'small', hours: 400, people: [4] }
+      { stage: 1, name: 'Wstępny przekrój przepustu', status: 'working', est: 16, startDays: -4, work: 8, workload: 'medium', hours: 24, people: [3, 6] },
+      { stage: 4, name: 'Pomiary geodezyjne dojazdu', status: 'working', est: 14, startDays: -2, work: 4, workload: 'small', hours: 36, people: [7] },
+      { stage: 6, name: 'Obliczenia hydrauliczne', status: 'todo', est: 30, startDays: 3, workload: 'medium', hours: 96, people: [6] },
+      { stage: 7, name: 'Złożyć wniosek o pozwolenie wodnoprawne', status: 'todo', est: 6, workload: 'small', hours: 400, people: [4] }
     ]
   };
 
@@ -2031,7 +2031,7 @@
         if (dupe) return;
         var assignees = (spec.people || []).map(demoPersonId).filter(function (id) { return id && allowed.indexOf(id) >= 0; });
         var task = Tasks.createTask({
-          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload, estimate: E.Plan.DEFAULT_HOURS[spec.workload] || 12, description: spec.description || '',
+          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload, estimate: spec.est || E.Plan.DEFAULT_HOURS[spec.workload] || 12, start: spec.startDays != null ? demoDate(spec.startDays) : '', description: spec.description || '',
           important: spec.important === true, assignees: assignees
         }, stage.tasks || [], allowed);
         var path = DEMO_PATHS[spec.status] || [];
