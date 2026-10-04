@@ -126,7 +126,7 @@
     var offset = Number(state[K.offset]) || 0;
     var baseInput = {
       projects: projects, people: people, entries: state.workspace.entries || [], now: now,
-      target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset, capacityPct: state.prefs.planCapacity || 85,
+      target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset,
       personIds: management ? null : [me.id]
     };
     var plan = Plan.build(baseInput);
@@ -145,10 +145,11 @@
 
     /* ---------- pasek ---------- */
     function barTip(b, span) {
-      var s = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
-      var e = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
+      var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
+      var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
       var late = b.overdue ? ' · po terminie' : (b.squeezed ? ' · za mało czasu' : (b.mustStartNow ? ' · musi ruszyć teraz' : ''));
-      return b.code + ' · ' + b.name + ' · ' + hh(b.hours) + ' h · ' + shortDate(s) + ' – ' + shortDate(e) + late;
+      var perDay = b.days ? ' · ok. ' + hh(b.hours / b.days) + ' h dziennie' : '';
+      return b.code + ' · ' + b.name + ' · ' + hh(b.hours) + ' h pracy (' + (b.fromPool ? 'z puli etapu' : 'szacunek zadania') + ') · ' + shortDate(s0) + ' – ' + shortDate(e0) + perDay + late;
     }
 
     function paintBar(el, ns, ne) {
@@ -166,17 +167,23 @@
       var editable = canEdit(b.projectId);
       var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (b.squeezed ? ' is-tight' : '') + (b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
+      var dens = Math.max(0.14, Math.min(1, b.density || 0));
+      var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num', text: hh(b.hours) + ' h', attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Godziny pracy do zrobienia — kliknij, żeby zmienić' } : {} });
       var el = D.el('div', {
-        class: cls, style: Object.assign({ top: item.lane * LANE_H + 'rem' }, Identity.hueStyle(b.code)),
+        class: cls, style: Object.assign({ top: item.lane * LANE_H + 'rem', '--d': (dens * 100) + '%' }, Identity.hueStyle(b.code)),
         attrs: { tabindex: '0', role: 'button', 'data-fk': 'pb-bar-' + b.taskId, 'data-tooltip': barTip(b), 'aria-label': barTip(b) + (editable ? '. Strzałki przesuwają, Shift i Alt zmieniają termin i start.' : ''), 'data-key': key },
         dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId, personId: person.id }
       }, [
+        D.el('span', { class: 'pb-bar__fill', attrs: { 'aria-hidden': 'true' } }),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
-        D.el('span', { class: 'pb-bar__code', text: b.code }),
-        D.el('span', { class: 'pb-bar__name truncate', text: b.name }),
-        D.el('span', { class: 'pb-bar__hours t-num', text: hh(b.hours) + ' h' }),
+        D.el('span', { class: 'pb-bar__label' }, [
+          D.el('span', { class: 'pb-bar__code', text: b.code }),
+          D.el('span', { class: 'pb-bar__name truncate', text: b.name }),
+          hoursBtn
+        ]),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null
       ]);
+      if (editable) editHours(hoursBtn, b);
       paintBar(el, item.s, item.e);
       if (pendingFocus === key) { pendingFocus = null; window.setTimeout(function () { el.focus({ preventScroll: true }); }, 30); }
       attachBar(el, b, person, item, editable, key);
@@ -197,6 +204,32 @@
           chip.className = chipState(cell) + (chip.classList.contains('is-selected') ? ' is-selected' : '');
           chip.textContent = chipText(cell);
         });
+      });
+    }
+
+    /** Godziny pracy przy zadaniu: klik w liczbę na pasku zamienia ją w pole (Enter zapisuje, Esc wraca). */
+    function editHours(btn, b) {
+      btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var input = D.el('input', { class: 'input pb-hours-input', attrs: { type: 'text', inputmode: 'decimal', value: hh(b.hours), 'aria-label': 'Godziny pracy zadania ' + b.name, 'data-fk': 'pb-hours-input' } });
+        var done = false;
+        function commit() {
+          if (done) return; done = true;
+          var n = Number(String(input.value).trim().replace(',', '.'));
+          if (!(n > 0) || n > 2000) { E.Toast.show({ message: 'Podaj liczbę godzin, np. 8 albo 12,5.', tone: 'danger' }); input.replaceWith(btn); return; }
+          if (Math.abs(n - b.hours) < 0.05) { input.replaceWith(btn); return; }
+          ctx.actions.setTaskHours(b.projectId, b.stageId, b.taskId, n * (b.workers || 1) + (b.logged || 0));
+        }
+        ['pointerdown', 'click', 'keyup'].forEach(function (t) { input.addEventListener(t, function (ev) { ev.stopPropagation(); }); });
+        input.addEventListener('keydown', function (ev) {
+          ev.stopPropagation();
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+          if (ev.key === 'Escape') { ev.preventDefault(); done = true; input.replaceWith(btn); }
+        });
+        input.addEventListener('blur', commit);
+        btn.replaceWith(input);
+        input.focus(); input.select();
       });
     }
 

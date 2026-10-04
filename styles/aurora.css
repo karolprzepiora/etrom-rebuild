@@ -744,31 +744,36 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-load:focus-visible, .pb-load.is-selected { box-shadow: var(--focus-ring); }
 .pb-bars { position: relative; margin: 0 0 var(--space-2); }
 .pb-bar {
-  position: absolute; height: 1.8rem; box-sizing: border-box; display: flex; align-items: center; gap: .4rem; padding: 0 .7rem; min-width: 0;
-  border-radius: 10px; color: #fff; font-size: var(--fs-xs); font-weight: 600; user-select: none; touch-action: none;
-  background: oklch(calc(.5 + .07 * var(--tone, 0)) calc(.15 * var(--kp, 1)) var(--hue, 250));
-  box-shadow: 0 1px 2px rgb(0 0 0 / .18); overflow: hidden; cursor: pointer; transition: box-shadow .15s, filter .15s;
+  --solid: oklch(calc(.5 + .07 * var(--tone, 0)) calc(.15 * var(--kp, 1)) var(--hue, 250));
+  position: absolute; height: 1.8rem; box-sizing: border-box; display: flex; align-items: center; min-width: 0;
+  border-radius: 10px; color: var(--ink); font-size: var(--fs-xs); font-weight: 600; user-select: none; touch-action: none;
+  background: color-mix(in oklab, var(--solid) 16%, var(--sheet)); box-shadow: inset 0 0 0 1.5px var(--solid);
+  overflow: hidden; cursor: pointer; transition: box-shadow .15s, filter .15s;
 }
+.pb-bar__fill { position: absolute; left: 0; right: 0; bottom: 0; height: var(--d, 30%); background: var(--solid); opacity: .92; pointer-events: none; }
+.pb-bar__label { position: relative; z-index: 1; display: flex; align-items: center; gap: .35rem; min-width: 0; max-width: 100%; margin: 0 .5rem; padding: 0 .4rem; border-radius: 7px; background: color-mix(in srgb, var(--sheet) 90%, transparent); line-height: 1.3rem; }
 .pb-bar.is-editable { cursor: grab; }
-.pb-bar:hover { filter: brightness(1.08); }
-.pb-bar:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.pb-bar.is-drag { z-index: 5; cursor: grabbing; box-shadow: 0 10px 24px -6px rgb(0 0 0 / .45); transition: none; }
-.pb-bar.is-drag::after { content: attr(data-drag); position: absolute; right: .6rem; top: 50%; transform: translateY(-50%); padding: 0 .4rem; border-radius: 6px; background: rgb(0 0 0 / .45); }
-.pb-bar.is-late { box-shadow: inset 0 0 0 2px var(--alarm), 0 1px 2px rgb(0 0 0 / .18); }
-.pb-bar.is-tight { background-image: repeating-linear-gradient(135deg, transparent 0 .5rem, rgb(0 0 0 / .18) .5rem 1rem); }
-.pb-bar.is-now { box-shadow: inset 0 0 0 2px var(--warn), 0 1px 2px rgb(0 0 0 / .18); }
+.pb-bar:hover { filter: brightness(1.06); }
+.pb-bar:focus-visible { outline: none; box-shadow: inset 0 0 0 1.5px var(--solid), var(--focus-ring); }
+.pb-bar.is-drag { z-index: 5; cursor: grabbing; box-shadow: inset 0 0 0 1.5px var(--solid), 0 10px 24px -6px rgb(0 0 0 / .45); transition: none; }
+.pb-bar.is-drag::after { content: attr(data-drag); position: absolute; right: .6rem; top: 50%; transform: translateY(-50%); z-index: 2; padding: 0 .4rem; border-radius: 6px; background: rgb(0 0 0 / .6); color: #fff; }
+.pb-bar.is-late { box-shadow: inset 0 0 0 2px var(--alarm); }
+.pb-bar.is-tight .pb-bar__fill { background-image: repeating-linear-gradient(135deg, transparent 0 .5rem, rgb(0 0 0 / .22) .5rem 1rem); }
+.pb-bar.is-now { box-shadow: inset 0 0 0 2px var(--warn); }
 .pb-bar.is-review { opacity: .72; }
-.pb-bar.is-implicit { border-left: 3px dashed rgb(255 255 255 / .6); }
+.pb-bar.is-implicit { border-left: 3px dashed var(--solid); }
 .pb-bar.is-clipl { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .pb-bar.is-clipr { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.pb-bar__code { flex: none; padding: 0 .35rem; border-radius: 99px; background: rgb(255 255 255 / .22); font: 700 .68rem/1.2rem var(--font-mono, ui-monospace, monospace); }
+.pb-bar__code { flex: none; font: 700 .68rem/1.2rem var(--font-mono, ui-monospace, monospace); color: var(--solid); }
 .pb-bar__name { flex: 1 1 auto; min-width: 0; }
-.pb-bar__hours { flex: none; opacity: .85; }
-.pb-bar__h { position: absolute; top: 0; bottom: 0; width: .6rem; cursor: ew-resize; z-index: 1; }
+.pb-bar__hours { flex: none; font-weight: 700; padding: 0 .25rem; border-radius: 5px; }
+.pb-bar.is-editable .pb-bar__hours:hover { background: color-mix(in srgb, var(--solid) 22%, transparent); cursor: text; }
+.pb-hours-input { width: 3.6rem; height: 1.3rem; padding: 0 .3rem; font-size: var(--fs-xs); }
+.pb-bar__h { position: absolute; top: 0; bottom: 0; width: .6rem; cursor: ew-resize; z-index: 2; }
 .pb-bar__h--l { left: 0; }
 .pb-bar__h--r { right: 0; }
-.pb-bar__h::after { content: ""; position: absolute; top: 30%; bottom: 30%; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: rgb(255 255 255 / .0); transition: background .12s; }
-.pb-bar:hover .pb-bar__h::after, .pb-bar:focus-visible .pb-bar__h::after { background: rgb(255 255 255 / .7); }
+.pb-bar__h::after { content: ""; position: absolute; top: 28%; bottom: 28%; left: 50%; width: 3px; margin-left: -1.5px; border-radius: 2px; background: transparent; transition: background .12s; }
+.pb-bar:hover .pb-bar__h::after, .pb-bar:focus-visible .pb-bar__h::after { background: var(--ink); opacity: .5; }
 .pb.is-dragging, .pb.is-dragging * { cursor: grabbing !important; }
 .pb-free { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: 0 var(--space-3) var(--space-3); }
 .pb-free__l { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
@@ -776,10 +781,9 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-chip.is-editable { cursor: grab; }
 .pb-chip:focus-visible { box-shadow: var(--focus-ring); }
 @media (max-width: 40rem) { .pb-grid { min-width: calc(8rem + var(--n) * 1.75rem); } .pb-row { grid-template-columns: 8rem minmax(0, 1fr); } }
-.pb-bar.is-short .pb-bar__hours { display: none; }
 .pb-bar.is-short .pb-bar__code { display: none; }
-.pb-bar.is-narrow .pb-bar__name { display: none; }
-.pb-bar.is-narrow { padding: 0; }
+.pb-bar.is-short .pb-bar__name { display: none; }
+.pb-bar.is-narrow .pb-bar__label { margin: 0 .15rem; padding: 0 .15rem; }
 .pb--solo .pb-row { grid-template-columns: minmax(0, 1fr); }
 .pb--solo .pb-label { display: none; }
 .pb--solo .pb-grid { min-width: calc(var(--n) * 1.75rem); }

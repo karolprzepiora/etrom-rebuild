@@ -807,6 +807,13 @@ async function main() {
     await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
     await sleep(300);
     check('„Cofnij” przywraca poprzednie okno zadania', (await taskOfBar()) === afterDrag);
+    check('pasek pokazuje godziny pracy zadania i gęstość pracy (cienka praca rozciągnięta w czasie nie wygląda jak pełne obłożenie)',
+      await evaluate('const el = document.querySelector(".pb-bar.is-editable"); return /\\d/.test(el.querySelector(".pb-bar__hours").textContent) && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__fill") && el.style.getPropertyValue("--d").length > 0;'));
+    const estBefore = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
+    await evaluate('const sel = \'.pb-bar[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"] [data-fk^="pb-hours-"]\'; document.querySelector(sel).click(); const i = document.querySelector("[data-fk=pb-hours-input]"); i.value = "7"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(350);
+    const estAfter = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
+    check('klik w godziny na pasku pozwala je zmienić (zapisuje szacunek zadania)', estAfter >= 7 && estAfter !== estBefore);
 
     await click('[data-fk="time-tab-sheet"]');
     await sleep(200);

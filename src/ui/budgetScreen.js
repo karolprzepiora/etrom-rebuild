@@ -151,6 +151,7 @@
         ]),
         D.el('div', { class: 'bp-done__act' }, [
           D.el('a', { class: 'btn btn--primary', attrs: { href: E.ProjectList.projectHref(project, 'zadania'), 'data-fk': 'bp-go-tasks' }, text: 'Przejdź do zadań' }),
+          UI.button({ label: 'Plan tygodni', variant: 'secondary', attrs: { 'data-fk': 'bp-go-weeks' }, onClick: function () { a.setTime({ timeTab: 'plan' }); a.goTo('time'); } }),
           UI.button({ label: 'Odblokuj plan wstępny', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'bp-reopen' }, onClick: function () { a.reopenPlan(project.id); } })
         ])
       ]),

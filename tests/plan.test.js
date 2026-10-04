@@ -157,3 +157,16 @@ test('shiftSpan: przesuwanie całego paska i brzegów w dniach roboczych, z pomi
   assert.equal(Plan.shiftSpan({ deadline: '' }, 'move', 1, now), null);
   assert.equal(Plan.workdayDiff(new Date(2026, 9, 9), new Date(2026, 9, 12)), 1);
 });
+
+test('pasek niesie godziny i gęstość pracy: 8 h rozciągnięte na 4 tygodnie to cienka praca, nie cztery tygodnie pracy', () => {
+  const plan = run([task('mapa', { estimate: 8, deadline: '2026-11-02' }), task('pelna', { estimate: 160, deadline: '2026-11-02' })]);
+  const bars = rowOf(plan, 'p-1').bars;
+  const mapa = bars.filter((b) => b.taskId === 'mapa')[0];
+  const pelna = bars.filter((b) => b.taskId === 'pelna')[0];
+  assert.equal(mapa.hours, 8);
+  assert.equal(mapa.days, 21);
+  assert.ok(mapa.density < 0.06);
+  assert.ok(Math.abs(pelna.density - 160 / 21 / 8) < 1e-9);
+  // obciążenie tygodni wynika z godzin, a nie z długości paska
+  assert.ok(rowOf(plan, 'p-1').weeks[0].planned < 40 + 8 / 21 * 5 + 1);
+});

@@ -171,6 +171,7 @@
           var buckets = [];
           var from = explicitStart && explicitStart.getTime() > today.getTime() ? explicitStart : today;
           var bar = null;
+          var windowDays = 1;
           if (!due) buckets = null;
           else if (due.getTime() < today.getTime()) {
             buckets = [{ week: curIdx, hours: share }];
@@ -179,6 +180,7 @@
             var days = workdaysBetween(from, due);
             if (!days.length) days = [snapWorkday(due, -1)];
             var per = share / days.length;
+            windowDays = days.length;
             // Okno za krótkie: ile dni roboczych pracy potrzeba osobie wobec dni do terminu.
             var needDays = Math.ceil(share / targetH - 1e-9);
             if (needDays > days.length) ref.squeezed = true;
@@ -190,7 +192,7 @@
           }
           assignees.forEach(function (id) {
             var row = rowsById[id];
-            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, status: task.status }, ref));
+            if (bar) row.bars.push(Object.assign({ start: bar.start, end: bar.end, hours: share, days: windowDays, density: share / windowDays / targetH, workers: (task.assignees || []).length || 1, logged: (loggedByTask[project.id + '|' + stage.id + '|' + task.id] || 0) / 60, status: task.status }, ref));
             if (!buckets) {
               row.unscheduled.hours += share;
               row.unscheduled.tasks.push(Object.assign({ hours: share }, ref));
