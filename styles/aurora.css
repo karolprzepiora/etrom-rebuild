@@ -671,3 +671,9 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
   .bp-task { grid-template-columns: minmax(0, 1fr) auto; }
   .bp-task__unit { display: none; }
 }
+
+.bp-head__lib { margin-bottom: var(--space-2); }
+.bp-lib { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.bp-lib__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.bp-chip { border: 1px dashed var(--line); background: none; border-radius: 999px; padding: .2rem .75rem; font: inherit; font-size: var(--fs-sm); color: var(--ink-2); cursor: pointer; }
+.bp-chip:hover { border-color: var(--accent); color: var(--ink); }

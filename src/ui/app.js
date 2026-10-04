@@ -1616,6 +1616,26 @@
     mapStage(projectId, stageId, function (st) { return Object.assign({}, st, { tasks: (st.tasks || []).concat([created]) }); });
   }
 
+  /** Dodaje typowe zadania z biblioteki jako szkice (jeden etap albo wszystkie); pomija te, które już są. */
+  function addLibraryTasks(projectId, stageId, names) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) return;
+    var roster = projectRoster(project);
+    var added = 0;
+    var next = Object.assign({}, project, { stages: project.stages.map(function (st) {
+      if ((stageId && st.id !== stageId) || (!stageId && st.status === 'done')) return st;
+      var tasks = (st.tasks || []).slice();
+      E.Library.missing(Object.assign({}, st, { tasks: tasks })).forEach(function (item) {
+        if (names && names.indexOf(item.name) < 0) return;
+        tasks.push(Tasks.createTask({ name: item.name, draft: true, fromReserve: item.reserve }, tasks, roster));
+        added += 1;
+      });
+      return Object.assign({}, st, { tasks: tasks });
+    }) });
+    if (!added) { Toast.show({ message: 'Wszystkie typowe zadania już są w tym projekcie.' }); return; }
+    withUndo(projectId, 'Dodano ' + added + ' szkiców z biblioteki', function () { return next; });
+  }
+
   function setTaskHours(projectId, stageId, taskId, hours) {
     var project = findProject(projectId);
     if (!project || !canPlan(project)) return;
@@ -2546,6 +2566,7 @@
     distributeBudget: distributeBudget,
     patchStage: patchStage,
     addDraftTask: addDraftTask,
+    addLibraryTasks: addLibraryTasks,
     toggleBudgetStage: toggleBudgetStage,
     setTaskHours: setTaskHours,
     fillStageHours: fillStageHours,

@@ -28,7 +28,10 @@
 - Biblioteka podsuwa szkice zadań dla etapu razem z wagą (udziałem w puli etapu), nie z godzinami.
 - Z czasem aplikacja może liczyć własne mediany z zakończonych projektów (kalibracja).
 
-## Do ustalenia z Karolem
+## Ustalenia z Karolem (zrealizowane w aplikacji)
+- Dokumentacja wykonawcza: jedno duże zadanie „Projekt techniczny i wykonawczy”. Uzupełnienia: jedno wspólne „Uzupełnienia na wezwanie” (z rezerwy). Wagi później.
+
+## Dawne pytania
 - Czy „Dokumentacja wykonawcza” ma osobny etap z kilkoma zadaniami branżowymi, czy jedno duże zadanie.
 - Jak nazywać zadania rezerwowe (uzupełnienia) — jedno wspólne „Uzupełnienia na wezwanie” na etap-postępowanie?
 - 21 projektów bez rozpisanych etapów: czy chcesz je ręcznie przypisać do etapów, żeby poszerzyć próbkę.

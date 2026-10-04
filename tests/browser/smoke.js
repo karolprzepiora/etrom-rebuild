@@ -1535,6 +1535,15 @@ async function main() {
     check('szkice zadań są ukryte przed osobą spoza zarządu i lidera', JSON.parse(hiddenInfo).hits.length === 0, hiddenInfo);
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
 
+    /* 38h. Biblioteka zadań: szkice z biblioteki, uzupełnienia z rezerwy */
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.openProject(' + budgetPid + ', "budzet"); return true;');
+    await sleep(400);
+    check('biblioteka zadań: przycisk wstawia typowe szkice do etapów', await evaluate('return !!document.querySelector("[data-fk=bp-lib-project]");'));
+    await evaluate('document.querySelector("[data-fk=bp-lib-project]").click(); return true;');
+    await sleep(300);
+    check('biblioteka: szkice mają znacznik szkicu, a uzupełnienia pochodzą z rezerwy',
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const all = p.stages.flatMap(s => s.tasks); return all.some(t => t.draft && t.name === "Operat wodnoprawny" || t.draft && t.name === "Koncepcja techniczna") && all.filter(t => t.name === "Uzupełnienia na wezwanie").every(t => t.fromReserve && t.draft);'));
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

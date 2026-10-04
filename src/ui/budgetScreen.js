@@ -67,6 +67,19 @@
     ]);
   }
 
+  /** Typowe zadania etapu z biblioteki: pojedyncze albo wszystkie naraz. */
+  function libraryRow(project, stage, a) {
+    var left = E.Library.missing(stage);
+    if (!left.length) return null;
+    return D.el('div', { class: 'bp-lib' }, [
+      D.el('span', { class: 'bp-lib__l t-muted', text: 'Z biblioteki:' }),
+      D.el('span', { class: 'bp-lib__chips' }, left.map(function (item) {
+        return D.el('button', { class: 'bp-chip', attrs: { type: 'button', 'data-fk': 'bp-lib-' + stage.id + '-' + item.name, 'aria-label': 'Dodaj szkic: ' + item.name }, text: '+ ' + item.name, on: { click: function () { a.addLibraryTasks(project.id, stage.id, [item.name]); } } });
+      })),
+      left.length > 1 ? UI.button({ label: 'Dodaj wszystkie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'bp-lib-all-' + stage.id }, onClick: function () { a.addLibraryTasks(project.id, stage.id); } }) : null
+    ]);
+  }
+
   function stageBlock(project, stage, index, ctx, totalWeight) {
     var a = ctx.actions;
     var meta = Model.describeStage(stage);
@@ -105,6 +118,7 @@
       body = D.el('div', { class: 'bp-stage__body' }, [
         reserveRow,
         tasks.length ? D.el('ul', { class: 'bp-tasks' }, tasks.map(function (t) { return taskRow(project, stage, t, ctx); })) : D.el('p', { class: 'bp-empty t-muted', text: 'Nie ma jeszcze zadań. Wpisz poniżej, co Twoim zdaniem wystąpi w tym etapie — bez osób i terminów.' }),
+        libraryRow(project, stage, a),
         D.el('div', { class: 'bp-add' }, [
           add,
           UI.button({ label: 'Rozdziel wolną pulę po równo', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'bp-fill-' + stage.id, disabled: p.unsized && p.free > 0 ? null : 'disabled' }, onClick: function () { a.fillStageHours(project.id, stage.id); } })
@@ -130,6 +144,7 @@
     } });
     var dayH = P.getRules().dayHours;
     var drafts = project.stages.reduce(function (t, s) { return t + (s.tasks || []).filter(function (x) { return x.draft; }).length; }, 0);
+    var libAll = UI.button({ label: 'Wstaw typowe szkice do wszystkich etapów', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'bp-lib-project' }, onClick: function () { a.addLibraryTasks(project.id, null); } });
     var steps = D.el('ol', { class: 'bp-steps' }, [
       ['1', 'Budżet', 'wpisz dni i rozdziel na etapy'],
       ['2', 'Szkice', 'dopisz zadania do etapów, bez osób i terminów'],
@@ -140,6 +155,7 @@
         D.el('div', { class: 'bp-head__main' }, [
           D.el('label', { class: 'bp-head__label', attrs: { for: 'bp-total' }, text: 'Budżet projektu' }),
           D.el('div', { class: 'bp-head__row' }, [input, D.el('span', { class: 'bp-head__unit', text: 'dni roboczych' }), distribute]),
+          D.el('div', { class: 'bp-head__lib' }, [libAll]),
           D.el('p', { class: 't-meta', text: '= ' + fmt(total) + ' h · dzień = ' + fmt(dayH) + ' h (zmienisz w Ustawieniach: Cel dnia) · zablokowane etapy zachowują swoje dni' })
         ]),
         D.el('dl', { class: 'bp-head__stats' }, [
