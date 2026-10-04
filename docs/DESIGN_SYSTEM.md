@@ -610,3 +610,6 @@ Pozycja „Kalendarz” w menu (`#/kalendarz`): miesiąc z numerami tygodni, św
 
 ### Święta w liczeniu
 Polskie święta nie są dniami roboczymi: zmniejszają pojemność tygodnia w Planie, nie dostają godzin zadań, nie liczą się do nieobecności ani do celu dnia w karcie czasu (dzień świąteczny jest neutralny).
+
+### Opis czasu zadania u pracownika
+W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od startu do terminu już minęło, to samo wypełnia pasek) i pod spodem „do pt 9 paź · 3 dni” (termin i dni robocze do niego). Po terminie: „po terminie”. To upływ czasu, nie postęp pracy ani budżet; budżet godzin pracownik nie widzi.

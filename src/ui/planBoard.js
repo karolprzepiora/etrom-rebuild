@@ -19,6 +19,7 @@
   var MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
   var RANGES = [2, 4, 6, 8, 12];
   var DOWS = ['pn', 'wt', 'śr', 'cz', 'pt'];
+  var DOWS_SHORT = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var LANE_H = 2.1; // rem
   var pendingFocus = null;
   var pendingPrio = null;
@@ -180,6 +181,15 @@
       var left = Plan.workdayDiff(new Date(plan.today), new Date(b.end));
       return left <= 0 ? 'termin dziś' : 'zostało ' + left + ' ' + (left === 1 ? 'dzień' : 'dni');
     }
+    /** Pod procentem czasu: termin i liczba dni roboczych do niego, np. „do pt 9 paź · 3 dni”. */
+    function dueText(b) {
+      if (b.overdue) return 'po terminie';
+      var left = Plan.workdayDiff(new Date(plan.today), new Date(b.end));
+      var d = new Date(b.end);
+      var when = DOWS_SHORT[d.getDay()] + ' ' + shortDate(d);
+      if (left <= 0) return 'termin dziś';
+      return 'do ' + when + ' · ' + left + ' ' + (left === 1 ? 'dzień' : 'dni');
+    }
 
     function paintBar(el, ns, ne) {
       var cl = ns < 0, cr = ne >= N;
@@ -230,8 +240,8 @@
       var side;
       if (solo) {
         var pct = elapsedOf(b);
-        side = D.el('span', { class: 'pb-tn__side pb-tn__time' + (pct >= 100 ? ' is-late' : (pct >= 75 ? ' is-hot' : '')) }, [
-          D.el('b', { class: 't-num', text: pct + '%' }), D.el('small', { text: timeText(b) }),
+        side = D.el('span', { class: 'pb-tn__side pb-tn__time' + (pct >= 100 ? ' is-late' : (pct >= 75 ? ' is-hot' : '')), attrs: { 'data-tooltip': 'Ile czasu do terminu już minęło (od startu zadania)' } }, [
+          D.el('b', { class: 't-num', text: pct + '% czasu' }), D.el('small', { text: dueText(b) }),
           D.el('i', { class: 'pb-tn__meter', style: { '--p': pct + '%' }, attrs: { 'aria-hidden': 'true' } })
         ]);
       } else {

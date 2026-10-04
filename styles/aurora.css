@@ -1049,3 +1049,8 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 .cv-row__txt small { color: var(--ink-3); font-size: var(--fs-xs); }
 .cv-empty { margin: 0; color: var(--ink-3); font-size: var(--fs-sm); }
 @media (max-width: 960px) { .cv-body { grid-template-columns: 1fr; } }
+.pb-tn__time { min-width: 7.6rem; white-space: nowrap; }
+.pb-tn__time .pb-tn__meter { justify-self: stretch; }
+.pb--solo .pb-row { grid-template-columns: 23rem minmax(0, 1fr); }
+.pb--solo .pb-grid { min-width: calc(23rem + var(--n) * 1.75rem); }
+.pb--solo.pb--compact .pb-grid { min-width: calc(23rem + var(--n) * 1.05rem); }
