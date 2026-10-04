@@ -382,6 +382,17 @@
     ]);
   }
 
+  /** Budżet planuje zarząd i lider; reszta widzi, dlaczego karta jest pusta i co zrobić. */
+  function budgetLocked(ctx) {
+    var me = ctx.state.prefs.me;
+    return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
+      icon: 'layers',
+      title: me ? 'Budżet planuje zarząd i lider projektu' : 'Wybierz, kim jesteś',
+      text: me ? 'Budżet w dniach, szkice zadań i biblioteka są widoczne dla osób z zarządu oraz lidera tego projektu. Pracownik widzi swoje zadania i terminy.'
+        : 'Budżet i szkice zadań widzi zarząd oraz lider projektu. W Zespole dodaj siebie z rolą zarządu, a w „Mojej pracy” wybierz, że pracujesz jako ta osoba.'
+    })])]);
+  }
+
   function projectDetail(project, ctx) {
     if (!project) return [notFound(ctx)];
     var now = new Date();
@@ -396,7 +407,7 @@
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else if (tab === 'czas') body = timeTab(project, ctx);
-    else if (tab === 'budzet' && canAnalyse) body = E.BudgetTab.budgetTab(project, ctx);
+    else if (tab === 'budzet') body = canAnalyse ? E.BudgetTab.budgetTab(project, ctx) : budgetLocked(ctx);
     else if (tab === 'analiza') body = E.AnalysisScreen.projectView(project, ctx.state, ctx);
     else if (tab === 'aktywnosc') body = activityTab(project, ctx);
     else body = E.StageList.stageList(project, ctx);
@@ -405,7 +416,7 @@
       label: 'Sekcje projektu',
       value: tab,
       class: 'detail__tabs',
-      items: TABS.filter(function (t) { return (t.value !== 'analiza' && t.value !== 'budzet') || canAnalyse; }).map(function (t) {
+      items: TABS.filter(function (t) { return t.value !== 'analiza' || canAnalyse; }).map(function (t) {
         return { value: t.value, label: t.label, count: counts[t.value], href: E.ProjectList.projectHref(project, t.value === 'etapy' ? '' : t.value) };
       })
     });
