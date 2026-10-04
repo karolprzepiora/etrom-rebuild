@@ -24,6 +24,7 @@
     var picked = values.assignees || [];
 
     var name = UI.input({ id: 'tk-name', value: values.name, error: problems.name, maxlength: 200, placeholder: 'np. Opracować rysunki wykonawcze' });
+    var start = UI.input({ id: 'tk-start', type: 'date', value: values.start || '', error: problems.start });
     var deadline = UI.input({ id: 'tk-deadline', type: 'datetime-local', value: values.deadline, error: problems.deadline });
     var workload = UI.select({
       id: 'tk-workload', value: values.workload || 'medium',
@@ -70,6 +71,7 @@
           mailId: values.mailId || '',
           stageId: stage ? stage.value : undefined,
           name: name.value,
+          start: start.value,
           deadline: deadline.value,
           workload: workload.value,
           estimate: (function () { var n = String(estimate.value || '').trim().replace(',', '.'); return n === '' || !isFinite(Number(n)) ? estimate.value : String(Math.round(Number(n) * dayH * 10) / 10); })(),
@@ -86,9 +88,10 @@
           stage ? UI.field({ id: 'tk-stage', label: 'Etap', control: stage, hint: 'W tym etapie zapisuje się godziny i liczy budżet.' }) : null,
           UI.field({ id: 'tk-name', label: 'Nazwa zadania', required: true, control: name, error: problems.name }),
           D.el('div', { class: 'form__row' }, [
-            UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline }),
-            UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload })
+            UI.field({ id: 'tk-start', label: 'Start', optional: true, control: start, error: problems.start }),
+            UI.field({ id: 'tk-deadline', label: 'Termin', optional: true, control: deadline, error: problems.deadline })
           ]),
+          UI.field({ id: 'tk-workload', label: 'Nakład pracy', control: workload, error: problems.workload }),
           UI.field({ id: 'tk-estimate', label: 'Czas pracy, dni robocze', optional: true, control: estimate, error: problems.estimate, hint: 'Ile dni z puli etapu zajmie zadanie (dzień = ' + String(dayH).replace('.', ',') + ' h). Na tej podstawie liczy się plan obciążenia. Bez szacunku plan przyjmuje wartość z nakładu pracy.' }),
           draftBox,
           reserveBox,

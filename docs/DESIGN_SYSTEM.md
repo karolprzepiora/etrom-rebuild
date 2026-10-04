@@ -551,3 +551,15 @@ Kolejność pracy jest jedna: **Biblioteka** (standard biura) → **Nowy projekt
 - **Biblioteka** (`#/biblioteka`, ekran w menu): lista wszystkich typowych zadań biura, kafelek na każdy etap katalogu. Dodawanie (Enter), zmiana nazwy w miejscu, usuwanie, „Przywróć zadania standardowe”. Bez udziałów i godzin. Zapisuje się od razu w `workspace.library`; edytuje zarząd, reszta ogląda. Kroki zadań (np. zlecenie → wykonanie → zatwierdzenie) — na później.
 - **Nowy projekt**: sekcja „Etapy i podział budżetu” — budżet godzin, wybór etapów (zakres i procedury ustawiają domyślny zestaw), udział % każdego etapu (domyślnie standard biura, przeskalowany do 100% dla wybranych etapów) i wyliczone godziny. Udział zapisuje się w etapie jako waga (`stage.weight`), więc Plan wstępny i późniejszy rozdział budżetu trzymają się tych samych proporcji. Po utworzeniu powiadomienie „Zaplanuj” otwiera Plan wstępny (zarząd i lider).
 - **Plan wstępny** podpowiada zadania z Biblioteki (własnej, nie tylko standardowej) (Biblioteka nie zawiera udziałów ani godzin).
+
+## Plan tygodni (Czas → Plan obciążenia, Moja praca → Tygodnie)
+
+Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start–termin, kiedy realnie pracujemy) i **obłożenie** (ile godzin to daje w tygodniu).
+
+- **Widok zespołu** (Czas → Plan obciążenia; zarząd widzi wszystkich, reszta siebie): kolumna na tydzień (4/6/8/12 tygodni, strzałki i „Dziś”), wiersz na osobę. U góry wiersza znaczniki obłożenia tygodnia (godziny/pojemność; zielony do 85%, żółty napięty, czerwony przeciążenie), pod nimi zadania jako paski od startu do terminu, w kolorze projektu. Klik znacznika pokazuje składniki tygodnia.
+- **Interakcja** (zmienia zarząd i lider projektu): przeciągnięcie paska przesuwa start i termin razem, uchwyty na brzegach zmieniają start albo termin, upuszczenie na innej osobie przenosi zadanie (osoba musi być w zespole projektu). Podczas przeciągania znaczniki obłożenia liczą się na bieżąco. Klawiatura: ←/→ cały pasek, Shift+←/→ termin, Alt+←/→ start. Każda zmiana ma „Cofnij”. Zadania bez terminu czekają w tacce „Bez terminu” i da się je upuścić na oś (start = dzień upuszczenia, termin = start + dni potrzebne wg godzin).
+- **Godziny zadania**: własny szacunek albo równa część tego, co zostało w puli etapu (budżet etapu − zapisany czas − szacunki innych zadań); dopiero bez budżetu etapu — wartość z nakładu pracy. Praca rozkłada się równo na dni robocze od startu (bez startu: od dziś) do terminu.
+- **Pojemność tygodnia** = dni robocze × cel dnia × „Planowalna część tygodnia” z ustawień (domyślnie 85%; reszta to bufor na sprawy bieżące).
+- **Moja praca → Tygodnie**: ten sam widok tylko z własnymi zadaniami, 4 tygodnie.
+- Zadanie ma opcjonalne pole **Start** (obok Terminu) w formularzu; zamrożone szkice go nie mają.
+- Na później: kroki zadań z czasem oczekiwania na urzędy i zewnętrznych wykonawców (szare paski bez obciążenia), kolejność projektów jako priorytet.

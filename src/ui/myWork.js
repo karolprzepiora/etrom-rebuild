@@ -161,6 +161,7 @@
     { value: 'all', label: 'Wszystko' },
     { value: 'today', label: 'Dziś' },
     { value: 'week', label: 'Ten tydzień' },
+    { value: 'weeks', label: 'Tygodnie' },
     { value: 'react', label: 'Wymaga reakcji' },
     { value: 'returned', label: 'Do poprawy' }
   ];
@@ -198,6 +199,7 @@
     if (key === 'all') return m.open + m.react.length;
     if (key === 'today') return b.overdue.length + b.today.length;
     if (key === 'week') return b.overdue.length + b.today.length + b.week.length;
+    if (key === 'weeks') return m.open;
     if (key === 'react') return m.react.length;
     return m.returned.length;
   }
@@ -252,7 +254,12 @@
     var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
     var shown = pick(current, m);
     var main = [viewTabs(m, current, ctx.actions)];
-    var rest = [
+    if (current === 'weeks') {
+      var board = E.PlanBoard.view(state, ctx, now, { solo: true });
+      main = main.concat(board.body.filter(Boolean));
+      shown = { react: [], alarms: [], snoozed: [], groups: {} };
+    }
+    var rest = current === 'weeks' ? [] : [
       E.InboxScreen.alarmStrip(shown.alarms, ctx),
       E.InboxScreen.section(shown.react, ctx, now)
     ];
@@ -263,7 +270,7 @@
     rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
     var visible = rest.filter(Boolean);
     main = main.concat(visible);
-    if (current !== 'all' && !visible.length) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
+    if (current !== 'all' && current !== 'weeks' && !visible.length) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
     if (current === 'all' && !m.open && !m.react.length) {
       main.push(UI.emptyState({
         icon: 'checkCircle',

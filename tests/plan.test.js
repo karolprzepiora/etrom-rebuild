@@ -94,3 +94,66 @@ test('okno do terminu: zadanie większe niż dostępne dni jest „za mało czas
   assert.equal(cell(Plan.build(mk(40, '2026-10-09'))).mustStartNow, true); // 5 dni pracy, 5 dni w oknie
   assert.equal(cell(Plan.build(mk(8, '2026-10-30'))).squeezed, undefined);
 });
+
+test('data startu zadania: praca rozkłada się od startu, a pasek zaczyna się w dniu startu', () => {
+  // start śr 14 paź → pt 16 paź: 3 dni, 12 h → cały plan w tygodniu 1, nic w tygodniu 0
+  const plan = run([task('t1', { estimate: 12, start: '2026-10-14', deadline: '2026-10-16' })]);
+  const row = rowOf(plan, 'p-1');
+  assert.equal(row.weeks[0].planned, 0);
+  assert.equal(row.weeks[1].planned, 12);
+  assert.equal(row.bars.length, 1);
+  assert.equal(row.bars[0].start, new Date(2026, 9, 14).getTime());
+  assert.equal(row.bars[0].end, new Date(2026, 9, 16).getTime());
+  assert.equal(row.bars[0].explicitStart, true);
+});
+
+test('bez startu pasek zaczyna się dziś; po terminie pasek biegnie od terminu do dziś', () => {
+  const plan = run([task('a', { estimate: 8, deadline: '2026-10-09' }), task('b', { estimate: 4, deadline: '2026-10-01' })]);
+  const bars = rowOf(plan, 'p-1').bars;
+  const a = bars.filter((b) => b.taskId === 'a')[0];
+  const b = bars.filter((x) => x.taskId === 'b')[0];
+  assert.equal(a.start, new Date(2026, 9, 5).getTime());
+  assert.equal(b.overdue, true);
+  assert.equal(b.start, new Date(2026, 9, 1).getTime());
+  assert.equal(b.end, new Date(2026, 9, 5).getTime());
+});
+
+test('pula etapu: zadanie bez szacunku bierze równą część tego, co zostało w budżecie etapu', () => {
+  const stage = { id: 's1', hours: 100, tasks: [
+    task('a', { estimate: 20, deadline: '2026-10-30' }),
+    task('b', { deadline: '2026-10-30' }),
+    task('c', { deadline: '2026-10-30', assignees: ['p-2'] })
+  ] };
+  const entries = [{ id: 'e1', personId: 'p-1', projectId: 1, stageId: 's1', taskId: 'a', start: '2026-10-01T08:00:00.000Z', end: '2026-10-01T12:00:00.000Z', source: 'manual' }];
+  const plan = Plan.build({ projects: [{ id: 1, code: '2601', stages: [stage] }], people, entries, now, target: 480, weeks: 4 });
+  // budżet 100 − zapisane 4 − szacunek zadania a (20 − 4 = 16) = 80, dla dwóch zadań bez szacunku po 40 h
+  const b = rowOf(plan, 'p-1').bars.filter((x) => x.taskId === 'b')[0];
+  const c = rowOf(plan, 'p-2').bars.filter((x) => x.taskId === 'c')[0];
+  assert.equal(b.hours, 40);
+  assert.equal(c.hours, 40);
+  assert.equal(b.fromPool, true);
+});
+
+test('pojemność tygodnia uwzględnia udział planowalny (bufor na sprawy bieżące)', () => {
+  const plan = run([task('t1', { estimate: 34, deadline: '2026-10-09' })], [], { capacityPct: 80 });
+  const w = rowOf(plan, 'p-1').weeks[0];
+  assert.equal(w.capacity, 32);
+  assert.equal(w.state, 'over');
+});
+
+test('okno planu można przesunąć o tygodnie', () => {
+  const plan = run([task('t1', { estimate: 8, deadline: '2026-10-20' })], [], { offsetWeeks: 1 });
+  assert.equal(plan.weeks[0].start, new Date(2026, 9, 12).getTime());
+  assert.equal(plan.weeks[0].current, false);
+});
+
+test('shiftSpan: przesuwanie całego paska i brzegów w dniach roboczych, z pominięciem weekendów', () => {
+  const t = { start: '2026-10-08', deadline: '2026-10-09T12:00' };            // czw–pt
+  assert.deepEqual(Plan.shiftSpan(t, 'move', 1, now), { start: '2026-10-09', deadline: '2026-10-12T12:00' });
+  assert.deepEqual(Plan.shiftSpan(t, 'end', 3, now), { start: '2026-10-08', deadline: '2026-10-14T12:00' });
+  assert.deepEqual(Plan.shiftSpan(t, 'start', -2, now), { start: '2026-10-06', deadline: '2026-10-09T12:00' });
+  assert.deepEqual(Plan.shiftSpan(t, 'end', -5, now), { start: '2026-10-08', deadline: '2026-10-08T12:00' }, 'koniec nie wyprzedza startu');
+  assert.deepEqual(Plan.shiftSpan({ deadline: '2026-10-09' }, 'move', 1, now), { start: '2026-10-06', deadline: '2026-10-12T16:00' }, 'bez startu pasek zaczyna się dziś');
+  assert.equal(Plan.shiftSpan({ deadline: '' }, 'move', 1, now), null);
+  assert.equal(Plan.workdayDiff(new Date(2026, 9, 9), new Date(2026, 9, 12)), 1);
+});

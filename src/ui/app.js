@@ -643,7 +643,7 @@
       taskForm: {
         projectId: projectId, stageId: stageId,
         draft: {
-          id: task.id, name: task.name, deadline: task.deadline, workload: task.workload, estimate: task.estimate || '',
+          id: task.id, name: task.name, start: task.start || '', deadline: task.deadline, workload: task.workload, estimate: task.estimate || '',
           important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || '',
           draft: task.draft === true, fromReserve: task.fromReserve === true,
           procedure: taskFormMeta(projectId, stageId).procedure, dayHours: E.Planning.getRules().dayHours
@@ -1598,6 +1598,44 @@
     });
   }
 
+  /** Plan tygodni: zmiana okna zadania (start i termin), do cofnięcia. Tylko zarząd i lider projektu. */
+  function setTaskSpan(projectId, stageId, taskId, start, deadline, extra) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) { Toast.show({ message: 'Terminy zadań zmienia zarząd i lider projektu.', tone: 'danger' }); return false; }
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return false;
+    withUndo(projectId, (extra && extra.message) || 'Przesunięto zadanie „' + task.name + '”', function (p) {
+      return Object.assign({}, p, { stages: p.stages.map(function (st) {
+        return st.id !== stageId ? st : Object.assign({}, st, { tasks: st.tasks.map(function (t) {
+          if (t.id !== taskId) return t;
+          var next = Object.assign({}, t, { start: start || '', deadline: deadline || t.deadline });
+          if (extra && extra.fromId && extra.toId) {
+            var parts = Object.assign({}, t.parts || {});
+            var list = (t.assignees || []).filter(function (id) { return id !== extra.fromId; });
+            if (list.indexOf(extra.toId) < 0) { list.push(extra.toId); parts[extra.toId] = parts[extra.fromId] || 'todo'; }
+            delete parts[extra.fromId];
+            next.assignees = list; next.parts = parts;
+          }
+          return next;
+        }) });
+      }) });
+    });
+    return true;
+  }
+
+  /** Przeniesienie zadania na inną osobę (osoba musi należeć do zespołu projektu). */
+  function reassignTask(projectId, stageId, taskId, fromId, toId, start, deadline) {
+    var project = findProject(projectId);
+    var person = Team.findPerson(people(), toId);
+    if (!project || !person) return false;
+    if (Team.projectPeople(project.team).indexOf(toId) < 0) {
+      Toast.show({ message: Team.fullName(person) + ' nie należy do zespołu projektu ' + project.code + '.', tone: 'danger' });
+      return false;
+    }
+    var task = taskOf(projectId, stageId, taskId);
+    return setTaskSpan(projectId, stageId, taskId, start === undefined ? (task && task.start) : start, deadline, { fromId: fromId, toId: toId, message: '„' + (task ? task.name : 'Zadanie') + '” przeniesione na ' + Team.fullName(person) });
+  }
+
   /** Rozdziela całość budżetu (godziny) na etapy wg wag; zablokowane i zakończone zostają. */
   function distributeBudget(projectId, totalHours) {
     var project = findProject(projectId);
@@ -1991,7 +2029,7 @@
         if (dupe) return;
         var assignees = (spec.people || []).map(demoPersonId).filter(function (id) { return id && allowed.indexOf(id) >= 0; });
         var task = Tasks.createTask({
-          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload, description: spec.description || '',
+          name: spec.name, deadline: demoTaskDeadline(spec.hours), workload: spec.workload, estimate: E.Plan.DEFAULT_HOURS[spec.workload] || 12, description: spec.description || '',
           important: spec.important === true, assignees: assignees
         }, stage.tasks || [], allowed);
         var path = DEMO_PATHS[spec.status] || [];
@@ -2569,6 +2607,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },

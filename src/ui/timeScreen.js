@@ -188,87 +188,8 @@
 
   /* ---------- Plan obciążenia ---------- */
 
-  function weekLabel(start) {
-    var s = new Date(start);
-    var e = new Date(start + 6 * 86400000);
-    return s.getDate() + (s.getMonth() === e.getMonth() ? '' : ' ' + MONTHS_SHORT[s.getMonth()]) + '–' + e.getDate() + ' ' + MONTHS_SHORT[e.getMonth()];
-  }
-
-  function planCell(cell, week, personId, index, selected, ctx) {
-    var ratio = cell.capacity > 0 ? cell.planned / cell.capacity : (cell.planned > 0 ? 2 : 0);
-    var isSel = selected && selected.personId === personId && selected.week === index;
-    return D.el('button', {
-      class: 'an-hm__c pl-btn pl-btn--' + cell.state + (cell.planned ? '' : ' is-empty') + (isSel ? ' is-selected' : ''),
-      style: loadStyle(ratio),
-      attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + personId + '-' + index, 'data-tooltip': cell.planned ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.state === 'over' ? ' — przeciążenie' : '') : 'Brak zaplanowanej pracy' },
-      on: { click: function () { ctx.actions.setTime({ planCell: isSel ? null : { personId: personId, week: index } }); } }
-    }, [cell.planned ? String(Math.round(cell.planned)) : '']);
-  }
-
-  function planDetail(selected, plan, people, ctx) {
-    if (!selected) return null;
-    var row = plan.rows.filter(function (r) { return r.personId === selected.personId; })[0];
-    if (!row) return null;
-    var isFree = selected.week === 'free';
-    var list = isFree ? row.unscheduled.tasks : (row.weeks[selected.week] ? row.weeks[selected.week].tasks : []);
-    var person = Team.findPerson(people, selected.personId);
-    var title = (person ? Team.fullName(person) : '') + ' · ' + (isFree ? 'zadania bez terminu' : 'tydzień ' + weekLabel(plan.weeks[selected.week].start));
-    return D.el('section', { class: 'pl-detail', attrs: { 'aria-label': title } }, [
-      D.el('h3', { class: 'pl-detail__title', text: title }),
-      list.length ? D.el('ul', { class: 'pl-tasks' }, list.map(function (t) {
-        var project = projectInfo(ctx, t.projectId);
-        return D.el('li', { class: 'pl-task' }, [
-          codePill(project, t.projectId),
-          D.el('button', { class: 'pl-task__name truncate', attrs: { type: 'button' }, text: t.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: t.projectId, stageId: t.stageId, taskId: t.taskId }); } } }),
-          D.el('span', { class: 'pl-task__late', text: t.overdue ? 'po terminie' : (t.squeezed ? 'za mało czasu' : (t.mustStartNow ? 'musi ruszyć teraz' : '')) }),
-          D.el('span', { class: 'pl-task__h t-num', text: hh(t.hours) + ' h' })
-        ]);
-      })) : D.el('p', { class: 'pl-detail__empty', text: 'Brak zadań w tym okresie.' })
-    ]);
-  }
-
   function planView(state, ctx, now) {
-    var people = state.workspace.people || [];
-    var me = Team.findPerson(people, state.prefs.me);
-    var management = Budget.isManagement(me.id, people);
-    var plan = Plan.build({
-      projects: state.workspace.projects, people: people, entries: state.workspace.entries || [], now: now,
-      target: state.prefs.dayTarget, weeks: 6, personIds: management ? null : [me.id]
-    });
-    var selected = state.planCell || null;
-    var overCount = plan.rows.filter(function (r) { return r.weeks.some(function (c) { return c.state === 'over'; }); }).length;
-    var rowStyle = { '--cols': 'minmax(10rem, 14rem) repeat(' + (plan.weeks.length + 1) + ', minmax(4.2rem, 1fr))', minWidth: '44rem' };
-    var head = D.el('div', { class: 'an-hm__row an-hm__row--head', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who' })]
-      .concat(plan.weeks.map(function (w) {
-        return D.el('span', { class: 'an-hm__wk pl-week' + (w.current ? ' is-current' : ''), attrs: { role: 'columnheader' } }, [D.el('span', { text: weekLabel(w.start) }), D.el('small', { text: w.current ? 'bieżący' : (w.workdays !== 5 ? w.workdays + ' dni rob.' : '') })]);
-      }), [D.el('span', { class: 'an-hm__wk pl-week', attrs: { role: 'columnheader' } }, [D.el('span', { text: 'Bez terminu' }), D.el('small', { text: 'nie wliczone' })])]));
-    var body = plan.rows.map(function (row) {
-      var person = Team.findPerson(people, row.personId);
-      var freeOn = selected && selected.personId === row.personId && selected.week === 'free';
-      return D.el('div', { class: 'an-hm__row', style: rowStyle, attrs: { role: 'row' } }, [D.el('span', { class: 'an-hm__who truncate', attrs: { role: 'rowheader' } }, [E.Avatar.avatar(person, { size: 'sm', tooltip: false }), D.el('span', { class: 'truncate', text: Team.fullName(person) })])]
-        .concat(row.weeks.map(function (cell, i) { return planCell(cell, plan.weeks[i], row.personId, i, selected, ctx); }), [
-          D.el('button', {
-            class: 'an-hm__c pl-btn pl-btn--free' + (row.unscheduled.hours ? '' : ' is-empty') + (freeOn ? ' is-selected' : ''), attrs: { type: 'button', role: 'cell', 'data-fk': 'pl-free-' + row.personId, 'aria-pressed': String(!!freeOn) },
-            on: { click: function () { ctx.actions.setTime({ planCell: freeOn ? null : { personId: row.personId, week: 'free' } }); } }
-          }, [row.unscheduled.hours ? D.el('span', { class: 'pl-btn__txt t-num' }, [D.el('b', { text: hh(row.unscheduled.hours) }), D.el('small', { text: ' h' })]) : ''])
-        ]));
-    });
-    var grid = D.el('div', { class: 'an-hm pl-hm', attrs: { role: 'table', 'aria-label': 'Plan obciążenia', tabindex: '0' } }, [head].concat(body));
-    return {
-      summary: management ? (overCount ? F2(overCount, 'osoba przeciążona', 'osoby przeciążone', 'osób przeciążonych') + ' w najbliższych tygodniach' : 'Nikt nie jest przeciążony w najbliższych tygodniach') : 'Twój plan na najbliższe tygodnie',
-      body: [
-        D.el('p', { class: 'pl-intro', text: 'Plan liczy godziny z otwartych zadań (szacunek albo wartość z nakładu pracy, pomniejszone o zapisany już czas) i rozkłada je na dni robocze do terminu. Kliknij komórkę, żeby zobaczyć zadania.' + (management ? '' : ' Plan całego zespołu widzi zarząd.') }),
-        plan.rows.length
-          ? card('Obciążenie tydzień po tygodniu', 'godziny do zrobienia z otwartych zadań; barwa = udział w pojemności tygodnia (' + hh((state.prefs.dayTarget || 480) / 60) + ' h na dzień)', grid)
-          : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
-        planDetail(selected, plan, people, ctx),
-        D.el('div', { class: 'pl-legend', attrs: { 'aria-hidden': 'true' } }, [
-          D.el('span', { class: 'pl-legend__i pl-legend__i--ok', text: 'do 85% pojemności' }),
-          D.el('span', { class: 'pl-legend__i pl-legend__i--tight', text: '85–100%: napięty' }),
-          D.el('span', { class: 'pl-legend__i pl-legend__i--over', text: 'ponad 100%: przeciążenie' })
-        ])
-      ]
-    };
+    return E.PlanBoard.view(state, ctx, now);
   }
 
   /* ---------- Całość ---------- */

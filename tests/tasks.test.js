@@ -248,3 +248,12 @@ test('zadanie zapamiętuje pismo, z którego powstało (mailId), i zachowuje je 
   assert.equal(Tasks.normalizeTasks([created], []).pop().mailId, 'm-7');
   assert.equal(Tasks.validateTask({ name: 'Zwykłe' }, []).value.mailId, '');
 });
+
+test('data startu: poprawna data, nie po terminie; szkic jej nie ma; normalizacja czyści złe wartości', () => {
+  const ok = Tasks.validateTask({ name: 'A', start: '2026-10-05', deadline: '2026-10-09T12:00' }, []);
+  assert.equal(ok.valid, true);
+  assert.equal(ok.value.start, '2026-10-05');
+  assert.ok(Tasks.validateTask({ name: 'A', start: '2026-10-12', deadline: '2026-10-09T12:00' }, []).errors.start);
+  assert.ok(Tasks.validateTask({ name: 'A', start: '2026-02-31' }, []).errors.start);
+  assert.equal(Tasks.validateTask({ name: 'A', start: '2026-10-05', draft: true }, []).value.start, '');
+});

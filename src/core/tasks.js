@@ -42,6 +42,13 @@
     return typeof value === 'string' && value !== '' && Number.isFinite(Date.parse(value));
   }
 
+  function isDay(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if (!m) return false;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+  }
+
   function nextTaskId(tasks) {
     var max = 0;
     (tasks || []).forEach(function (task) {
@@ -63,6 +70,7 @@
 
     var name = text(data.name);
     var deadline = text(data.deadline);
+    var start = text(data.start).slice(0, 10);
     var workload = text(data.workload) || 'medium';
     var estimateRaw = String(data.estimate === undefined || data.estimate === null ? '' : data.estimate).trim().replace(',', '.');
     var estimate = estimateRaw === '' ? 0 : Number(estimateRaw);
@@ -76,8 +84,11 @@
     if (!Number.isFinite(estimate) || estimate < 0 || estimate > 2000) errors.estimate = 'Podaj czas pracy od pół godziny do 250 dni albo zostaw puste.';
     else if (estimate > 0 && estimate < 0.5) errors.estimate = 'Najmniejszy szacunek to pół godziny.';
 
+    if (start && !isDay(start)) errors.start = 'Użyj poprawnej daty.';
+    else if (start && deadline && isDateTime(deadline) && start > deadline.slice(0, 10)) errors.start = 'Start nie może być po terminie.';
+
     var isDraft = data.draft === true;
-    if (isDraft) { assignees = []; deadline = ''; }
+    if (isDraft) { assignees = []; deadline = ''; start = ''; }
     var unknown = assignees.filter(function (id) { return allowed.indexOf(id) < 0; });
     if (unknown.length) errors.assignees = 'Realizatorem może być tylko osoba z zespołu projektu.';
 
@@ -89,6 +100,7 @@
       errors: errors,
       value: {
         name: name,
+        start: start,
         deadline: deadline,
         workload: workload,
         estimate: estimate > 0 ? Math.round(estimate * 10) / 10 : 0,
@@ -341,6 +353,7 @@
         id: id,
         name: name.slice(0, LIMITS.name),
         status: status,
+        start: isDay(String(item.start || '').slice(0, 10)) && (!isDateTime(item.deadline) || String(item.start).slice(0, 10) <= item.deadline.slice(0, 10)) && item.draft !== true ? String(item.start).slice(0, 10) : '',
         deadline: isDateTime(item.deadline) ? item.deadline : '',
         workload: workload,
         assignees: assignees,

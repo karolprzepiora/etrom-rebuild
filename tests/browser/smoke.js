@@ -773,12 +773,41 @@ async function main() {
       await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-hm__head .ts-hm__day").length === days;'));
     await click('[data-fk="time-tab-plan"]');
     await sleep(300);
-    check('zakładka „Plan obciążenia” pokazuje siatkę tygodni z pojemnością',
-      await evaluate('return !!document.querySelector(".pl-hm") && document.querySelectorAll(".pl-hm .pl-week").length === 7 && document.querySelectorAll(".pl-btn").length >= 7;'));
-    await evaluate('const b = document.querySelector(".pl-btn:not(.is-empty):not(.pl-btn--free)"); if (b) b.click(); return !!b;');
+    check('zakładka „Plan obciążenia” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
+      await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-row[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
+    await evaluate('const b = document.querySelector(".pb-load:not(.is-empty)"); if (b) b.click(); return !!b;');
     await sleep(200);
-    check('kliknięcie komórki planu pokazuje zadania z godzinami',
+    check('kliknięcie znacznika tygodnia pokazuje zadania z godzinami',
       await evaluate('return !!document.querySelector(".pl-detail") && document.querySelectorAll(".pl-task").length >= 1;'));
+    await click('[data-fk="pb-next"]');
+    await sleep(250);
+    check('strzałka „późniejsze tygodnie” przesuwa okno planu, a „Dziś” je cofa',
+      (await state('s.planOffset')) > 0 && (await evaluate('return document.querySelector(".pb-wk--head.is-current") === null;')));
+    await click('[data-fk="pb-today"]');
+    await sleep(200);
+    await click('.pb-toolbar .segmented button:nth-child(3)');
+    await sleep(250);
+    check('przełącznik 8 tygodni zmienia liczbę kolumn',
+      await evaluate('return document.querySelectorAll(".pb-wk--head").length === 8;'));
+    /* przeciąganie paska: cały pasek o dwa dni robocze, termin z klawiatury, przeniesienie na inną osobę */
+    const planBar = await evaluate('const el = [...document.querySelectorAll(".pb-bar.is-editable")].find(x => !x.classList.contains("is-late")); if (!el) return null; return { p: el.dataset.projectId, s: el.dataset.stageId, t: el.dataset.taskId, person: el.dataset.personId };');
+    const taskOfBar = () => state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const st = p.stages.find(x => x.id === "' + planBar.s + '"); const t = st.tasks.find(x => x.id === "' + planBar.t + '"); return [t.start, t.deadline, t.assignees.join(",")].join("|"); })()');
+    const spanBefore = await taskOfBar();
+    await evaluate('const el = document.querySelector(\'.pb-bar[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"]\'); const r = el.getBoundingClientRect(); const w = el.closest(".pb-track").getBoundingClientRect().width / (document.querySelectorAll(".pb-wk--head").length * 5); const x = r.left + r.width / 2; const y = r.top + r.height / 2; const ev = (type, dx) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, button: 0, clientX: x + dx, clientY: y })); ev("pointerdown", 0); ev("pointermove", w * 2.2); ev("pointerup", w * 2.2); return true;');
+    await sleep(400);
+    const afterDrag = await taskOfBar();
+    check('przeciągnięcie paska zmienia start i termin zadania (do cofnięcia), a pojemność tygodni liczy się od nowa',
+      spanBefore !== afterDrag && /^\d{4}-\d{2}-\d{2}\|/.test(afterDrag) && !!(await evaluate('return [...document.querySelectorAll(".toast")].some(t => /Przesunięto zadanie/.test(t.textContent));')));
+    await evaluate('const el = document.querySelector(\'.pb-bar[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"]\'); el.focus(); el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true })); return true;');
+    await sleep(350);
+    const afterKey = await taskOfBar();
+    check('Shift+→ na pasku wydłuża termin o dzień roboczy, a fokus zostaje na pasku',
+      afterKey !== afterDrag && afterKey.split("|")[0] === afterDrag.split("|")[0] && afterKey.split("|")[1] > afterDrag.split("|")[1]
+      && (await evaluate('return document.activeElement && document.activeElement.classList.contains("pb-bar");')));
+    await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
+    await sleep(300);
+    check('„Cofnij” przywraca poprzednie okno zadania', (await taskOfBar()) === afterDrag);
+
     await click('[data-fk="time-tab-sheet"]');
     await sleep(200);
     await click('[data-fk="ts-export-menu"]');
@@ -814,7 +843,7 @@ async function main() {
     await sleep(300);
     check('projekt dostaje tylko wybrane etapy, w kolejności standardu',
       (await state('(s.workspace.projects.find(x => x.code === "PICK-1") || { stages: [] }).stages.map(st => st.id).join(",")')) === 'preparation,water-docs,handover');
-    await click('[data-toast-action]');
+    await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
     await sleep(500);
     const pid = await projectId('PICK-1');
     check('„Zaplanuj” w powiadomieniu prowadzi do nowego projektu (Plan wstępny dla zarządu i lidera)', /^#\/projekty\/\d+(\/budzet)?$/.test(await evaluate('return location.hash;')) && (await evaluate('return location.hash;')).indexOf('/' + pid) > 0);
@@ -1440,6 +1469,16 @@ async function main() {
     await sleep(400);
     check('„Przywróć zadania standardowe” wraca do standardu biura',
       (await state('(s.workspace.library.tasks.concept || []).length')) === 0);
+
+    /* Moja praca → Tygodnie: własne zadania jako paski */
+    await go('#/moja-praca');
+    await sleep(300);
+    await click('[data-fk="mywork-view-weeks"]');
+    await sleep(350);
+    check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 4 tygodnie',
+      await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 4 && document.querySelectorAll(".pb-row[data-person]").length === 1;'));
+    await click('[data-fk="mywork-view-all"]');
+    await sleep(250);
 
     /* 38h. Zdarzenia projektowe w Aktualnościach, wyjaśnienie stanu, radar jako filtr, obciążenie zespołu */
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
