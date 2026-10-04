@@ -59,8 +59,47 @@
     return { tone: 'normal', text: 'Pozostało ' + plDays(days), days: days };
   }
 
+  /* Zasady liczenia postępu (zmieniane w Ustawieniach → Budżet i postęp):
+     method 'auto'   — etap w toku liczy się wg zadań (godziny z oszacowań, a bez nich liczba zadań),
+                       a gdy nie ma zadań — wg wagi „w toku”;
+     method 'status' — tylko status etapu: zakończony = 100%, w toku = waga „w toku”, reszta 0;
+     method 'done'   — tylko zakończone etapy (jak dotąd). */
+  var rules = { method: 'auto', workingWeight: 0.5 };
+
+  function setRules(next) {
+    var n = next || {};
+    if (n.method === 'auto' || n.method === 'status' || n.method === 'done') rules.method = n.method;
+    var w = Number(n.workingWeight);
+    if (Number.isFinite(w) && w >= 0 && w <= 0.95) rules.workingWeight = w;
+    return getRules();
+  }
+  function getRules() { return { method: rules.method, workingWeight: rules.workingWeight }; }
+
+  /** Udział wykonania etapu (0–1) wg bieżących zasad. */
+  function stageFraction(stage, custom) {
+    var r = custom || rules;
+    if (stage.status === 'done') return 1;
+    if (stage.status !== 'working' || r.method === 'done') return 0;
+    var cap = 0.95;
+    if (r.method === 'auto') {
+      var tasks = stage.tasks || [];
+      if (tasks.length) {
+        var est = 0, estDone = 0;
+        tasks.forEach(function (t) {
+          var h = Number(t.estimate);
+          if (Number.isFinite(h) && h > 0) { est += h; if (t.status === 'done') estDone += h; }
+        });
+        var share = est > 0 && tasks.every(function (t) { return Number(t.estimate) > 0; })
+          ? estDone / est
+          : tasks.filter(function (t) { return t.status === 'done'; }).length / tasks.length;
+        return Math.min(cap, share);
+      }
+    }
+    return Math.min(cap, r.workingWeight);
+  }
+
   /**
-   * Postęp rzeczowy projektu: udział godzin zakończonych etapów w całości.
+   * Postęp rzeczowy projektu: udział godzin wykonanych (wg zasad postępu) w całości.
    * @returns {{percent: number, done: number, total: number, hoursDone: number, hoursTotal: number}}
    */
   function projectProgress(project) {
@@ -73,17 +112,15 @@
       var hours = Number(stage.hours);
       if (!Number.isFinite(hours) || hours <= 0) hours = 0;
       hoursTotal += hours;
-      if (stage.status === 'done') {
-        hoursDone += hours;
-        done += 1;
-      }
+      hoursDone += hours * stageFraction(stage);
+      if (stage.status === 'done') done += 1;
     });
 
     return {
       percent: hoursTotal > 0 ? Math.round((hoursDone / hoursTotal) * 100) : 0,
       done: done,
       total: stages.length,
-      hoursDone: hoursDone,
+      hoursDone: Math.round(hoursDone * 10) / 10,
       hoursTotal: hoursTotal
     };
   }
@@ -116,6 +153,9 @@
     deadlineInfo: deadlineInfo,
     countdown: countdown,
     projectProgress: projectProgress,
+    stageFraction: stageFraction,
+    setRules: setRules,
+    getRules: getRules,
     isOverdue: isOverdue,
     activeStage: activeStage
   };

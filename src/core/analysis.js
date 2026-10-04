@@ -28,21 +28,43 @@
     return d.getTime();
   }
 
-  /** Udział wykonania etapu: zakończony = 1, w toku = udział zakończonych zadań, reszta = 0. */
-  function stageDone(stage) {
-    if (stage.status === 'done') return 1;
-    if (stage.status !== 'working') return 0;
-    var tasks = stage.tasks || [];
-    if (!tasks.length) return 0;
-    var done = tasks.filter(function (t) { return t.status === 'done'; }).length;
-    return Math.min(0.95, done / tasks.length);
+  /* Zasady oceny (Ustawienia → Budżet i postęp): progi prognozowanego przekroczenia budżetu
+     (Uwaga / Alarm), minimalny postęp, od którego prognoza jest wiarygodna, i zapasowa stawka. */
+  var rules = { warn: 0.10, alarm: 0.25, minProgress: 10, rate: 0 };
+  function configure(next) {
+    var n = next || {};
+    ['warn', 'alarm'].forEach(function (k) { var v = Number(n[k]); if (Number.isFinite(v) && v >= 0 && v <= 2) rules[k] = v; });
+    var m = Number(n.minProgress); if (Number.isFinite(m) && m >= 0 && m <= 90) rules.minProgress = m;
+    var r = Number(n.rate); if (Number.isFinite(r) && r >= 0) rules.rate = r;
+    if (rules.alarm < rules.warn) rules.alarm = rules.warn;
+    return Object.assign({}, rules);
+  }
+
+  function getRules() { return Object.assign({}, rules); }
+
+  function stageDone(stage) { return Progress.stageFraction(stage); }
+
+  /** Zamraża plan bazowy: godziny etapów i koszt wg stawki zespołu w chwili zamrożenia. */
+  function makeBaseline(project, people, now, fallbackRate) {
+    var fb = Number(fallbackRate) > 0 ? Number(fallbackRate) : rules.rate;
+    var t = project.team || {};
+    var ids = [t.leader, t.coordinator].concat(t.members || []).filter(function (id, i, a) { return id && a.indexOf(id) === i; });
+    var rates = ids.map(function (id) {
+      var p = (people || []).filter(function (x) { return x.id === id; })[0];
+      return p && Number(p.hourlyCost) > 0 ? Number(p.hourlyCost) : fb;
+    }).filter(function (r) { return r > 0; });
+    var rate = rates.length ? rates.reduce(function (a, b) { return a + b; }, 0) / rates.length : fb;
+    var stages = (project.stages || []).map(function (st) { return { id: st.id, hours: Number(st.hours) || 0 }; });
+    var hours = stages.reduce(function (a, st) { return a + st.hours; }, 0);
+    return { at: now.toISOString(), hours: round1(hours), rate: Math.round(rate), cost: Math.round(hours * rate), stages: stages };
   }
 
   function verdictOf(m) {
     if (m.status === 'done') return 'closed';
     if (m.used <= 0 && m.earned <= 0) return 'nodata';
-    if (m.usagePct > 100 || (m.forecastRatio !== null && m.forecastRatio > 1.15) || (m.timePct !== null && m.timePct > 100)) return 'risk';
-    if ((m.forecastRatio !== null && m.forecastRatio > 1.02) || (m.spi !== null && m.spi < 0.9) || (m.usagePct >= 80 && m.earnedPct < m.usagePct - 5)) return 'watch';
+    var over = m.forecastRatio === null ? null : m.forecastRatio - 1;
+    if (m.usagePct > 100 || (over !== null && over >= rules.alarm) || (m.timePct !== null && m.timePct > 100)) return 'risk';
+    if ((over !== null && over >= rules.warn) || (m.spi !== null && m.spi < 0.9) || (m.usagePct >= 80 && m.earnedPct < m.usagePct - 5)) return 'watch';
     return 'ok';
   }
 
@@ -84,11 +106,12 @@
     var usagePct = planned > 0 ? (used / planned) * 100 : 0;
     var cpi = used > 0 && earned > 0 ? earned / used : null;
     var spi = timePct !== null && timePct > 0 && earned > 0 ? earnedPct / timePct : null;
-    var eac = cpi ? planned / cpi : null;
+    // Prognoza godzin po zakończeniu: dopiero od minimalnego postępu, bo na starcie CPI jest szumem.
+    var eac = cpi && earnedPct >= rules.minProgress ? planned / cpi : null;
     var forecastRatio = eac !== null && planned > 0 ? eac / planned : null;
 
     // Godziny wg osób (widoczne dla lidera i zarządu); koszt liczony stawką każdej osoby.
-    var fallbackRate = Number(o.rate) || 0;
+    var fallbackRate = Number(o.rate) || rules.rate || 0;
     function rateOf(person) { return person && Number(person.hourlyCost) > 0 ? Number(person.hourlyCost) : fallbackRate; }
     var people = {};
     entries.forEach(function (e) { people[e.personId] = (people[e.personId] || 0) + TimeLog.minutes(e, now) / 60; });
@@ -144,9 +167,27 @@
       byKind: Object.keys(byKind).map(function (k) { return { kind: k, label: byKind[k].label, planned: round1(byKind[k].planned), used: round1(byKind[k].used) }; }),
       people: peopleList, burn: burn, pace: round1(pace), exhaustAt: exhaust,
       overdueTasks: overdueTasks, openTasks: openTasks, overdueStages: overdueStages, missingRateHours: round1(missingRateHours),
+      baseline: project.baseline || null,
       start: start, end: end, contractValue: project.contractValue > 0 ? project.contractValue : null
     };
     result.verdict = verdictOf({ status: project.status, used: used, earned: earned, usagePct: usagePct, earnedPct: earnedPct, timePct: timePct, spi: spi, forecastRatio: forecastRatio });
+
+    // Koszty w zł (tylko zarząd): każda osoba po własnej stawce; prognoza = prognozowane godziny × średnia stawka.
+    var avgRate0 = loggedHours > 0 && loggedCost > 0 ? loggedCost / loggedHours : fallbackRate;
+    if (o.finance && avgRate0 > 0) {
+      var base = project.baseline || null;
+      var budgetCost = base ? base.cost : Math.round(planned * avgRate0);
+      var costNow = Math.round(loggedCost + Math.max(0, used - loggedHours) * avgRate0);
+      var fCost = eac === null ? null : Math.round(eac * avgRate0);
+      var overCost = fCost === null ? null : fCost - budgetCost;
+      result.costs = {
+        rate: Math.round(avgRate0), budgetCost: budgetCost, cost: costNow, forecastCost: fCost,
+        overrun: overCost, overrunPct: fCost === null || budgetCost <= 0 ? null : round1((overCost / budgetCost) * 100),
+        scopeDriftHours: base ? round1(planned - base.hours) : null,
+        scopeDriftCost: base ? Math.round(planned * avgRate0 - base.cost) : null,
+        missingRateHours: round1(missingRateHours)
+      };
+    } else result.costs = null;
 
     // Finanse (tylko zarząd): koszt = godziny każdej osoby × jej stawka; korekty zarządu liczone
     // średnią stawką projektu. Wartość wypracowana = wartość umowy × postęp rzeczowy.
@@ -316,7 +357,7 @@
     };
   }
 
-  var api = { project: project, portfolio: portfolio, visibleProjects: visibleProjects, weekStart: weekStart, stageDone: stageDone, verdictOf: verdictOf };
+  var api = { configure: configure, getRules: getRules, makeBaseline: makeBaseline, project: project, portfolio: portfolio, visibleProjects: visibleProjects, weekStart: weekStart, stageDone: stageDone, verdictOf: verdictOf };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Analysis = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

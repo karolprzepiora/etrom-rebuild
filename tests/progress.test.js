@@ -67,8 +67,23 @@ test('projectProgress nie liczy etapów w toku jako zakończonych', () => {
       { status: 'done', hours: 50 }
     ]
   });
-  assert.equal(stats.percent, 50);
+  assert.equal(stats.percent, 75); // domyślnie etap w toku bez zadań liczy się wg wagi 50%
   assert.equal(stats.done, 1);
+  const strict = Progress.setRules({ method: 'done' });
+  assert.equal(Progress.projectProgress({ stages: [{ status: 'working', hours: 50 }, { status: 'done', hours: 50 }] }).percent, 50);
+  Progress.setRules({ method: 'auto', workingWeight: 0.5 });
+  assert.equal(strict.method, 'done');
+});
+
+test('stageFraction: oszacowania zadań, liczba zadań, waga „w toku”', () => {
+  const t = (status, estimate) => ({ status, estimate });
+  assert.equal(Progress.stageFraction({ status: 'working', tasks: [t('done', 6), t('todo', 2)] }), 0.75);
+  assert.equal(Progress.stageFraction({ status: 'working', tasks: [t('done'), t('todo'), t('todo'), t('todo')] }), 0.25);
+  assert.equal(Progress.stageFraction({ status: 'working', tasks: [] }), 0.5);
+  assert.equal(Progress.stageFraction({ status: 'working', tasks: [t('done', 5), t('done', 5)] }), 0.95);
+  assert.equal(Progress.stageFraction({ status: 'todo' }), 0);
+  assert.equal(Progress.stageFraction({ status: 'done' }), 1);
+  assert.equal(Progress.stageFraction({ status: 'working', tasks: [t('done', 6), t('todo', 2)] }, { method: 'status', workingWeight: 0.3 }), 0.3);
 });
 
 test('projectProgress zaokrągla do pełnych procent', () => {

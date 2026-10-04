@@ -154,6 +154,15 @@
 
     var targetOptions = [240, 300, 360, 420, 450, 480, 540, 600].map(function (m) { return { value: String(m), label: (Math.round(m / 6) / 10 + ' h').replace('.', ',') }; });
     var dayTarget = UI.select({ id: 'work-target', value: String(prefs.dayTarget || 480), options: targetOptions, on: { change: function () { actions.setPref({ dayTarget: Number(dayTarget.value) }); } }, attrs: { 'data-fk': 'work-target', 'aria-label': 'Cel dnia pracy' } });
+    function ruleSelect(id, key, values, label, suffix) {
+      var sel = UI.select({ id: id, value: String(prefs[key]), options: values.map(function (v) { return { value: String(v), label: label ? label(v) : v + suffix }; }), on: { change: function () { var patch = {}; patch[key] = sel.value; if (key !== 'progressMethod') patch[key] = Number(sel.value); actions.setPref(patch); } }, attrs: { 'data-fk': id, 'aria-label': id } });
+      return sel;
+    }
+    var progressMethod = ruleSelect('rule-method', 'progressMethod', ['auto', 'status', 'done'], function (v) { return { auto: 'Z zadań (zalecane)', status: 'Tylko ze statusu etapu', done: 'Tylko etapy zakończone' }[v]; });
+    var workingWeight = ruleSelect('rule-weight', 'workingWeight', [0, 10, 25, 30, 40, 50, 60, 75, 90], null, '%');
+    var forecastWarn = ruleSelect('rule-warn', 'forecastWarn', [5, 10, 15, 20], null, '%');
+    var forecastAlarm = ruleSelect('rule-alarm', 'forecastAlarm', [15, 20, 25, 30, 40, 50], null, '%');
+    var minProgress = ruleSelect('rule-min', 'minProgress', [0, 5, 10, 15, 20, 30], null, '%');
     var endOptions = [];
     for (var m = 15 * 60; m <= 21 * 60; m += 30) endOptions.push({ value: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), label: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') });
     var dayEnd = UI.select({ id: 'work-end', value: prefs.dayEnd || '17:00', options: endOptions, on: { change: function () { actions.setPref({ dayEnd: dayEnd.value }); } }, attrs: { 'data-fk': 'work-end', 'aria-label': 'Koniec dnia pracy' } });
@@ -181,6 +190,13 @@
       D.el('p', { class: 'settings__group', text: 'Czas pracy' }),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-target' }, text: 'Cel dnia' }), dayTarget]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-end' }, text: 'Koniec dnia pracy' }), dayEnd, D.el('span', { class: 'settings__hint', text: 'po nim zapytam o niezatrzymany zegar' })]),
+      D.el('div', { class: 'menu__separator' }),
+      D.el('p', { class: 'settings__group', text: 'Budżet i postęp' }),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-method' }, text: 'Liczenie postępu' }), progressMethod, D.el('span', { class: 'settings__hint', text: 'etap w toku liczy się wg godzin oszacowanych zadań, a bez nich wg liczby zadań' })]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-weight' }, text: 'Waga etapu „w toku” bez zadań' }), workingWeight]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-warn' }, text: 'Uwaga od przekroczenia' }), forecastWarn, D.el('span', { class: 'settings__hint', text: 'prognoza godzin wobec budżetu' })]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-alarm' }, text: 'Alarm od przekroczenia' }), forecastAlarm]),
+      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-min' }, text: 'Prognoza od postępu' }), minProgress, D.el('span', { class: 'settings__hint', text: 'wcześniej wynik byłby zgadywaniem' })]),
       D.el('div', { class: 'menu__separator' }),
       D.el('p', { class: 'settings__group', text: 'Wygląd' }),
       D.el('div', { class: 'settings__row' }, [

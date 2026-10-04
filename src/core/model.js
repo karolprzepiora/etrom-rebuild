@@ -386,6 +386,18 @@
   }
 
   /** Czyści dane wczytane z dysku — nigdy nie rzuca, pomija uszkodzone wpisy. */
+  /** Plan bazowy projektu: zamrożone godziny etapów i koszt w chwili zamrożenia. */
+  function cleanBaseline(b) {
+    if (!b || typeof b !== 'object' || typeof b.at !== 'string') return null;
+    var hours = Number(b.hours), cost = Number(b.cost), rate = Number(b.rate);
+    if (!(hours >= 0) || !(cost >= 0)) return null;
+    return {
+      at: b.at, hours: hours, rate: rate >= 0 ? rate : 0, cost: cost,
+      stages: (Array.isArray(b.stages) ? b.stages : []).filter(function (x) { return x && typeof x.id === 'string' && Number(x.hours) >= 0; })
+        .map(function (x) { return { id: x.id, hours: Number(x.hours) }; })
+    };
+  }
+
   function normalizeWorkspace(raw) {
     var source = (raw && typeof raw === 'object') ? raw : {};
     var people = Team.normalizePeople(source.people);
@@ -460,6 +472,7 @@
         kind: Kinds.isKey(item.kind) ? item.kind : null,
         // Dawny rodzaj „Ekspertyza / OST” to dziś zakres opracowania, nie obiekt.
         scope: Catalog.isScope(item.scope) ? item.scope : (item.kind === 'survey' ? 'assessment' : null),
+        baseline: cleanBaseline(item.baseline),
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       });
 

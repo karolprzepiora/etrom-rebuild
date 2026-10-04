@@ -1521,7 +1521,29 @@
     else document.documentElement.setAttribute('data-accent', prefs.accent);
     document.documentElement.setAttribute('data-density', prefs.density || 'comfortable');
     applyLook(prefs);
+    applyRules(prefs);
     if (E.Timer && E.Timer.setTarget) E.Timer.setTarget(prefs.dayTarget);
+  }
+
+  /** Zasady postępu i prognozy z ustawień trafiają do wspólnej logiki (Postęp, Analiza). */
+  function applyRules(prefs) {
+    E.Progress.setRules({ method: prefs.progressMethod, workingWeight: (prefs.workingWeight || 0) / 100 });
+    E.Analysis.configure({ warn: prefs.forecastWarn / 100, alarm: prefs.forecastAlarm / 100, minProgress: prefs.minProgress, rate: prefs.hourlyCost });
+  }
+
+  /** Zamraża plan bazowy projektu (godziny etapów i koszt wg stawek zespołu). */
+  function freezeBaseline(projectId) {
+    var state = store.getState();
+    var project = findProject(projectId);
+    if (!project || !E.Budget.canSeeHours(state.prefs.me, project, state.workspace.people || [])) return;
+    var before = project.baseline || null;
+    var base = E.Analysis.makeBaseline(project, state.workspace.people || [], new Date(), state.prefs.hourlyCost);
+    setWorkspace(function (list) { return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { baseline: base }) : p; }); });
+    Toast.show({
+      message: 'Plan bazowy ' + project.code + ' zamrożony: ' + F.hours(base.hours),
+      actionLabel: 'Cofnij', timeout: 6000,
+      onAction: function () { setWorkspace(function (list) { return list.map(function (p) { return p.id === projectId ? Object.assign({}, p, { baseline: before }) : p; }); }); }
+    });
   }
 
   /** Wygląd: paleta, HDR, intensywność i kontrast jako atrybuty i zmienne CSS (podgląd na żywo bez zapisu). */
@@ -2403,7 +2425,8 @@
     saveView: saveView,
     removeView: removeView,
     setLeader: setLeader,
-    setProjectDeadline: setProjectDeadline
+    setProjectDeadline: setProjectDeadline,
+    freezeBaseline: freezeBaseline
   };
 
   /** Przycisk filtra z bieżącą wartością i menu wyboru. */

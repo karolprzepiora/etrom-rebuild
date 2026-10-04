@@ -1499,6 +1499,22 @@ async function main() {
     check('ekran startowy: z osobami pojawia się wybór „kim jesteś”, z kompletem wszystkie kroki są odhaczone',
       await evaluate('const people = window.ETROM.app.store.getState().workspace.people; const a = { newPerson() {}, openCreate() {}, loadDemo() {}, setMe() {} }; const n1 = window.ETROM.Welcome.card({ workspace: { people, projects: [] }, prefs: { me: null } }, { actions: a }, "x"); const n2 = window.ETROM.Welcome.card({ workspace: { people, projects: [{ id: 1 }] }, prefs: { me: people[0].id } }, { actions: a }, "x"); return n1.querySelectorAll(".wl__chip").length > 0 && n1.querySelectorAll(".wl__step.is-done").length === 1 && n2.querySelectorAll(".wl__step.is-done").length === 3;'));
 
+    /* 38f. Budżet i plan bazowy: przycisk zamraża plan, ustawienia zmieniają progi */
+    await go('#/analiza');
+    await sleep(400);
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
+    await sleep(300);
+    await evaluate('window.ETROM.app.actions.setPref({ forecastWarn: 20, forecastAlarm: 40, progressMethod: "status", workingWeight: 30 }); return true;');
+    check('ustawienia budżetu: progi i metoda postępu trafiają do logiki',
+      await evaluate('const r = window.ETROM.Analysis.getRules(); const g = window.ETROM.Progress.getRules(); return r.warn === 0.2 && r.alarm === 0.4 && g.method === "status" && g.workingWeight === 0.3;'));
+    await evaluate('window.ETROM.app.actions.setPref({ forecastWarn: 10, forecastAlarm: 25, progressMethod: "auto", workingWeight: 50 }); return true;');
+    await click('.an-tabs__tab:nth-child(2)');
+    await sleep(400);
+    await evaluate('const b = document.querySelector("[data-fk=freeze-baseline]"); if (b) b.click(); return true;');
+    await sleep(300);
+    check('plan bazowy: przycisk zamraża godziny i koszt projektu',
+      await evaluate('return window.ETROM.app.store.getState().workspace.projects.some(p => p.baseline && p.baseline.hours > 0 && p.baseline.cost >= 0);'));
+
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 

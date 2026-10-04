@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Analysis = require('../src/core/analysis.js');
 const Model = require('../src/core/model.js');
+const Progress = require('../src/core/progress.js');
 
 const NOW = new Date(2026, 9, 2, 12, 0);
 const people = [
@@ -45,11 +46,49 @@ test('zużycie sumuje czas całego zespołu i korekty zarządu', () => {
 
 test('prognoza EAC i wskaźnik kosztu: wolniej niż plan → przekroczenie', () => {
   // 100 h zrobione kosztem 160 h: CPI 0,625, EAC = 400 / 0,625 = 640
+  Progress.setRules({ method: 'done' });
   const entries = [entry('p-2', -20, 80, 'concept'), entry('p-3', -19, 80, 'concept')];
   const a = Analysis.project(project(), { entries, people }, NOW);
+  Progress.setRules({ method: 'auto', workingWeight: 0.5 });
   assert.equal(a.cpi, 0.63);
   assert.equal(a.eac, 640);
   assert.equal(a.verdict, 'risk');
+});
+
+test('progi Uwaga +10% i Alarm +25% prognozowanego przekroczenia oraz osłona wczesnego etapu', () => {
+  Progress.setRules({ method: 'done' });
+  const half = () => project({ stages: [stage('concept', 200, 'done'), stage('land', 100, 'todo'), stage('technical', 100, 'todo')] });
+  const mk = (usedHours) => Analysis.project(half(), { entries: [entry('p-2', -20, usedHours, 'concept')], people }, NOW);
+  // zrobione 200 z 400 h (50%): zużycie 205 h → EAC 410 (+2,5%) ok; 225 h → +12,5% uwaga; 260 h → +30% alarm
+  assert.equal(mk(205).verdict, 'ok');
+  assert.equal(mk(225).verdict, 'watch');
+  assert.equal(mk(260).verdict, 'risk');
+  // poniżej minimalnego postępu nie ma prognozy
+  const early = Analysis.project(project({ stages: [stage('concept', 100, 'todo'), stage('land', 20, 'working'), stage('technical', 280, 'todo')] }), { entries: [entry('p-2', -5, 10, 'land')], people }, NOW);
+  Progress.setRules({ method: 'auto', workingWeight: 0.5 });
+  assert.equal(early.eac, null);
+  Analysis.configure({ warn: 0.02, alarm: 0.5 });
+  assert.equal(mk(205).verdict, 'watch');
+  Analysis.configure({ warn: 0.10, alarm: 0.25 });
+});
+
+test('koszty w zł: stawka każdej osoby, plan bazowy, dryf zakresu — tylko dla zarządu', () => {
+  Progress.setRules({ method: 'done' });
+  const ppl = [{ id: 'p-1', orgRole: 'managing' }, { id: 'p-2', orgRole: 'member', hourlyCost: 100 }, { id: 'p-3', orgRole: 'member', hourlyCost: 200 }];
+  const p = project({ team: { leader: 'p-2', members: ['p-3'] } });
+  p.baseline = Analysis.makeBaseline(p, ppl, NOW, 0);
+  assert.equal(p.baseline.hours, 400);
+  assert.equal(p.baseline.rate, 150);
+  assert.equal(p.baseline.cost, 60000);
+  p.stages[2].hours = 240; // dołożono 40 h po zamrożeniu
+  const entries = [entry('p-2', -20, 50, 'concept'), entry('p-3', -19, 50, 'concept')];
+  const a = Analysis.project(p, { entries, people: ppl }, NOW, { finance: true });
+  Progress.setRules({ method: 'auto', workingWeight: 0.5 });
+  assert.equal(a.costs.cost, 15000); // 50×100 + 50×200
+  assert.equal(a.costs.budgetCost, 60000);
+  assert.equal(a.costs.scopeDriftHours, 40);
+  assert.equal(a.costs.forecastCost, Math.round(a.eac * 150));
+  assert.equal(Analysis.project(p, { entries, people: ppl }, NOW).costs, null);
 });
 
 test('projekt zgodny z planem dostaje werdykt „ok”, bez danych — „nodata”, zakończony — „closed”', () => {

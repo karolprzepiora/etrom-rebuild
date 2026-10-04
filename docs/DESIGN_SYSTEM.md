@@ -520,3 +520,13 @@ Projekt ma dwa niezależne opisy: **rodzaj projektu** (co projektujemy: jaz, pom
 Rodzaj opisuje **obiekt**: pompownia, mała elektrownia wodna, zapora, jaz, wały przeciwpowodziowe, mała retencja leśna, staw, zbiornik wodny, przepust / most, rzeka / ciek / kanał, kilka obiektów, inny. „Ekspertyza / OST” nie jest obiektem, tylko **zakresem** (dawny rodzaj „survey” przy wczytaniu zamienia się na zakres „Ekspertyza / ocena stanu”), więc „OST Jaz rz. Uherka” to jaz z zakresem ekspertyzy. Rodzaj rozpoznaje się z nazwy po słowach kluczowych (pierwsze trafienie wygrywa; „zbiornik retencyjny” to zbiornik, „mała retencja leśna” to retencja) albo wybiera ręcznie.
 
 Każdy rodzaj ma własny kreskowy znak (`KindArt`). Zasada czytelności: **znak nigdy nie leży pod tekstem**. Na kaflu to stała ikona w prawym górnym rogu, w rzędzie z numerem i plakietką stanu; w nagłówku projektu tekst ma zarezerwowane miejsce obok znaku; na liście to mała ikona w komórce numeru.
+
+## Budżet, postęp i prognoza
+
+Zasady są w Ustawieniach → „Budżet i postęp” i działają w całej aplikacji (`Progress.setRules`, `Analysis.configure` wywoływane z `applyPrefs`).
+
+- **Budżet** jest na poziomie **etapów** (godziny etapu). Zadania mogą mieć opcjonalne oszacowanie (`estimate`) — służy tylko do liczenia postępu etapu w toku.
+- **Postęp** (`Progress.stageFraction`): zakończony = 100%; w toku wg metody: `auto` (godziny oszacowanych zadań → liczba zadań → waga „w toku”, domyślnie 50%), `status` (tylko waga „w toku”), `done` (tylko zakończone). Etap w toku nie przekracza 95%.
+- **Prognoza** godzin = budżet ÷ CPI, dopiero od minimalnego postępu (domyślnie 10%). Koszt w zł = godziny każdej osoby × jej stawka (`person.hourlyCost`, zapasowo `prefs.hourlyCost`); widoczny tylko dla zarządu.
+- **Progi**: Uwaga od +10%, Alarm od +25% prognozowanego przekroczenia budżetu (edytowalne). Alarm także przy zużyciu >100% lub czasie >100%.
+- **Plan bazowy**: przycisk „Zamroź plan bazowy” w Analizie projektu zapisuje godziny etapów i koszt wg średniej stawki zespołu (`project.baseline`). Późniejsze zmiany budżetu etapów pokazują się jako „zmiana zakresu”, a nie przekroczenie.

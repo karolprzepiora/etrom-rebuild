@@ -61,7 +61,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, minProgress: 10, hourlyCost: 0
     };
   }
 
@@ -119,6 +119,12 @@
       me: typeof source.me === 'string' && /^p-\d+$/.test(source.me) ? source.me : null,
       snoozed: cleanSnoozed(source.snoozed),
       // Koszt godziny pracy (zł) do oceny opłacalności; 0 = nie ustawiono.
+      // Zasady postępu i prognozy (Ustawienia → Budżet i postęp).
+      progressMethod: ['auto', 'status', 'done'].indexOf(source.progressMethod) >= 0 ? source.progressMethod : 'auto',
+      workingWeight: clampInt(source.workingWeight, 0, 95, 50),
+      forecastWarn: clampInt(source.forecastWarn, 0, 100, 10),
+      forecastAlarm: clampInt(source.forecastAlarm, 0, 200, 25),
+      minProgress: clampInt(source.minProgress, 0, 90, 10),
       hourlyCost: Number.isFinite(Number(source.hourlyCost)) && Number(source.hourlyCost) >= 0 && Number(source.hourlyCost) <= 10000 ? Math.round(Number(source.hourlyCost) * 100) / 100 : 0
     };
   }

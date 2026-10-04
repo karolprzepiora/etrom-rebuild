@@ -611,3 +611,8 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 /* Formularz projektu: procedury formalne jako przełączniki */
 .pf-procs__wrap { display: grid; gap: var(--space-2); }
 .pf-procs { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+
+/* Budżet, plan bazowy i prognoza w Analizie projektu. */
+.an-plan { display: grid; gap: var(--space-3); }
+.an-plan__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.an-fin__c--bad .an-fin__v { color: var(--alarm-ink, var(--danger, currentColor)); }

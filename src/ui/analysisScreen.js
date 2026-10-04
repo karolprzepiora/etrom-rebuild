@@ -215,6 +215,36 @@
     ]);
   }
 
+  /** Budżet, plan bazowy i prognoza — zasady liczenia zmienia się w Ustawieniach → Budżet i postęp. */
+  function planBlock(p, data, ctx) {
+    var c = p.costs;
+    var R = Analysis.getRules();
+    var base = p.baseline;
+    var over = p.forecastRatio === null ? null : Math.round((p.forecastRatio - 1) * 1000) / 10;
+    function cell(label, value, tone, hint) { return D.el('div', { class: 'an-fin__c' + (tone ? ' an-fin__c--' + tone : '') }, [D.el('div', { class: 'an-fin__v t-num', text: value }), D.el('div', { class: 'an-fin__l', text: label })].concat(hint ? [D.el('div', { class: 't-meta', text: hint })] : [])); }
+    var tone = over === null ? null : (over >= R.alarm * 100 ? 'bad' : (over >= R.warn * 100 ? 'warn' : null));
+    var sign = function (n) { return (n > 0 ? '+' : '') + String(n).replace('.', ','); };
+    var cells = [
+      cell('Budżet bazowy', base ? F.hours(base.hours) : 'nie zamrożony', null, base ? 'z dnia ' + F.date(base.at.slice(0, 10), { year: 'always' }) : 'plan jest jeszcze ruchomy'),
+      cell('Budżet obecny', F.hours(p.planned), base && p.planned !== base.hours ? 'warn' : null, base ? (p.planned === base.hours ? 'bez zmian od zamrożenia' : sign(Math.round((p.planned - base.hours) * 10) / 10) + ' h od zamrożenia') : null),
+      cell('Postęp rzeczowy', Math.round(p.earnedPct) + '%', null, 'zużycie ' + Math.round(p.usagePct) + '% budżetu'),
+      cell('Prognoza na koniec', p.eac === null ? 'za wcześnie' : F.hours(p.eac), tone, over === null ? 'prognoza od ' + R.minProgress + '% postępu' : sign(over) + '% wobec budżetu')
+    ];
+    if (c) {
+      cells.push(cell('Budżet kosztów', pln(c.budgetCost), null, 'stawka ' + pln(c.rate) + '/h'));
+      cells.push(cell('Koszt dotychczas', pln(c.cost), null, null));
+      cells.push(cell('Prognoza kosztu', c.forecastCost === null ? '—' : pln(c.forecastCost), tone, c.overrun === null ? null : (c.overrun > 0 ? '+' : '') + pln(Math.round(c.overrun)) + ' wobec budżetu'));
+    }
+    var drift = c && c.scopeDriftHours ? D.el('p', { class: 't-meta', text: 'Zakres urósł o ' + F.hours(Math.abs(c.scopeDriftHours)) + (c.scopeDriftHours < 0 ? ' mniej' : '') + ' od zamrożenia (' + pln(c.scopeDriftCost) + ') — to zmiana planu, nie przekroczenie.' }) : null;
+    return D.el('div', { class: 'an-plan' }, [
+      D.el('div', { class: 'an-fin' }, cells), drift,
+      D.el('div', { class: 'an-plan__act' }, [
+        UI.button({ label: base ? 'Zamroź plan ponownie' : 'Zamroź plan bazowy', variant: base ? 'ghost' : 'primary', size: 'sm', icon: 'check', attrs: { 'data-fk': 'freeze-baseline' }, onClick: function () { ctx.actions.freezeBaseline(p.id); } }),
+        D.el('span', { class: 't-meta', text: 'Uwaga od +' + Math.round(R.warn * 100) + '%, Alarm od +' + Math.round(R.alarm * 100) + '% prognozowanego przekroczenia.' })
+      ])
+    ]);
+  }
+
   function detail(p, data, ctx, now, bare) {
     return D.el('div', { class: 'an-detail' + (bare ? ' an-detail--bare' : ''), dataset: { projectId: p.id } }, [
       bare ? D.el('header', { class: 'an-detail__head' }, [pill(p.verdict), D.el('span', { class: 't-meta', text: 'Zużycie, prognoza i opłacalność tego projektu' })]) : D.el('header', { class: 'an-detail__head' }, [
@@ -237,6 +267,7 @@
         card('Godziny wg rodzaju pracy', null, kindBreakdown(p)),
         card('Kto pracował', data.management ? 'godziny i koszt wg stawki osoby' : 'godziny zapisane w projekcie', peopleBars(p, data.management))
       ]),
+      card('Budżet, plan bazowy i prognoza', 'zamrożony plan = punkt odniesienia dla całego projektu', planBlock(p, data, ctx), 'an-card--plan'),
       data.management ? card('Opłacalność', 'tylko zarząd', financeBlock(p), 'an-card--fin') : null
     ]);
   }
