@@ -271,10 +271,25 @@ async function main() {
     await openMenu('#tb-status', 'all');
     check('powrót do wszystkich statusów', (await cardCount()) === 7);
 
-    /* 7. Sortowanie: domyślnie po numerze projektu, bez grup; kierunek można odwrócić */
+    /* 7. Sortowanie: domyślnie wg ręcznej kolejności zarządu (priorytet), bez grup; po numerze i w obu kierunkach na żądanie */
     const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
-    check('lista jest posortowana po numerze projektu (rosnąco) i nie ma grup',
-      order === '2601,2602,2603,2604,2605,2606,2607' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
+    check('lista domyślnie stoi w ręcznej kolejności zarządu (pilniejsze wyżej), bez grup',
+      order === '2602,2601,2606,2607,2603,2604,2605' && (await state('s.filters.sort')) === 'manual' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
+    const gripFirst = await evaluate('const g = document.querySelector(".rowgrip"); return g ? g.getAttribute("data-fk") : "";');
+    if (gripFirst) {
+      await evaluate('document.querySelector(".rowgrip").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); return true;');
+      await sleep(350);
+      const moved = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
+      check('strzałka ↓ na uchwycie przesuwa projekt o jedno miejsce niżej i zapisuje kolejność', moved.split(',')[0] === '2601' && moved.split(',')[1] === '2602', moved);
+      await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
+      await sleep(300);
+      check('„Cofnij” przywraca poprzednią kolejność projektów',
+        (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === order);
+    }
+    await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
+    await sleep(150);
+    check('klik w „Nr” sortuje po numerze rosnąco',
+      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2601,2602,2603,2604,2605,2606,2607');
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(150);
     check('drugi klik w „Nr” odwraca kolejność, nagłówek ogłasza kierunek',
@@ -865,19 +880,14 @@ async function main() {
     await sleep(350);
     const estAfter = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
     check('klik w godziny na pasku pozwala je zmienić (zapisuje szacunek zadania)', estAfter >= 7 && estAfter !== estBefore);
-    const prioFirst = await evaluate('const c = document.querySelector(".pb-prio__c"); return c ? c.getAttribute("data-fk") : "";');
-    if (prioFirst) {
-      const orderBefore = await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();');
-      await evaluate('document.querySelector(".pb-prio__c").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); return true;');
-      await sleep(350);
-      const orderAfter = await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();');
-      check('strzałka → na chipie priorytetu przesuwa projekt o jedno miejsce niżej i zapisuje kolejność',
-        orderBefore !== orderAfter && orderAfter.split(',')[1] === orderBefore.split(',')[0] && (await state('s.workspace.projects.filter(p => p.priority > 0).length')) >= 2);
-      await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
-      await sleep(300);
-      check('„Cofnij” przywraca poprzednie priorytety',
-        (await evaluate('return [...document.querySelectorAll(".pb-prio__c")].map(c => c.getAttribute("data-fk")).join();')) === orderBefore);
-    }
+    check('Plan: nie ma już paska priorytetów, jest przełącznik widoków i słupki godzin dnia oraz termin na pasku',
+      await evaluate('return !document.querySelector(".pb-prio") && !!document.querySelector(".pb-toolbar .segmented") && document.querySelectorAll(".pb-dbars .pb-dbar").length > 5 && !!document.querySelector(".pb-bar .pb-bar__due");'));
+    await evaluate('ETROM.app.actions.setTime({ planMode: "projects" }); return true;');
+    await sleep(400);
+    check('Plan „Wg projektów”: grupy projektów w kolejności z listy Projekty, z paskami zadań i awatarami osób',
+      await evaluate('const codes = [...document.querySelectorAll(".pb-row--proj .mrow__project")].map(x => x.textContent.trim()); return codes.length >= 2 && codes[0] === "2602" && document.querySelectorAll(".pb-person--proj .pb-bar").length >= 3 && !!document.querySelector(".pb-person--proj .pb-tn__who .avatar");'));
+    await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
+    await sleep(300);
     const absBefore = await state('(s.workspace.absences || []).length');
     const capBefore = await evaluate('return document.querySelector(".pb-load[data-fk^=pl-cell-]") ? document.querySelector(".pb-load[data-fk^=pl-cell-]").getAttribute("data-fk") : "";');
     await evaluate('document.querySelector("[data-fk^=pb-absence-add-]").click(); return true;');

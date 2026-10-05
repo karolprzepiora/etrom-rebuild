@@ -264,6 +264,14 @@
     var main = [viewTabs(m, current, ctx.actions)];
     if (current === 'weeks') {
       var board = E.PlanBoard.view(state, ctx, now, { solo: true });
+      var wb = m.buckets;
+      function counter(cls, n, text) { return D.el('span', { class: 'pb-counter' + (cls ? ' pb-counter--' + cls : '') + (n ? '' : ' is-zero') }, [D.el('b', { text: String(n) }), D.el('span', { text: text })]); }
+      main.push(D.el('div', { class: 'pb-counters', attrs: { 'aria-label': 'Podsumowanie terminów' } }, [
+        counter('late', wb.overdue.length, 'po terminie'),
+        counter('today', wb.today.length, 'dziś'),
+        counter('', wb.week.length, 'w tym tygodniu'),
+        counter('', wb.later.length, 'później')
+      ]));
       main = main.concat(board.body.filter(Boolean));
       shown = { react: [], alarms: [], snoozed: [], groups: {} };
     }

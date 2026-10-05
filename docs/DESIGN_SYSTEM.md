@@ -577,10 +577,15 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 - **Pasek zespołu (zarząd, liderzy):** jednolity kolor projektu, bez wypełnienia, znacznika i kreskowania (postęp i godziny są w lewej kolumnie, nie na pasku). Czerwony kontur = po terminie, bursztynowy = za mało czasu. W lewej kolumnie pod nazwą zadania stoi nazwa projektu. Oś ma kreski dni także w bieżącym tygodniu; święta i nieobecności to płaskie tła.
 - **Karta czasu (Czas):** w wierszu „Razem” dzień jest zielony od celu dnia (8 h), żółty od godziny poniżej celu (7 h), czerwony niżej, także gdy nie ma wpisu. Dzisiaj do osiągnięcia celu pokazuje zieloną ramkę z postępem „3,5 / 8”. Weekendy, dni przyszłe i dni sprzed pierwszego wpisu osoby są neutralne. Suma okresu ocenia godziny ze zakończonych dni względem ich celu. Komórki projektów i zadań mają stały, neutralny kolor. Logika w `Timesheet.build` (`day.state`, `sheet.state`).
 
-### Priorytety projektów
+### Kolejność projektów (zamiast priorytetów)
+- Nie ma już paska „Priorytety” w Planie. Zarząd ustawia, który projekt jest pilniejszy, **kolejnością na liście Projekty** (domyślne sortowanie „Moja kolejność”): uchwyt `.rowgrip` przy wierszu przeciąga się w pionie albo przesuwa strzałkami ↑/↓, zmianę można cofnąć. Zapis w `project.priority` (pozycja na liście; 0 = bez numeru, takie projekty idą na końcu po kodzie), tylko zarząd.
+- Ta sama kolejność porządkuje zadania w wierszach osób i grupy w Planie „Wg projektów”. Aplikacja niczego nie podpowiada przy przeciążeniu: kolejność jest świadomą decyzją zarządu.
 
-- Zarząd ustawia kolejność projektów w rzędzie „Priorytety” nad planem: chipy w kolorach projektów z numerem, przeciągane albo przesuwane strzałkami ←/→. Zapis w `project.priority` (1 = najważniejszy, 0 = bez numeru, takie projekty idą na końcu po kodzie), zmianę można cofnąć.
-- Kolejność porządkuje zadania w wierszach osób w Planie i w Moja praca → Tygodnie. Aplikacja niczego nie podpowiada przy przeciążeniu: priorytet jest świadomą decyzją zarządu.
+### Plan: dwa widoki (`E.PlanBoard`)
+- Przełącznik `Wg osób | Wg projektów` w pasku Planu (stan `planMode`; tylko zarząd i liderzy).
+- **Wg osób:** wstęga godzin na tydzień (czerwona = przeciążenie), pod nią słupki godzin na dzień (`.pb-dbars`, czerwony słupek = ponad cel dnia), niżej wiersze zadań; termin napisany na końcu paska (`.pb-bar__due`: „dziś”, „jutro”, „pt 9”, „po terminie”). Pod planszą tacka „Do przydzielenia”: zadania bez osoby, przeciągane na osobę i dzień (nadają osobę i termin).
+- **Wg projektów:** grupa na projekt (`.pb-row--proj`: znacznik projektu, pasek postępu projektu, romb terminu), pod nią paski zadań z awatarami wykonawców; zadanie bez osoby ma pasek kreskowany. Paski nadal da się przesuwać i rozciągać.
+- **Moja praca → Tygodnie:** liczniki „po terminie / dziś / w tym tygodniu / później” (`.pb-counter`), zadania pogrupowane (`.pb-grp`) na Po terminie, Ten tydzień i Później, termin na końcu paska, bez godzin.
 
 ### Nieobecności
 

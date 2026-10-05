@@ -22,13 +22,13 @@
   var storage = E.Storage.createStorage();
   var prefsStore = E.Prefs.createPrefs();
 
-  var SORT_LABEL = { deadline: 'Termin', name: 'Nazwa', code: 'Numer' };
+  var SORT_LABEL = { manual: 'Moja kolejność', deadline: 'Termin', name: 'Nazwa', code: 'Numer' };
 
   var store = E.Store.createStore({
     workspace: Model.emptyWorkspace(),
     route: { name: 'projects' },
     screen: 'projects',
-    filters: { query: '', status: 'all', sort: 'code', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
+    filters: { query: '', status: 'all', sort: 'manual', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
     prefs: E.Prefs.defaults(),
     selection: {},
@@ -1653,9 +1653,9 @@
     Toast.show({ message: 'Usunięto nieobecność', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
   }
 
-  /** Priorytety projektów: kolejność identyfikatorów (pierwszy = najważniejszy). Tylko zarząd, do cofnięcia. */
+  /** Kolejność projektów na liście: identyfikatory od najpilniejszego. Tylko zarząd, do cofnięcia. */
   function setProjectOrder(ids) {
-    if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Priorytety projektów ustala zarząd.', tone: 'danger' }); return false; }
+    if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Kolejność projektów ustala zarząd.', tone: 'danger' }); return false; }
     var before = store.getState().workspace.projects.map(function (p) { return p.id; });
     var prev = {};
     store.getState().workspace.projects.forEach(function (p) { prev[p.id] = p.priority || 0; });
@@ -1663,7 +1663,7 @@
       return list.map(function (p) { var i = ids.indexOf(p.id); return i < 0 ? p : Object.assign({}, p, { priority: i + 1 }); });
     });
     Toast.show({
-      message: 'Zmieniono priorytety projektów', actionLabel: 'Cofnij', timeout: 6000,
+      message: 'Zmieniono kolejność projektów', actionLabel: 'Cofnij', timeout: 6000,
       onAction: function () { setWorkspace(function (list) { return list.map(function (p) { return before.indexOf(p.id) < 0 ? p : Object.assign({}, p, { priority: prev[p.id] || 0 }); }); }); }
     });
     return true;
@@ -2950,7 +2950,7 @@
     }
     nodes.tally.textContent = filtered ? visible.length + ' z ' + all.length : '';
     nodes.tally.title = filtered ? 'Pasuje ' + visible.length + ' z ' + all.length + ' projektów' : '';
-    nodes.sortButton.querySelector('span').textContent = (SORT_LABEL[state.filters.sort] || 'Numer') + (state.filters.dir === 'desc' ? ' ↓' : ' ↑');
+    nodes.sortButton.querySelector('span').textContent = (SORT_LABEL[state.filters.sort] || 'Numer') + (state.filters.sort === 'manual' ? '' : (state.filters.dir === 'desc' ? ' ↓' : ' ↑'));
     nodes.sortButton.setAttribute('aria-label', 'Sortowanie: ' + (Query.SORTS[state.filters.sort] || ''));
     nodes.columnsButton.hidden = state.prefs.view !== 'list';
     nodes.groupButton.hidden = state.prefs.view !== 'list';

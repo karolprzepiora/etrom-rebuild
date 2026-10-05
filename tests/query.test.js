@@ -183,3 +183,14 @@ test('filtr terminów: projekty z terminem umowy lub najbliższego zadania etapu
   assert.equal(codes(30), 'A,B');
   assert.equal(codes(0), 'A,B,C,D');
 });
+
+test('sortowanie „manual”: priorytet rosnąco, bez numeru po numerowanych, zakończone na końcu', () => {
+  const Query = require('../src/core/query.js');
+  const list = [
+    { id: 1, code: '2601', name: 'A', status: 'active', priority: 0 },
+    { id: 2, code: '2602', name: 'B', status: 'active', priority: 2 },
+    { id: 3, code: '2603', name: 'C', status: 'done', priority: 1 },
+    { id: 4, code: '2604', name: 'D', status: 'active', priority: 1 }
+  ];
+  assert.deepEqual(Query.filterAndSort(list, { sort: 'manual' }).map((p) => p.code), ['2604', '2602', '2601', '2603']);
+});

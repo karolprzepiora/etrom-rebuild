@@ -18,6 +18,7 @@
   var F = E.Format;
 
   var PAGE_SIZE = 50;
+  var pendingGrip = null;
 
   // Kolumny, które można ukryć w opcjach widoku (klucze zgodne z Prefs.COLUMNS).
   var COLUMNS = [
@@ -207,7 +208,7 @@
     ].filter(Boolean);
   }
 
-  function row(project, columns, ctx, now) {
+  function row(project, columns, ctx, now, reorder) {
     var hidden = ctx.state.prefs.hiddenColumns || [];
     var selected = !!(ctx.state.selection || {})[project.id];
     var health = Insight.health(project, now);
@@ -238,6 +239,7 @@
         }
       }
     }, [
+      reorder ? D.el('td', { class: 'cell--grip' }, [reorder.grip(project)]) : null,
       D.el('td', { class: 'cell--check' }, [
         D.el('span', { class: 'pick' }, [E.Flow.stateButton(project, ctx, { now: now }), box])
       ])
@@ -254,6 +256,80 @@
         D.el('span', { class: 'group-row__inner' }, [glyph, D.el('span', { class: 'group-row__label', text: label }), D.el('span', { class: 'group-row__count', text: String(count) })])
       ])
     ]);
+  }
+
+  /**
+   * Ręczna kolejność projektów (tylko zarząd, sortowanie „Moja kolejność”, bez grup): uchwyt przy wierszu przeciąga się
+   * w pionie albo przesuwa strzałkami ↑/↓. Pilniejszy projekt stoi wyżej, a ta sama kolejność porządkuje Plan.
+   * @returns {{grip: function}|null}
+   */
+  function manualOrder(rows, visible, ctx, groupBy) {
+    var me = ctx.state.prefs.me;
+    if (ctx.state.filters.sort !== 'manual' || groupBy !== 'none' || !ctx.actions.setProjectOrder) return null;
+    if (!me || !E.Budget.isManagement(me, ctx.people)) return null;
+    var active = visible.filter(function (p) { return p.status !== 'done'; });
+    if (active.length < 2) return null;
+    var full = E.Plan.rankProjects(ctx.state.workspace.projects).map(function (p) { return p.id; });
+    function place(id, targetId) {
+      if (id === targetId) return;
+      var list = full.filter(function (x) { return x !== id; });
+      var ti = list.indexOf(targetId);
+      if (ti < 0) return;
+      var down = full.indexOf(id) < full.indexOf(targetId);
+      ctx.actions.setProjectOrder(E.Plan.moveInOrder(full, id, down ? ti + 1 : ti));
+    }
+    return {
+      grip: function (project) {
+        if (project.status === 'done') return D.el('span');
+        var idx = active.indexOf(project);
+        var btn = D.el('button', {
+          class: 'rowgrip', attrs: { type: 'button', 'data-fk': 'grip-' + project.id, 'data-tooltip': 'Przeciągnij albo ↑/↓ — wyżej = pilniejszy projekt', 'aria-label': 'Zmień kolejność projektu ' + project.code + ' (pozycja ' + (idx + 1) + ' z ' + active.length + '). Strzałki w górę i w dół przesuwają.' }
+        }, [Icons.icon('grip', 16)]);
+        btn.addEventListener('keydown', function (e) {
+          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+          e.preventDefault();
+          var to = active[idx + (e.key === 'ArrowDown' ? 1 : -1)];
+          if (to) { pendingGrip = project.id; place(project.id, to.id); }
+        });
+        var drag = null;
+        btn.addEventListener('pointerdown', function (e) {
+          if (e.button !== 0) return;
+          var tr = btn.closest('tr');
+          drag = { y0: e.clientY, tr: tr, moved: false, target: null };
+          try { btn.setPointerCapture(e.pointerId); } catch (err) { /* testy */ }
+          e.preventDefault();
+        });
+        btn.addEventListener('pointermove', function (e) {
+          if (!drag) return;
+          var dy = e.clientY - drag.y0;
+          if (!drag.moved && Math.abs(dy) < 4) return;
+          drag.moved = true;
+          drag.tr.classList.add('is-drag');
+          drag.tr.style.transform = 'translateY(' + dy + 'px)';
+          var trs = [].slice.call(drag.tr.parentNode.querySelectorAll('tr[data-project-id]')).filter(function (x) { return x !== drag.tr; });
+          drag.target = null;
+          trs.forEach(function (x) { x.classList.remove('is-drop'); });
+          for (var i = 0; i < trs.length; i += 1) {
+            var r = trs[i].getBoundingClientRect();
+            if (e.clientY >= r.top && e.clientY <= r.bottom) { drag.target = trs[i].getAttribute('data-project-id'); trs[i].classList.add('is-drop'); break; }
+          }
+        });
+        function end(e, cancel) {
+          if (!drag) return;
+          var d = drag; drag = null;
+          try { btn.releasePointerCapture(e.pointerId); } catch (err) { /* brak */ }
+          d.tr.classList.remove('is-drag'); d.tr.style.transform = '';
+          [].forEach.call(d.tr.parentNode.querySelectorAll('.is-drop'), function (x) { x.classList.remove('is-drop'); });
+          if (cancel || !d.moved || !d.target) return;
+          pendingGrip = project.id;
+          place(project.id, d.target);
+        }
+        btn.addEventListener('pointerup', function (e) { end(e, false); });
+        btn.addEventListener('pointercancel', function (e) { end(e, true); });
+        if (pendingGrip === project.id) { pendingGrip = null; window.setTimeout(function () { btn.focus({ preventScroll: true }); }, 30); }
+        return btn;
+      }
+    };
   }
 
   function table(visible, ctx) {
@@ -274,7 +350,8 @@
     });
     all.indeterminate = selectedVisible > 0 && selectedVisible < visible.length;
 
-    var head = D.el('thead', null, [D.el('tr', null, [D.el('th', { class: 'cell--check', attrs: { scope: 'col' } }, [all])]
+    var reorder = manualOrder(rows, visible, ctx, groupBy);
+    var head = D.el('thead', null, [D.el('tr', null, [reorder ? D.el('th', { class: 'cell--grip', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Kolejność' })]) : null, D.el('th', { class: 'cell--check', attrs: { scope: 'col' } }, [all])]
       .concat(columns.map(function (column) { return header(column, ctx); }))
       .concat([D.el('th', { class: 'cell--actions', attrs: { scope: 'col' } }, [D.el('span', { class: 'sr-only', text: 'Działania' })])]))]);
 
@@ -282,7 +359,7 @@
     var colspan = 2;
     var bodies = [];
     if (groupBy === 'none') {
-      bodies.push(D.el('tbody', null, rows.map(function (p) { return row(p, columns, ctx, now); })));
+      bodies.push(D.el('tbody', reorder ? { class: 'is-reorder' } : null, rows.map(function (p) { return row(p, columns, ctx, now, reorder); })));
     } else {
       var groups = {};
       rows.forEach(function (p) {

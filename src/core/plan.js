@@ -7,7 +7,8 @@
    Zadanie bez własnego szacunku bierze równą część tego, co zostało w puli godzin etapu (budżet etapu minus zapisany
    czas minus szacunki innych zadań). Zadanie może mieć datę startu (`task.start`): praca rozkłada się wtedy od startu
    do terminu. Pojemność tygodnia = dni robocze × cel dnia × udział planowalny (reszta to bufor na sprawy bieżące).
-   `row.bars` opisują zadania jako paski w czasie (do widoku tygodni z przeciąganiem). */
+   `row.bars` opisują zadania jako paski w czasie (do widoku tygodni z przeciąganiem), `row.days` to godziny osoby na dzień
+   (klucz ISO), `unassigned` to otwarte zadania, do których nikt nie jest przypisany. */
 (function (root) {
   'use strict';
 
@@ -176,9 +177,11 @@
         }),
         absences: absenceBands(input.absences, p.id),
         bars: [],
+        days: {},
         unscheduled: { hours: 0, tasks: [] }, total: 0
       };
     });
+    var unassigned = [];
 
     (input.projects || []).forEach(function (project) {
       (project.stages || []).forEach(function (stage) {
@@ -191,6 +194,11 @@
 
         open.forEach(function (task) {
           var assignees = (task.assignees || []).filter(function (id) { return rowsById[id]; });
+          if (!(task.assignees || []).length) {
+            var hoursLeft = remainingHours(task, loggedByTask[project.id + '|' + stage.id + '|' + task.id]);
+            if (hoursLeft > 0) unassigned.push({ projectId: project.id, stageId: stage.id, taskId: task.id, name: task.name, code: project.code, hours: Math.round(hoursLeft * 10) / 10, start: task.start || '', deadline: task.deadline || '' });
+            return;
+          }
           if (!assignees.length) return;
           var left;
           var fromPool = false;
@@ -224,6 +232,7 @@
             var row = rowsById[id];
             var myRef = ref;
             var myBuckets = buckets;
+            if (buckets !== 'per-person' && myBuckets && myBuckets.length) { var tk = isoDay(today); row.days[tk] = (row.days[tk] || 0) + share; }
             if (buckets === 'per-person') {
               var gone = absentOf[id] || {};
               var mine = allDays.filter(function (d) { return !gone[isoDay(d)]; });
@@ -235,6 +244,7 @@
               if (mine.length < allDays.length) myRef.absentDays = allDays.length - mine.length;
               var per = share / effective.length;
               var byWeek = {};
+              effective.forEach(function (d) { var dk = isoDay(d); row.days[dk] = (row.days[dk] || 0) + per; });
               effective.forEach(function (d) { var i = offset === 0 ? Math.max(0, weekIndex(d)) : weekIndex(d); byWeek[i] = (byWeek[i] || 0) + per; });
               myBuckets = Object.keys(byWeek).map(function (i) { return { week: Number(i), hours: byWeek[i] }; });
             }
@@ -265,11 +275,13 @@
         row.total += cell.planned;
       });
       row.bars.sort(function (a, b) { return a.start - b.start || a.end - b.end; });
+      Object.keys(row.days).forEach(function (k) { row.days[k] = Math.round(row.days[k] * 10) / 10; });
       row.unscheduled.hours = Math.round(row.unscheduled.hours * 10) / 10;
       row.unscheduled.tasks.sort(function (a, b) { return b.hours - a.hours; });
       return row;
     }).sort(function (a, b) { return b.total - a.total; });
-    return { weeks: weeks, rows: rows, first: first.getTime(), today: today.getTime() };
+    unassigned.sort(function (a, b) { return String(a.deadline || '9').localeCompare(String(b.deadline || '9')); });
+    return { weeks: weeks, rows: rows, first: first.getTime(), today: today.getTime(), unassigned: unassigned };
   }
 
   var api = { shiftSpan: shiftSpan, rankProjects: rankProjects, moveInOrder: moveInOrder, addWorkdays: addWorkdays, workdayDiff: workdayDiff, snapWorkday: snapWorkday, isoDay: isoDay, DEFAULT_HOURS: DEFAULT_HOURS, TIGHT_AT: TIGHT_AT, estimateHours: estimateHours, remainingHours: remainingHours, build: build };

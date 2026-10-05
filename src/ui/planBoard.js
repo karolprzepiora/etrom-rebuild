@@ -1,4 +1,6 @@
-/* ETROM — plan tygodni: wiersz na osobę, kolumna na tydzień, zadanie jako pasek od startu do terminu.
+/* ETROM — plan tygodni: wiersz na osobę (albo na projekt), kolumna na tydzień, zadanie jako pasek od startu do terminu.
+   Widok „Wg osób” ma wstęgę godzin na tydzień, słupki godzin na dzień i tackę zadań bez osoby; „Wg projektów” grupuje paski
+   w projekty w kolejności z listy Projekty. Pasek podpisuje termin na końcu.
    Pasek przeciąga się (cały: start i termin razem), jego brzegi zmieniają start albo termin, upuszczony na innej osobie
    przenosi zadanie. W trakcie przeciągania pojemność tygodni liczy się na bieżąco. Z klawiatury: strzałki (cały pasek),
    Shift+strzałki (termin), Alt+strzałki (start). Zadania bez terminu czekają w „tacce” i da się je upuścić na oś.
@@ -22,7 +24,6 @@
   var DOWS_SHORT = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var LANE_H = 2.1; // rem
   var pendingFocus = null;
-  var pendingPrio = null;
 
   function hh(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
   function dayStart(ms) { var d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -161,7 +162,7 @@
     var drag = null;
 
     /* ---------- pasek ---------- */
-    function workedText(b) { return (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h'; }
+    function workedText(b) { return b.planned > 0 ? (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h' : '—'; }
     function barTip(b, span) {
       var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
       var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
@@ -191,6 +192,15 @@
       return 'do ' + when + ' · ' + left + ' ' + (left === 1 ? 'dzień' : 'dni');
     }
 
+    /** Krótki termin na końcu paska: „dziś”, „jutro”, „pt 9”. */
+    function dueShort(b) {
+      var d = new Date(b.end);
+      var left = Plan.workdayDiff(new Date(plan.today), d);
+      if (left <= 0) return 'dziś';
+      if (left === 1) return 'jutro';
+      return DOWS_SHORT[d.getDay()] + ' ' + d.getDate();
+    }
+
     function paintBar(el, ns, ne) {
       var cl = ns < 0, cr = ne >= N;
       var s = Math.max(0, ns), e = Math.min(N - 1, ne);
@@ -216,7 +226,7 @@
     function barEl(b, person, item) {
       var editable = !solo && canEdit(b.projectId);
       var pct = elapsedOf(b);
-      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
+      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.free ? ' is-free' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
       var el = D.el('div', {
         class: cls, style: Object.assign({ '--d': (solo ? pct : donePct(b)) + '%' }, Identity.hueStyle(b.code)),
@@ -225,7 +235,8 @@
       }, [
         D.el('span', { class: 'pb-bar__clip', attrs: { 'aria-hidden': 'true' } }),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
-        editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null
+        editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null,
+        item.e >= N ? null : D.el('span', { class: 'pb-bar__due' + (b.overdue ? ' is-late' : '') + (item.e >= N - 3 ? ' is-in' : ''), attrs: { 'aria-hidden': 'true' }, text: b.overdue ? 'po terminie' : dueShort(b) })
       ]);
       paintBar(el, item.s, item.e);
       if (pendingFocus === key) { pendingFocus = null; window.setTimeout(function () { el.focus({ preventScroll: true }); }, 30); }
@@ -268,7 +279,7 @@
       return holder;
     }
 
-    function nameCell(b) {
+    function nameCell(b, who) {
       var editable = !solo && canEdit(b.projectId);
       var side;
       if (solo) {
@@ -290,7 +301,9 @@
         D.el('span', { class: 'pb-tn__txt' }, [
           D.el('button', { class: 'pb-tn__name', attrs: { type: 'button', title: b.name }, text: b.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: b.projectId, stageId: b.stageId, taskId: b.taskId }); } } }),
           D.el('span', { class: 'pb-tn__sub' }, [
-            D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } }),
+            who === undefined
+              ? D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } })
+              : D.el('span', { class: 'pb-tn__who' }, who.length ? who.map(function (pp) { return E.Avatar.avatar(pp, { size: 'xs' }); }) : [D.el('small', { class: 'pb-tn__free', text: 'Bez osoby' })]),
             chkIndicator(b)
           ])
         ]),
@@ -472,6 +485,10 @@
         var start = dateOfSlot(plan.first, at.slot);
         var needDays = Math.max(1, Math.ceil(t.hours / dayH - 1e-9));
         var endDay = Plan.addWorkdays(start, needDays - 1);
+        if (t.deadline && /^\d{4}-\d{2}-\d{2}/.test(t.deadline)) {
+          var kept = new Date(t.deadline.slice(0, 10) + 'T00:00');
+          if (kept.getTime() >= start.getTime()) endDay = kept;
+        }
         var iso = function (x) { return Plan.isoDay(x); };
         if (at.personId !== person.id) ctx.actions.reassignTask(ref.projectId, ref.stageId, ref.taskId, person.id, at.personId, iso(start), iso(endDay) + 'T16:00');
         else ctx.actions.setTaskSpan(ref.projectId, ref.stageId, ref.taskId, iso(start), iso(endDay) + 'T16:00', { message: 'Wyznaczono termin zadania „' + t.name + '”' });
@@ -481,6 +498,26 @@
       return chip;
     }
 
+    /* ---------- oś: tło tygodni, święta, dziś, pasma nieobecności ---------- */
+    var holSlots = [];
+    for (var hs = 0; hs < N; hs += 1) {
+      if (Cal.isHoliday(Plan.isoDay(dateOfSlot(plan.first, hs)))) holSlots.push(hs);
+    }
+    function trackBase(inner, bands) {
+      var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
+      var inTrack = todaySlot >= 0 && todaySlot < N;
+      var colTint = inTrack && !Cal.isWeekend(Plan.isoDay(new Date(plan.today)));
+      var holCols = holSlots.map(function (i) { return D.el('span', { class: 'pb-holcol', style: { left: (i / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }); });
+      var children = [weekCols].concat(
+        holCols,
+        [colTint ? D.el('span', { class: 'pb-todaycol', style: { left: (todaySlot / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
+        [inTrack ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
+        bands || [],
+        inner
+      );
+      return D.el('div', { class: 'pb-track' }, children);
+    }
+
     /* ---------- wiersze osób: nagłówek z obciążeniem (tylko zarząd/lider) i wiersz na zadanie ---------- */
     function personRow(row) {
       var person = Team.findPerson(people, row.personId);
@@ -488,7 +525,10 @@
         return { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0 };
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
-      items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
+      if (solo) items.sort(function (a, b) { return (a.b.overdue ? 0 : 1) - (b.b.overdue ? 0 : 1) || a.e - b.e || a.s - b.s; });
+      else items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
+      var weekEndSlot = Math.floor(Math.max(todaySlot, 0) / 5) * 5 + 4;
+      var lastGroup = '';
       function bandEls(interactive) {
         return (row.absences || []).map(function (a) {
           var bs = slotOf(plan.first, new Date(a.from + 'T00:00').getTime(), 1);
@@ -506,26 +546,7 @@
           return el;
         }).filter(Boolean);
       }
-      var holSlots = [];
-      for (var hs = 0; hs < N; hs += 1) {
-        if (Cal.isHoliday(Plan.isoDay(dateOfSlot(plan.first, hs)))) holSlots.push(hs);
-      }
-      function holColEls() {
-        return holSlots.map(function (i) { return D.el('span', { class: 'pb-holcol', style: { left: (i / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }); });
-      }
-      function trackOf(inner, bands) {
-        var weekCols = D.el('div', { class: 'pb-wks', attrs: { 'aria-hidden': 'true' } }, plan.weeks.map(function (w) { return D.el('span', { class: 'pb-wk' + (w.current ? ' is-current' : '') }); }));
-        var inTrack = todaySlot >= 0 && todaySlot < N;
-        var colTint = inTrack && !Cal.isWeekend(Plan.isoDay(new Date(plan.today)));
-        var children = [weekCols].concat(
-          holColEls(),
-          [colTint ? D.el('span', { class: 'pb-todaycol', style: { left: (todaySlot / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
-          [inTrack ? D.el('span', { class: 'pb-today', style: { left: (todaySlot / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }) : null],
-          bands === undefined ? bandEls(false) : bands,
-          inner
-        );
-        return D.el('div', { class: 'pb-track' }, children);
-      }
+      function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? bandEls(false) : bands); }
       var rows = [];
       if (!solo) {
         var loads = D.el('div', { class: 'pb-loads', attrs: { role: 'row' } }, row.weeks.map(function (cell, i) {
@@ -544,9 +565,25 @@
           D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })]),
           management ? UI.iconButton({ icon: 'plus', label: 'Dodaj nieobecność: ' + Team.fullName(person), size: 'sm', attrs: { 'data-fk': 'pb-absence-add-' + row.personId, 'data-tooltip': 'Dodaj nieobecność' }, onClick: function () { ctx.actions.openAbsence(row.personId); } }) : null
         ]);
-        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf([loads], bandEls(true))])]));
+        var dayBars = D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
+          var out = [];
+          for (var sl = 0; sl < N; sl += 1) {
+            var hrs = (row.days && row.days[Plan.isoDay(dateOfSlot(plan.first, sl))]) || 0;
+            var over = hrs > dayH + 0.05;
+            out.push(D.el('span', { class: 'pb-dbar' + (over ? ' is-over' : '') + (hrs ? '' : ' is-empty'), style: { '--h': Math.min(100, hrs / dayH * 70) + '%' }, attrs: hrs ? { 'data-tooltip': hh(hrs) + ' h zaplanowane tego dnia' + (over ? ' (ponad ' + hh(dayH) + ' h)' : '') } : {} }));
+          }
+          return out;
+        })());
+        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf([loads, dayBars], bandEls(true))])]));
       }
       items.forEach(function (it) {
+        if (solo) {
+          var grp = it.b.overdue ? 'late' : (it.e <= weekEndSlot ? 'week' : 'later');
+          if (grp !== lastGroup) {
+            lastGroup = grp;
+            rows.push(D.el('div', { class: 'pb-grp' + (grp === 'late' ? ' is-late' : '') }, [D.el('span', { text: grp === 'late' ? 'Po terminie' : (grp === 'week' ? 'Ten tydzień' : 'Później') })]));
+          }
+        }
         var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, person, it)]);
         var nameNode = nameCell(it.b);
         var taskRowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
@@ -605,61 +642,87 @@
       return select;
     }
 
-    /** Priorytety projektów (tylko zarząd): przeciągnij chip albo użyj strzałek ←/→; kolejność porządkuje zadania w planie. */
-    function priorityStrip() {
-      if (solo || !management || ranked.length < 2) return null;
-      var order = ranked.map(function (p) { return p.id; });
-      var strip = D.el('div', { class: 'pb-prio', attrs: { role: 'list', 'aria-label': 'Priorytety projektów' } }, [D.el('span', { class: 'pb-prio__l', text: 'Priorytety' })]);
-      var chipsEls = {};
-      var dragging = null;
-      function commit(ids) { if (ids.join() !== order.join()) ctx.actions.setProjectOrder(ids); }
-      ranked.forEach(function (p, i) {
-        var chip = D.el('button', {
-          class: 'pb-prio__c', style: Identity.hueStyle(p.code),
-          attrs: { type: 'button', role: 'listitem', 'data-fk': 'pb-prio-' + p.code, 'data-tooltip': p.name + ' · priorytet ' + (i + 1) + ' — przeciągnij albo użyj strzałek ←/→', 'aria-label': 'Priorytet ' + (i + 1) + ': ' + p.code + ' ' + p.name + '. Strzałki zmieniają kolejność.' }
-        }, [D.el('span', { class: 'pb-prio__n', text: String(i + 1) }), D.el('span', { class: 'pb-prio__code', text: p.code })]);
-        chipsEls[p.id] = chip;
-        chip.addEventListener('keydown', function (e) {
-          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-          e.preventDefault();
-          var at = order.indexOf(p.id) + (e.key === 'ArrowRight' ? 1 : -1);
-          if (at < 0 || at >= order.length) return;
-          pendingPrio = p.id;
-          commit(Plan.moveInOrder(order, p.id, at));
-        });
-        chip.addEventListener('pointerdown', function (e) {
-          if (e.button !== 0) return;
-          dragging = { id: p.id, x0: e.clientX, moved: false, to: i };
-          try { chip.setPointerCapture(e.pointerId); } catch (err) { /* testy */ }
-          e.preventDefault();
-        });
-        chip.addEventListener('pointermove', function (e) {
-          if (!dragging) return;
-          var dx = e.clientX - dragging.x0;
-          if (!dragging.moved && Math.abs(dx) < 4) return;
-          dragging.moved = true;
-          chip.classList.add('is-drag');
-          chip.style.transform = 'translateX(' + dx + 'px)';
-          var others = order.filter(function (id) { return id !== p.id; });
-          var to = 0;
-          others.forEach(function (id) { var r = chipsEls[id].getBoundingClientRect(); if (e.clientX > r.left + r.width / 2) to += 1; });
-          dragging.to = to;
-        });
-        function end(e, cancel) {
-          if (!dragging) return;
-          var d = dragging; dragging = null;
-          try { chip.releasePointerCapture(e.pointerId); } catch (err) { /* brak */ }
-          chip.classList.remove('is-drag'); chip.style.transform = '';
-          if (!d.moved || cancel) return;
-          pendingPrio = p.id;
-          commit(Plan.moveInOrder(order, p.id, d.to));
-        }
-        chip.addEventListener('pointerup', function (e) { end(e, false); });
-        chip.addEventListener('pointercancel', function (e) { end(e, true); });
-        strip.appendChild(chip);
-        if (pendingPrio === p.id) { pendingPrio = null; window.setTimeout(function () { chip.focus({ preventScroll: true }); }, 30); }
+    /* ---------- widok „Wg projektów”: projekty w kolejności z listy Projekty, zadania jako paski ---------- */
+    var canProjects = !solo && (management || led.length > 0);
+    var mode = canProjects && state.planMode === 'projects' ? 'projects' : 'people';
+
+    function projectGroups() {
+      var shown = ranked.filter(function (p) { return management || (p.team && p.team.leader === me.id); });
+      var byTask = {};
+      plan.rows.forEach(function (r) {
+        var who = Team.findPerson(people, r.personId);
+        r.bars.forEach(function (b) { var key = b.projectId + '|' + b.stageId + '|' + b.taskId; (byTask[key] = byTask[key] || []).push({ b: b, person: who }); });
       });
-      return strip;
+      return shown.map(function (project) {
+        var items = [];
+        (project.stages || []).forEach(function (st) {
+          (st.tasks || []).forEach(function (t) {
+            if (t.status === 'done' || t.draft) return;
+            var found = byTask[project.id + '|' + st.id + '|' + t.id];
+            var b = null, who = [], person = null, free = false;
+            if (found && found.length) { b = found[0].b; person = found[0].person; who = found.map(function (x) { return x.person; }).filter(Boolean); }
+            else if (!(t.assignees || []).length && /^\d{4}-\d{2}-\d{2}/.test(t.deadline || '')) {
+              var due = new Date(t.deadline.slice(0, 10) + 'T00:00');
+              var from = /^\d{4}-\d{2}-\d{2}$/.test(t.start || '') ? new Date(t.start + 'T00:00') : new Date(plan.today);
+              if (from.getTime() > due.getTime()) from = due;
+              b = { projectId: project.id, stageId: st.id, taskId: t.id, name: t.name, code: project.code, start: from.getTime(), end: due.getTime(), hours: 0, days: 1, workers: 1, logged: 0, planned: Number(t.estimate) > 0 ? Number(t.estimate) : 0, status: t.status, overdue: due.getTime() < plan.today, explicitStart: !!t.start, free: true };
+              person = { id: '_' }; free = true;
+            }
+            if (!b) return;
+            var it = { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0, person: person, who: who, free: free };
+            if (it.e < 0 || it.s >= N) return;
+            it.e = Math.max(it.e, it.s);
+            items.push(it);
+          });
+        });
+        items.sort(function (a, c) { return a.s - c.s || a.e - c.e; });
+        return { project: project, items: items };
+      }).filter(function (g) { return g.items.length; });
+    }
+
+    function projectHeader(g) {
+      var project = g.project;
+      var s0 = Math.max(0, Math.min.apply(null, g.items.map(function (i) { return i.s; })));
+      var e0 = Math.min(N - 1, Math.max.apply(null, g.items.map(function (i) { return i.e; })));
+      var pct = E.Progress.projectProgress(project).percent;
+      var dl = project.deadline ? slotOf(plan.first, new Date(String(project.deadline).slice(0, 10) + 'T00:00').getTime(), -1) : -1;
+      var free = g.items.filter(function (i) { return i.free; }).length;
+      var sum = D.el('div', { class: 'pb-psum', style: Object.assign({ left: (s0 / N * 100) + '%', width: (Math.max(1, e0 - s0 + 1) / N * 100) + '%' }, Identity.hueStyle(project.code)), attrs: { 'data-tooltip': project.name + ' · postęp projektu ' + pct + '%' } }, [
+        D.el('i', { class: 'pb-psum__fill', style: { width: pct + '%' } })
+      ]);
+      var diamond = dl >= 0 && dl < N ? D.el('span', { class: 'pb-pdia', style: Object.assign({ left: ((dl + .5) / N * 100) + '%' }, Identity.hueStyle(project.code)), attrs: { 'data-tooltip': 'Termin projektu · ' + shortDate(new Date(String(project.deadline).slice(0, 10) + 'T00:00')) } }) : null;
+      return D.el('div', { class: 'pb-row pb-row--proj' }, [
+        D.el('div', { class: 'pb-label pb-label--proj' }, [
+          UI.projectTag(project, { href: E.ProjectList.projectHref(project) }),
+          free ? D.el('span', { class: 'pb-proj__free', text: E.Format.count(free, 'zadanie bez osoby', 'zadania bez osoby', 'zadań bez osoby') }) : null
+        ]),
+        D.el('div', { class: 'pb-cell' }, [trackBase([D.el('div', { class: 'pb-bars pb-bars--proj' }, [sum, diamond])], [])])
+      ]);
+    }
+
+    function projectBoardRows() {
+      var out = [];
+      projectGroups().forEach(function (g) {
+        var rows = [projectHeader(g)];
+        g.items.forEach(function (it) {
+          var nameNode = nameCell(it.b, it.who.length ? it.who : []);
+          var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, it.person, it)]);
+          var rowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackBase([bars], [])])]);
+          var holder = nameNode.querySelector('.pb-tn__chk');
+          if (holder && holder.__open) holder.__open(rowEl);
+          rows.push(rowEl);
+        });
+        out.push(D.el('div', { class: 'pb-person pb-person--proj', attrs: { role: 'group', 'aria-label': g.project.name } }, rows));
+      });
+      return out;
+    }
+
+    /** Tacka „Do przydzielenia”: zadania, do których nikt nie jest przypisany; przeciągnięte na osobę dostają ją i termin. */
+    function unassignedTray() {
+      if (solo || mode !== 'people') return null;
+      var list = (plan.unassigned || []).filter(function (t) { return management || led.some(function (p) { return p.id === t.projectId; }); });
+      if (!list.length) return null;
+      return D.el('div', { class: 'pb-free pb-free--unassigned' }, [D.el('span', { class: 'pb-free__l', text: 'Do przydzielenia ' + list.length + ' · przeciągnij na osobę i dzień' })].concat(list.map(function (t) { return trayChip(t, { id: '_' }); })));
     }
 
     var toolbar = D.el('div', { class: 'pb-toolbar' }, [
@@ -668,6 +731,11 @@
         UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, 0]])); } }),
         UI.iconButton({ icon: 'chevronRight', label: 'Późniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-next' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset + Math.max(1, weeksN - 2)]])); } })
       ]),
+      canProjects ? UI.segmented({
+        label: 'Widok planu', value: mode,
+        items: [{ value: 'people', label: 'Wg osób' }, { value: 'projects', label: 'Wg projektów' }],
+        onChange: function (v) { ctx.actions.setTime({ planMode: v }); }
+      }).node : null,
       solo ? null : projectFilter(),
       UI.segmented({
         label: 'Liczba tygodni', value: weeksN,
@@ -682,15 +750,15 @@
     ]);
 
     var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN) }, attrs: { 'aria-label': 'Plan tygodni' } }, [
-      D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(plan.rows.map(personRow)))])
+      D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(mode === 'projects' ? projectBoardRows() : plan.rows.map(personRow)))])
     ]);
 
     return {
       summary: management ? (overCount ? E.Format.count(overCount, 'osoba przeciążona', 'osoby przeciążone', 'osób przeciążonych') + ' w oknie planu' : 'Nikt nie jest przeciążony w oknie planu') : 'Twój plan na najbliższe tygodnie',
       body: [
         toolbar,
-        priorityStrip(),
         plan.rows.length ? board : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
+        unassignedTray(),
         solo ? null : detail(selected, plan, people, ctx)
       ]
     };

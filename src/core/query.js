@@ -10,6 +10,7 @@
     : root.ETROM.Team;
 
   var SORTS = {
+    manual: 'Moja kolejność (przeciągnij na liście)',
     code: 'Numer projektu',
     deadline: 'Termin — najbliższy (zakończone na końcu)',
     name: 'Nazwa A→Z'
@@ -51,7 +52,18 @@
     return diff !== 0 ? diff : compareText(a.name, b.name);
   }
 
+  /** Kolejność ustawiona ręcznie przez zarząd (pole `priority`): pilniejsze wyżej, bez numeru po numerowanych, zakończone na końcu. */
+  function compareManual(a, b) {
+    var closedA = a.status === 'done' ? 1 : 0;
+    var closedB = b.status === 'done' ? 1 : 0;
+    if (closedA !== closedB) return closedA - closedB;
+    var pa = a.priority > 0 ? a.priority : 1e9;
+    var pb = b.priority > 0 ? b.priority : 1e9;
+    return pa !== pb ? pa - pb : compareText(a.code, b.code);
+  }
+
   var COMPARATORS = {
+    manual: compareManual,
     deadline: compareDeadline,
     name: function (a, b) { return compareText(a.name, b.name); },
     code: function (a, b) { return compareText(a.code, b.code) || compareText(a.name, b.name); },

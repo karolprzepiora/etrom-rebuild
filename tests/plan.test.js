@@ -213,3 +213,18 @@ test('święto zmniejsza pojemność tygodnia i nie dostaje godzin zadania', () 
   assert.equal(w[0].planned, 16);
   assert.ok(!plan.weeks[0].dayKeys.includes('2026-11-11'));
 });
+
+test('Plan: godziny osoby na dzień i zadania bez osoby', function () {
+  var P = require('../src/core/plan.js');
+  var project = { id: 1, code: '2601', name: 'Test', status: 'active', stages: [{ id: 's1', hours: 0, tasks: [
+    { id: 't1', name: 'Z osobą', status: 'todo', assignees: ['p1'], estimate: 16, start: '2026-10-05', deadline: '2026-10-06T16:00' },
+    { id: 't2', name: 'Bez osoby', status: 'todo', assignees: [], estimate: 8, deadline: '2026-10-09T16:00' }
+  ] }] };
+  var plan = P.build({ projects: [project], people: [{ id: 'p1', active: true }], entries: [], now: new Date(2026, 9, 5, 9), weeks: 2 });
+  var row = plan.rows[0];
+  assert.equal(row.days['2026-10-05'], 8);
+  assert.equal(row.days['2026-10-06'], 8);
+  assert.equal(plan.unassigned.length, 1);
+  assert.equal(plan.unassigned[0].taskId, 't2');
+  assert.equal(plan.unassigned[0].hours, 8);
+});
