@@ -1100,3 +1100,11 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 .pb-bar.is-drag .pb-bar__clip { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), 0 10px 24px -6px rgb(0 0 0 / .45); }
 .pb-bar:focus-visible .pb-bar__clip { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--ink); }
 .pb-tn__code { flex: none; font: 700 .7rem/1.1rem var(--font-mono, ui-monospace, monospace); }
+
+/* Pasek dnia w górnej belce rozciąga się do prawej krawędzi treści (jak baner strony) */
+.topbar { padding-right: var(--gutter); }
+.topbar__spacer { flex: 0 0 0; }
+.topbar__timer { flex: 1 1 auto; justify-content: flex-end; }
+.topbar__timer .daymeter { flex: 1 1 auto; margin-right: 0; }
+.topbar__timer .dribbon { width: auto; flex: 1 1 auto; max-width: none; }
+.topbar__timer .timer-pill { flex: 0 1 auto; }
