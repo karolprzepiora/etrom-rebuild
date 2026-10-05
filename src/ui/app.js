@@ -1203,6 +1203,23 @@
     applyTaskMove(projectId, stageId, taskId, next, '');
   }
 
+  /* Lista punktów przy zadaniu: tylko realizatorzy dopisują i odhaczają; nie zmienia statusu ani godzin. */
+  function checklistChange(projectId, stageId, taskId, change) {
+    var me = currentMe();
+    var task = taskOf(projectId, stageId, taskId);
+    if (!me || !task || (task.assignees || []).indexOf(me) < 0) return;
+    mapTask(projectId, stageId, taskId, function (t) { return change(t, me); });
+  }
+  function addChecklistPoint(projectId, stageId, taskId, text) {
+    checklistChange(projectId, stageId, taskId, function (t, me) { return Tasks.addPoint(t, text, me, new Date().toISOString()); });
+  }
+  function toggleChecklistPoint(projectId, stageId, taskId, pointId) {
+    checklistChange(projectId, stageId, taskId, function (t, me) { return Tasks.togglePoint(t, pointId, me); });
+  }
+  function removeChecklistPoint(projectId, stageId, taskId, pointId) {
+    checklistChange(projectId, stageId, taskId, function (t) { return Tasks.removePoint(t, pointId); });
+  }
+
   function cycleTaskPart(projectId, stageId, taskId, personId) {
     mapTask(projectId, stageId, taskId, function (task) { return Tasks.cyclePart(task, personId); });
   }
@@ -2684,6 +2701,7 @@
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
+    addPoint: addChecklistPoint, togglePoint: toggleChecklistPoint, removePoint: removeChecklistPoint,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
     setKanban: function (patch) { store.update(function (state) { return Object.assign({}, state, { kanban: Object.assign({}, state.kanban, patch) }); }); },
     editPerson: openEditPerson,

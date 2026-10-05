@@ -257,3 +257,39 @@ test('data startu: poprawna data, nie po terminie; szkic jej nie ma; normalizacj
   assert.ok(Tasks.validateTask({ name: 'A', start: '2026-02-31' }, []).errors.start);
   assert.equal(Tasks.validateTask({ name: 'A', start: '2026-10-05', draft: true }, []).value.start, '');
 });
+
+test('lista punktów: dopisywanie, odhaczanie z autorem, zmiana nazwy, usuwanie', () => {
+  const T = Tasks;
+  let t = { id: 't-1', name: 'Wniosek', assignees: ['p-1', 'p-2'] };
+  t = T.addPoint(t, '  Przekrój A-A  ', 'p-1', '2026-10-05T09:00:00Z');
+  t = T.addPoint(t, 'Opis techniczny', 'p-2', '2026-10-05T09:05:00Z');
+  assert.equal(t.checklist.length, 2);
+  assert.equal(t.checklist[0].text, 'Przekrój A-A');
+  assert.equal(t.checklist[1].by, 'p-2');
+  assert.notEqual(t.checklist[0].id, t.checklist[1].id);
+  assert.equal(T.addPoint(t, '   ', 'p-1'), t, 'pusty tekst nic nie dodaje');
+  t = T.togglePoint(t, t.checklist[0].id, 'p-2');
+  assert.equal(t.checklist[0].done, true);
+  assert.equal(t.checklist[0].doneBy, 'p-2');
+  assert.deepEqual(T.checklistStats(t), { done: 1, total: 2 });
+  t = T.togglePoint(t, t.checklist[0].id, 'p-2');
+  assert.equal(t.checklist[0].doneBy, '');
+  t = T.renamePoint(t, t.checklist[1].id, 'Opis — odpływ');
+  assert.equal(t.checklist[1].text, 'Opis — odpływ');
+  t = T.removePoint(t, t.checklist[0].id);
+  assert.equal(t.checklist.length, 1);
+});
+
+test('lista punktów: limit, czyszczenie z dysku, brak wpływu na status', () => {
+  const T = Tasks;
+  let t = { id: 't-1', name: 'X', status: 'working', assignees: [] };
+  for (let i = 0; i < 60; i += 1) t = T.addPoint(t, 'p' + i, 'p-1');
+  assert.equal(t.checklist.length, T.CHECK_LIMITS.items);
+  assert.equal(t.status, 'working');
+  const clean = T.normalizeChecklist([{ id: 'c-1', text: 'ok', done: true, doneBy: 'p-1' }, { id: 'c-1', text: 'dubel' }, { id: 'c-2', text: '' }, null, 'x']);
+  assert.equal(clean.length, 1);
+  assert.equal(clean[0].doneBy, 'p-1');
+  const [norm] = T.normalizeTasks([{ id: 't-1', name: 'A', checklist: [{ id: 'c-1', text: 'a' }] }]);
+  assert.equal(norm.checklist.length, 1);
+  assert.deepEqual(T.normalizeTasks([{ id: 't-2', name: 'B' }])[0].checklist, []);
+});

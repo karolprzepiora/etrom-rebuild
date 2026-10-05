@@ -616,6 +616,18 @@ async function main() {
       await evaluate('const sec = document.querySelector("#view-mywork [data-group=react]"); return !!sec && sec.querySelectorAll(".ibx__row").length > 0 && !!sec.querySelector(".ibx__row .mrow__project") && !!sec.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!sec.querySelector(".ibx__info[data-tooltip]") && !document.querySelector(".ibx__intro, .ibx__why, .ibx__group-text");'));
     check('każdy wiersz zadań i reakcji ma ten sam znacznik projektu: numer + nazwa projektu',
       await evaluate('const rows = [...document.querySelectorAll("#view-mywork .mrow, #view-mywork .ibx__row")]; return rows.length > 3 && rows.every(r => { const t = r.querySelector(".ptag"); return t && t.querySelector(".mrow__project") && t.querySelector(".ptag__name").textContent.length > 2; });'));
+    await evaluate('document.querySelector("#view-mywork .mrow[data-task-id] .chk-ind").click(); return true;');
+    await sleep(250);
+    await evaluate('const i = document.querySelector("#view-mywork .chk__input"); i.value = "Przekrój A-A"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(350);
+    await evaluate('const i = document.querySelector("#view-mywork .chk__input"); i.value = "Opis techniczny"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(350);
+    check('lista punktów przy zadaniu: dopisanie Enterem tworzy punkty z kółkiem autora, panel zostaje otwarty',
+      await evaluate('const p = document.querySelector("#view-mywork .chk"); return !!p && p.querySelectorAll(".chk__item").length === 2 && !!p.querySelector(".chk__by .avatar");'));
+    await evaluate('document.querySelector("#view-mywork .chk__box").click(); return true;');
+    await sleep(350);
+    check('odhaczenie punktu zmienia kropkę w wierszu, nie ruszając statusu zadania',
+      await evaluate('const li = document.querySelector("#view-mywork .chk").closest("li"); return li.querySelectorAll(".chk-ind__dots i.is-done").length === 1 && li.querySelector(".chk-ind__dots").children.length === 2;'));
     check('licznik w menu = zadania na liście + pozycje „Wymaga reakcji”',
       await evaluate('const n = document.querySelectorAll("#view-mywork .mrow").length + document.querySelectorAll("#view-mywork [data-group=react] .ibx__row").length; return document.querySelector("[data-screen=mywork] .nav__count").textContent === String(n);'));
     await click('[data-fk="mywork-view-react"]');

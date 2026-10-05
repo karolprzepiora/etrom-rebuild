@@ -305,6 +305,69 @@
     return taskStats(all, now);
   }
 
+  /* ---------- Lista punktów przy zadaniu (wspólna dla realizatorów) ---------- */
+  var CHECK_LIMITS = { items: 40, text: 160 };
+
+  function normalizeChecklist(raw) {
+    var taken = {};
+    var out = [];
+    (Array.isArray(raw) ? raw : []).forEach(function (item) {
+      if (!item || typeof item !== 'object' || out.length >= CHECK_LIMITS.items) return;
+      var label = text(item.text).slice(0, CHECK_LIMITS.text);
+      var id = text(item.id);
+      if (!label || !id || taken[id]) return;
+      taken[id] = true;
+      out.push({
+        id: id, text: label, done: item.done === true,
+        by: text(item.by), doneBy: item.done === true ? text(item.doneBy) : '',
+        at: typeof item.at === 'string' ? item.at : ''
+      });
+    });
+    return out;
+  }
+
+  function checklistOf(task) { return (task && Array.isArray(task.checklist)) ? task.checklist : []; }
+
+  function nextPointId(list) {
+    var max = 0;
+    list.forEach(function (p) { var m = /^c-(\d+)$/.exec(p.id); if (m) max = Math.max(max, Number(m[1])); });
+    return 'c-' + (max + 1);
+  }
+
+  /** Dopisuje punkt; ignoruje pusty tekst i przekroczenie limitu. */
+  function addPoint(task, label, by, now) {
+    var value = text(label).slice(0, CHECK_LIMITS.text);
+    var list = checklistOf(task);
+    if (!task || !value || list.length >= CHECK_LIMITS.items) return task;
+    var point = { id: nextPointId(list), text: value, done: false, by: text(by), doneBy: '', at: now || '' };
+    return Object.assign({}, task, { checklist: list.concat([point]) });
+  }
+
+  function togglePoint(task, id, by) {
+    var list = checklistOf(task);
+    if (!list.some(function (p) { return p.id === id; })) return task;
+    return Object.assign({}, task, { checklist: list.map(function (p) {
+      if (p.id !== id) return p;
+      return Object.assign({}, p, { done: !p.done, doneBy: !p.done ? text(by) : '' });
+    }) });
+  }
+
+  function renamePoint(task, id, label) {
+    var value = text(label).slice(0, CHECK_LIMITS.text);
+    if (!value) return task;
+    return Object.assign({}, task, { checklist: checklistOf(task).map(function (p) { return p.id === id ? Object.assign({}, p, { text: value }) : p; }) });
+  }
+
+  function removePoint(task, id) {
+    return Object.assign({}, task, { checklist: checklistOf(task).filter(function (p) { return p.id !== id; }) });
+  }
+
+  /** {done, total} dla paska/kropek. */
+  function checklistStats(task) {
+    var list = checklistOf(task);
+    return { done: list.filter(function (p) { return p.done; }).length, total: list.length };
+  }
+
   /** Czyści zadania wczytane z dysku. Nigdy nie rzuca. */
   function normalizeTasks(raw, available) {
     var list = Array.isArray(raw) ? raw : [];
@@ -365,6 +428,7 @@
         mailId: text(item.mailId).slice(0, 60),
         feedback: text(item.feedback).slice(0, LIMITS.reason),
         history: history,
+        checklist: normalizeChecklist(item.checklist),
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
       }, Number.isFinite(estimate) && estimate >= 0.5 && estimate <= 2000 ? { estimate: Math.round(estimate * 10) / 10 } : {}));
     });
@@ -395,7 +459,15 @@
     deadlineInfo: deadlineInfo,
     taskStats: taskStats,
     projectTaskStats: projectTaskStats,
-    normalizeTasks: normalizeTasks
+    normalizeTasks: normalizeTasks,
+    CHECK_LIMITS: CHECK_LIMITS,
+    normalizeChecklist: normalizeChecklist,
+    checklistOf: checklistOf,
+    addPoint: addPoint,
+    togglePoint: togglePoint,
+    renamePoint: renamePoint,
+    removePoint: removePoint,
+    checklistStats: checklistStats
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -65,13 +65,27 @@
         ])
       : D.el('span', { class: 'trow__deadline' }, [E.TaskList.deadlineBlock(task, info)]);
 
-    return D.el('li', { class: 'mrow row trow--' + task.status + (settings.approve ? ' mrow--approve' : ''), dataset: { taskId: task.id } }, [
+    var ref = { projectId: row.project.id, stageId: row.stage.id };
+    var li = null;
+    function toggleList() {
+      var open = E.Checklist.toggle(task.id);
+      var cur = li.querySelector('.chk');
+      if (cur) cur.remove();
+      if (open) { li.appendChild(E.Checklist.panel(task, ref, ctx)); var f = li.querySelector('.chk__input'); if (f) f.focus(); }
+      var old = li.querySelector('.chk-ind');
+      if (old) old.replaceWith(E.Checklist.indicator(task, toggleList, ctx));
+    }
+    var withList = !settings.approve && ctx.meId;
+    if (withList) body[0].appendChild(E.Checklist.indicator(task, toggleList, ctx));
+    li = D.el('li', { class: 'mrow row trow--' + task.status + (settings.approve ? ' mrow--approve' : ''), dataset: { taskId: task.id } }, [
       settings.approve ? UI.status('task', task.status) : E.TaskList.statusControl(row.project, row.stage, task, ctx.actions),
       D.el('div', { class: 'mrow__body' }, body),
       D.el('span', { class: 'mrow__load t-meta', text: Tasks.WORKLOAD[task.workload] || '' }),
       last,
       settings.approve ? null : E.Timer.timerButton(row.project, row.stage, task, ctx.actions)
     ]);
+    if (withList && E.Checklist.isOpen(task.id)) li.appendChild(E.Checklist.panel(task, ref, ctx));
+    return li;
   }
 
   function section(title, count, tone, rows, ctx, options) {
@@ -242,6 +256,7 @@
     var m = model(state, now);
     if (!m) return { summary: 'Twoje zadania, zatwierdzenia i pisma w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
     var me = m.me;
+    ctx = Object.assign({}, ctx, { people: people, meId: me.id });
     var nothing = !m.open && !m.react.length && !m.work.projects.length;
 
     var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
