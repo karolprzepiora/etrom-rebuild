@@ -1164,3 +1164,14 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 .pb-tn__chk .chk-ind--empty { opacity: .72; }
 .pb-row--task:hover .chk-ind--empty, .pb-row--task:focus-within .chk-ind--empty, .pb-tn__chk .chk-ind--empty[aria-expanded="true"] { opacity: 1; }
 .pb-row > .chk { grid-column: 1 / -1; margin: 2px 0 var(--space-2) 2.6rem; padding: 6px 0 6px var(--space-4); border-left: 2px solid color-mix(in srgb, var(--accent, #0b7285) 28%, transparent); display: grid; gap: 2px; max-width: 44rem; }
+
+/* Nakład pracy: cztery słupki, opis w dymku */
+.wl { display: inline-flex; align-items: flex-end; gap: 2px; height: 19px; padding: 0 3px; border-radius: 6px; cursor: default; }
+.wl i { width: 5px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.wl i:nth-child(1) { height: 7px; } .wl i:nth-child(2) { height: 11px; } .wl i:nth-child(3) { height: 15px; } .wl i:nth-child(4) { height: 19px; }
+.wl i.is-on { background: #0b6aa2; }
+:root[data-theme="dark"] .wl i.is-on { background: #5aa9de; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wl i.is-on { background: #5aa9de; } }
+.wl:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.wl-row { display: inline-flex; align-items: center; gap: 8px; }
+.mrow__load { display: inline-flex; justify-content: center; }

@@ -294,6 +294,19 @@
     ]);
   }
 
+  /** Nakład pracy zadania jako cztery słupki (bez opisu; wyjaśnienie w dymku). */
+  var LOAD_ORDER = ['small', 'medium', 'large', 'veryLarge'];
+  function workloadMark(key, o) {
+    var level = Math.max(0, LOAD_ORDER.indexOf(key));
+    var name = (E.Tasks.WORKLOAD[key] || '').toLowerCase();
+    var text = 'Nakład pracy: ' + (name || 'brak danych');
+    var bars = LOAD_ORDER.map(function (k, i) { return D.el('i', { class: i <= level ? 'is-on' : '' }); });
+    return D.el('span', {
+      class: 'wl' + (o && o.class ? ' ' + o.class : ''),
+      attrs: { role: 'img', 'aria-label': text, 'data-tooltip': text, tabindex: o && o.focusable === false ? null : '0' }
+    }, bars);
+  }
+
   /* ---------- Pola formularza ---------- */
 
   /**
@@ -619,6 +632,7 @@
     countdown: countdown,
     progress: progress,
     swatch: swatch,
+    workloadMark: workloadMark,
     projectTag: projectTag,
     field: field,
     input: input,

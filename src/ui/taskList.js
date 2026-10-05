@@ -168,7 +168,7 @@
       D.el('div', { class: 'trow__people' }, assigned.length
         ? assigned.map(function (person) { return partButton(project, stage, task, person, actions); })
         : [D.el('span', { class: 't-meta', text: 'Bez realizatora' })]),
-      D.el('span', { class: 'trow__load t-meta', text: Tasks.WORKLOAD[task.workload], attrs: { 'data-tooltip': 'Nakład pracy' } }),
+      D.el('span', { class: 'trow__load' }, [E.UI.workloadMark(task.workload)]),
       D.el('span', { class: 'trow__deadline' }, [deadlineBlock(task, info)]),
       task.draft ? D.el('span') : E.Timer.timerButton(project, stage, task, actions),
       taskMenu(project, stage, task, actions)

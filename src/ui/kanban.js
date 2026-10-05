@@ -63,7 +63,7 @@
       task.status === 'changes' && task.feedback ? D.el('p', { class: 'kb-card__feedback' }, [Icons.icon('alert', 14), D.el('span', { text: task.feedback })]) : null,
       D.el('div', { class: 'kb-card__meta' }, [
         assigned.length ? Avatar.avatarStack(assigned, { max: 3, size: 'xs' }) : D.el('span', { class: 't-muted', text: 'Bez realizatora' }),
-        D.el('span', { class: 'kb-card__load', text: Tasks.WORKLOAD[task.workload] || '', attrs: { 'data-tooltip': 'Nakład pracy' } }),
+        D.el('span', { class: 'kb-card__load' }, [E.UI.workloadMark(task.workload)]),
         logged > 0 ? D.el('span', { class: 't-num t-muted', text: E.TimeLog.duration(logged) }) : null
       ]),
       D.el('div', { class: 'kb-card__foot' }, [
