@@ -619,3 +619,4 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 
 ## Znacznik projektu (jeden w całej aplikacji)
 - `E.UI.projectTag(project, {href, stage})`: kolorowy numer projektu (pigułka w barwie projektu) + nazwa projektu, opcjonalnie etap szarym tekstem po „·”. Używany w wierszach Moja praca (zadania i „Wymaga reakcji”); w Planie/Tygodniach nazwa projektu stoi pod nazwą zadania; w Kalendarzu w opisie pozycji. Nowe listy zadań używają tego znacznika, nie własnych pigułek.
+- **Pasek planu = kafel projektu**: ten sam gradient (`--pj-a`/`--pj-b`), połysk (`--pj-gloss`) i poświata (`--pj-glow`), więc przy wyłączonym HDR/połysku pasek jest tak samo płaski jak kafel. Kod projektu w lewej kolumnie to standardowa pigułka (`mrow__project`).

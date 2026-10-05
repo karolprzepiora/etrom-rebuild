@@ -257,7 +257,7 @@
         ]);
       }
       return D.el('div', { class: 'pb-tn' + (focusProject && focusProject !== b.projectId ? ' is-dim' : ''), style: Identity.hueStyle(b.code), dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId } }, [
-        D.el('span', { class: 'pb-bar__code', text: b.code }),
+        D.el('span', { class: 'mrow__project pb-tn__code', style: Identity.hueStyle(b.code), text: b.code }),
         D.el('span', { class: 'pb-tn__txt' }, [
           D.el('button', { class: 'pb-tn__name', attrs: { type: 'button', title: b.name }, text: b.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: b.projectId, stageId: b.stageId, taskId: b.taskId }); } } }),
           D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } })
