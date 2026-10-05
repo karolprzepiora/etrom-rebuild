@@ -642,7 +642,7 @@
   }
 
   function openAddTask(projectId, stageId) {
-    store.set({ taskForm: { projectId: projectId, stageId: stageId, draft: Object.assign({ workload: 'medium', assignees: [] }, taskFormMeta(projectId, stageId)), errors: {} } });
+    store.set({ taskForm: { projectId: projectId, stageId: stageId, draft: Object.assign({ assignees: [] }, taskFormMeta(projectId, stageId)), errors: {} } });
   }
 
   function openEditTask(projectId, stageId, taskId) {
@@ -652,7 +652,7 @@
       taskForm: {
         projectId: projectId, stageId: stageId,
         draft: {
-          id: task.id, name: task.name, start: task.start || '', deadline: task.deadline, workload: task.workload, estimate: task.estimate || '',
+          id: task.id, name: task.name, start: task.start || '', deadline: task.deadline, estimate: task.estimate || '',
           important: task.important, description: task.description, assignees: (task.assignees || []).slice(), mailId: task.mailId || '',
           draft: task.draft === true, fromReserve: task.fromReserve === true,
           procedure: taskFormMeta(projectId, stageId).procedure, dayHours: E.Planning.getRules().dayHours
@@ -848,7 +848,7 @@
       projectId: project.id, stageId: stage.id, fromMail: { id: entry.id, regNo: entry.regNo, subject: entry.subject, counterparty: entry.counterparty },
       draft: {
         name: verb + entry.regNo + ': ' + entry.subject,
-        deadline: '', workload: 'medium', important: entry.kind === 'summons',
+        deadline: '', important: entry.kind === 'summons',
         description: (entry.direction === 'in' ? 'Pismo od: ' : 'Pismo do: ') + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.',
         assignees: assignees, mailId: entry.id, stageId: stage.id
       },

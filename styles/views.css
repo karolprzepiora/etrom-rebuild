@@ -533,8 +533,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .etoday__log .erows { margin-top: var(--space-1); }
 .dayaxis__track { height: 1.5rem; }
 
-/* Szeroki ekran: lista projektów i Moja praca korzystają z szerokości */
-.page:has(#view-projects:not([hidden])), .page:has(#view-mywork:not([hidden])), .page:has(#view-time:not([hidden])) { max-width: min(112rem, 100%); }
+/* Szeroki ekran: każdy ekran korzysta z pełnej szerokości (jak Projekty i Moja praca) */
+.page { max-width: min(112rem, 100%); }
 
 .srow__due { display: grid; gap: 1px; line-height: 1.25; }
 .srow__due-date { font-size: var(--fs-sm); }

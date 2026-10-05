@@ -21,12 +21,9 @@
     done: ['todo']
   };
 
-  var WORKLOAD = {
-    small: 'Mała',
-    medium: 'Średnia',
-    large: 'Duża',
-    veryLarge: 'Bardzo duża'
-  };
+  // Dawne „małe / średnie / duże” zadania nie są już nigdzie pokazywane ani wybierane (nakład wynika z czasu na zadanie).
+  // Zostają tylko jako ukryta podpowiedź godzin dla starych danych bez szacunku (core/plan.js).
+  var LEGACY_WORKLOAD = ['small', 'medium', 'large', 'veryLarge'];
 
   // Stan udziału pojedynczego realizatora w zadaniu wieloosobowym.
   var PART_STATUS = { todo: 'Do wykonania', working: 'W toku', done: 'Gotowe' };
@@ -71,7 +68,6 @@
     var name = text(data.name);
     var deadline = text(data.deadline);
     var start = text(data.start).slice(0, 10);
-    var workload = text(data.workload) || 'medium';
     var estimateRaw = String(data.estimate === undefined || data.estimate === null ? '' : data.estimate).trim().replace(',', '.');
     var estimate = estimateRaw === '' ? 0 : Number(estimateRaw);
     var assignees = Array.isArray(data.assignees) ? data.assignees.filter(Boolean) : [];
@@ -80,7 +76,6 @@
     else if (name.length > LIMITS.name) errors.name = 'Nazwa może mieć najwyżej ' + LIMITS.name + ' znaków.';
 
     if (deadline && data.draft !== true && !isDateTime(deadline)) errors.deadline = 'Użyj poprawnej daty.';
-    if (!Object.prototype.hasOwnProperty.call(WORKLOAD, workload)) errors.workload = 'Wybierz nakład pracy.';
     if (!Number.isFinite(estimate) || estimate < 0 || estimate > 2000) errors.estimate = 'Podaj czas pracy od pół godziny do 250 dni albo zostaw puste.';
     else if (estimate > 0 && estimate < 0.5) errors.estimate = 'Najmniejszy szacunek to pół godziny.';
 
@@ -102,7 +97,6 @@
         name: name,
         start: start,
         deadline: deadline,
-        workload: workload,
         estimate: estimate > 0 ? Math.round(estimate * 10) / 10 : 0,
         assignees: unique,
         description: text(data.description).slice(0, LIMITS.description),
@@ -368,6 +362,23 @@
     return { done: list.filter(function (p) { return p.done; }).length, total: list.length };
   }
 
+  /**
+   * Nakład zadania z czasu, jaki na nie przewidziano (od startu — a gdy go brak, od założenia — do terminu):
+   * do 2 dni = 1 kreska, do 2 tygodni = 2, do ok. 7 tygodni = 3, dłużej (kwartał) = 4. Bez terminu: level 0.
+   * Progi to środki geometryczne między „1 dzień / 1 tydzień / 1 miesiąc / 1 kwartał”.
+   * @returns {{level: number, days: number}}
+   */
+  function effortLevel(task) {
+    var end = task && isDateTime(task.deadline) ? task.deadline.slice(0, 10) : '';
+    var begin = task && isDay(String(task.start || '').slice(0, 10)) ? String(task.start).slice(0, 10)
+      : (task && isDateTime(task.createdAt) ? task.createdAt.slice(0, 10) : '');
+    if (!end || !begin) return { level: 0, days: 0 };
+    var a = Date.UTC(Number(begin.slice(0, 4)), Number(begin.slice(5, 7)) - 1, Number(begin.slice(8, 10)));
+    var b = Date.UTC(Number(end.slice(0, 4)), Number(end.slice(5, 7)) - 1, Number(end.slice(8, 10)));
+    var days = Math.max(1, Math.round((b - a) / 86400000) + 1);
+    return { level: days <= 2 ? 1 : (days <= 14 ? 2 : (days <= 52 ? 3 : 4)), days: days };
+  }
+
   /** Czyści zadania wczytane z dysku. Nigdy nie rzuca. */
   function normalizeTasks(raw, available) {
     var list = Array.isArray(raw) ? raw : [];
@@ -390,7 +401,6 @@
         });
 
       var status = Object.prototype.hasOwnProperty.call(TASK_STATUS, item.status) ? item.status : 'todo';
-      var workload = Object.prototype.hasOwnProperty.call(WORKLOAD, item.workload) ? item.workload : 'medium';
 
       var parts = {};
       assignees.forEach(function (personId) {
@@ -418,7 +428,6 @@
         status: status,
         start: isDay(String(item.start || '').slice(0, 10)) && (!isDateTime(item.deadline) || String(item.start).slice(0, 10) <= item.deadline.slice(0, 10)) && item.draft !== true ? String(item.start).slice(0, 10) : '',
         deadline: isDateTime(item.deadline) ? item.deadline : '',
-        workload: workload,
         assignees: assignees,
         parts: parts,
         description: text(item.description).slice(0, LIMITS.description),
@@ -430,7 +439,7 @@
         history: history,
         checklist: normalizeChecklist(item.checklist),
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
-      }, Number.isFinite(estimate) && estimate >= 0.5 && estimate <= 2000 ? { estimate: Math.round(estimate * 10) / 10 } : {}));
+      }, LEGACY_WORKLOAD.indexOf(item.workload) >= 0 ? { workload: item.workload } : {}, Number.isFinite(estimate) && estimate >= 0.5 && estimate <= 2000 ? { estimate: Math.round(estimate * 10) / 10 } : {}));
     });
 
     return result;
@@ -439,7 +448,7 @@
   var api = {
     TASK_STATUS: TASK_STATUS,
     TRANSITIONS: TRANSITIONS,
-    WORKLOAD: WORKLOAD,
+    effortLevel: effortLevel,
     PART_STATUS: PART_STATUS,
     PART_CYCLE: PART_CYCLE,
     nextTaskId: nextTaskId,

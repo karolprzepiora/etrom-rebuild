@@ -294,16 +294,14 @@
     ]);
   }
 
-  /** Nakład pracy zadania jako cztery słupki (bez opisu; wyjaśnienie w dymku). */
-  var LOAD_ORDER = ['small', 'medium', 'large', 'veryLarge'];
-  function workloadMark(key, o) {
-    var level = Math.max(0, LOAD_ORDER.indexOf(key));
-    var name = (E.Tasks.WORKLOAD[key] || '').toLowerCase();
-    var text = 'Nakład pracy: ' + (name || 'brak danych');
-    var bars = LOAD_ORDER.map(function (k, i) { return D.el('i', { class: i <= level ? 'is-on' : '' }); });
+  /** Nakład zadania z czasu na jego wykonanie: 1–4 kreski (dzień / tydzień / miesiąc / kwartał). Bez tekstu i dymka. */
+  function effortMark(task, o) {
+    var e = E.Tasks.effortLevel(task);
+    if (!e.level) return null;
+    var bars = [1, 2, 3, 4].map(function (n) { return D.el('i', { class: n <= e.level ? 'is-on' : '' }); });
     return D.el('span', {
-      class: 'wl' + (o && o.class ? ' ' + o.class : ''),
-      attrs: { role: 'img', 'aria-label': text, 'data-tooltip': text, tabindex: o && o.focusable === false ? null : '0' }
+      class: 'eff eff--' + e.level + (o && o.class ? ' ' + o.class : ''),
+      attrs: { role: 'img', 'aria-label': 'Czas na zadanie: ' + e.level + ' z 4' }
     }, bars);
   }
 
@@ -632,7 +630,7 @@
     countdown: countdown,
     progress: progress,
     swatch: swatch,
-    workloadMark: workloadMark,
+    effortMark: effortMark,
     projectTag: projectTag,
     field: field,
     input: input,

@@ -628,5 +628,6 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Lista w Planie (lider)**: ten sam znak co w Mojej pracy stoi w lewej kolumnie, w linii z nazwą projektu pod nazwą zadania (zadanie bez listy: „+ lista” tylko u realizatora, po najechaniu). Klik w kropki rozwija pod wierszem zadania panel `E.Checklist.panel`; dla osób spoza zadania jest tylko do odczytu („Lista zespołu · podgląd”). Stan rozwinięcia jest wspólny z Moją pracą.
 - Przycisk „+ lista” jest zawsze widoczny (przerywana obwódka, po najechaniu pełna), nie tylko po najechaniu na wiersz.
 
-## Nakład pracy zadania: słupki (`E.UI.workloadMark`)
-- Cztery rosnące słupki wypełnione do poziomu nakładu (Mała = 1, Średnia = 2, Duża = 3, Bardzo duża = 4), jeden kolor, bez tekstu. Opis w dymku („Nakład pracy: duża”) i w `aria-label`; element jest fokusowalny, więc dymek działa z klawiatury. Używany w Mojej pracy, liście zadań i kanbanie; w szczegółach zadania stoi obok słownej nazwy, a w formularzu zostaje lista nazw. Tylko nakład jakościowy, nigdy godziny (pracownik nie widzi planowanych godzin zadania).
+## Nakład pracy zadania: słupki czasu (`E.UI.effortMark`)
+- Cztery rosnące słupki, bez tekstu, bez obwódki i bez dymku (tylko `aria-label`). Stopień wynika z czasu przewidzianego na zadanie (od startu do terminu, dni włącznie; `Tasks.effortLevel`): do 2 dni = 1 słupek, do 2 tygodni = 2, do ok. miesiąca = 3, dłużej = 4. Brak terminu = brak znacznika. Nie ma już ręcznych poziomów Mała/Średnia/Duża/Bardzo duża ani pola w formularzu. Używany w Mojej pracy, liście zadań, kanbanie i szczegółach zadania (obok liczby dni). Nigdy godziny.
+- Wszystkie ekrany mają jednakową szerokość: `.page { max-width: min(112rem, 100%) }`, zawartość rozciąga się na całą szerokość okna.

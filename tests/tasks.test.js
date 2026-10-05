@@ -21,11 +21,11 @@ test('validateTask wymaga nazwy', () => {
   assert.ok(result.errors.name);
 });
 
-test('validateTask przycina nazwę i uzupełnia nakład', () => {
+test('validateTask przycina nazwę i nie zna już „nakładu pracy”', () => {
   const result = Tasks.validateTask({ name: '  Opracować rysunki  ' }, TEAM);
   assert.equal(result.valid, true);
   assert.equal(result.value.name, 'Opracować rysunki');
-  assert.equal(result.value.workload, 'medium');
+  assert.equal(result.value.workload, undefined);
 });
 
 test('realizatorem może być tylko osoba z zespołu projektu', () => {
@@ -39,9 +39,8 @@ test('powtórzony realizator jest liczony raz', () => {
   assert.deepEqual(result.value.assignees, ['p-1', 'p-2']);
 });
 
-test('validateTask odrzuca błędną datę i nieznany nakład', () => {
+test('validateTask odrzuca błędną datę', () => {
   assert.ok(Tasks.validateTask({ name: 'X', deadline: 'kiedyś' }, TEAM).errors.deadline);
-  assert.ok(Tasks.validateTask({ name: 'X', workload: 'ogromny' }, TEAM).errors.workload);
 });
 
 test('createTask nadaje identyfikator, status i udziały realizatorów', () => {
@@ -193,7 +192,7 @@ test('normalizeTasks usuwa realizatorów spoza zespołu i naprawia stany', () =>
   const first = result[0];
   assert.deepEqual(first.assignees, ['p-1']);
   assert.equal(first.status, 'todo');
-  assert.equal(first.workload, 'medium');
+  assert.equal(first.workload, undefined, 'nieznany dawny nakład znika');
   assert.equal(first.parts['p-1'], 'todo');
   assert.equal(first.deadline, '');
 });
@@ -292,4 +291,21 @@ test('lista punktów: limit, czyszczenie z dysku, brak wpływu na status', () =>
   const [norm] = T.normalizeTasks([{ id: 't-1', name: 'A', checklist: [{ id: 'c-1', text: 'a' }] }]);
   assert.equal(norm.checklist.length, 1);
   assert.deepEqual(T.normalizeTasks([{ id: 't-2', name: 'B' }])[0].checklist, []);
+});
+
+test('effortLevel: nakład z czasu na zadanie (dzień / tydzień / miesiąc / kwartał)', () => {
+  const at = (start, deadline) => Tasks.effortLevel({ start, deadline: deadline + 'T12:00', createdAt: '2026-01-01T08:00:00Z' });
+  assert.deepEqual(at('2026-10-05', '2026-10-05'), { level: 1, days: 1 });
+  assert.equal(at('2026-10-05', '2026-10-06').level, 1);
+  assert.equal(at('2026-10-05', '2026-10-11').level, 2, 'tydzień');
+  assert.equal(at('2026-10-05', '2026-10-18').level, 2);
+  assert.equal(at('2026-10-05', '2026-11-04').level, 3, 'miesiąc');
+  assert.equal(at('2026-10-05', '2027-01-03').level, 4, 'kwartał');
+  assert.equal(Tasks.effortLevel({ start: '', deadline: '2026-01-04T12:00', createdAt: '2026-01-01T08:00:00Z' }).level, 2, 'bez startu liczy od założenia');
+  assert.equal(Tasks.effortLevel({ start: '2026-10-05', deadline: '' }).level, 0, 'bez terminu brak znaku');
+});
+
+test('legacy workload zostaje tylko jako ukryta podpowiedź godzin', () => {
+  const [kept] = Tasks.normalizeTasks([{ id: 't-1', name: 'A', workload: 'large' }]);
+  assert.equal(kept.workload, 'large');
 });

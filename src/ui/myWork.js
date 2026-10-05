@@ -80,7 +80,7 @@
     li = D.el('li', { class: 'mrow row trow--' + task.status + (settings.approve ? ' mrow--approve' : ''), dataset: { taskId: task.id } }, [
       settings.approve ? UI.status('task', task.status) : E.TaskList.statusControl(row.project, row.stage, task, ctx.actions),
       D.el('div', { class: 'mrow__body' }, body),
-      D.el('span', { class: 'mrow__load' }, [UI.workloadMark(task.workload)]),
+      D.el('span', { class: 'mrow__load' }, [UI.effortMark(task)]),
       last,
       settings.approve ? null : E.Timer.timerButton(row.project, row.stage, task, ctx.actions)
     ]);
