@@ -239,6 +239,35 @@
       return p ? p.name : '';
     }
 
+    var chkCtx = Object.assign({}, ctx, { people: people, meId: me.id });
+    function taskOf(b) {
+      var pr = projects.filter(function (x) { return x.id === b.projectId; })[0];
+      var st = pr && (pr.stages || []).filter(function (x) { return x.id === b.stageId; })[0];
+      return st ? (st.tasks || []).filter(function (x) { return x.id === b.taskId; })[0] : null;
+    }
+    /** Znak listy punktów przy zadaniu; klik rozwija podgląd pod wierszem (jak w Mojej pracy). */
+    function chkIndicator(b) {
+      var task = taskOf(b);
+      if (!task) return null;
+      var ref = { projectId: b.projectId, stageId: b.stageId };
+      var holder = D.el('span', { class: 'pb-tn__chk' });
+      function draw() {
+        var node = E.Checklist.indicator(task, toggle, chkCtx);
+        holder.replaceChildren.apply(holder, node ? [node] : []);
+      }
+      function toggle() {
+        var open = E.Checklist.toggle(task.id);
+        var row = holder.closest('.pb-row');
+        var cur = row.querySelector('.chk');
+        if (cur) cur.remove();
+        if (open) row.appendChild(E.Checklist.panel(task, ref, chkCtx));
+        draw();
+      }
+      draw();
+      holder.__open = function (row) { if (E.Checklist.isOpen(task.id)) row.appendChild(E.Checklist.panel(task, ref, chkCtx)); };
+      return holder;
+    }
+
     function nameCell(b) {
       var editable = !solo && canEdit(b.projectId);
       var side;
@@ -260,7 +289,10 @@
         D.el('span', { class: 'mrow__project pb-tn__code', style: Identity.hueStyle(b.code), text: b.code }),
         D.el('span', { class: 'pb-tn__txt' }, [
           D.el('button', { class: 'pb-tn__name', attrs: { type: 'button', title: b.name }, text: b.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: b.projectId, stageId: b.stageId, taskId: b.taskId }); } } }),
-          D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } })
+          D.el('span', { class: 'pb-tn__sub' }, [
+            D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } }),
+            chkIndicator(b)
+          ])
         ]),
         side
       ]);
@@ -516,7 +548,11 @@
       }
       items.forEach(function (it) {
         var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, person, it)]);
-        rows.push(D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameCell(it.b)]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]));
+        var nameNode = nameCell(it.b);
+        var taskRowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
+        var chkHolder = nameNode.querySelector('.pb-tn__chk');
+        if (chkHolder && chkHolder.__open) chkHolder.__open(taskRowEl);
+        rows.push(taskRowEl);
       });
       if (row.unscheduled.tasks.length) {
         rows.push(D.el('div', { class: 'pb-free' }, [D.el('span', { class: 'pb-free__l t-muted', text: 'Bez terminu' })].concat(row.unscheduled.tasks.map(function (t) { return trayChip(t, person); }))));

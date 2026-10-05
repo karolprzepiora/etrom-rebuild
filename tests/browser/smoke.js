@@ -850,6 +850,14 @@ async function main() {
     await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
     await sleep(300);
     check('„Cofnij” przywraca poprzednie okno zadania', (await taskOfBar()) === afterDrag);
+    await evaluate('const ws = window.ETROM.app.store.getState().workspace; const row = document.querySelector(".pb-tn"); const pid = row.dataset.projectId, sid = row.dataset.stageId, tid = row.dataset.taskId; const next = JSON.parse(JSON.stringify(ws)); const pr = next.projects.find(x => String(x.id) === pid); const t = pr.stages.find(x => x.id === sid).tasks.find(x => x.id === tid); t.checklist = [{ id: "c-1", text: "Opis stanu", done: true, by: (t.assignees || [])[0] || "", doneBy: (t.assignees || [])[0] || "" }, { id: "c-2", text: "Przekrój A-A", done: false, by: (t.assignees || [])[0] || "" }]; window.ETROM.app.store.set({ workspace: next }); return true;');
+    await sleep(500);
+    await evaluate('document.querySelector(".pb-tn .chk-ind:not(.chk-ind--empty)").click(); return true;');
+    await sleep(300);
+    check('Plan: zadanie z listą ma kropki w lewej kolumnie, a klik rozwija podgląd punktów pod wierszem',
+      await evaluate('const r = document.querySelector(".pb-row--task .chk"); return !!r && r.querySelectorAll(".chk__item").length === 2 && !!document.querySelector(".pb-tn .chk-ind__dots");'));
+    await evaluate('document.querySelector(".pb-tn .chk-ind:not(.chk-ind--empty)").click(); return true;');
+    await sleep(200);
     check('pasek jest jednolity (bez wypełnienia), a lewa kolumna pokazuje godziny i nazwę projektu',
       await evaluate('const el = document.querySelector(".pb-bar.is-editable"); const tn = document.querySelector(".pb-tn[data-task-id=\\"" + el.dataset.taskId + "\\"][data-project-id=\\"" + el.dataset.projectId + "\\"]"); return /\\d/.test(tn.querySelector(".pb-bar__hours").textContent) && /h/.test(tn.querySelector(".pb-bar__hours").textContent) && !el.querySelector(".pb-bar__fill") && !!tn.querySelector(".pb-tn__proj") && el.style.getPropertyValue("--d").length > 0;'));
     const estBefore = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');

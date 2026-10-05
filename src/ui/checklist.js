@@ -28,6 +28,8 @@
     var list = Tasks.checklistOf(task);
     var stats = Tasks.checklistStats(task);
     var open = !!opened[task.id];
+    var mine = (task.assignees || []).indexOf(ctx.meId) >= 0;
+    if (!list.length && !mine) return null;
     if (!list.length) {
       return D.el('button', {
         class: 'chk-ind chk-ind--empty', attrs: { type: 'button', 'aria-expanded': String(open), 'aria-label': 'Dodaj listę punktów do zadania ' + task.name, 'data-tooltip': 'Moja lista punktów', 'data-fk': 'chk-open-' + task.id },
@@ -51,9 +53,9 @@
   function panel(task, ref, ctx) {
     var list = Tasks.checklistOf(task);
     var filter = filters[task.id] || 'all';
-    var multi = (task.assignees || []).length > 1;
-    var shown = filter === 'mine' ? list.filter(function (p) { return p.by === ctx.meId; }) : list;
     var canEdit = (task.assignees || []).indexOf(ctx.meId) >= 0;
+    var multi = (task.assignees || []).length > 1 && canEdit;
+    var shown = filter === 'mine' ? list.filter(function (p) { return p.by === ctx.meId; }) : list;
 
     function input() {
       var field = D.el('input', {
@@ -71,7 +73,7 @@
     }
 
     var head = D.el('div', { class: 'chk__head' }, [
-      D.el('span', { class: 'chk__title', text: multi ? 'Lista zespołu' : 'Moja lista' }),
+      D.el('span', { class: 'chk__title', text: (multi || !canEdit ? 'Lista zespołu' : 'Moja lista') + (canEdit ? '' : ' · podgląd') }),
       D.el('span', { class: 'chk__spacer' }),
       multi ? D.el('span', { class: 'chk__seg', attrs: { role: 'group', 'aria-label': 'Filtr listy' } }, [['all', 'Wszystkie'], ['mine', 'Moje']].map(function (o) {
         return D.el('button', {

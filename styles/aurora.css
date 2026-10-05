@@ -720,7 +720,7 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-legend { margin-left: auto; }
 .pb-scroll { overflow-x: auto; border-radius: 16px; background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); }
 .pb-grid { min-width: calc(19rem + var(--n) * 1.75rem); display: grid; }
-.pb-row { display: grid; grid-template-columns: 19rem minmax(0, 1fr); border-top: 1px solid var(--line); transition: background .15s; }
+.pb-row { display: grid; grid-template-columns: 21rem minmax(0, 1fr); border-top: 1px solid var(--line); transition: background .15s; }
 .pb-row--head { border-top: 0; position: sticky; top: 0; z-index: 3; background: var(--sheet); }
 .pb-row.is-drop { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pb-label { position: sticky; left: 0; z-index: 2; display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); background: var(--sheet); border-right: 1px solid var(--line); min-width: 0; }
@@ -1154,3 +1154,13 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 .chk__input { flex: 1; min-width: 0; border: 0; border-bottom: 1.5px dashed color-mix(in srgb, var(--ink) 28%, transparent); background: transparent; font: inherit; color: var(--ink); padding: 5px 2px; }
 .chk__input:focus { outline: none; border-bottom-style: solid; border-bottom-color: var(--accent, #0b7285); }
 @media (max-width: 64rem) { .mrow > .chk { margin-left: 0; } }
+
+/* Lista punktów w Planie: znak w lewej kolumnie, podgląd pod wierszem */
+.pb-tn__sub { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pb-tn__sub .pb-tn__proj { flex: 1 1 auto; min-width: 0; }
+.pb-tn__chk { flex: none; display: inline-flex; }
+.pb-tn__chk:empty { display: none; }
+.pb-tn__chk .chk-ind { padding: 0 4px; min-height: 20px; }
+.pb-tn__chk .chk-ind--empty { opacity: 0; }
+.pb-row--task:hover .chk-ind--empty, .pb-row--task:focus-within .chk-ind--empty, .pb-tn__chk .chk-ind--empty[aria-expanded="true"] { opacity: 1; }
+.pb-row > .chk { grid-column: 1 / -1; margin: 2px 0 var(--space-2) 2.6rem; padding: 6px 0 6px var(--space-4); border-left: 2px solid color-mix(in srgb, var(--accent, #0b7285) 28%, transparent); display: grid; gap: 2px; max-width: 44rem; }
