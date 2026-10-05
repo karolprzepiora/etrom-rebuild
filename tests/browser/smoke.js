@@ -614,6 +614,8 @@ async function main() {
       !(await evaluate('return !!document.querySelector("[data-screen=inbox]");')) && await (async () => { await go('#/skrzynka'); await sleep(300); return evaluate('return !document.getElementById("view-mywork").hidden && !document.getElementById("view-inbox");'); })());
     check('Moja praca ma sekcję „Wymaga reakcji”: pozycje mają projekt i akcje, a objaśnienia są w dymkach (bez tekstów na ekranie)',
       await evaluate('const sec = document.querySelector("#view-mywork [data-group=react]"); return !!sec && sec.querySelectorAll(".ibx__row").length > 0 && !!sec.querySelector(".ibx__row .mrow__project") && !!sec.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!sec.querySelector(".ibx__info[data-tooltip]") && !document.querySelector(".ibx__intro, .ibx__why, .ibx__group-text");'));
+    check('każdy wiersz zadań i reakcji ma ten sam znacznik projektu: numer + nazwa projektu',
+      await evaluate('const rows = [...document.querySelectorAll("#view-mywork .mrow, #view-mywork .ibx__row")]; return rows.length > 3 && rows.every(r => { const t = r.querySelector(".ptag"); return t && t.querySelector(".mrow__project") && t.querySelector(".ptag__name").textContent.length > 2; });'));
     check('licznik w menu = zadania na liście + pozycje „Wymaga reakcji”',
       await evaluate('const n = document.querySelectorAll("#view-mywork .mrow").length + document.querySelectorAll("#view-mywork [data-group=react] .ibx__row").length; return document.querySelector("[data-screen=mywork] .nav__count").textContent === String(n);'));
     await click('[data-fk="mywork-view-react"]');
@@ -836,8 +838,8 @@ async function main() {
     await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); b.click(); return true;');
     await sleep(300);
     check('„Cofnij” przywraca poprzednie okno zadania', (await taskOfBar()) === afterDrag);
-    check('pasek pokazuje godziny pracy zadania i gęstość pracy (cienka praca rozciągnięta w czasie nie wygląda jak pełne obłożenie)',
-      await evaluate('const el = document.querySelector(".pb-bar.is-editable"); const tn = document.querySelector(".pb-tn[data-task-id=\\"" + el.dataset.taskId + "\\"][data-project-id=\\"" + el.dataset.projectId + "\\"]"); return /\\d/.test(tn.querySelector(".pb-bar__hours").textContent) && /h/.test(tn.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__fill") && el.style.getPropertyValue("--d").length > 0;'));
+    check('pasek jest jednolity (bez wypełnienia), a lewa kolumna pokazuje godziny i nazwę projektu',
+      await evaluate('const el = document.querySelector(".pb-bar.is-editable"); const tn = document.querySelector(".pb-tn[data-task-id=\\"" + el.dataset.taskId + "\\"][data-project-id=\\"" + el.dataset.projectId + "\\"]"); return /\\d/.test(tn.querySelector(".pb-bar__hours").textContent) && /h/.test(tn.querySelector(".pb-bar__hours").textContent) && !el.querySelector(".pb-bar__fill") && !!tn.querySelector(".pb-tn__proj") && el.style.getPropertyValue("--d").length > 0;'));
     const estBefore = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
     await evaluate('const sel = \'.pb-tn[data-project-id="' + planBar.p + '"][data-stage-id="' + planBar.s + '"][data-task-id="' + planBar.t + '"] [data-fk^="pb-hours-"]\'; document.querySelector(sel).click(); const i = document.querySelector("[data-fk=pb-hours-input]"); i.value = "7"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
     await sleep(350);

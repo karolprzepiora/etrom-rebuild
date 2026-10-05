@@ -57,8 +57,7 @@
   function row(item, ctx, now) {
     var date = dateOf(item);
     var context = [
-      D.el('a', { class: 'mrow__project', style: E.Identity.hueStyle(item.project.code), text: item.project.code, attrs: { href: E.ProjectList.projectHref(item.project), 'data-tooltip': item.project.name } }),
-      item.stage ? D.el('span', { class: 'truncate', text: E.Model.describeStage(item.stage).name }) : null,
+      E.UI.projectTag(item.project, { href: E.ProjectList.projectHref(item.project), stage: item.stage ? E.Model.describeStage(item.stage).name : '' }),
       item.detail ? D.el('span', { class: 'truncate ibx__detail', text: item.detail }) : null
     ];
     return D.el('li', { class: 'ibx__row' + (item.urgent ? ' is-urgent' : ''), style: E.Identity.hueStyle(item.project.code), dataset: { inboxKey: item.key, kind: item.kind } }, [
@@ -73,7 +72,7 @@
           }),
           D.el('span', { class: 'ibx__info', attrs: { tabindex: '0', role: 'img', 'aria-label': item.why, 'data-tooltip': item.why } }, [Icons.icon('info', 14)])
         ]),
-        D.el('span', { class: 'mrow__context' }, context.filter(Boolean)),
+        D.el('span', { class: 'mrow__ctxwrap' }, context.filter(Boolean)),
         linkedChips(item, ctx.actions)
       ]),
       D.el('span', { class: 'ibx__when' }, [date ? UI.countdown(String(date).slice(0, 10), { now: now }) : null]),

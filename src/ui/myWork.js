@@ -33,14 +33,7 @@
 
   /** Kontekst zadania: projekt i etap, link do projektu. */
   function context(row) {
-    return D.el('span', { class: 'mrow__context' }, [
-      D.el('a', {
-        class: 'mrow__project',
-        text: row.project.code,
-        attrs: { href: E.ProjectList.projectHref(row.project, 'zadania'), 'data-tooltip': row.project.name }
-      }),
-      D.el('span', { class: 'truncate', text: E.Model.describeStage(row.stage).name })
-    ]);
+    return UI.projectTag(row.project, { href: E.ProjectList.projectHref(row.project, 'zadania'), stage: E.Model.describeStage(row.stage).name });
   }
 
   function taskRow(row, ctx, options) {

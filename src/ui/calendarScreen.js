@@ -93,7 +93,7 @@
     function sideRow(ev) {
       return D.el('li', null, [D.el('button', { class: 'cv-row' + (ev.kind === 'absence' ? ' is-abs' : ''), style: ev.kind === 'absence' ? null : E.Identity.hueStyle(ev.code), attrs: { type: 'button' }, on: { click: function () { openEvent(ev); } } }, [
         D.el('i', { class: 'cv-row__bar', attrs: { 'aria-hidden': 'true' } }),
-        D.el('span', { class: 'cv-row__txt' }, [D.el('b', { class: 'truncate', text: ev.title }), D.el('small', { class: 'truncate', text: (ev.code ? ev.code + ' · ' : '') + ev.sub })])
+        D.el('span', { class: 'cv-row__txt' }, [D.el('b', { class: 'truncate', text: ev.title }), D.el('small', { class: 'truncate', text: (ev.code ? ev.code + ' · ' : '') + (ev.project ? ev.project + ' · ' : '') + ev.sub })])
       ])]);
     }
     var dayList = selCell && selCell.events.length
@@ -102,7 +102,7 @@
     var upcoming = data.upcoming.length ? D.el('ul', { class: 'cv-list' }, data.upcoming.map(function (ev) {
       var days = Math.round((Cal.parse(ev.key) - Cal.parse(Cal.isoOf(now))) / 86400000);
       var row = sideRow(ev);
-      row.querySelector('small').textContent = (ev.code ? ev.code + ' · ' : '') + ev.sub + ' · ' + (days === 0 ? 'dziś' : (days === 1 ? 'jutro' : 'za ' + days + ' dni'));
+      row.querySelector('small').textContent = (ev.code ? ev.code + ' · ' : '') + (ev.project ? ev.project + ' · ' : '') + ev.sub + ' · ' + (days === 0 ? 'dziś' : (days === 1 ? 'jutro' : 'za ' + days + ' dni'));
       return row;
     })) : D.el('p', { class: 'cv-empty', text: 'Brak nadchodzących terminów.' });
 

@@ -55,12 +55,12 @@
       legend[p.id] = { projectId: p.id, code: p.code, name: p.name };
       if (seeProject && dayOf(p.deadline)) add(dayOf(p.deadline), { kind: 'project', projectId: p.id, code: p.code, title: 'Termin umowy', sub: p.name });
       (p.stages || []).forEach(function (s) {
-        if (seeAll && s.status !== 'done' && dayOf(s.deadline)) add(dayOf(s.deadline), { kind: 'stage', projectId: p.id, stageId: s.id, code: p.code, title: stageLabel(s), sub: 'Termin etapu' });
+        if (seeAll && s.status !== 'done' && dayOf(s.deadline)) add(dayOf(s.deadline), { kind: 'stage', projectId: p.id, stageId: s.id, code: p.code, project: p.name, title: stageLabel(s), sub: 'Termin etapu' });
         (s.tasks || []).forEach(function (t) {
           if (t.status === 'done' || !dayOf(t.deadline)) return;
           var mine = (t.assignees || []).indexOf(me) >= 0;
           if (!mine) return;
-          add(dayOf(t.deadline), { kind: 'task', projectId: p.id, stageId: s.id, taskId: t.id, code: p.code, title: t.name, sub: 'Twoje zadanie' });
+          add(dayOf(t.deadline), { kind: 'task', projectId: p.id, stageId: s.id, taskId: t.id, code: p.code, project: p.name, title: t.name, sub: 'Twoje zadanie' });
         });
       });
     });

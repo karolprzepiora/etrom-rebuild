@@ -574,7 +574,7 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 
 ### Znaczenie paska i kolory karty czasu
 
-- **Pasek zespołu (zarząd, liderzy):** kolor = projekt; wypełnienie = zrobione (przepracowano / zaplanowano); czarny znacznik = gdzie powinno być dziś (upływ czasu); znacznik robi się czerwony, gdy zrobiono o ponad 10 p.p. mniej, niż wynika z upływu czasu. Czerwona ramka = po terminie, kreskowanie = za mało czasu. Gęstość pracy nie jest już rysowana (godziny są w lewej kolumnie).
+- **Pasek zespołu (zarząd, liderzy):** jednolity kolor projektu, bez wypełnienia, znacznika i kreskowania (postęp i godziny są w lewej kolumnie, nie na pasku). Czerwony kontur = po terminie, bursztynowy = za mało czasu. W lewej kolumnie pod nazwą zadania stoi nazwa projektu. Oś ma kreski dni także w bieżącym tygodniu; święta i nieobecności to płaskie tła.
 - **Karta czasu (Czas):** w wierszu „Razem” dzień jest zielony od celu dnia (8 h), żółty od godziny poniżej celu (7 h), czerwony niżej, także gdy nie ma wpisu. Dzisiaj do osiągnięcia celu pokazuje zieloną ramkę z postępem „3,5 / 8”. Weekendy, dni przyszłe i dni sprzed pierwszego wpisu osoby są neutralne. Suma okresu ocenia godziny ze zakończonych dni względem ich celu. Komórki projektów i zadań mają stały, neutralny kolor. Logika w `Timesheet.build` (`day.state`, `sheet.state`).
 
 ### Priorytety projektów
@@ -616,3 +616,6 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 
 ### Czas całego biura tylko dla zarządu i liderów
 „Biuro dziś” (łączny czas przepracowany dziś przez wszystkich) na liście Projekty widzą tylko zarząd i liderzy projektów. W Aktualnościach cudze wpisy czasu pracy widzi tylko ten, kto ma prawo do godzin w danym projekcie; pracownik widzi własne.
+
+## Znacznik projektu (jeden w całej aplikacji)
+- `E.UI.projectTag(project, {href, stage})`: kolorowy numer projektu (pigułka w barwie projektu) + nazwa projektu, opcjonalnie etap szarym tekstem po „·”. Używany w wierszach Moja praca (zadania i „Wymaga reakcji”); w Planie/Tygodniach nazwa projektu stoi pod nazwą zadania; w Kalendarzu w opisie pozycji. Nowe listy zadań używają tego znacznika, nie własnych pigułek.

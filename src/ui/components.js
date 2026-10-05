@@ -280,6 +280,20 @@
     });
   }
 
+  /** Jeden znacznik projektu w całej aplikacji: kolorowy numer + nazwa projektu (+ opcjonalnie etap). */
+  function projectTag(project, o) {
+    var opt = o || {};
+    var code = D.el(opt.href ? 'a' : 'span', {
+      class: 'mrow__project', style: E.Identity.hueStyle(project.code), text: project.code,
+      attrs: opt.href ? { href: opt.href } : null
+    });
+    return D.el('span', { class: 'mrow__context ptag' }, [
+      code,
+      D.el('span', { class: 'ptag__name truncate', text: project.name, attrs: { title: project.name } }),
+      opt.stage ? D.el('span', { class: 'ptag__stage truncate', text: opt.stage }) : null
+    ]);
+  }
+
   /* ---------- Pola formularza ---------- */
 
   /**
@@ -605,6 +619,7 @@
     countdown: countdown,
     progress: progress,
     swatch: swatch,
+    projectTag: projectTag,
     field: field,
     input: input,
     textarea: textarea,
