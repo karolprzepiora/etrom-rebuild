@@ -226,7 +226,7 @@
     function barEl(b, person, item) {
       var editable = !solo && canEdit(b.projectId);
       var pct = elapsedOf(b);
-      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.free ? ' is-free' : '') + (b.explicitStart ? '' : ' is-implicit') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
+      var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.free ? ' is-free' : '') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
       var el = D.el('div', {
         class: cls, style: Object.assign({ '--d': (solo ? pct : donePct(b)) + '%' }, Identity.hueStyle(b.code)),
