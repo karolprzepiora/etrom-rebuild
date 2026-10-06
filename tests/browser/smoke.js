@@ -904,7 +904,8 @@ async function main() {
     await sleep(300);
     const absBefore = await state('(s.workspace.absences || []).length');
     const capBefore = await evaluate('return document.querySelector(".pb-load[data-fk^=pl-cell-]") ? document.querySelector(".pb-load[data-fk^=pl-cell-]").getAttribute("data-fk") : "";');
-    await evaluate('document.querySelector("[data-fk^=pb-absence-add-]").click(); return true;');
+    check('Plan nie ma już przycisku „Dodaj nieobecność” w wierszach osób', await evaluate('return !document.querySelector("[data-fk^=pb-absence-add-]");'));
+    await evaluate('ETROM.app.actions.openAbsence(ETROM.app.store.getState().workspace.people[0].id); return true;');
     await sleep(350);
     await click('#ab-from');
     await sleep(300);
@@ -924,11 +925,22 @@ async function main() {
       await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-tn__meter") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
     const projectOptions = await evaluate('const s = document.getElementById("pb-project"); return s ? s.options.length : 0;');
     if (projectOptions > 2) {
+      const rowsAll = await evaluate('return document.querySelectorAll(".pb-row--who").length;');
       await evaluate('const s = document.getElementById("pb-project"); s.value = s.options[1].value; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
       await sleep(300);
-      check('filtr projektu wyróżnia jego paski i przygasza pozostałe',
-        await evaluate('return document.querySelectorAll(".pb-bar.is-dim").length > 0 && document.querySelectorAll(".pb-bar:not(.is-dim)").length > 0;'));
+      check('filtr projektu pokazuje tylko paski tego projektu i ukrywa osoby bez jego zadań',
+        await evaluate('const ids = new Set([...document.querySelectorAll(".pb-tn")].map(x => x.dataset.projectId)); return ids.size === 1 && document.querySelectorAll(".pb-bar.is-dim").length === 0;')
+        && (await evaluate('return document.querySelectorAll(".pb-row--who").length;')) <= rowsAll);
       await evaluate('const s = document.getElementById("pb-project"); s.value = ""; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+      await sleep(200);
+    }
+    const personOptions = await evaluate('const s = document.getElementById("pb-person"); return s ? s.options.length : 0;');
+    if (personOptions > 2) {
+      await evaluate('const s = document.getElementById("pb-person"); s.value = s.options[1].value; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+      await sleep(300);
+      check('filtr osoby pokazuje plan jednej osoby',
+        (await evaluate('return document.querySelectorAll(".pb-row--who").length;')) === 1);
+      await evaluate('const s = document.getElementById("pb-person"); s.value = ""; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
       await sleep(200);
     }
 
@@ -1601,6 +1613,15 @@ async function main() {
     await sleep(350);
     check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 6 tygodni (tak samo jak Plan)',
       await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 6 && document.querySelectorAll(".pb--solo .pb-person[data-person]").length === 1;'));
+    check('Moja praca → Tygodnie: uchwyt poszerza kolumnę nazw (kolumna siatki naprawdę się zmienia)',
+      await (async () => {
+        const w0 = await evaluate('return document.querySelector(".pb--solo .pb-row").getBoundingClientRect().width && getComputedStyle(document.querySelector(".pb--solo .pb-row")).gridTemplateColumns.split(" ")[0];');
+        await evaluate('const h = document.querySelector(".pb--solo [data-fk=pb-resize]"); h.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true })); return true;');
+        await sleep(200);
+        const w1 = await evaluate('return getComputedStyle(document.querySelector(".pb--solo .pb-row")).gridTemplateColumns.split(" ")[0];');
+        await evaluate('document.querySelector(".pb--solo [data-fk=pb-resize]").dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })); return true;');
+        return parseFloat(w1) === parseFloat(w0) + 48;
+      })());
     const plainWorker = await evaluate('const w = ETROM.app.store.getState().workspace; const lead = new Set(w.projects.map(p => p.team && p.team.leader)); const x = w.people.find(p => !lead.has(p.id) && !ETROM.Budget.isManagement(p.id, w.people)); return x ? x.id : "";');
     if (plainWorker) {
       const meBefore = await state('s.prefs.me');

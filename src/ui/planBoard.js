@@ -138,13 +138,24 @@
       if (!solo) led.forEach(function (p) { Team.projectPeople(p.team).forEach(function (id) { set[id] = true; }); });
       visibleIds = Object.keys(set);
     }
-    var focusProject = !solo && state.planProject ? Number(state.planProject) : 0;
+    var focusProject = 0;
+    var wantProject = !solo && state.planProject ? Number(state.planProject) : 0;
+    var wantPerson = !solo && state.planPerson ? String(state.planPerson) : '';
     var baseInput = {
       projects: projects, people: people, entries: state.workspace.entries || [], now: now,
       target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset,
       personIds: visibleIds, absences: state.workspace.absences || []
     };
     var plan = Plan.build(baseInput);
+    var allRows = plan.rows;
+    if (wantPerson && !allRows.some(function (r) { return String(r.personId) === wantPerson; })) wantPerson = '';
+    if (wantProject && !projects.some(function (p) { return p.id === wantProject; })) wantProject = 0;
+    // Filtr: jedna osoba i/lub jeden projekt. Obciążenie tygodniowe zostaje prawdziwe, filtrowane są paski.
+    plan.rows = allRows.filter(function (r) { return !wantPerson || String(r.personId) === wantPerson; }).map(function (r) {
+      if (!wantProject) return r;
+      return Object.assign({}, r, { bars: r.bars.filter(function (b) { return b.projectId === wantProject; }) });
+    }).filter(function (r) { return !wantProject || wantPerson || r.bars.length; });
+    plan.unassigned = (plan.unassigned || []).filter(function (t) { return (!wantProject || t.projectId === wantProject) && !wantPerson; });
     var N = weeksN * 5;
     var dayH = (state.prefs.dayTarget || 480) / 60;
     var todaySlot = slotOf(plan.first, plan.today, 1);
@@ -564,8 +575,7 @@
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
         var label = D.el('div', { class: 'pb-label' }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })]),
-          management ? UI.iconButton({ icon: 'plus', label: 'Dodaj nieobecność: ' + Team.fullName(person), size: 'sm', attrs: { 'data-fk': 'pb-absence-add-' + row.personId, 'data-tooltip': 'Dodaj nieobecność' }, onClick: function () { ctx.actions.openAbsence(row.personId); } }) : null
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })])
         ]);
         var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
         var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
@@ -668,18 +678,31 @@
       }))])])
     ]);
 
-    function projectFilter() {
+    function filters() {
+      if (solo) return [];
       var used = {};
-      plan.rows.forEach(function (r) { r.bars.forEach(function (b) { used[b.projectId] = b.code; }); });
+      allRows.forEach(function (r) { r.bars.forEach(function (b) { used[b.projectId] = b.code; }); });
       var ids = Object.keys(used);
-      if (ids.length < 2) return null;
-      var select = UI.select({
-        id: 'pb-project', value: focusProject ? String(focusProject) : '',
-        options: [{ value: '', label: 'Wszystkie projekty' }].concat(ids.sort(function (a, b) { return used[a] < used[b] ? -1 : 1; }).map(function (id) { return { value: id, label: used[id] }; })),
-        attrs: { 'data-fk': 'pb-project', 'aria-label': 'Wyróżnij projekt' },
-        on: { change: function () { ctx.actions.setTime({ planProject: select.value }); } }
-      });
-      return select;
+      var out = [];
+      if (allRows.length > 1) {
+        var ps = UI.select({
+          id: 'pb-person', value: wantPerson,
+          options: [{ value: '', label: 'Wszystkie osoby' }].concat(allRows.map(function (r) { return { value: String(r.personId), label: Team.fullName(Team.findPerson(people, r.personId)) }; })),
+          attrs: { 'data-fk': 'pb-person', 'aria-label': 'Pokaż plan jednej osoby' },
+          on: { change: function () { ctx.actions.setTime({ planPerson: ps.value }); } }
+        });
+        out.push(ps);
+      }
+      if (ids.length > 1) {
+        var select = UI.select({
+          id: 'pb-project', value: wantProject ? String(wantProject) : '',
+          options: [{ value: '', label: 'Wszystkie projekty' }].concat(ids.sort(function (a, b) { return used[a] < used[b] ? -1 : 1; }).map(function (id) { return { value: id, label: used[id] }; })),
+          attrs: { 'data-fk': 'pb-project', 'aria-label': 'Pokaż plan jednego projektu' },
+          on: { change: function () { ctx.actions.setTime({ planProject: select.value }); } }
+        });
+        out.push(select);
+      }
+      return out;
     }
 
     /* ---------- widok „Wg projektów”: projekty w kolejności z listy Projekty, zadania jako paski ---------- */
@@ -693,7 +716,7 @@
         var who = Team.findPerson(people, r.personId);
         r.bars.forEach(function (b) { var key = b.projectId + '|' + b.stageId + '|' + b.taskId; (byTask[key] = byTask[key] || []).push({ b: b, person: who }); });
       });
-      return shown.map(function (project) {
+      return shown.filter(function (p) { return !wantProject || p.id === wantProject; }).map(function (project) {
         var items = [];
         (project.stages || []).forEach(function (st) {
           (st.tasks || []).forEach(function (t) {
@@ -709,6 +732,7 @@
               person = { id: '_' }; free = true;
             }
             if (!b) return;
+            if (wantPerson && !who.some(function (w) { return String(w.id) === wantPerson; })) return;
             var it = { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0, person: person, who: who, free: free };
             if (it.e < 0 || it.s >= N) return;
             it.e = Math.max(it.e, it.s);
@@ -765,7 +789,7 @@
       return D.el('div', { class: 'pb-free pb-free--unassigned' }, [D.el('span', { class: 'pb-free__l', text: 'Do przydzielenia ' + list.length + ' · przeciągnij na osobę i dzień' })].concat(list.map(function (t) { return trayChip(t, { id: '_' }); })));
     }
 
-    var toolbar = D.el('div', { class: 'pb-toolbar' }, [
+    var toolbar = D.el('div', { class: 'pb-toolbar' }, [].concat([
       D.el('div', { class: 'pb-nav' }, [
         UI.iconButton({ icon: 'chevronLeft', label: 'Wcześniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-prev' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset - Math.max(1, weeksN - 2)]])); } }),
         UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, 0]])); } }),
@@ -776,7 +800,6 @@
         items: [{ value: 'people', label: 'Wg osób' }, { value: 'projects', label: 'Wg projektów' }],
         onChange: function (v) { ctx.actions.setTime({ planMode: v }); }
       }).node : null,
-      solo ? null : projectFilter(),
       UI.segmented({
         label: 'Liczba tygodni', value: weeksN,
         items: RANGES.map(function (n) { return { value: n, label: n === 12 ? 'Kwartał' : n + ' tyg.' }; }),
@@ -787,7 +810,7 @@
         D.el('span', { class: 'pl-legend__i pl-legend__i--tight', text: 'napięty' }),
         D.el('span', { class: 'pl-legend__i pl-legend__i--over', text: 'przeciążenie' })
       ])
-    ]);
+    ], filters()));
 
     var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
       D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(mode === 'projects' ? projectBoardRows() : plan.rows.map(personRow)))])

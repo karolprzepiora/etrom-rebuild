@@ -642,3 +642,7 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Ta sama ramka (`.pb-scroll`), ten sam nagłówek tygodni i dni, domyślnie 6 tygodni w obu widokach, więc kolumny dni mają tę samą szerokość.
 - Wiersze grup (osoba, projekt, „Po terminie / Ten tydzień / Później”) mają jednakowe lekko przyciemnione tło; wiersze zadań są białe.
 - Lewą kolumnę z nazwami poszerza się uchwytem w nagłówku (`.pb-resize`: przeciąganie, strzałki ←/→, Shift = większy krok, dwuklik = domyślna 21 rem). Szerokość (`--lw`, 14–40 rem) jest wspólna dla Planu i Tygodni i pamiętana w przeglądarce.
+## Plan: filtry i brak przycisku urlopu
+- Plan ma dwa filtry: „Wszystkie osoby” i „Wszystkie projekty” (`planPerson`, `planProject`). Filtr naprawdę ukrywa wiersze i paski; obciążenie tygodniowe zostaje prawdziwe. Wg projektów filtruje grupy i zadania danej osoby.
+- Przycisk „Dodaj nieobecność” zniknął z planu (urlopy trafią do osobnej zakładki wniosków). Pasma nieobecności nadal są widoczne; zarząd może je kliknąć, by edytować.
+- Szerokość kolumny nazw (`--lw`) działa tak samo w Plan i Moja praca (jedna wartość w localStorage).

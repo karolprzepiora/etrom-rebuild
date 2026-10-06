@@ -1041,9 +1041,9 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 @media (max-width: 960px) { .cv-body { grid-template-columns: 1fr; } }
 .pb-tn__time { min-width: 7.6rem; white-space: nowrap; }
 .pb-tn__time .pb-tn__meter { justify-self: stretch; }
-.pb--solo .pb-row { grid-template-columns: 23rem minmax(0, 1fr); }
-.pb--solo .pb-grid { min-width: calc(23rem + var(--n) * 1.75rem); }
-.pb--solo.pb--compact .pb-grid { min-width: calc(23rem + var(--n) * 1.05rem); }
+.pb--solo .pb-row { grid-template-columns: var(--lw, 23rem) minmax(0, 1fr); }
+.pb--solo .pb-grid { min-width: calc(var(--lw, 23rem) - 2rem + var(--n) * 1.75rem); }
+.pb--solo.pb--compact .pb-grid { min-width: calc(var(--lw, 23rem) - 2rem + var(--n) * 1.05rem); }
 
 /* Uproszczenie osi: pasek to jedna płaska plama koloru projektu (postęp i czas są w lewej kolumnie), bez kresek i wzorów. */
 .pb-bar__clip, .pb-bar.is-time .pb-bar__clip, .pb-bar.is-prog .pb-bar__clip { background: color-mix(in oklab, var(--solid) 78%, var(--sheet)); box-shadow: none; }
