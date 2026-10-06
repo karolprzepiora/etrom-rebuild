@@ -120,6 +120,8 @@
   }
 
   /** @returns {{summary: string, body: Array}} */
+  var DEFAULT_OFFSET = -1;
+
   function view(state, ctx, now, opts) {
     var solo = !!(opts && opts.solo);
     var K = solo ? { weeks: 'myPlanWeeks', offset: 'myPlanOffset', cell: 'myPlanCell' } : { weeks: 'planWeeks', offset: 'planOffset', cell: 'planCell' };
@@ -128,7 +130,7 @@
     var me = Team.findPerson(people, state.prefs.me);
     var management = Budget.isManagement(me.id, people) && !solo;
     var weeksN = RANGES.indexOf(state[K.weeks]) >= 0 ? state[K.weeks] : 6;
-    var offset = Number(state[K.offset]) || 0;
+    var offset = state[K.offset] == null ? DEFAULT_OFFSET : (Number(state[K.offset]) || 0);
     // Zarząd widzi wszystkich, lider osoby ze swoich projektów, pozostali tylko siebie.
     var led = projects.filter(function (p) { return p.team && p.team.leader === me.id && p.status !== 'done'; });
     var visibleIds = null;
@@ -156,8 +158,9 @@
       return Object.assign({}, r, { bars: r.bars.filter(function (b) { return b.projectId === wantProject; }) });
     }).filter(function (r) { return !wantProject || wantPerson || r.bars.length; });
     plan.unassigned = (plan.unassigned || []).filter(function (t) { return (!wantProject || t.projectId === wantProject) && !wantPerson; });
-    var viewSel = ['plan', 'both', 'done', 'live'].indexOf(state.planView) >= 0 ? state.planView : 'both';
-    var real = solo ? {} : Plan.realization({ projects: projects, entries: state.workspace.entries || [], now: now, first: new Date(plan.first), weeks: weeksN, personIds: visibleIds });
+    var viewSel = solo ? (state.myPlanView === 'done' ? 'done' : 'plan') : (['plan', 'both', 'done', 'live'].indexOf(state.planView) >= 0 ? state.planView : 'both');
+    var emph = viewSel === 'both' && (state.planEmph === 'plan' || state.planEmph === 'real') ? state.planEmph : 'both';
+    var real = Plan.realization({ projects: projects, entries: state.workspace.entries || [], now: now, first: new Date(plan.first), weeks: weeksN, personIds: visibleIds });
     var N = weeksN * 5;
     var dayH = (state.prefs.dayTarget || 480) / 60;
     var todaySlot = slotOf(plan.first, plan.today, 1);
@@ -579,7 +582,7 @@
         return { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0 };
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
-      var rv = !solo && mode === 'people' && (viewSel === 'both' || viewSel === 'done');
+      var rv = mode === 'people' && (viewSel === 'both' || viewSel === 'done');
       var rec = real[row.personId] || null;
       var recTasks = (rec ? rec.tasks : []).filter(function (t) { return !wantProject || t.projectId === wantProject; });
       var realOf = {};
@@ -930,14 +933,20 @@
     var toolbar = D.el('div', { class: 'pb-toolbar' }, [].concat([
       D.el('div', { class: 'pb-nav' }, [
         UI.iconButton({ icon: 'chevronLeft', label: 'Wcześniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-prev' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset - Math.max(1, weeksN - 2)]])); } }),
-        UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, 0]])); } }),
+        UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, DEFAULT_OFFSET]])); } }),
         UI.iconButton({ icon: 'chevronRight', label: 'Późniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-next' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset + Math.max(1, weeksN - 2)]])); } })
       ]),
-      solo ? null : UI.segmented({
-        label: 'Co pokazać', value: mode === 'projects' && (viewSel === 'both' || viewSel === 'done') ? 'plan' : viewSel,
-        items: mode === 'projects' ? [{ value: 'plan', label: 'Plan' }, { value: 'live', label: 'Na żywo' }] : [{ value: 'plan', label: 'Plan' }, { value: 'both', label: 'Plan i realizacja' }, { value: 'done', label: 'Realizacja' }, { value: 'live', label: 'Na żywo' }],
-        onChange: function (v) { ctx.actions.setTime({ planView: v }); }
+      UI.segmented({
+        label: 'Co pokazać', value: solo ? viewSel : (mode === 'projects' && (viewSel === 'both' || viewSel === 'done') ? 'plan' : viewSel),
+        items: solo ? [{ value: 'plan', label: 'Plan' }, { value: 'done', label: 'Realizacja' }]
+          : (mode === 'projects' ? [{ value: 'plan', label: 'Plan' }, { value: 'live', label: 'Na żywo' }] : [{ value: 'plan', label: 'Plan' }, { value: 'done', label: 'Realizacja' }, { value: 'both', label: 'Plan i realizacja' }, { value: 'live', label: 'Na żywo' }]),
+        onChange: function (v) { ctx.actions.setTime(solo ? { myPlanView: v } : { planView: v }); }
       }).node,
+      viewSel === 'both' && mode === 'people' ? UI.segmented({
+        label: 'Wyróżnij', value: emph,
+        items: [{ value: 'both', label: 'Oba' }, { value: 'plan', label: 'Plan' }, { value: 'real', label: 'Realizacja' }],
+        onChange: function (v) { ctx.actions.setTime({ planEmph: v }); }
+      }).node : null,
       canProjects ? UI.segmented({
         label: 'Widok planu', value: mode,
         items: [{ value: 'people', label: 'Wg osób' }, { value: 'projects', label: 'Wg projektów' }],
@@ -955,7 +964,7 @@
       ])
     ], filters()));
 
-    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
+    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (emph !== 'both' ? ' pb--emph-' + emph : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
       D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(mode === 'projects' ? projectBoardRows() : plan.rows.map(personRow)))])
     ]);
 
@@ -964,9 +973,9 @@
       body: [
         toolbar,
         viewSel === 'live' && !solo && plan.rows.length ? livePanel() : null,
-        plan.rows.length ? board : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
-        unassignedTray(),
-        solo ? null : detail(selected, plan, people, ctx)
+        viewSel === 'live' && !solo ? null : (plan.rows.length ? board : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' })),
+        viewSel === 'live' && !solo ? null : unassignedTray(),
+        solo || viewSel === 'live' ? null : detail(selected, plan, people, ctx)
       ]
     };
   }

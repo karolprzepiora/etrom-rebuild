@@ -664,3 +664,10 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Archiwalne wpisy czasu (`e-demo-arch-*`): praca nad projektami 2601, 2602, 2604, 2605 i 2606 sprzed okna 10 tygodni, do ok. roku wstecz. Widać je w Czasie, Analizie i w Planie po cofnięciu okna.
 - Archiwalne nieobecności (urlopy, zwolnienie, szkolenia) z ostatnich 4 miesięcy oprócz tych w nadchodzących tygodniach.
 - „Na żywo”: pięć osób ma uruchomiony licznik na własnym zadaniu, część miała też wpis z rana (wpisy `e-demo-live-*`, tylko gdy jest po 8:30).
+
+## Plan i realizacja: układ zakładek (aktualizacja)
+- Okno wykresów domyślnie startuje tydzień wstecz (`DEFAULT_OFFSET = -1`); „Dziś” wraca do tego widoku.
+- Kolejność zakładek: Plan, Realizacja, Plan i realizacja, Na żywo.
+- W „Plan i realizacja” drugi przełącznik „Wyróżnij: Oba / Plan / Realizacja” (`planEmph`) wyszarza drugą warstwę (`.pb--emph-plan`, `.pb--emph-real`).
+- „Na żywo” pokazuje tylko karty i oś dnia, bez powielonego wykresu planu.
+- Moja praca → Tygodnie: przełącznik Plan / Realizacja (`myPlanView`), bez widoku łączonego; pracownik widzi własne zarejestrowane godziny.

@@ -1265,3 +1265,7 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .pb-tl__seg { position: absolute; top: .15rem; bottom: .15rem; border-radius: 8px; background: var(--pj-gloss), linear-gradient(150deg, var(--pj-a), var(--pj-b)); box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), 0 4px 10px -6px var(--pj-glow); }
 .pb-tl__seg.is-run { outline: 2px solid #16a34a; outline-offset: 1px; }
 .pb-tl__now { position: absolute; top: 0; bottom: 0; left: calc(10rem + .5rem + (100% - 10.5rem) * var(--x)); width: 2px; background: var(--accent, #0b7285); opacity: .7; pointer-events: none; }
+
+/* Plan i realizacja: wyróżnienie jednej warstwy, druga wyszarzona */
+.pb--emph-plan .pb-real, .pb--emph-plan .pb-spark { filter: grayscale(1) opacity(.35); }
+.pb--emph-real .pb-bars--real .pb-bar { filter: grayscale(1) opacity(.35); }
