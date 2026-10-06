@@ -46,23 +46,27 @@ test('inicjały zachowują polskie znaki', () => {
   assert.equal(Identity.initials('Łukasz Żuk'), 'ŁŻ');
 });
 
-test('paleta ma 40 różnych kolorów, poza czerwienią i bursztynem', () => {
+test('paleta ma 40 różnych kolorów, a 12 głównych leży poza czerwienią', () => {
   const Identity = require('../src/core/identity.js');
   const all = Identity.swatches();
   assert.equal(all.length, 40);
   assert.equal(new Set(all.map((c) => c.hue + ':' + c.tone)).size, 40);
-  assert.ok(all.every((c) => (c.hue >= 36 && c.hue <= 60) || (c.hue >= 145 && c.hue <= 350)), 'bez czerwieni, bursztynu i oliwki');
-  assert.ok(new Set(all.map((c) => c.hue)).size === 20);
+  const core = all.slice(0, 12);
+  assert.ok(core.every((c) => c.hue >= 55 && c.hue <= 340), 'bez czerwieni i bursztynu');
+  assert.equal(new Set(core.map((c) => c.hue)).size, 12);
 });
 
-test('kolejne numery projektów w roku dostają różne kolory (40 z rzędu bez powtórki)', () => {
+test('12 kolejnych numerów projektów dostaje 12 różnych kolorów, a siedem pierwszych dzieli ≥ 25° barwy lub ≥ 0,5 tonu', () => {
   const Identity = require('../src/core/identity.js');
   Identity.setColors([]);
   const seen = new Set();
-  for (let n = 1; n <= 40; n += 1) seen.add(Identity.colorIndex('26' + String(n).padStart(2, '0')));
-  assert.equal(seen.size, 40);
-  const a = Identity.swatch(Identity.colorIndex('2601')), b = Identity.swatch(Identity.colorIndex('2602'));
-  assert.ok(Math.abs(a.hue - b.hue) > 60, 'sąsiednie numery są wyraźnie różne');
+  for (let n = 1; n <= 12; n += 1) seen.add(Identity.colorIndex('26' + String(n).padStart(2, '0')));
+  assert.equal(seen.size, 12);
+  const sw = []; for (let n = 1; n <= 7; n += 1) sw.push(Identity.swatch(Identity.colorIndex('26' + String(n).padStart(2, '0'))));
+  for (let i = 0; i < sw.length; i += 1) for (let j = i + 1; j < sw.length; j += 1) {
+    const dh = Math.min(Math.abs(sw[i].hue - sw[j].hue), 360 - Math.abs(sw[i].hue - sw[j].hue));
+    assert.ok(dh >= 25 || Math.abs(sw[i].tone - sw[j].tone) >= 0.5, 'projekty ' + i + ' i ' + j + ' się zlewają');
+  }
 });
 
 test('kolor wybrany ręcznie wygrywa z automatycznym', () => {

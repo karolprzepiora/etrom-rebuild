@@ -156,6 +156,8 @@
       return Object.assign({}, r, { bars: r.bars.filter(function (b) { return b.projectId === wantProject; }) });
     }).filter(function (r) { return !wantProject || wantPerson || r.bars.length; });
     plan.unassigned = (plan.unassigned || []).filter(function (t) { return (!wantProject || t.projectId === wantProject) && !wantPerson; });
+    var viewSel = ['plan', 'both', 'done', 'live'].indexOf(state.planView) >= 0 ? state.planView : 'both';
+    var real = solo ? {} : Plan.realization({ projects: projects, entries: state.workspace.entries || [], now: now, first: new Date(plan.first), weeks: weeksN, personIds: visibleIds });
     var N = weeksN * 5;
     var dayH = (state.prefs.dayTarget || 480) / 60;
     var todaySlot = slotOf(plan.first, plan.today, 1);
@@ -175,7 +177,7 @@
     var drag = null;
 
     /* ---------- pasek ---------- */
-    function workedText(b) { return b.planned > 0 ? (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h' : '—'; }
+    function workedText(b) { return b.planned > 0 ? (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h' : (b.logged > 0.05 ? hh(b.logged) + ' h' : '—'); }
     function barTip(b, span) {
       var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
       var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
@@ -531,6 +533,45 @@
       return D.el('div', { class: 'pb-track' }, children);
     }
 
+    /* ---------- realizacja: słupki zarejestrowanego czasu pod paskiem planu ---------- */
+    var DAY_NAMES = ['nd', 'pn', 'wt', 'śr', 'czw', 'pt', 'sob'];
+    function clockText(ms) { var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    function durText(min) { var h = Math.floor(min / 60), m = Math.round(min % 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; }
+    function realStrip(rt, planStartSlot) {
+      var perSlot = {};
+      Object.keys(rt.days).forEach(function (dk) {
+        var sl = slotOf(plan.first, new Date(dk + 'T00:00').getTime(), -1);
+        if (sl < 0 || sl >= N) return;
+        perSlot[sl] = (perSlot[sl] || 0) + rt.days[dk];
+      });
+      var blocks = Object.keys(perSlot).map(function (key) {
+        var sl = Number(key), h = perSlot[key];
+        var d = dateOfSlot(plan.first, sl);
+        var pre = planStartSlot !== null && sl < planStartSlot;
+        return D.el('span', {
+          class: 'pb-real__d' + (h > dayH + 0.05 ? ' is-over' : '') + (pre ? ' is-pre' : ''),
+          style: { left: (sl / N * 100) + '%', width: (100 / N) + '%', '--h': Math.min(100, h / (dayH * 0.75) * 100) + '%' },
+          attrs: { 'data-tooltip': DAY_NAMES[d.getDay()] + ' ' + shortDate(d) + ': zarejestrowano ' + hh(h) + ' h' + (pre ? ' (przed planowanym startem)' : '') }
+        }, [D.el('i')]);
+      });
+      return D.el('div', { class: 'pb-real', style: Identity.hueStyle(rt.code), attrs: { role: 'img', 'aria-label': 'Zarejestrowany czas: ' + hh(rt.total) + ' h w oknie' } }, blocks);
+    }
+    function realTaskKey(t) { return t.projectId + '|' + t.stageId + '|' + t.taskId; }
+    function liveLine(rec, quiet) {
+      if (!rec) return null;
+      if (rec.current) {
+        return D.el('span', { class: 'pb-live-line is-on', attrs: { 'data-tooltip': 'Uruchomiony licznik' } }, [
+          D.el('i', { class: 'pb-dot', attrs: { 'aria-hidden': 'true' } }),
+          D.el('span', { class: 'mrow__project', style: Identity.hueStyle(rec.current.code), text: rec.current.code }),
+          D.el('span', { class: 'truncate', text: rec.current.name }),
+          D.el('small', { class: 't-muted t-num', text: 'od ' + clockText(rec.current.since) + ' · ' + durText(rec.current.minutes) })
+        ]);
+      }
+      if (quiet || !rec.last) return null;
+      var d = new Date(rec.last.at);
+      return D.el('span', { class: 'pb-live-line' }, [D.el('small', { class: 't-muted', text: 'ostatnio ' + DAY_NAMES[d.getDay()] + ' ' + clockText(rec.last.at) + ' · ' + rec.last.code + ' ' + rec.last.name })]);
+    }
+
     /* ---------- wiersze osób: nagłówek z obciążeniem (tylko zarząd/lider) i wiersz na zadanie ---------- */
     function personRow(row) {
       var person = Team.findPerson(people, row.personId);
@@ -538,6 +579,11 @@
         return { b: b, s: slotOf(plan.first, b.start, 1), e: slotOf(plan.first, b.end, -1), lane: 0 };
       }).filter(function (it) { return it.e >= 0 && it.s < N; });
       items.forEach(function (it) { it.e = Math.max(it.e, it.s); });
+      var rv = !solo && mode === 'people' && (viewSel === 'both' || viewSel === 'done');
+      var rec = real[row.personId] || null;
+      var recTasks = (rec ? rec.tasks : []).filter(function (t) { return !wantProject || t.projectId === wantProject; });
+      var realOf = {};
+      recTasks.forEach(function (t) { realOf[realTaskKey(t)] = t; });
       if (solo) items.sort(function (a, b) { return (a.b.overdue ? 0 : 1) - (b.b.overdue ? 0 : 1) || a.e - b.e || a.s - b.s; });
       else items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
       var weekEndSlot = Math.floor(Math.max(todaySlot, 0) / 5) * 5 + 4;
@@ -575,7 +621,7 @@
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
         var label = D.el('div', { class: 'pb-label' }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })])
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' + (rv && rec ? ' · zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' : '') }), viewSel === 'plan' ? null : liveLine(rec)])
         ]);
         var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
         var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
@@ -598,13 +644,26 @@
             rows.push(D.el('div', { class: 'pb-grp' + (grp === 'late' ? ' is-late' : '') }, [D.el('span', { text: grp === 'late' ? 'Po terminie' : (grp === 'week' ? 'Ten tydzień' : 'Później') })]));
           }
         }
-        var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, person, it)]);
+        if (rv && viewSel === 'done' && !realOf[it.b.projectId + '|' + it.b.stageId + '|' + it.b.taskId]) return;
+        var rt = rv ? realOf[it.b.projectId + '|' + it.b.stageId + '|' + it.b.taskId] : null;
+        if (rt) rt.shown = true;
+        var bars = D.el('div', { class: 'pb-bars' + (rv ? ' pb-bars--real' : '') }, [viewSel === 'done' && rv ? null : barEl(it.b, person, it), rt ? realStrip(rt, viewSel === 'done' ? null : it.s) : null]);
         var nameNode = nameCell(it.b);
         var taskRowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
         var chkHolder = nameNode.querySelector('.pb-tn__chk');
         if (chkHolder && chkHolder.__open) chkHolder.__open(taskRowEl);
         rows.push(taskRowEl);
       });
+      if (rv) {
+        recTasks.filter(function (t) { return !t.shown; }).sort(function (a, b) { return (rankOf[a.projectId] || 1e6) - (rankOf[b.projectId] || 1e6); }).forEach(function (t) {
+          var tk = taskOf(t);
+          var b0 = { projectId: t.projectId, stageId: t.stageId, taskId: t.taskId, name: t.name, code: t.code, planned: tk && Number(tk.estimate) > 0 ? Number(tk.estimate) : 0, logged: t.all, start: 0, end: 0, hours: 0, days: 1, workers: 1, status: tk ? tk.status : 'done' };
+          var nameNode = nameCell(b0);
+          var bars = D.el('div', { class: 'pb-bars pb-bars--real' }, [realStrip(t, null)]);
+          var rowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
+          rows.push(rowEl);
+        });
+      }
       if (row.unscheduled.tasks.length) {
         rows.push(D.el('div', { class: 'pb-free' }, [D.el('span', { class: 'pb-free__l t-muted', text: 'Bez terminu' })].concat(row.unscheduled.tasks.map(function (t) { return trayChip(t, person); }))));
       }
@@ -789,12 +848,96 @@
       return D.el('div', { class: 'pb-free pb-free--unassigned' }, [D.el('span', { class: 'pb-free__l', text: 'Do przydzielenia ' + list.length + ' · przeciągnij na osobę i dzień' })].concat(list.map(function (t) { return trayChip(t, { id: '_' }); })));
     }
 
+    /* ---------- „Na żywo”: kto nad czym pracuje, ostatnie dni i oś dzisiejszego dnia ---------- */
+    function livePanel() {
+      var liveReal = Plan.realization({ projects: projects, entries: state.workspace.entries || [], now: now, first: new Date(plan.today - 14 * 86400000), weeks: 3, personIds: visibleIds });
+      var rows = plan.rows;
+      var days = [];
+      for (var back = 0, d0 = new Date(plan.today); days.length < 6 && back < 14; back += 1) {
+        var dd = new Date(plan.today - back * 86400000);
+        if (dd.getDay() === 0 || dd.getDay() === 6) continue;
+        days.unshift(dd);
+      }
+      function card(row) {
+        var person = Team.findPerson(people, row.personId);
+        var rec = liveReal[row.personId] || { tasks: [], current: null, last: null, today: [] };
+        var task = rec.current || rec.last;
+        var bar = task ? row.bars.filter(function (b) { return b.projectId === task.projectId && b.stageId === task.stageId && b.taskId === task.taskId; })[0] : null;
+        var tk = task ? taskOf(task) : null;
+        var planned = bar ? bar.planned : (tk && Number(tk.estimate) > 0 ? Number(tk.estimate) : 0);
+        var logged = bar ? bar.logged : (task ? (rec.tasks.filter(function (t) { return t.taskId === task.taskId && t.projectId === task.projectId; })[0] || { all: 0 }).all : 0);
+        var pct = planned > 0 ? Math.min(100, logged / planned * 100) : 0;
+        var spark = days.map(function (dd) {
+          var key = Plan.isoDay(dd), segs = [];
+          rec.tasks.forEach(function (t) { if (t.days[key]) segs.push({ code: t.code, h: t.days[key] }); });
+          var tot = segs.reduce(function (a, x) { return a + x.h; }, 0);
+          return D.el('span', { class: 'pb-spark__d', attrs: { 'data-tooltip': DAY_NAMES[dd.getDay()] + ' ' + shortDate(dd) + ': ' + (tot ? hh(tot) + ' h' : 'brak wpisów') } }, segs.map(function (x) {
+            return D.el('i', { style: Object.assign({ height: Math.min(100, x.h / 10 * 100) + '%' }, Identity.hueStyle(x.code)) });
+          }));
+        });
+        return D.el('article', { class: 'pb-lc' + (rec.current ? ' is-on' : ''), dataset: { person: row.personId } }, [
+          D.el('header', { class: 'pb-lc__h' }, [
+            E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
+            D.el('b', { class: 'truncate', text: Team.fullName(person) }),
+            rec.current ? D.el('span', { class: 'pb-lc__on' }, [D.el('i', { class: 'pb-dot', attrs: { 'aria-hidden': 'true' } }), 'pracuje ' + durText(rec.current.minutes)]) : D.el('small', { class: 't-muted', text: 'bez licznika' })
+          ]),
+          task
+            ? D.el('button', { class: 'pb-lc__task', style: Identity.hueStyle(task.code), attrs: { type: 'button', 'data-fk': 'pb-live-task-' + row.personId }, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: task.projectId, stageId: task.stageId, taskId: task.taskId }); } } }, [
+                D.el('small', { class: 'pb-lc__proj', text: task.code + ' · ' + (task.projectName || '') }),
+                D.el('b', { text: task.name }),
+                rec.current ? null : D.el('small', { class: 'pb-lc__since', text: 'ostatnio ' + DAY_NAMES[new Date(task.at).getDay()] + ' ' + clockText(task.at) })
+              ])
+            : D.el('div', { class: 'pb-lc__none t-muted', text: 'Brak zarejestrowanego czasu w ostatnich tygodniach' }),
+          task ? D.el('div', { class: 'pb-lc__meter', style: Identity.hueStyle(task.code) }, [
+            D.el('span', { class: 't-num', text: planned > 0 ? 'zadanie: ' + hh(logged) + ' / ' + hh(planned) + ' h' : 'zadanie: ' + hh(logged) + ' h' }),
+            bar ? D.el('span', { class: 't-num' + (bar.overdue ? ' is-late' : ''), text: bar.overdue ? 'po terminie' : 'termin ' + shortDate(new Date(bar.end)) }) : null,
+            D.el('i', { class: 'pb-lc__bar', style: { '--p': pct + '%' } })
+          ]) : null,
+          D.el('div', { class: 'pb-lc__spark' }, [D.el('span', { class: 'pb-spark' }, spark), D.el('small', { class: 't-muted', text: 'ostatnie dni robocze' })])
+        ]);
+      }
+      var all = [];
+      rows.forEach(function (r) { (liveReal[r.personId] ? liveReal[r.personId].today : []).forEach(function (x) { all.push(x); }); });
+      var startH = 7, endH = 17;
+      all.forEach(function (x) { startH = Math.min(startH, Math.floor(new Date(x.start).getHours())); endH = Math.max(endH, Math.ceil(new Date(x.end).getHours() + new Date(x.end).getMinutes() / 60)); });
+      endH = Math.min(24, Math.max(endH, new Date(now).getHours() + 1));
+      var span = endH - startH;
+      var axis = [];
+      for (var h = startH; h < endH; h += 1) axis.push(D.el('span', { class: 'pb-tl__h t-num', style: { left: ((h - startH) / span * 100) + '%' }, text: h + ':00' }));
+      var nowPct = ((now.getHours() + now.getMinutes() / 60) - startH) / span * 100;
+      var lines = rows.map(function (row) {
+        var person = Team.findPerson(people, row.personId);
+        var rec = liveReal[row.personId] || { today: [] };
+        return D.el('div', { class: 'pb-tl__row' }, [
+          D.el('span', { class: 'pb-tl__who' }, [E.Avatar.avatar(person, { size: 'xs', tooltip: false }), D.el('b', { class: 'truncate', text: Team.fullName(person) })]),
+          D.el('span', { class: 'pb-tl__track' }, rec.today.map(function (x) {
+            var l = ((new Date(x.start).getHours() + new Date(x.start).getMinutes() / 60) - startH) / span * 100;
+            var w = Math.max(0.6, (x.end - x.start) / 3600000 / span * 100);
+            return D.el('i', { class: 'pb-tl__seg' + (x.running ? ' is-run' : ''), style: Object.assign({ left: l + '%', width: w + '%' }, Identity.hueStyle(x.code)), attrs: { 'data-tooltip': x.code + ' · ' + x.name + ' · ' + clockText(x.start) + '–' + (x.running ? 'teraz' : clockText(x.end)) } });
+          }))
+        ]);
+      });
+      return D.el('section', { class: 'pb-live', attrs: { 'aria-label': 'Na żywo' } }, [
+        D.el('div', { class: 'pb-lcs' }, rows.map(card)),
+        D.el('div', { class: 'pb-tl' }, [
+          D.el('div', { class: 'pb-tl__title', text: 'Dziś · oś dnia: wpisy czasu i uruchomione liczniki' }),
+          D.el('div', { class: 'pb-tl__axis' }, [D.el('span', { class: 'pb-tl__who' }), D.el('span', { class: 'pb-tl__track' }, axis)]),
+          D.el('div', { class: 'pb-tl__body' }, lines.concat([nowPct > 0 && nowPct < 100 ? D.el('span', { class: 'pb-tl__now', style: { '--x': String(nowPct / 100) }, attrs: { 'aria-hidden': 'true' } }) : null]))
+        ])
+      ]);
+    }
+
     var toolbar = D.el('div', { class: 'pb-toolbar' }, [].concat([
       D.el('div', { class: 'pb-nav' }, [
         UI.iconButton({ icon: 'chevronLeft', label: 'Wcześniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-prev' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset - Math.max(1, weeksN - 2)]])); } }),
         UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'pb-today' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, 0]])); } }),
         UI.iconButton({ icon: 'chevronRight', label: 'Późniejsze tygodnie', size: 'sm', attrs: { 'data-fk': 'pb-next' }, onClick: function () { ctx.actions.setTime(Object.fromEntries([[K.offset, offset + Math.max(1, weeksN - 2)]])); } })
       ]),
+      solo ? null : UI.segmented({
+        label: 'Co pokazać', value: mode === 'projects' && (viewSel === 'both' || viewSel === 'done') ? 'plan' : viewSel,
+        items: mode === 'projects' ? [{ value: 'plan', label: 'Plan' }, { value: 'live', label: 'Na żywo' }] : [{ value: 'plan', label: 'Plan' }, { value: 'both', label: 'Plan i realizacja' }, { value: 'done', label: 'Realizacja' }, { value: 'live', label: 'Na żywo' }],
+        onChange: function (v) { ctx.actions.setTime({ planView: v }); }
+      }).node,
       canProjects ? UI.segmented({
         label: 'Widok planu', value: mode,
         items: [{ value: 'people', label: 'Wg osób' }, { value: 'projects', label: 'Wg projektów' }],
@@ -820,6 +963,7 @@
       summary: management ? (overCount ? E.Format.count(overCount, 'osoba przeciążona', 'osoby przeciążone', 'osób przeciążonych') + ' w oknie planu' : 'Nikt nie jest przeciążony w oknie planu') : 'Twój plan na najbliższe tygodnie',
       body: [
         toolbar,
+        viewSel === 'live' && !solo && plan.rows.length ? livePanel() : null,
         plan.rows.length ? board : UI.emptyState({ icon: 'people', title: 'Brak osób w planie', text: 'Dodaj osoby do zespołu i przypisz im zadania z terminami.' }),
         unassignedTray(),
         solo ? null : detail(selected, plan, people, ctx)

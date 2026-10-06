@@ -646,3 +646,16 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Plan ma dwa filtry: „Wszystkie osoby” i „Wszystkie projekty” (`planPerson`, `planProject`). Filtr naprawdę ukrywa wiersze i paski; obciążenie tygodniowe zostaje prawdziwe. Wg projektów filtruje grupy i zadania danej osoby.
 - Przycisk „Dodaj nieobecność” zniknął z planu (urlopy trafią do osobnej zakładki wniosków). Pasma nieobecności nadal są widoczne; zarząd może je kliknąć, by edytować.
 - Szerokość kolumny nazw (`--lw`) działa tak samo w Plan i Moja praca (jedna wartość w localStorage).
+
+## Kolory projektów (paleta rozstawiona)
+- 12 barw głównych rozstawionych po kole (turkus, błękit, fiolet, róż, zieleń, limonka, miedź i kolejne), na przemian ciemniejszych i jaśniejszych (`Identity.swatch`, pozycje 0–11). Czerwień i bursztyn zostają dla stanów.
+- Numer projektu wybiera pozycję: `autoIndex('2601') = 0`, `2602 → 1`, … 12 kolejnych numerów różni się od siebie wyraźnie. Pozycje 12–39 to dodatkowe odcienie do ręcznego wyboru w formularzu projektu.
+- Nasycenie i połysk bierze każdy znacznik z tych samych zmiennych co kafle projektów (`--kp`, `--hdr`, `--pj-a/--pj-b/--pj-gloss/--pj-glow`), więc ustawienia „Żywość” i „HDR” działają też na paski realizacji, karty „Na żywo” i oś dnia.
+
+## Plan i realizacja
+- Przełącznik w Planie: **Plan** (jak dotąd) · **Plan i realizacja** (domyślnie) · **Realizacja** · **Na żywo**. W widoku „Wg projektów” są tylko Plan i Na żywo.
+- **Plan i realizacja:** pod paskiem planu zadania jest rząd słupków dziennych (`.pb-real`): wysokość = godziny zarejestrowane tego dnia (pełna wysokość = 6 h), kolor i połysk jak kafel projektu, czerwona górna krawędź = ponad cel dnia, kreskowany słupek = czas zapisany przed planowanym startem. Słupki są stałe (nie przesuwa się ich), pasek planu działa jak zawsze. Zadania zarejestrowane bez planu mają własny wiersz.
+- W nagłówku osoby: uruchomiony licznik (zielona kropka, kod, zadanie, „od hh:mm · czas”) albo „ostatnio …”. Tylko fakty, bez podpowiedzi zmian.
+- **Realizacja:** tylko wiersze z zarejestrowanym czasem, bez pasków planu.
+- **Na żywo** (`.pb-live`): karty osób (zadanie w kolorze projektu, „zadanie: X / Y h”, termin, ostatnie 6 dni roboczych) i oś dzisiejszego dnia z segmentami wpisów oraz linią „teraz”; pod spodem zwykły plan.
+- Dane: `Plan.realization` (czysta funkcja: godziny dzień po dniu, bieżące zadanie z licznika, ostatnia aktywność, wpisy z dziś).

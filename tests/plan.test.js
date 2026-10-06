@@ -228,3 +228,24 @@ test('Plan: godziny osoby na dzień i zadania bez osoby', function () {
   assert.equal(plan.unassigned[0].taskId, 't2');
   assert.equal(plan.unassigned[0].hours, 8);
 });
+
+test('realizacja: godziny z wpisów czasu dzień po dniu, bieżące zadanie z licznika i praca dzisiejsza', () => {
+  const now = new Date(2026, 9, 6, 11, 0);
+  const projects = [{ id: 1, code: '2601', name: 'Zbiornik', stages: [{ id: 's1', tasks: [{ id: 't1', name: 'Wniosek' }, { id: 't2', name: 'Warunki' }] }] }];
+  const iso = (d, h, m) => new Date(2026, 9, d, h, m || 0).toISOString();
+  const entries = [
+    { id: 'a', personId: 'p1', projectId: 1, stageId: 's1', taskId: 't1', start: iso(5, 8), end: iso(5, 12) },
+    { id: 'b', personId: 'p1', projectId: 1, stageId: 's1', taskId: 't1', start: iso(5, 13), end: iso(5, 17) },
+    { id: 'c', personId: 'p1', projectId: 1, stageId: 's1', taskId: 't2', start: iso(6, 9), end: null },
+    { id: 'd', personId: 'p2', projectId: 1, stageId: 's1', taskId: 't1', start: iso(1, 8), end: iso(1, 10) }
+  ];
+  const r = Plan.realization({ projects, entries, now, first: new Date(2026, 9, 5), weeks: 2 });
+  assert.equal(r.p1.tasks.length, 2);
+  const t1 = r.p1.tasks.filter((t) => t.taskId === 't1')[0];
+  assert.equal(t1.days['2026-10-05'], 8);
+  assert.equal(r.p1.current.taskId, 't2');
+  assert.equal(r.p1.current.minutes, 120);
+  assert.equal(r.p1.today.length, 1);
+  assert.equal(r.p2.tasks.length, 0, 'wpis sprzed okna nie wchodzi do okna');
+  assert.equal(r.p2.last.taskId, 't1');
+});

@@ -843,7 +843,7 @@ async function main() {
       (await state('s.planOffset')) > 0 && (await evaluate('return document.querySelector(".pb-wk--head.is-current") === null;')));
     await click('[data-fk="pb-today"]');
     await sleep(200);
-    await click('.pb-toolbar .segmented button:nth-child(4)');
+    await evaluate('const b = [...document.querySelectorAll(".pb-toolbar .segmented button")].find(x => /^8 tyg/.test(x.textContent.trim())); b.click(); return true;');
     await sleep(250);
     check('przełącznik 8 tygodni zmienia liczbę kolumn',
       await evaluate('return document.querySelectorAll(".pb-wk--head").length === 8;'));
@@ -943,6 +943,23 @@ async function main() {
       await evaluate('const s = document.getElementById("pb-person"); s.value = ""; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
       await sleep(200);
     }
+
+    await evaluate('ETROM.app.actions.setTime({ planView: "both", planOffset: -1, planPerson: "", planProject: "" }); return true;');
+    await sleep(500);
+    check('Plan i realizacja: pod paskami planu są słupki zarejestrowanego czasu (stałe, z wpisów) i linia „ostatnio / teraz” przy osobie',
+      await evaluate('return document.querySelectorAll(".pb-real__d").length > 0 && document.querySelectorAll(".pb-bars--real").length > 0 && !!document.querySelector(".pb-live-line");'));
+    await evaluate('ETROM.app.actions.setTime({ planView: "done" }); return true;');
+    await sleep(400);
+    check('Realizacja: tylko wiersze z zarejestrowanym czasem, bez pasków planu',
+      await evaluate('return document.querySelectorAll(".pb-real__d").length > 0 && document.querySelectorAll(".pb-row--task .pb-bar").length === 0;'));
+    await evaluate('ETROM.app.actions.setTime({ planView: "live" }); return true;');
+    await sleep(500);
+    check('Na żywo: karty osób z zadaniem i oś dzisiejszego dnia',
+      await evaluate('return document.querySelectorAll(".pb-lc").length >= 2 && !!document.querySelector(".pb-tl") && document.querySelectorAll(".pb-lc__task").length > 0;'));
+    await evaluate('ETROM.app.actions.setTime({ planView: "plan", planOffset: 0 }); return true;');
+    await sleep(300);
+    check('siedem pierwszych projektów ma wyraźnie różne barwy (paleta rozstawiona po kole)',
+      await evaluate('const I = ETROM.Identity; const sw = [1,2,3,4,5,6,7].map(n => I.swatch(I.autoIndex("260" + n))); for (let i = 0; i < sw.length; i++) for (let j = i + 1; j < sw.length; j++) { const d = Math.min(Math.abs(sw[i].hue - sw[j].hue), 360 - Math.abs(sw[i].hue - sw[j].hue)); if (d < 25 && Math.abs(sw[i].tone - sw[j].tone) < 0.5) return false; } return true;'));
 
     await go('#/czas');
     await sleep(200);

@@ -284,7 +284,63 @@
     return { weeks: weeks, rows: rows, first: first.getTime(), today: today.getTime(), unassigned: unassigned };
   }
 
-  var api = { shiftSpan: shiftSpan, rankProjects: rankProjects, moveInOrder: moveInOrder, addWorkdays: addWorkdays, workdayDiff: workdayDiff, snapWorkday: snapWorkday, isoDay: isoDay, DEFAULT_HOURS: DEFAULT_HOURS, TIGHT_AT: TIGHT_AT, estimateHours: estimateHours, remainingHours: remainingHours, build: build };
+
+  /**
+   * Realizacja: faktycznie zarejestrowany czas osób w oknie planu (tylko fakty z wpisów czasu).
+   * @param {{projects: Array, people?: Array, entries: Array, now: Date, first: Date, weeks: number, personIds?: string[]}} input
+   * @returns {Object} personId → { tasks: [{projectId, stageId, taskId, name, code, days: {iso: godziny}, total, all}],
+   *   current: {projectId, stageId, taskId, name, code, since, minutes} | null,
+   *   last: {…, at} | null, today: [{projectId, code, name, start, end, running}] }
+   */
+  function realization(input) {
+    var now = input.now instanceof Date ? input.now : new Date();
+    var first = startOfDay(input.first);
+    var from = first.getTime();
+    var to = addDays(first, Math.max(1, Number(input.weeks) || 6) * 7).getTime();
+    var todayKey = isoDay(now);
+    var info = {};
+    (input.projects || []).forEach(function (p) {
+      (p.stages || []).forEach(function (st) {
+        (st.tasks || []).forEach(function (t) { info[p.id + '|' + st.id + '|' + t.id] = { name: t.name, code: p.code, projectName: p.name }; });
+      });
+    });
+    var codeOf = {};
+    (input.projects || []).forEach(function (p) { codeOf[p.id] = { code: p.code, projectName: p.name }; });
+    var out = {};
+    function slot(pid) { return out[pid] || (out[pid] = { tasks: [], byKey: {}, current: null, last: null, today: [] }); }
+    function ref(e, extra) {
+      var k = e.projectId + '|' + e.stageId + '|' + e.taskId;
+      var meta = info[k] || { name: 'Usunięte zadanie', code: (codeOf[e.projectId] || {}).code || '—', projectName: (codeOf[e.projectId] || {}).projectName || '' };
+      return Object.assign({ projectId: e.projectId, stageId: e.stageId, taskId: e.taskId, name: meta.name, code: meta.code, projectName: meta.projectName }, extra || {});
+    }
+    (input.entries || []).forEach(function (e) {
+      if (!e || !e.personId) return;
+      if (input.personIds && input.personIds.indexOf(e.personId) < 0) return;
+      var start = TL.time ? TL.time(e.start) : Date.parse(e.start);
+      if (!Number.isFinite(start)) return;
+      var rec = slot(e.personId);
+      var min = TL.minutes(e, now);
+      var k = e.projectId + '|' + e.stageId + '|' + e.taskId;
+      var t = rec.byKey[k];
+      if (!t) { t = rec.byKey[k] = ref(e, { days: {}, total: 0, all: 0 }); rec.tasks.push(t); }
+      t.all += min / 60;
+      if (start >= from && start < to) {
+        var dk = isoDay(new Date(start));
+        t.days[dk] = (t.days[dk] || 0) + min / 60;
+        t.total += min / 60;
+      }
+      if (!e.end) rec.current = ref(e, { since: start, minutes: min });
+      if (!rec.last || start > rec.last.at) rec.last = ref(e, { at: start, running: !e.end });
+      if (isoDay(new Date(start)) === todayKey) rec.today.push(ref(e, { start: start, end: e.end ? (TL.time ? TL.time(e.end) : Date.parse(e.end)) : now.getTime(), running: !e.end }));
+    });
+    Object.keys(out).forEach(function (pid) {
+      out[pid].tasks = out[pid].tasks.filter(function (t) { return t.total > 0; });
+      delete out[pid].byKey;
+    });
+    return out;
+  }
+
+  var api = { realization: realization, shiftSpan: shiftSpan, rankProjects: rankProjects, moveInOrder: moveInOrder, addWorkdays: addWorkdays, workdayDiff: workdayDiff, snapWorkday: snapWorkday, isoDay: isoDay, DEFAULT_HOURS: DEFAULT_HOURS, TIGHT_AT: TIGHT_AT, estimateHours: estimateHours, remainingHours: remainingHours, build: build };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Plan = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

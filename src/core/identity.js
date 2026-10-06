@@ -22,26 +22,29 @@
     return (hash(code) * HUE_STEP) % 360;
   }
 
-  /* Paleta 40 kolorów projektów: 20 barw (od miedzi, przez zieleń i błękit, po fiolet i róż; czerwień
-     i bursztyn zostają dla stanów) w dwóch tonach — jaśniejszym i głębszym.
-     Kolejne numery projektów dostają kolory odległe o ~94° barwy (krok 7 w permutacji),
-     więc 40 projektów w roku różni się od siebie i sąsiednie nigdy nie są podobne. */
+  /* Paleta projektów: 12 barw „głównych” rozstawionych równo po kole (turkus, błękit, fiolet, róż, zieleń,
+     limonka, miedź i kolejne), na przemian ciemniejszych i jaśniejszych. Kolejne numery projektów (2601, 2602, …)
+     dostają kolejne pozycje, więc 12 projektów z rzędu różni się od siebie wyraźnie, a sąsiednie są zawsze
+     odległe barwą i jasnością. Czerwień i bursztyn zostają dla stanów. Pozycje 12–39 to dodatkowe odcienie do ręcznego wyboru. */
   var PALETTE_SIZE = 40;
-  var HUES = 20;
-  // Barwy rozmieszczone tak, by ciepłe (miedź, brąz) nie wypadały przy kolejnych numerach; pominięte okolice czerwieni i bursztynu (zarezerwowane dla stanów)
-  // oraz oliwki (brudna). Miedź i brąz wnoszą ciepło, którego brakowało zielono-niebieskiej palecie.
-  var HUE_LIST = [36, 145, 157, 169, 181, 48, 193, 205, 217, 229, 60, 241, 253, 265, 277, 291, 305, 319, 335, 350];
+  var CORE = [
+    { hue: 195, tone: 0.3 }, { hue: 255, tone: 0 }, { hue: 300, tone: 0.9 }, { hue: 340, tone: 1.1 },
+    { hue: 150, tone: 0.7 }, { hue: 105, tone: 1.8 }, { hue: 55, tone: 1.2 }, { hue: 230, tone: -0.9 },
+    { hue: 275, tone: -0.8 }, { hue: 320, tone: -0.9 }, { hue: 125, tone: -0.7 }, { hue: 175, tone: -0.9 }
+  ];
+  var CORE_N = CORE.length;
   // Tryb „według rodzaju”: każdy rodzaj ma swoją rodzinę barw, a numer projektu tylko ją odcienia.
   var KIND_HUE = { pump: 280, hydro: 190, dam: 262, weir: 212, levee: 48, retention: 150, pond: 168, reservoir: 232, culvert: 308, river: 246, multi: 328, other: 350 };
   var mode = 'number';
   var kindOf = {};
-  var PERM_STEP = 7;
   var overrides = {};
 
   function swatch(index) {
     var i = ((Number(index) % PALETTE_SIZE) + PALETTE_SIZE) % PALETTE_SIZE;
-    var h = i % HUES;
-    return { index: i, hue: HUE_LIST[h], tone: i < HUES ? 1 : -1 };
+    if (i < CORE_N) return { index: i, hue: CORE[i].hue, tone: CORE[i].tone };
+    var j = i - CORE_N;
+    var base = CORE[j % CORE_N];
+    return { index: i, hue: (base.hue + 12 * (1 + Math.floor(j / CORE_N))) % 360, tone: base.tone > 0.5 ? -0.6 : 1 };
   }
 
   function swatches() {
@@ -50,12 +53,12 @@
     return list;
   }
 
-  /** Indeks 0–39 z numeru projektu: ostatnie dwie cyfry kodu (2607 → 7), inaczej skrót kodu. */
+  /** Pozycja 0–11 z numeru projektu: ostatnie dwie cyfry kodu (2601 → 0, 2607 → 6), inaczej skrót kodu. */
   function autoIndex(code) {
     var text = String(code == null ? '' : code);
     var seq = /(\d{2})\s*$/.exec(text);
-    var n = seq ? Number(seq[1]) : hash(text);
-    return (n * PERM_STEP) % PALETTE_SIZE;
+    var n = seq ? Number(seq[1]) - 1 : hash(text);
+    return ((n % CORE_N) + CORE_N) % CORE_N;
   }
 
   function validIndex(value) {
@@ -90,7 +93,7 @@
     var kind = kindOf[key];
     if (mode !== 'kind' || !kind || Object.prototype.hasOwnProperty.call(overrides, key)) return null;
     var n = seq(code);
-    return { hue: (KIND_HUE[kind] || KIND_HUE.other) + ((n % 5) - 2) * 6, tone: n % 2 ? 1 : -1 };
+    return { hue: (KIND_HUE[kind] || KIND_HUE.other) + ((n % 5) - 2) * 6, tone: n % 2 ? 0.8 : -0.6 };
   }
 
   function colorIndex(code) {
