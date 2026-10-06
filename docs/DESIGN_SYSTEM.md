@@ -583,7 +583,7 @@ Jedna oś, trzy pojęcia: **termin** (do kiedy ma być gotowe), **okno** (start�
 
 ### Plan: dwa widoki (`E.PlanBoard`)
 - Przełącznik `Wg osób | Wg projektów` w pasku Planu (stan `planMode`; tylko zarząd i liderzy).
-- **Wg osób:** wstęga godzin na tydzień (czerwona = przeciążenie), pod nią słupki godzin na dzień (`.pb-dbars`, czerwony słupek = ponad cel dnia), niżej wiersze zadań; termin napisany na końcu paska (`.pb-bar__due`: „dziś”, „jutro”, „pt 9”, „po terminie”). Pod planszą tacka „Do przydzielenia”: zadania bez osoby, przeciągane na osobę i dzień (nadają osobę i termin).
+- **Wg osób:** wstęga godzin na tydzień (czerwona = przeciążenie). Słupki godzin na dzień (`.pb-dbars`, czerwony = ponad cel dnia) są schowane i rozwijają się dopiero po kliknięciu w obłożenie danego tygodnia (ten sam klik otwiera listę zadań tygodnia pod planszą). Niżej wiersze zadań; termin napisany na końcu paska (`.pb-bar__due`: „dziś”, „jutro”, „pt 9”, „po terminie”). Pod planszą tacka „Do przydzielenia”: zadania bez osoby, przeciągane na osobę i dzień (nadają osobę i termin).
 - **Wg projektów:** grupa na projekt (`.pb-row--proj`: znacznik projektu, pasek postępu projektu, romb terminu), pod nią paski zadań z awatarami wykonawców; zadanie bez osoby ma pasek kreskowany. Paski nadal da się przesuwać i rozciągać.
 - **Moja praca → Tygodnie:** liczniki „po terminie / dziś / w tym tygodniu / później” (`.pb-counter`), zadania pogrupowane (`.pb-grp`) na Po terminie, Ten tydzień i Później, termin na końcu paska, bez godzin.
 
@@ -636,3 +636,9 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 ## Nakład pracy zadania: słupki czasu (`E.UI.effortMark`)
 - Cztery rosnące słupki, bez tekstu, bez obwódki i bez dymku (tylko `aria-label`). Stopień wynika z czasu przewidzianego na zadanie (od startu do terminu, dni włącznie; `Tasks.effortLevel`): do 2 dni = 1 słupek, do 2 tygodni = 2, do ok. miesiąca = 3, dłużej = 4. Brak terminu = brak znacznika. Nie ma już ręcznych poziomów Mała/Średnia/Duża/Bardzo duża ani pola w formularzu. Używany w Mojej pracy, liście zadań, kanbanie i szczegółach zadania (obok liczby dni). Nigdy godziny.
 - Wszystkie ekrany mają jednakową szerokość: `.page { max-width: min(112rem, 100%) }`, zawartość rozciąga się na całą szerokość okna.
+
+
+### Plan i Tygodnie: jeden standard tabeli
+- Ta sama ramka (`.pb-scroll`), ten sam nagłówek tygodni i dni, domyślnie 6 tygodni w obu widokach, więc kolumny dni mają tę samą szerokość.
+- Wiersze grup (osoba, projekt, „Po terminie / Ten tydzień / Później”) mają jednakowe lekko przyciemnione tło; wiersze zadań są białe.
+- Lewą kolumnę z nazwami poszerza się uchwytem w nagłówku (`.pb-resize`: przeciąganie, strzałki ←/→, Shift = większy krok, dwuklik = domyślna 21 rem). Szerokość (`--lw`, 14–40 rem) jest wspólna dla Planu i Tygodni i pamiętana w przeglądarce.

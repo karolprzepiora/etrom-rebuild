@@ -719,8 +719,8 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .pb-nav { display: inline-flex; align-items: center; gap: var(--space-1); }
 .pb-legend { margin-left: auto; }
 .pb-scroll { overflow-x: auto; border-radius: 16px; background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); }
-.pb-grid { min-width: calc(19rem + var(--n) * 1.75rem); display: grid; }
-.pb-row { display: grid; grid-template-columns: 21rem minmax(0, 1fr); border-top: 1px solid var(--line); transition: background .15s; }
+.pb-grid { min-width: calc(var(--lw, 21rem) - 2rem + var(--n) * 1.75rem); display: grid; }
+.pb-row { display: grid; grid-template-columns: var(--lw, 21rem) minmax(0, 1fr); border-top: 1px solid var(--line); transition: background .15s; }
 .pb-row--head { border-top: 0; position: sticky; top: 0; z-index: 3; background: var(--sheet); }
 .pb-row.is-drop { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pb-label { position: sticky; left: 0; z-index: 2; display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); background: var(--sheet); border-right: 1px solid var(--line); min-width: 0; }
@@ -1202,3 +1202,15 @@ button.pb-absent.is-head:focus-visible { box-shadow: var(--focus-ring); }
 .rowgrip:focus-visible { box-shadow: var(--focus-ring); }
 tbody.is-reorder tr.is-drag { position: relative; z-index: 5; background: var(--sheet); box-shadow: 0 12px 28px -10px rgb(0 0 0 / .45); transition: none; }
 tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
+
+/* ---------- Plan i Tygodnie: jeden standard ramki, wierszy grup i szerokości kolumny nazw ---------- */
+.pb-scroll { box-shadow: inset 0 0 0 1px var(--line), 0 10px 26px -22px rgb(1 42 67 / .5); }
+.pb-row--who, .pb-row--proj, .pb-grp { background: color-mix(in srgb, var(--ink) 3%, var(--sheet)); }
+.pb-row--who .pb-label, .pb-row--proj .pb-label { background: color-mix(in srgb, var(--ink) 3%, var(--sheet)); }
+.pb-grp { position: sticky; left: 0; }
+.pb-resize { position: absolute; top: 0; bottom: 0; right: -5px; width: 10px; z-index: 6; cursor: col-resize; touch-action: none; }
+.pb-resize::after { content: ""; position: absolute; top: 22%; bottom: 22%; left: 4px; width: 2px; border-radius: 2px; background: var(--ink-3); opacity: .35; transition: opacity .15s, background .15s; }
+.pb-resize:hover::after, .pb-resize.is-drag::after, .pb-resize:focus-visible::after { opacity: 1; background: var(--accent); }
+.pb-resize:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+.pb-dbar.is-off { background: transparent; }
+.pb-row--head .pb-label { position: sticky; }

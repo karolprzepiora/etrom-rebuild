@@ -880,8 +880,22 @@ async function main() {
     await sleep(350);
     const estAfter = await state('(function () { const p = s.workspace.projects.find(x => String(x.id) === "' + planBar.p + '"); const t = p.stages.find(x => x.id === "' + planBar.s + '").tasks.find(x => x.id === "' + planBar.t + '"); return t.estimate || 0; })()');
     check('klik w godziny na pasku pozwala je zmienić (zapisuje szacunek zadania)', estAfter >= 7 && estAfter !== estBefore);
-    check('Plan: nie ma już paska priorytetów, jest przełącznik widoków i słupki godzin dnia oraz termin na pasku',
-      await evaluate('return !document.querySelector(".pb-prio") && !!document.querySelector(".pb-toolbar .segmented") && document.querySelectorAll(".pb-dbars .pb-dbar").length > 5 && !!document.querySelector(".pb-bar .pb-bar__due");'));
+    await evaluate('ETROM.app.actions.setTime({ planCell: null }); return true;');
+    await sleep(250);
+    check('Plan: nie ma już paska priorytetów, jest przełącznik widoków i termin na pasku, a słupki dni są schowane',
+      await evaluate('return !document.querySelector(".pb-prio") && !!document.querySelector(".pb-toolbar .segmented") && !!document.querySelector(".pb-bar .pb-bar__due") && !document.querySelector(".pb-dbars");'));
+    await evaluate('document.querySelector(".pb-load[data-fk^=pl-cell-]").click(); return true;');
+    await sleep(300);
+    check('klik w obłożenie tygodnia rozwija słupki godzin dnia tej osoby (5 dni), drugi klik je chowa',
+      await evaluate('return document.querySelectorAll(".pb-dbars .pb-dbar:not(.is-off)").length === 5;'));
+    await evaluate('document.querySelector(".pb-load[data-fk^=pl-cell-]").click(); return true;');
+    await sleep(250);
+    const lwBefore = await evaluate('return parseFloat(getComputedStyle(document.querySelector(".pb")).getPropertyValue("--lw"));');
+    await evaluate('document.querySelector("[data-fk=pb-resize]").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); return true;');
+    await sleep(150);
+    check('uchwyt przy kolumnie nazw poszerza ją strzałką → (wspólna szerokość zapisana w przeglądarce)',
+      (await evaluate('return parseFloat(document.querySelector(".pb").style.getPropertyValue("--lw"));')) === lwBefore + 16);
+    await evaluate('document.querySelector("[data-fk=pb-resize]").dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })); return true;');
     await evaluate('ETROM.app.actions.setTime({ planMode: "projects" }); return true;');
     await sleep(400);
     check('Plan „Wg projektów”: grupy projektów w kolejności z listy Projekty, z paskami zadań i awatarami osób',
@@ -1585,8 +1599,8 @@ async function main() {
     await sleep(300);
     await click('[data-fk="mywork-view-weeks"]');
     await sleep(350);
-    check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 4 tygodnie',
-      await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 4 && document.querySelectorAll(".pb--solo .pb-person[data-person]").length === 1;'));
+    check('Moja praca → Tygodnie pokazuje tylko własny wiersz i 6 tygodni (tak samo jak Plan)',
+      await evaluate('return document.querySelectorAll(".pb--solo .pb-wk--head").length === 6 && document.querySelectorAll(".pb--solo .pb-person[data-person]").length === 1;'));
     const plainWorker = await evaluate('const w = ETROM.app.store.getState().workspace; const lead = new Set(w.projects.map(p => p.team && p.team.leader)); const x = w.people.find(p => !lead.has(p.id) && !ETROM.Budget.isManagement(p.id, w.people)); return x ? x.id : "";');
     if (plainWorker) {
       const meBefore = await state('s.prefs.me');

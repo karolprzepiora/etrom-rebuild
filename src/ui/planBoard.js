@@ -94,7 +94,7 @@
   function chipText(cell) { return cell.planned ? Math.round(cell.planned) + '/' + Math.round(cell.capacity) : ''; }
   function chipTip(cell) {
     return cell.planned
-      ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.absentDays ? ' (nieobecność: ' + cell.absentDays + ' dni)' : '') + (cell.state === 'over' ? ' — przeciążenie (' + hh(cell.planned - cell.capacity) + ' h za dużo)' : '')
+      ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.absentDays ? ' (nieobecność: ' + cell.absentDays + ' dni)' : '') + (cell.state === 'over' ? ' — przeciążenie (' + hh(cell.planned - cell.capacity) + ' h za dużo)' : '') + ' · kliknij, żeby zobaczyć dni'
       : (cell.absentDays ? 'Nieobecność: ' + cell.absentDays + ' dni robocze' : 'Brak zaplanowanej pracy');
   }
 
@@ -127,7 +127,7 @@
     var projects = state.workspace.projects || [];
     var me = Team.findPerson(people, state.prefs.me);
     var management = Budget.isManagement(me.id, people) && !solo;
-    var weeksN = RANGES.indexOf(state[K.weeks]) >= 0 ? state[K.weeks] : (solo ? 4 : 6);
+    var weeksN = RANGES.indexOf(state[K.weeks]) >= 0 ? state[K.weeks] : 6;
     var offset = Number(state[K.offset]) || 0;
     // Zarząd widzi wszystkich, lider osoby ze swoich projektów, pozostali tylko siebie.
     var led = projects.filter(function (p) { return p.team && p.team.leader === me.id && p.status !== 'done'; });
@@ -157,6 +157,8 @@
     var ranked = Plan.rankProjects(projects);
     var rankOf = {};
     ranked.forEach(function (p, i) { rankOf[p.id] = i + 1; });
+    var labelW = 336;
+    try { var savedW = Number(window.localStorage.getItem('etrom.pb.labelWidth')); if (savedW >= 224 && savedW <= 640) labelW = savedW; } catch (err) { /* brak pamięci */ }
     var chips = {};      // 'personId:week' → element
     var rowEls = {};     // personId → element
     var drag = null;
@@ -565,16 +567,18 @@
           D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' })]),
           management ? UI.iconButton({ icon: 'plus', label: 'Dodaj nieobecność: ' + Team.fullName(person), size: 'sm', attrs: { 'data-fk': 'pb-absence-add-' + row.personId, 'data-tooltip': 'Dodaj nieobecność' }, onClick: function () { ctx.actions.openAbsence(row.personId); } }) : null
         ]);
-        var dayBars = D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
+        var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
+        var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
           var out = [];
           for (var sl = 0; sl < N; sl += 1) {
+            if (Math.floor(sl / 5) !== openWeek) { out.push(D.el('span', { class: 'pb-dbar is-off' })); continue; }
             var hrs = (row.days && row.days[Plan.isoDay(dateOfSlot(plan.first, sl))]) || 0;
             var over = hrs > dayH + 0.05;
             out.push(D.el('span', { class: 'pb-dbar' + (over ? ' is-over' : '') + (hrs ? '' : ' is-empty'), style: { '--h': Math.min(100, hrs / dayH * 70) + '%' }, attrs: hrs ? { 'data-tooltip': hh(hrs) + ' h zaplanowane tego dnia' + (over ? ' (ponad ' + hh(dayH) + ' h)' : '') } : {} }));
           }
           return out;
         })());
-        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf([loads, dayBars], bandEls(true))])]));
+        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf(dayBars ? [loads, dayBars] : [loads], bandEls(true))])]));
       }
       items.forEach(function (it) {
         if (solo) {
@@ -600,6 +604,42 @@
       return el;
     }
 
+    /* ---------- szerokość lewej kolumny (nazwy zadań i projektów): uchwyt w nagłówku, wspólna dla obu widoków ---------- */
+    function resizer() {
+      var LW_MIN = 224, LW_MAX = 640, LW_DEF = 336;
+      var handle = D.el('div', { class: 'pb-resize', attrs: { role: 'separator', 'aria-orientation': 'vertical', tabindex: '0', 'aria-label': 'Szerokość kolumny z nazwami', 'aria-valuemin': String(LW_MIN), 'aria-valuemax': String(LW_MAX), 'data-fk': 'pb-resize', 'data-tooltip': 'Przeciągnij, żeby zmienić szerokość kolumny (dwuklik: domyślna)' } });
+      function clamp(v) { return Math.max(LW_MIN, Math.min(LW_MAX, Math.round(v))); }
+      function apply(v, save) {
+        var w = clamp(v);
+        handle.setAttribute('aria-valuenow', String(w));
+        var b = handle.closest('.pb');
+        if (b) b.style.setProperty('--lw', w + 'px');
+        if (save) { try { window.localStorage.setItem('etrom.pb.labelWidth', String(w)); } catch (err) { /* brak pamięci */ } }
+        return w;
+      }
+      handle.setAttribute('aria-valuenow', String(labelW));
+      var d = null;
+      handle.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        d = { x: e.clientX, w: handle.parentNode.getBoundingClientRect().width };
+        try { handle.setPointerCapture(e.pointerId); } catch (err) { /* testy */ }
+        handle.classList.add('is-drag');
+        e.preventDefault();
+      });
+      handle.addEventListener('pointermove', function (e) { if (d) d.now = apply(d.w + e.clientX - d.x, false); });
+      function end() { if (!d) return; var w = d.now || d.w; d = null; handle.classList.remove('is-drag'); apply(w, true); }
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+      handle.addEventListener('dblclick', function () { apply(LW_DEF, true); });
+      handle.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home') return;
+        e.preventDefault();
+        var cur = Number(handle.getAttribute('aria-valuenow')) || LW_DEF;
+        apply(e.key === 'Home' ? LW_DEF : cur + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 48 : 16), true);
+      });
+      return handle;
+    }
+
     /* ---------- nagłówek, pasek narzędzi ---------- */
     var compact = weeksN >= 8;
     var todayKey = Plan.isoDay(new Date(plan.today));
@@ -618,7 +658,7 @@
       return D.el('span', { class: 'pb-days' }, out);
     }
     var head = D.el('div', { class: 'pb-row pb-row--head' }, [
-      D.el('div', { class: 'pb-label' }),
+      D.el('div', { class: 'pb-label' }, [resizer()]),
       D.el('div', { class: 'pb-cell' }, [D.el('div', { class: 'pb-track pb-track--head' }, [D.el('div', { class: 'pb-wks pb-wks--head' }, plan.weeks.map(function (w, wi) {
         var wkKey = Plan.isoDay(new Date(w.start));
         return D.el('span', { class: 'pb-wk pb-wk--head' + (w.current ? ' is-current' : '') }, [
@@ -749,7 +789,7 @@
       ])
     ]);
 
-    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN) }, attrs: { 'aria-label': 'Plan tygodni' } }, [
+    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
       D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(mode === 'projects' ? projectBoardRows() : plan.rows.map(personRow)))])
     ]);
 
