@@ -659,3 +659,8 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Realizacja:** tylko wiersze z zarejestrowanym czasem, bez pasków planu.
 - **Na żywo** (`.pb-live`): karty osób (zadanie w kolorze projektu, „zadanie: X / Y h”, termin, ostatnie 6 dni roboczych) i oś dzisiejszego dnia z segmentami wpisów oraz linią „teraz”; pod spodem zwykły plan.
 - Dane: `Plan.realization` (czysta funkcja: godziny dzień po dniu, bieżące zadanie z licznika, ostatnia aktywność, wpisy z dziś).
+
+## Dane przykładowe
+- Archiwalne wpisy czasu (`e-demo-arch-*`): praca nad projektami 2601, 2602, 2604, 2605 i 2606 sprzed okna 10 tygodni, do ok. roku wstecz. Widać je w Czasie, Analizie i w Planie po cofnięciu okna.
+- Archiwalne nieobecności (urlopy, zwolnienie, szkolenia) z ostatnich 4 miesięcy oprócz tych w nadchodzących tygodniach.
+- „Na żywo”: pięć osób ma uruchomiony licznik na własnym zadaniu, część miała też wpis z rana (wpisy `e-demo-live-*`, tylko gdy jest po 8:30).

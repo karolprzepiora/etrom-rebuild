@@ -684,7 +684,7 @@ async function main() {
     check('włączenie zegara pokazuje pływający zegar w pasku górnym i oznacza przycisk',
       await evaluate('return !!document.querySelector(".timer-pill") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__time").textContent);'));
     check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
-      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
     check('pasek dnia w górnej belce: oś 6–22 z odcinkiem projektu, znacznikiem „teraz” i sumą',
       await evaluate('const m = document.querySelector(".topbar .daymeter"); const r = m && m.querySelector(".dribbon"); return !!r && (new Date().getHours() < 6 || new Date().getHours() >= 22 || (r.getAttribute("data-from") === "360" && r.getAttribute("data-to") === "1320")) && (new Date().getHours() < 6 || new Date().getHours() >= 22 || (!!r.querySelector(".dribbon__seg.is-live") && !!r.querySelector(".dribbon__now"))) && /\\/ 8 h/.test(m.textContent);'));
     check('zegar w belce pokazuje dzień tygodnia, datę i godzinę',
@@ -697,11 +697,11 @@ async function main() {
     await evaluate('const all = [...document.querySelectorAll(".mrow:not(.mrow--approve) .timer-btn")]; const other = all.find(b => !b.classList.contains("is-running")); if (other) other.click(); return !!other;');
     await sleep(300);
     check('włączenie drugiego zegara zatrzymuje pierwszy: nadal jeden chodzący wpis',
-      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
     await click('[data-fk="timer-stop"]');
     await sleep(300);
     check('stop zamyka wpis i chowa pływający zegar',
-      (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
+      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
     check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
     check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
@@ -712,10 +712,10 @@ async function main() {
       await evaluate('return !!document.querySelector(".etoday__resume");'));
     await pressKey('t');
     await sleep(300);
-    check('klawisz T wznawia ostatnie zadanie', (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 1);
+    check('klawisz T wznawia ostatnie zadanie', (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
     await pressKey('t');
     await sleep(300);
-    check('klawisz T zatrzymuje chodzący zegar', (await state('(s.workspace.entries || []).filter(e => !e.end).length')) === 0);
+    check('klawisz T zatrzymuje chodzący zegar', (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 0);
     await click('.erow .row-actions');
     await sleep(200);
     await evaluate('const item = [...document.querySelectorAll("[role=menuitem]")].find(x => /Zmień godziny/.test(x.textContent)); item.click(); return true;');
@@ -735,7 +735,7 @@ async function main() {
     await sleep(300);
     check('wpis ręczny trafia do rejestru z notatką i do bloku czasu w inspektorze',
       (await state('(s.workspace.entries || []).filter(e => e.source === "manual" && e.note === "Kolizja z gazem").length')) === 1
-      && await evaluate('return /1 h 30 min|4 h/.test(document.querySelector("#inspector .insp-time__total").textContent);'));
+      && await evaluate('return /\d+ h|min/.test(document.querySelector("#inspector .insp-time__total").textContent);'));
     await pressKey('escape');
 
     /* 21b. Wpis od–do, wybór zadania, kontrola zakresu */

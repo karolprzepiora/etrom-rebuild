@@ -2212,16 +2212,23 @@
     });
     // Przykładowe nieobecności (względem dziś), żeby plan pokazywał mniejszą pojemność tygodni.
     updateWorkspace(function (workspace) {
-      if ((workspace.absences || []).length) return workspace;
       var rows = [
         { who: 2, from: 3, to: 4, kind: 'leave', note: 'Wyjazd rodzinny' },
         { who: 3, from: 9, to: 15, kind: 'leave', note: 'Urlop' },
-        { who: 5, from: 6, to: 6, kind: 'training', note: 'Szkolenie z hydrauliki' }
+        { who: 5, from: 6, to: 6, kind: 'training', note: 'Szkolenie z hydrauliki' },
+        // Archiwalne nieobecności: widać je w planie po cofnięciu okna i w kalendarzu.
+        { who: 2, from: -75, to: -66, kind: 'leave', note: 'Urlop letni' },
+        { who: 6, from: -52, to: -48, kind: 'leave', note: 'Urlop' },
+        { who: 4, from: -31, to: -31, kind: 'training', note: 'Szkolenie BHP' },
+        { who: 3, from: -22, to: -19, kind: 'sick', note: 'Zwolnienie lekarskie' },
+        { who: 7, from: -118, to: -108, kind: 'leave', note: 'Urlop wypoczynkowy' },
+        { who: 1, from: -95, to: -91, kind: 'leave', note: 'Urlop' }
       ];
-      var list = [];
+      var list = (workspace.absences || []).slice();
       rows.forEach(function (r) {
         var who = demoPersonId(r.who);
         if (!who) return;
+        if (list.some(function (a) { return a.personId === who && a.note === r.note && a.from === iso(r.from); })) return;
         var res = E.Absences.save(list, { personId: who, from: iso(r.from), to: iso(r.to), kind: r.kind, note: r.note }, workspace.people || []);
         if (res.valid) list = res.list;
       });
@@ -2332,7 +2339,86 @@
         });
       }
       entriesOut = levelDemoLoad(entriesOut, projectsOut, workspace.people || [], nowDate);
+      // Na żywo: kilka osób ma uruchomiony licznik na swoim zadaniu, część pracowała już rano nad czym innym.
+      var nowH = nowDate.getHours() + nowDate.getMinutes() / 60;
+      if (nowH >= 8.5) {
+        var liveRows = [{ who: 1, code: '2602', ago: 2.6 }, { who: 2, code: '2601', ago: 1.4 }, { who: 3, code: '2606', ago: 3.2 }, { who: 5, code: '2606', ago: 0.8 }, { who: 6, code: '2607', ago: 1.9 }];
+        var liveIds = liveRows.map(function (r) { return demoPersonId(r.who); });
+        var todayKey = E.TimeLog.dayKey(nowDate.getTime());
+        entriesOut = entriesOut.filter(function (e) { return !(liveIds.indexOf(e.personId) >= 0 && E.TimeLog.dayKey(Date.parse(e.start)) === todayKey); });
+        liveRows.forEach(function (r, i) {
+          var who = liveIds[i];
+          var project = projectsOut.filter(function (p) { return p.code === r.code; })[0];
+          if (!who || !project) return;
+          var found = [];
+          (project.stages || []).forEach(function (st) { (st.tasks || []).forEach(function (t) { if (t.status !== 'done' && (t.assignees || []).indexOf(who) >= 0) found.push({ stage: st, task: t }); }); });
+          if (!found.length) return;
+          var main = found[0], other = found[found.length > 1 ? 1 : 0];
+          var begin = new Date(nowDate.getTime() - r.ago * 3600000);
+          if (begin.getHours() < 6) return;
+          counter += 1;
+          entriesOut.push({ id: 'e-demo-live-' + counter, personId: who, projectId: project.id, stageId: main.stage.id, taskId: main.task.id, label: main.task.name, start: begin.toISOString(), end: null, note: '', source: 'timer', updatedAt: begin.toISOString() });
+          var mEnd = new Date(begin.getTime() - 25 * 60000), mStart = new Date(mEnd.getTime() - (1.5 + i * 0.25) * 3600000);
+          if (mStart.getHours() >= 6) {
+            counter += 1;
+            entriesOut.push({ id: 'e-demo-live-' + counter, personId: who, projectId: project.id, stageId: other.stage.id, taskId: other.task.id, label: other.task.name, start: mStart.toISOString(), end: mEnd.toISOString(), note: '', source: 'manual', updatedAt: mStart.toISOString() });
+          }
+        });
+      }
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: ownEntries.concat(entriesOut) });
+    });
+    // Archiwalne pomiary czasu: praca sprzed okna 10 tygodni (do ok. roku wstecz), żeby Czas, Analiza i Plan miały historię.
+    var notesArch = ['', 'Zebranie danych', 'Obliczenia hydrauliczne', 'Rysunki i przekroje', '', 'Uzgodnienia', 'Opis techniczny', '', 'Wizja lokalna', 'Poprawki po uwagach'];
+    var demoArchive = [
+      { code: '2605', from: 400, to: 76, per: 1.7, chunk: [3, 7] },
+      { code: '2604', from: 250, to: 80, per: 1.1, chunk: [2, 6] },
+      { code: '2602', from: 210, to: 76, per: 1.4, chunk: [3, 7] },
+      { code: '2601', from: 150, to: 76, per: 1.2, chunk: [2, 6] },
+      { code: '2606', from: 110, to: 76, per: 1.0, chunk: [2, 5] }
+    ];
+    updateWorkspace(function (workspace) {
+      var own = (workspace.entries || []).filter(function (e) { return String(e.id).indexOf('e-demo-arch-') !== 0; });
+      var byCode = {};
+      workspace.projects.forEach(function (project) { byCode[project.code] = project; });
+      var out = [];
+      var seq = 0;
+      var busy = {};
+      demoArchive.forEach(function (row) {
+        var project = byCode[row.code];
+        if (!project) return;
+        var team = Team.projectPeople(project.team);
+        var stages = (project.stages || []).filter(function (st) { return st.status === 'done'; });
+        if (!team.length) return;
+        if (!stages.length) stages = (project.stages || []).slice(0, 2);
+        if (!stages.length) return;
+        var seed = Number(row.code) % 97 + 13;
+        function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+        var days = [];
+        for (var back = row.from; back >= row.to; back -= 1) {
+          var day = new Date(); day.setDate(day.getDate() - back); day.setHours(0, 0, 0, 0);
+          if (day.getDay() !== 0 && day.getDay() !== 6) days.push(day);
+        }
+        days.forEach(function (day, di) {
+          var stage = stages[Math.min(stages.length - 1, Math.floor(di / days.length * stages.length))];
+          var tasks = (stage.tasks || []);
+          var count = rnd() < row.per - Math.floor(row.per) ? Math.floor(row.per) + 1 : Math.floor(row.per);
+          if (rnd() < 0.18) count = 0;
+          for (var k = 0; k < count; k += 1) {
+            var who = team[Math.floor(rnd() * team.length)];
+            var key = who + '|' + day.getTime();
+            var used = busy[key] || 0;
+            var hours = Math.round((row.chunk[0] + rnd() * (row.chunk[1] - row.chunk[0])) * 4) / 4;
+            if (used + hours > 8.5) continue;
+            busy[key] = used + hours;
+            var start = new Date(day.getTime() + (8 + used) * 3600000);
+            var task = tasks.length && rnd() < 0.55 ? tasks[Math.floor(rnd() * tasks.length)] : null;
+            seq += 1;
+            out.push({ id: 'e-demo-arch-' + seq, personId: who, projectId: project.id, stageId: stage.id, taskId: task ? task.id : '', label: task ? task.name : Model.describeStage(stage).name,
+              start: start.toISOString(), end: new Date(start.getTime() + hours * 3600000).toISOString(), note: notesArch[seq % notesArch.length], source: 'manual', updatedAt: start.toISOString() });
+          }
+        });
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, entries: own.concat(out) });
     });
     // Korekty godzin zarządu (np. dodatkowe uzgodnienia) — widać je w budżecie etapu i w Analizie.
     var demoAdjust = [
