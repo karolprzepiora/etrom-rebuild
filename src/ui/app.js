@@ -712,7 +712,9 @@
     pendingFlash = { projectId: projectId, taskId: taskId };
     mapTask(projectId, stageId, taskId, function () { return result.task; });
     // Zamknięcie zadania „złożyć / wysłać / zamówić…”: pytamy od razu, a gdy się to pominie, zadanie czeka na liście „Do rozstrzygnięcia”.
-    if (next === 'done' && Cases.looksLikeFiling(task.name) && !caseList().some(function (c) { return c.sourceTaskId === taskId; })) {
+    // Pytanie o sprawę tylko w etapach „Decyzje” (postępowania); w pozostałych sprawę dodaje się ręcznie.
+    var asked = (function () { var pr = store.getState().workspace.projects.filter(function (x) { return x.id === projectId; })[0]; var st = pr && pr.stages.filter(function (x) { return x.id === stageId; })[0]; return !!st && Model.describeStage(st).decision; })();
+    if (next === 'done' && asked && Cases.looksLikeFiling(task.name) && !caseList().some(function (c) { return c.sourceTaskId === taskId; })) {
       Toast.show({
         message: 'Zamknięto „' + task.name + '”. Czekasz na odpowiedź?', actionLabel: 'Śledź jako sprawę', timeout: 15000,
         onAction: function () { openCaseFromTask(projectId, stageId, taskId); }

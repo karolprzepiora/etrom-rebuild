@@ -955,10 +955,12 @@ async function main() {
     await sleep(300);
     check('Moja praca: wiersze „Wymaga reakcji” nie mają kolorowej szyny z lewej',
       await evaluate('const r = document.querySelector(".ibx__row"); return !r || !/inset 4px 0px 0px|inset 4px 0 0/.test(getComputedStyle(r).boxShadow);'));
-    await evaluate('ETROM.app.store.update(function (st) { var t = ETROM.Tasks.createTask({ name: "Złożyć wniosek testowy", deadline: "2026-10-20", assignees: ["' + caseInfo.owner + '"] }, [], ["' + caseInfo.owner + '"]); t.id = "t-smoke-filing"; t.status = "done"; t.history = [{ from: "review", to: "done", at: new Date().toISOString(), reason: "", by: "" }]; var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects[0].stages[0].tasks.push(t); return Object.assign({}, st, { workspace: ws }); }); return true;');
+    await evaluate('ETROM.app.store.update(function (st) { var t = ETROM.Tasks.createTask({ name: "Złożyć wniosek testowy", deadline: "2026-10-20", assignees: ["' + caseInfo.owner + '"] }, [], ["' + caseInfo.owner + '"]); t.id = "t-smoke-filing"; t.status = "done"; t.history = [{ from: "review", to: "done", at: new Date().toISOString(), reason: "", by: "" }]; var ws = JSON.parse(JSON.stringify(st.workspace)); var t2 = JSON.parse(JSON.stringify(t)); t2.id = "t-smoke-docs"; var pr = ws.projects.find(p => p.stages.some(x => ETROM.Model.describeStage(x).decision)); pr.stages.find(x => ETROM.Model.describeStage(x).decision).tasks.push(t); pr.stages.find(x => !ETROM.Model.describeStage(x).decision).tasks.push(t2); return Object.assign({}, st, { workspace: ws }); }); return true;');
     await sleep(500);
     check('Sprawy w toku: zamknięte zadanie „Złożyć…” bez decyzji czeka na liście „Czy czekasz na odpowiedź?”',
       await evaluate('return !!document.querySelector("[data-fk=case-yes-t-smoke-filing]") && !!document.querySelector("[data-fk=case-no-t-smoke-filing]");'));
+    check('Pytanie o sprawę dotyczy tylko etapów „Decyzje”; to samo zadanie w etapie dokumentacji go nie wywołuje',
+      await evaluate('return !document.querySelector("[data-fk=case-yes-t-smoke-docs]");'));
     await evaluate('document.querySelector("[data-fk=case-no-t-smoke-filing]").click(); return true;');
     await sleep(500);
     check('Sprawy w toku: „Nie” zapisuje decyzję i pytanie nie wraca',

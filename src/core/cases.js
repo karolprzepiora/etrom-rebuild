@@ -127,14 +127,15 @@
     return '';
   }
 
-  /** Zamknięte zadania wyglądające na złożenie/zamówienie, o których nie zdecydowano, czy śledzić je jako sprawę. */
-  function pendingDecisions(projects, list, today, windowDays) {
+  /** Zamknięte zadania (w etapach wskazanych przez stageFilter, u nas: etapy „Decyzje”) wyglądające na złożenie/zamówienie, o których nie zdecydowano, czy śledzić je jako sprawę. */
+  function pendingDecisions(projects, list, today, windowDays, stageFilter) {
     var decided = {};
     (list || []).forEach(function (c) { if (c.sourceTaskId) decided[c.sourceTaskId] = true; });
     var from = addDays(today, -(windowDays || 30));
     var out = [];
     (projects || []).forEach(function (p) {
       (p.stages || []).forEach(function (st) {
+        if (stageFilter && !stageFilter(st)) return;
         (st.tasks || []).forEach(function (t) {
           if (t.status !== 'done' || decided[t.id] || !looksLikeFiling(t.name)) return;
           var at = doneDay(t);

@@ -155,7 +155,7 @@
     var c2 = Object.assign({}, ctx, { projects: projects });
     var allMine = Cases.visible(cases, projects).filter(function (c) { return c.ownerId === me; });
     var mine = allMine.slice().sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
-    var pend = Cases.pendingDecisions(projects, cases, day, 30).filter(function (p) {
+    var pend = Cases.pendingDecisions(projects, cases, day, 30, function (st) { return E.Model.describeStage(st).decision; }).filter(function (p) {
       if (p.assignees.indexOf(me) < 0) return false;
       if (scope === 'today') return p.at >= Cases.addDays(day, -1);
       if (scope === 'week') return p.at >= Cases.addDays(day, -7);
