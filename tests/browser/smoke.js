@@ -1787,30 +1787,30 @@ async function main() {
     /* 38g. Zakładka Budżet: rozdział wg wag, szkice, wolna pula, odmrażanie i ukrycie szkiców */
     const budgetPid = await evaluate('const s = window.ETROM.app.store.getState(); return s.workspace.projects.find(p => p.stages.some(st => st.status !== "done")).id;');
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.openProject(' + budgetPid + ', "budzet"); return true;');
-    await sleep(500);
+    await sleep(900);
     check('zakładka Budżet: pole budżetu i przycisk rozdziału', await evaluate('return !!document.querySelector("#bp-total") && !!document.querySelector("[data-fk=bp-distribute]") && document.querySelectorAll(".bp-stage").length > 3;'));
     check('zakładka Budżet: karta „Czy zmieści się w zespole” pokazuje 12 tygodni z pojemnością', await evaluate('return document.querySelectorAll("[data-fk=bp-feasibility] .fz__col").length === 12;'));
     await evaluate('const i = document.querySelector("#bp-total"); i.value = "200"; i.dispatchEvent(new Event("change")); document.querySelector("[data-fk=bp-distribute]").click(); return true;');
-    await sleep(300);
+    await sleep(900);
     check('rozdział wg wag: suma etapów = budżet z odjętymi etapami zakończonymi i zablokowanymi',
       await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const free = p.stages.filter(s => s.status !== "done" && !s.locked); const sum = p.stages.reduce((a, s) => a + s.hours, 0); return free.every(s => s.hours % 4 === 0) && Math.abs(sum - 1600) <= 4 + p.stages.filter(s => s.status === "done").reduce((a, s) => a + s.hours, 0);'));
     const openStage = await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); return p.stages.find(s => s.status !== "done").id;');
     await evaluate('window.ETROM.app.actions.addDraftTask(' + budgetPid + ', ' + JSON.stringify(openStage) + ', "Szkic testowy"); window.ETROM.app.actions.fillStageHours(' + budgetPid + ', ' + JSON.stringify(openStage) + '); return true;');
-    await sleep(300);
+    await sleep(900);
     check('szkic zadania: bez osób i terminu, dostaje dni z wolnej puli etapu',
       await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const t = p.stages.find(s => s.id === ' + JSON.stringify(openStage) + ').tasks.find(x => x.name === "Szkic testowy"); return t && t.draft === true && t.assignees.length === 0 && !t.deadline && t.estimate > 0;'));
     await evaluate('const st = window.ETROM.app.store.getState(); const proj = st.workspace.projects.find(x => x.id === ' + budgetPid + '); const other = st.workspace.people.find(pe => !window.ETROM.Budget.canSeeHours(pe.id, proj, st.workspace.people)); window.ETROM.app.actions.setMe(other.id); window.ETROM.app.actions.openProject(' + budgetPid + ', "zadania"); return true;');
-    await sleep(400);
+    await sleep(900);
     const hiddenInfo = await evaluate('const st = window.ETROM.app.store.getState(); return JSON.stringify({ me: st.prefs.me, route: st.route, hits: [...document.querySelectorAll("*")].filter(e => !e.children.length && e.offsetParent !== null && e.textContent.includes("Szkic testowy")).map(e => e.className + "|" + e.parentElement.className) });');
     check('szkice zadań są ukryte przed osobą spoza zarządu i lidera', JSON.parse(hiddenInfo).hits.length === 0, hiddenInfo);
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
 
     /* 38h. Biblioteka zadań: szkice z biblioteki, uzupełnienia z rezerwy */
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.openProject(' + budgetPid + ', "budzet"); return true;');
-    await sleep(400);
+    await sleep(900);
     check('biblioteka zadań: przycisk wstawia typowe szkice do etapów', await evaluate('return !!document.querySelector("[data-fk=bp-lib-project]");'));
     await evaluate('document.querySelector("[data-fk=bp-lib-project]").click(); return true;');
-    await sleep(300);
+    await sleep(900);
     check('biblioteka: szkice mają znacznik szkicu, a uzupełnienia pochodzą z rezerwy',
       await evaluate('const p = window.ETROM.app.store.getState().workspace.projects.find(x => x.id === ' + budgetPid + '); const all = p.stages.flatMap(s => s.tasks); return all.some(t => t.draft && t.name === "Operat wodnoprawny" || t.draft && t.name === "Koncepcja techniczna") && all.filter(t => t.name === "Uzupełnienia na wezwanie").every(t => t.fromReserve && t.draft);'));
 

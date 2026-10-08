@@ -679,3 +679,11 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Panel „Zegar i projekty”**: u góry karta „Teraz pracujesz” (licznik, Zatrzymaj, Przełącz ▾ z listą otwartych zadań) albo „Za chwilę” (Cofnij / Przełącz teraz, pasek 5 s).
 - **Na żywo** pokazuje wyłącznie karty i oś dnia, bez powielonego wykresu planu.
 - **Nieobecności (A1)**: fioletowy pas na całej wysokości osoby (kreskowany, z krawędziami), etykieta „Urlop · 3 dn.” w nagłówku osoby; zwolnienie i szkolenie mają własne barwy (`data-kind`). Dzisiejszy dzień zostaje tylko turkusowy.
+
+## Plan: spokojniejsze znaczniki (wariant C1)
+
+- **Obciążenie tygodnia** to tekst, nie kafel: „42/8 h ▲” (czerwony i pogrubiony tylko przy przekroczeniu), pod spodem „wyk. 30 h” w widokach z realizacją. Tydzień w całości nieobecny pokazuje „urlop N dn.”. Kliknięcie nadal otwiera dni tygodnia.
+- **Bieżący tydzień**: bez tła w wierszach; tylko turkusowe podkreślenie pod etykietą tygodnia w nagłówku.
+- **Dziś**: kapsuła przy dacie w nagłówku i cienka kreskowana linia (`.pb-today`) w wierszach zadań; bez tła kolumny.
+- **Nieobecność**: neutralne szare kreskowanie z przerywanymi krawędziami, bez fioletu; rodzaj nieobecności tylko w dymku. Mały szary napis w wierszu osoby („Urlop · 5 dn.” / litera) otwiera edycję.
+- **Kolory pasków** bez zmian: barwa projektu jak na kaflach (`Identity.hueStyle`, `--pj-a/--pj-b`), połysk i poświata zależą od ustawienia HDR (`--hdr`).

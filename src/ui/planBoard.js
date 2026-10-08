@@ -91,7 +91,10 @@
   function chipState(cell) {
     return 'pb-load pb-load--' + cell.state + (cell.planned ? '' : ' is-empty');
   }
-  function chipText(cell) { return cell.planned ? Math.round(cell.planned) + '/' + Math.round(cell.capacity) : ''; }
+  function chipText(cell) {
+    if (!cell.planned && !cell.capacity) return cell.absentDays ? 'urlop ' + cell.absentDays + ' dn.' : '';
+    return Math.round(cell.planned) + '/' + Math.round(cell.capacity) + ' h' + (cell.state === 'over' ? ' ▲' : '');
+  }
   function chipTip(cell) {
     return cell.planned
       ? hh(cell.planned) + ' h planu przy pojemności ' + hh(cell.capacity) + ' h' + (cell.absentDays ? ' (nieobecność: ' + cell.absentDays + ' dni)' : '') + (cell.state === 'over' ? ' — przeciążenie (' + hh(cell.planned - cell.capacity) + ' h za dużo)' : '') + ' · kliknij, żeby zobaczyć dni'
@@ -692,13 +695,20 @@
       function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? bandEls(false) : bands); }
       var rows = [];
       if (!solo) {
+        var weekReal = row.weeks.map(function () { return 0; });
+        if (rv) recTasks.forEach(function (t) {
+          Object.keys(t.days).forEach(function (dk) {
+            var sl = slotOf(plan.first, new Date(dk + 'T00:00').getTime(), -1);
+            if (sl >= 0 && sl < N) weekReal[Math.floor(sl / 5)] += t.days[dk];
+          });
+        });
         var loads = D.el('div', { class: 'pb-loads', attrs: { role: 'row' } }, row.weeks.map(function (cell, i) {
           var isSel = selected && selected.personId === row.personId && selected.week === i;
           var chip = D.el('button', {
             class: chipState(cell) + (isSel ? ' is-selected' : ''),
             attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + row.personId + '-' + i, 'data-tooltip': chipTip(cell) },
             on: { click: function () { ctx.actions.setTime(Object.fromEntries([[K.cell, isSel ? null : { personId: row.personId, week: i }]])); } }
-          }, [chipText(cell)]);
+          }, [D.el('span', { class: 'pb-load__a', text: chipText(cell) }), weekReal[i] ? D.el('small', { class: 'pb-load__b', text: 'wyk. ' + hh(weekReal[i]) + ' h' }) : null]);
           chips[row.personId + ':' + i] = chip;
           return chip;
         }));
