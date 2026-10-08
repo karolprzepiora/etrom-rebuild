@@ -867,8 +867,9 @@ async function main() {
     check('lista Projekty: zarząd widzi „Biuro dziś”', await evaluate('return /Biuro dziś/.test(document.getElementById("view-projects").textContent);'));
     await go('#/plan');
     await sleep(300);
-    check('oś planu ma nagłówki dni z numerem tygodnia, a „Kwartał” rozciąga okno do 12 tygodni',
-      await evaluate('return document.querySelectorAll(".pb-row--head .pb-dh").length === document.querySelectorAll(".pb-row--head .pb-wk--head").length * 5 && /^Tydz\\. \\d+$/.test(document.querySelector(".pb-wk__top b").textContent) && [...document.querySelectorAll(".pb-toolbar .segmented button")].some(b => b.textContent === "Kwartał");'));
+    check('oś planu ma pas miesięcy, zakres tygodnia z numerem, nagłówki dni, a „Kwartał” rozciąga okno do 12 tygodni',
+      await evaluate('return document.querySelectorAll(".pb-row--head .pb-dh").length === document.querySelectorAll(".pb-row--head .pb-wk--head").length * 5 && /^\\d+( \\S+)? – \\d+ \\S+$/.test(document.querySelector(".pb-wk__top b").textContent) && /^T\\d+/.test(document.querySelector(".pb-wk__top small").textContent) && !!document.querySelector(".pb-months .pb-month") && [...document.querySelectorAll(".pb-toolbar .segmented button")].some(b => b.textContent === "Kwartał");'));
+    check('urlop jest tylko w wierszu osoby, nie w wierszach zadań', await evaluate('return document.querySelectorAll(".pb-row--task .pb-absent").length === 0;'));
     check('ekran „Plan” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
       await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-person[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
     await evaluate('const b = document.querySelector(".pb-load:not(.is-empty)"); if (b) b.click(); return !!b;');

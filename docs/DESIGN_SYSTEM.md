@@ -735,3 +735,9 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Motywy kolorystyczne**: dziesięć, w tym ciemny „Etrom” (magenta i błękitna szarość z logo); kolor pracy jest niezależny od motywu.
 - **Nie tylko kolor**: etap w toku zawsze ma też pasek godzin, podpis „W toku” i ikonę ◐, więc wariant grafitowy jest czytelny obok zakończonych.
 - **Automat statusów** (`core/stageauto.js`): `todo` → `working` samo, gdy ruszy któreś zadanie; `working` → `done` tylko po potwierdzeniu lidera lub zarządu („Zakończyć etap?”, „Jeszcze nie” wycisza pytanie do zmiany zadań); zamknięcie potwierdzone wraca do „W toku”, gdy dojdzie otwarte zadanie. Ręczna zmiana statusu (`statusManual`) wygrywa z automatem. Etapy „Postępowanie” liczą się ze spraw „Czekam na odpowiedź” przypisanych do etapu: otwarta sprawa ustawia „W toku”, a po zamknięciu wszystkich pojawia się pytanie „Zakończyć etap?” (zadania takiego etapu nie wpływają na status).
+
+## Oś planu: daty, urlop, „teraz” (Plan i Moja praca → Tygodnie)
+
+- **Nagłówek (PD1)**: pas miesięcy (`.pb-months`), pod nim zakres tygodnia z numerem („28 wrz – 2 paź · T40”), niżej litera dnia i duży numer; dziś jako pełne koło w kolorze pracy. Od 8 tygodni tylko numer tygodnia („T41”) i numery dni.
+- **Urlop**: zawsze jeden pasek w wierszu osoby (`.pb-absent.is-head`, kreskowany, podpis „Urlop 11–12 paź” obok); wiersze zadań nie mają kolumny urlopu. W „Mojej pracy” (widok własny) pasek stoi w wierszu „Nieobecność” nad zadaniami.
+- **Jedno „teraz”**: szczegóły (TERAZ, od której godziny, ile minut) tylko w wierszu zadania; przy osobie mała zielona kropka „pracuje teraz”. Gdy zadanie z licznikiem nie jest na liście (np. filtr projektu), przy osobie zostaje pełny chip.

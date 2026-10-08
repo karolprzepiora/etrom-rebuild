@@ -18,6 +18,7 @@
   var Cal = E.Calendar;
 
   var DAY = 86400000;
+  var MONTH_NAMES = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
   var MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
   var RANGES = [2, 4, 6, 8, 12];
   var DOWS = ['pn', 'wt', 'śr', 'cz', 'pt'];
@@ -31,7 +32,7 @@
   function weekLabel(start) {
     var s = new Date(start);
     var e = new Date(start + 4 * DAY);
-    return s.getDate() + (s.getMonth() === e.getMonth() ? '' : ' ' + MONTHS[s.getMonth()]) + '–' + e.getDate() + ' ' + MONTHS[e.getMonth()];
+    return s.getDate() + (s.getMonth() === e.getMonth() ? '' : ' ' + MONTHS[s.getMonth()]) + ' – ' + e.getDate() + ' ' + MONTHS[e.getMonth()];
   }
 
   /** Numer kolumny osi (dni robocze liczone od pierwszego poniedziałku okna); weekend przesuwa się na sąsiedni dzień roboczy. */
@@ -776,6 +777,12 @@
       else items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
       var weekEndSlot = Math.floor(Math.max(todaySlot, 0) / 5) * 5 + 4;
       var lastGroup = '';
+      function absLabel(a, slots) {
+        var kind = E.Absences.KINDS[a.kind] || 'Nieobecność';
+        var f = Number(a.from.slice(8)); var t = Number(a.to.slice(8));
+        var range = a.from === a.to ? f + ' ' + MONTHS[Number(a.from.slice(5, 7)) - 1] : (a.from.slice(5, 7) === a.to.slice(5, 7) ? f + '–' + t : f + ' ' + MONTHS[Number(a.from.slice(5, 7)) - 1] + ' – ' + t) + ' ' + MONTHS[Number(a.to.slice(5, 7)) - 1];
+        return slots >= 4 ? kind + ' ' + range : kind + ' ' + range;
+      }
       function bandEls(interactive) {
         return (row.absences || []).map(function (a) {
           var bs = slotOf(plan.first, new Date(a.from + 'T00:00').getTime(), 1);
@@ -786,14 +793,14 @@
           var el = D.el(interactive && management ? 'button' : 'span', {
             class: 'pb-absent' + (interactive ? ' is-head' : ''), dataset: { kind: a.kind },
             style: { left: (s0 / N * 100) + '%', width: ((e0 - s0 + 1) / N * 100) + '%' },
-            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip } : { 'aria-hidden': 'true' },
-            text: interactive ? ((e0 - s0 + 1) >= 2 ? (E.Absences.KINDS[a.kind] || '') + ' · ' + (e0 - s0 + 1) + ' dn.' : (E.Absences.KINDS[a.kind] || 'N').charAt(0)) : ''
+            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip, 'data-label': absLabel(a, e0 - s0 + 1) } : { 'aria-hidden': 'true' },
+            text: ''
           });
           if (interactive && management) el.addEventListener('click', function () { ctx.actions.openAbsence(row.personId, a.id); });
           return el;
         }).filter(Boolean);
       }
-      function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? bandEls(false) : bands); }
+      function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? [] : bands); }
       var rows = [];
       if (!solo) {
         var weekReal = row.weeks.map(function () { return 0; });
@@ -816,7 +823,7 @@
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
         var label = D.el('div', { class: 'pb-label', attrs: { 'data-tooltip': hh(total) + ' h planu w oknie' } }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), (rv && rec ? D.el('small', { class: 't-muted t-num', text: 'zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' }) : null), curRun ? liveLine(rec) : (viewSel === 'plan' ? null : liveLine(rec))])
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), (rv && rec ? D.el('small', { class: 't-muted t-num', text: 'zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' }) : null), curRun ? (nowVisible ? D.el('span', { class: 'pb-live-line pb-live-line--short is-on', attrs: { 'data-tooltip': 'Uruchomiony licznik: szczegóły przy zaznaczonym zadaniu' } }, [D.el('i', { class: 'pb-dot', attrs: { 'aria-hidden': 'true' } }), D.el('span', { text: 'pracuje teraz' })]) : liveLine(rec)) : (viewSel === 'plan' ? null : liveLine(rec))])
         ]);
         var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
         var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
@@ -830,6 +837,10 @@
           return out;
         })());
         rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf(dayBars ? [loads, dayBars] : [loads], bandEls(true))])]));
+      }
+      if (solo && (row.absences || []).length) {
+        var leaveBands = bandEls(true);
+        if (leaveBands.length) rows.push(D.el('div', { class: 'pb-row pb-row--leave' }, [D.el('div', { class: 'pb-label pb-label--task' }, [D.el('span', { class: 't-muted', text: 'Nieobecność' })]), D.el('div', { class: 'pb-cell' }, [trackOf([], leaveBands)])]));
       }
       items.forEach(function (it) {
         if (solo) {
@@ -924,12 +935,26 @@
       }
       return D.el('span', { class: 'pb-days' }, out);
     }
+    /** Pas miesięcy nad tygodniami: miesiąc, do którego należy czwartek tygodnia. */
+    function monthBand() {
+      var groups = [];
+      plan.weeks.forEach(function (w) {
+        var thu = new Date(w.start + 3 * DAY);
+        var key = thu.getFullYear() * 12 + thu.getMonth();
+        var last = groups[groups.length - 1];
+        if (last && last.key === key) last.n += 1;
+        else groups.push({ key: key, n: 1, label: MONTH_NAMES[thu.getMonth()] + (thu.getMonth() === 0 || !groups.length ? ' ' + thu.getFullYear() : '') });
+      });
+      return D.el('div', { class: 'pb-months', attrs: { 'aria-hidden': 'true' } }, groups.map(function (g) { return D.el('span', { class: 'pb-month', style: { flex: String(g.n) }, text: g.label }); }));
+    }
     var head = D.el('div', { class: 'pb-row pb-row--head' }, [
       D.el('div', { class: 'pb-label' }, [resizer()]),
-      D.el('div', { class: 'pb-cell' }, [D.el('div', { class: 'pb-track pb-track--head' }, [D.el('div', { class: 'pb-wks pb-wks--head' }, plan.weeks.map(function (w, wi) {
+      D.el('div', { class: 'pb-cell' }, [D.el('div', { class: 'pb-track pb-track--head' }, [monthBand(), D.el('div', { class: 'pb-wks pb-wks--head' }, plan.weeks.map(function (w, wi) {
         var wkKey = Plan.isoDay(new Date(w.start));
         return D.el('span', { class: 'pb-wk pb-wk--head' + (w.current ? ' is-current' : '') }, [
-          D.el('span', { class: 'pb-wk__top', attrs: { 'data-tooltip': 'Tydzień ' + Cal.weekNumber(wkKey) + ': ' + weekLabel(w.start) } }, [D.el('b', { text: 'Tydz. ' + Cal.weekNumber(wkKey) }), weeksN >= 6 ? null : D.el('small', { text: weekLabel(w.start) + (w.current ? ' · bieżący' : '') })]),
+          D.el('span', { class: 'pb-wk__top', attrs: { 'data-tooltip': 'Tydzień ' + Cal.weekNumber(wkKey) + ': ' + weekLabel(w.start) } }, compact
+            ? [D.el('b', { text: 'T' + Cal.weekNumber(wkKey) })]
+            : [D.el('b', { text: weekLabel(w.start) }), D.el('small', { text: 'T' + Cal.weekNumber(wkKey) + (w.current && weeksN <= 4 ? ' · bieżący' : '') })]),
           dayCells(wi)
         ]);
       }))])])
