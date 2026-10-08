@@ -687,3 +687,9 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Dziś**: kapsuła przy dacie w nagłówku i cienka kreskowana linia (`.pb-today`) w wierszach zadań; bez tła kolumny.
 - **Nieobecność**: neutralne szare kreskowanie z przerywanymi krawędziami, bez fioletu; rodzaj nieobecności tylko w dymku. Mały szary napis w wierszu osoby („Urlop · 5 dn.” / litera) otwiera edycję.
 - **Kolory pasków** bez zmian: barwa projektu jak na kaflach (`Identity.hueStyle`, `--pj-a/--pj-b`), połysk i poświata zależą od ustawienia HDR (`--hdr`).
+
+## Prawa strona zadania w Planie i Mojej pracy (Q/R)
+
+- **Plan, zarządca (Wg osób i Wg projektów):** „wykonane / plan h · %” (np. „35,8 / 64 h · 56%”) i cienka, neutralna belka 3 px. Czerwień dopiero po przekroczeniu planu zadania. Budżet etapu jest w dymku po najechaniu na godziny („Budżet etapu „X”: 212 / 280 h · 76%”) oraz w nagłówku etapu w widoku Wg projektów (`.pb-row--stage`, czerwony po przekroczeniu). Godziny budżetu widzą tylko zarząd i lider projektu; pozostali widzą sam procent.
+- **Moja praca, pracownik:** termin tekstem („dziś”, „jutro”, „pn 12”, „po terminie 2 dni”), cienka neutralna oś upływu czasu do terminu (czerwona po terminie), pod spodem własna rejestracja („zarejestrowano 12,5 h”). Bez godzin planu, procentu wykonania i budżetu.
+- **Pasek zegara (górny):** znacznik budżetu etapu i ostrzeżenie o 80% / 100% tylko dla zarządu i lidera projektu (`E.Budget.canSeeHours`); pracownik nie dostaje ani jednego, ani drugiego.

@@ -1330,3 +1330,24 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .pb-track--head .pb-today { display: none; }
 .pb-absent, .pb-absent[data-kind] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 15%, transparent) 0 3px, transparent 3px 9px); box-shadow: none; border-left: 1px dashed color-mix(in srgb, var(--ink) 38%, transparent); border-right: 1px dashed color-mix(in srgb, var(--ink) 38%, transparent); }
 .pb-absent.is-head, .pb-absent[data-kind].is-head { top: auto; bottom: 2px; height: 1.1rem; border-radius: 0; background: none; color: var(--ink-3); font-size: 10.5px; font-weight: 600; letter-spacing: 0; box-shadow: none; }
+
+/* Kolumna zadania (Q/R): godziny i % wykonania + cienka neutralna belka; czerwień dopiero po przekroczeniu / po terminie. */
+.pb-tn__side { text-align: right; }
+.pb-tn__meter::after { background: color-mix(in srgb, var(--ink) 35%, var(--sheet)); opacity: .8; }
+.pb-tn__meter { height: 3px; }
+.pb-tn__time b { font-size: var(--fs-xs); font-weight: 700; color: var(--ink); }
+.pb-tn__time small { color: var(--ink-3); font-size: 10.5px; min-height: 1em; }
+.pb-tn__time.is-hot b { color: var(--ink); }
+.pb-tn__time.is-hot .pb-tn__meter::after { background: color-mix(in srgb, var(--ink) 35%, var(--sheet)); }
+.pb-tn__time.is-late b { color: var(--alarm-ink); font-weight: 800; }
+.pb-tn__time.is-late .pb-tn__meter::after { background: var(--alarm); }
+.pb-bar__hours.is-over { color: var(--alarm-ink); font-weight: 800; }
+.pb-tn__side.is-over .pb-tn__meter::after { background: var(--alarm); }
+/* Nagłówek etapu z budżetem (Plan → Wg projektów). */
+.pb-row--stage { background: color-mix(in srgb, var(--ink) 2%, var(--sheet)); }
+.pb-label--stage { align-items: center; gap: var(--space-2); justify-content: space-between; padding-left: var(--space-5, 1.25rem); }
+.pb-stage__name { font-size: var(--fs-sm); font-weight: 700; min-width: 0; }
+.pb-stage__bud { display: grid; justify-items: end; gap: 2px; font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); min-width: 7rem; }
+.pb-stage__bud small { color: var(--ink-3); font-weight: 500; font-size: 10.5px; }
+.pb-stage__bud.is-over { color: var(--alarm-ink); font-weight: 800; }
+.pb-stage__bud.is-over .pb-tn__meter::after { background: var(--alarm); }

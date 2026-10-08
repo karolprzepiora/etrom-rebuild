@@ -1120,6 +1120,8 @@
   function timerBudget(entry) {
     var found = entry && locateEntry(entry);
     if (!found || !found.project || !found.stage || !(Number(found.stage.hours) > 0)) return null;
+    /* Budżet etapu widzi tylko zarząd i lider projektu; pracownik nie dostaje ani znacznika, ani ostrzeżenia. */
+    if (!E.Budget.canSeeHours(currentMe(), found.project, people())) return null;
     var v = E.Budget.view(found.project, found.stage, entries(), currentMe(), people(), new Date());
     var stageName = Model.describeStage(found.stage).name;
     var tip = 'Etap „' + stageName + '”: ' + v.percent + '% budżetu godzin' + (v.exact ? ' (' + String(Math.round(v.used * 10) / 10).replace('.', ',') + ' z ' + String(v.planned).replace('.', ',') + ' h)' : '');

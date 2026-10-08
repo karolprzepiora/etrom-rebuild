@@ -184,7 +184,18 @@
     var drag = null;
 
     /* ---------- pasek ---------- */
-    function workedText(b) { return b.planned > 0 ? (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h' : (b.logged > 0.05 ? hh(b.logged) + ' h' : '—'); }
+    function workedText(b) {
+      if (b.planned > 0) return (b.logged > 0.05 ? hh(b.logged) + ' / ' : '') + hh(b.planned) + ' h' + (b.logged > 0.05 ? ' · ' + Math.round(b.logged / b.planned * 100) + '%' : '');
+      return b.logged > 0.05 ? hh(b.logged) + ' h' : '—';
+    }
+    /** Budżet etapu zadania: „Budżet etapu „X”: 212 / 280 h · 76%” (godziny tylko dla zarządu i lidera). */
+    function stageBudgetText(b) {
+      var pr = projects.filter(function (x) { return x.id === b.projectId; })[0];
+      var st = pr && (pr.stages || []).filter(function (x) { return x.id === b.stageId; })[0];
+      if (!st || !(Number(st.hours) > 0)) return '';
+      var v = Budget.view(pr, st, state.workspace.entries || [], me.id, people, new Date(plan.today));
+      return 'Budżet etapu „' + E.Model.describeStage(st).name + '”: ' + (v.exact ? hh(v.used) + ' / ' + hh(v.planned) + ' h · ' : '') + v.percent + '%';
+    }
     function barTip(b, span) {
       var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
       var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
@@ -221,6 +232,23 @@
       if (left <= 0) return 'dziś';
       if (left === 1) return 'jutro';
       return DOWS_SHORT[d.getDay()] + ' ' + d.getDate();
+    }
+
+    /** Termin w kolumnie zadania pracownika: „dziś”, „jutro”, „pn 12”, „po terminie 2 dni”. */
+    function termText(b) {
+      if (b.overdue) {
+        var late = Math.max(1, Plan.workdayDiff(new Date(b.end), new Date(plan.today)));
+        return 'po terminie ' + late + ' ' + (late === 1 ? 'dzień' : 'dni');
+      }
+      return dueShort(b);
+    }
+    /** Godziny, które zalogowała na zadaniu sama osoba (tylko jej wpisy). */
+    function soloLogged(b) {
+      var sum = 0;
+      (state.workspace.entries || []).forEach(function (e) {
+        if (String(e.personId) === String(me.id) && e.projectId === b.projectId && e.stageId === b.stageId && e.taskId === b.taskId && e.end) sum += (Date.parse(e.end) - Date.parse(e.start)) / 3600000;
+      });
+      return sum;
     }
 
     function paintBar(el, ns, ne) {
@@ -306,14 +334,18 @@
       var side;
       if (solo) {
         var pct = elapsedOf(b);
-        side = D.el('span', { class: 'pb-tn__side pb-tn__time' + (pct >= 100 ? ' is-late' : (pct >= 75 ? ' is-hot' : '')), attrs: { 'data-tooltip': 'Ile czasu do terminu już minęło (od startu zadania)' } }, [
-          D.el('b', { class: 't-num', text: pct + '% czasu' }), D.el('small', { text: dueText(b) }),
-          D.el('i', { class: 'pb-tn__meter', style: { '--p': pct + '%' }, attrs: { 'aria-hidden': 'true' } })
+        var mine = soloLogged(b);
+        side = D.el('span', { class: 'pb-tn__side pb-tn__time' + (b.overdue ? ' is-late' : ''), attrs: { 'data-tooltip': 'Upłynęło ' + pct + '% czasu do terminu' + (mine > 0.05 ? ' · zarejestrowano ' + hh(mine) + ' h' : '') } }, [
+          D.el('b', { class: 't-num', text: termText(b) }),
+          D.el('i', { class: 'pb-tn__meter', style: { '--p': pct + '%' }, attrs: { 'aria-hidden': 'true' } }),
+          D.el('small', { class: 't-num', text: mine > 0.05 ? 'zarejestrowano ' + hh(mine) + ' h' : '' })
         ]);
       } else {
-        var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num', text: workedText(b), attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Przepracowano / zaplanowano — kliknij, żeby zmienić zaplanowane godziny' } : {} });
+        var bud = stageBudgetText(b);
+        var overPlan = b.planned > 0 && b.logged > b.planned + 0.05;
+        var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num' + (overPlan ? ' is-over' : ''), text: workedText(b), attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Przepracowano / zaplanowano — kliknij, żeby zmienić zaplanowane godziny' + (bud ? ' · ' + bud : '') } : {} });
         if (editable) editHours(hoursBtn, b);
-        side = D.el('span', { class: 'pb-tn__side' }, [
+        side = D.el('span', { class: 'pb-tn__side' + (overPlan ? ' is-over' : ''), attrs: bud && !editable ? { 'data-tooltip': bud } : {} }, [
           hoursBtn,
           D.el('i', { class: 'pb-tn__meter', style: { '--p': (b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0) + '%' }, attrs: { 'aria-hidden': 'true' } })
         ]);
@@ -919,11 +951,41 @@
       ]);
     }
 
+    function stageIndex(project, stageId) {
+      for (var i = 0; i < (project.stages || []).length; i += 1) if (project.stages[i].id === stageId) return i;
+      return 1e6;
+    }
+    /** Nagłówek etapu z budżetem: wykonane godziny / budżet · % (godziny tylko dla zarządu i lidera). */
+    function stageHeader(project, stageId) {
+      var st = (project.stages || []).filter(function (x) { return x.id === stageId; })[0];
+      if (!st || !(Number(st.hours) > 0)) return null;
+      var v = Budget.view(project, st, state.workspace.entries || [], me.id, people, new Date(plan.today));
+      var over = v.state === 'over';
+      var txt = (v.exact ? hh(v.used) + ' / ' + hh(v.planned) + ' h · ' : '') + v.percent + '%';
+      return D.el('div', { class: 'pb-row pb-row--stage' }, [
+        D.el('div', { class: 'pb-label pb-label--stage' }, [
+          D.el('span', { class: 'pb-stage__name truncate', text: E.Model.describeStage(st).name, attrs: { title: E.Model.describeStage(st).name } }),
+          D.el('span', { class: 'pb-stage__bud t-num' + (over ? ' is-over' : ''), attrs: { 'data-tooltip': 'Budżet godzin etapu' } }, [
+            D.el('span', { text: txt }),
+            D.el('i', { class: 'pb-tn__meter', style: { '--p': Math.min(100, v.percent) + '%' }, attrs: { 'aria-hidden': 'true' } }),
+            D.el('small', { text: 'budżet etapu' })
+          ])
+        ]),
+        D.el('div', { class: 'pb-cell' }, [trackBase([], [])])
+      ]);
+    }
+
     function projectBoardRows() {
       var out = [];
       projectGroups().forEach(function (g) {
         var rows = [projectHeader(g)];
-        g.items.forEach(function (it) {
+        var lastStage = null;
+        g.items.slice().sort(function (a, c) { return stageIndex(g.project, a.b.stageId) - stageIndex(g.project, c.b.stageId) || a.s - c.s || a.e - c.e; }).forEach(function (it) {
+          if (it.b.stageId !== lastStage) {
+            lastStage = it.b.stageId;
+            var sh = stageHeader(g.project, it.b.stageId);
+            if (sh) rows.push(sh);
+          }
           var nameNode = nameCell(it.b, it.who.length ? it.who : []);
           var bars = D.el('div', { class: 'pb-bars' }, [barEl(it.b, it.person, it)]);
           var rowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackBase([bars], [])])]);

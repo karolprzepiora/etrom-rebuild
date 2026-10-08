@@ -900,8 +900,12 @@ async function main() {
     await sleep(400);
     check('Plan „Wg projektów”: grupy projektów w kolejności z listy Projekty, z paskami zadań i awatarami osób',
       await evaluate('const codes = [...document.querySelectorAll(".pb-row--proj .mrow__project")].map(x => x.textContent.trim()); return codes.length >= 2 && codes[0] === "2602" && document.querySelectorAll(".pb-person--proj .pb-bar").length >= 3 && !!document.querySelector(".pb-person--proj .pb-tn__who .avatar");'));
+    check('Plan „Wg projektów”: nagłówek etapu pokazuje budżet etapu z procentem i cienką belką',
+      await evaluate('const h = document.querySelector(".pb-row--stage .pb-stage__bud"); return !!h && /%/.test(h.textContent) && !!h.querySelector(".pb-tn__meter");'));
     await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
     await sleep(300);
+    check('Plan: przy zadaniu godziny wykonane / plan z procentem, a budżet etapu w dymku',
+      await evaluate('const h = [...document.querySelectorAll(".pb-row--task .pb-bar__hours")].find(x => /%/.test(x.textContent)); return !!h && /\\d+%$/.test(h.textContent.trim()) && /Budżet etapu/.test(h.getAttribute("data-tooltip") || "");'));
     const absBefore = await state('(s.workspace.absences || []).length');
     const capBefore = await evaluate('return document.querySelector(".pb-load[data-fk^=pl-cell-]") ? document.querySelector(".pb-load[data-fk^=pl-cell-]").getAttribute("data-fk") : "";');
     check('Plan nie ma już przycisku „Dodaj nieobecność” w wierszach osób', await evaluate('return !document.querySelector("[data-fk^=pb-absence-add-]");'));
@@ -1688,8 +1692,19 @@ async function main() {
     }
     check('Moja praca ma kartę „Podsumowanie dnia”: godziny względem celu, zadania z dziś i terminy z upływem czasu',
       await evaluate('const c = document.querySelector("[data-fk=day-summary]"); return !!c && !!c.querySelector(".dsum__pill") && /\\d/.test(c.querySelector(".dsum__big").textContent);'));
-    check('pracownik w Tygodniach nie widzi obciążenia ani godzin, tylko upływ czasu w procentach',
-      await evaluate('const b = document.querySelector(".pb--solo"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s?h\\b/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!b.querySelector(".pb-tn__time b") && /%/.test(b.querySelector(".pb-tn__time b").textContent)));'));
+    check('pracownik w Tygodniach nie widzi obciążenia ani godzin planu, tylko termin, upływ czasu i własną rejestrację',
+      await evaluate('const b = document.querySelector(".pb--solo"); const t = b.querySelector(".pb-tn__time b"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s*\\/\\s*\\d+[,.]?\\d*\\s?h/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!t && !/%/.test(t.textContent) && /dziś|jutro|po terminie|^(pn|wt|śr|cz|pt|sb|nd) \\d/.test(t.textContent)));'));
+    /* Zegar w górnym pasku: budżet etapu tylko dla zarządu i lidera projektu */
+    await evaluate('ETROM.app.actions.setMe("p-3"); ETROM.app.actions.toggleTimer(1, "water-docs", "t-2"); return true;');
+    await sleep(500);
+    check('pasek zegara: pracownik nie widzi znacznika budżetu etapu',
+      await evaluate('return !!document.querySelector(".timer-pill") && !document.querySelector(".timer-pill__budget");'));
+    await evaluate('ETROM.app.actions.stopTimer(); ETROM.app.actions.setMe("p-1"); ETROM.app.actions.toggleTimer(1, "water-docs", "t-2"); return true;');
+    await sleep(500);
+    check('pasek zegara: zarząd widzi znacznik budżetu etapu',
+      await evaluate('return !!document.querySelector(".timer-pill__budget");'));
+    await evaluate('ETROM.app.actions.stopTimer(); return true;');
+    await sleep(200);
     await click('[data-fk="mywork-view-all"]');
     await sleep(250);
 
