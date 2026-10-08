@@ -464,6 +464,10 @@
           adjustments: Budget.normalizeAdjustments(stage.adjustments),
           weight: Number(stage.weight) > 0 && Number(stage.weight) <= 1000 ? Number(stage.weight) : null,
           locked: stage.locked === true,
+          // Automat statusów: ręczny wybór wygrywa, zamknięcie potwierdzone wraca przy nowym zadaniu, „jeszcze nie” wycisza pytanie.
+          statusManual: Object.prototype.hasOwnProperty.call(STAGE_STATUS, stage.statusManual) ? stage.statusManual : '',
+          autoClosed: stage.autoClosed === true,
+          askDismissed: typeof stage.askDismissed === 'string' ? stage.askDismissed.slice(0, 400) : '',
           // Oznaczenie dla zespołu ustawia lider albo zarząd: „na wyczerpaniu” (warn) lub „przekroczony” (over).
           budgetFlag: normalizeBudgetFlag(stage.budgetFlag),
           reserve: stage.reserve !== null && stage.reserve !== undefined && Number(stage.reserve) >= 0 && Number(stage.reserve) <= 5000 ? Number(stage.reserve) : null,

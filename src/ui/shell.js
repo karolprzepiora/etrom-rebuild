@@ -17,8 +17,12 @@
   var getState = null;
 
   var ACCENTS = [
-    { value: 'standard', label: 'Stal', color: '#2C7CA0' },
-    { value: 'graphite', label: 'Grafit', color: '#3E4B49' }
+    { value: 'standard', label: 'Nurt', color: '#2C7CA0' },
+    { value: 'etrom', label: 'Etrom', color: '#C23F86' },
+    { value: 'graphite', label: 'Grafit', color: '#3E4B49' },
+    { value: 'morski', label: 'Morski', color: '#0B7285' },
+    { value: 'lesny', label: 'Leśny', color: '#2F7D5B' },
+    { value: 'granat', label: 'Granat', color: '#3B4CAE' }
   ];
 
   // Motywy kolorystyczne (podgląd w pigułce: dwa kolory aurory).
@@ -28,6 +32,7 @@
     { value: 'forest', label: 'Leśny', a: 'oklch(.6 .14 160)', b: 'oklch(.4 .12 195)' },
     { value: 'sunset', label: 'Zachód', a: 'oklch(.66 .16 38)', b: 'oklch(.42 .15 12)' },
     { value: 'violet', label: 'Fiolet', a: 'oklch(.6 .15 335)', b: 'oklch(.4 .14 288)' },
+    { value: 'etrom', label: 'Etrom', a: 'oklch(.62 .19 352)', b: 'oklch(.5 .04 235)' },
     { value: 'sky', label: 'Niebo (jasny)', a: 'oklch(.9 .07 225)', b: 'oklch(.62 .13 262)' },
     { value: 'mint', label: 'Mięta (jasny)', a: 'oklch(.92 .07 170)', b: 'oklch(.64 .12 205)' },
     { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },

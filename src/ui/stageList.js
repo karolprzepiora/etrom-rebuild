@@ -142,6 +142,16 @@
     row.querySelector('.plan-row__main').addEventListener('click', function () { actions.toggleStage(project.id, stage.id); });
 
     var children = [row];
+    var ask = E.StageAuto ? E.StageAuto.suggest(stage, { decision: info.decision }) : null;
+    if (ask && ask.mode === 'ask') {
+      var canClose = !!(actions.canManageList && actions.canManageList(project.id));
+      children.push(D.el('div', { class: 'plan-ask', attrs: { 'data-fk': 'stage-ask-' + stage.id, role: 'status' } }, [
+        D.el('span', { class: 'plan-ask__dot', text: '?', attrs: { 'aria-hidden': 'true' } }),
+        D.el('span', { class: 'plan-ask__text', text: 'Wszystkie zadania tego etapu są zakończone. Zakończyć etap?' }),
+        canClose ? UI.button({ label: 'Tak, zakończ', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'stage-ask-yes-' + stage.id }, onClick: function () { actions.confirmStageDone(project.id, stage.id); } }) : D.el('span', { class: 'plan-ask__hint', text: 'Potwierdza lider lub zarząd.' }),
+        canClose ? UI.button({ label: 'Jeszcze nie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'stage-ask-no-' + stage.id }, onClick: function () { actions.dismissStageAsk(project.id, stage.id); } }) : null
+      ]));
+    }
     if (open) {
       children.push(D.el('div', { class: 'plan-panel', attrs: { id: panelId } }, [
         E.TaskList.taskList(project, stage, actions, ctx.people, ctx.motion)
@@ -177,20 +187,124 @@
     return n;
   }
 
-  /** Oś przebiegu: jedna kropka na etap — zakończone, w toku (świeci), zaległe, przyszłe. */
-  function journey(project, ctx) {
-    var firstOpen = -1;
-    project.stages.forEach(function (st, i) { if (firstOpen < 0 && st.status !== 'done') firstOpen = i; });
-    var nodes = project.stages.map(function (stage, index) {
-      var late = stage.status !== 'done' && Tasks.taskStats(stage.tasks || []).overdue > 0;
-      var state = stage.status === 'done' ? 'done' : (stage.status === 'working' ? 'working' : 'todo');
-      var current = index === firstOpen;
-      return D.el('li', { class: 'jr__node jr__node--' + state + (late ? ' is-late' : '') + (current ? ' is-current' : ''), attrs: { 'data-tooltip': (index + 1) + '. ' + Model.describeStage(stage).name + ' — ' + (E.Model.STAGE_STATUS ? E.Model.STAGE_STATUS[stage.status] || '' : '') } }, [
-        D.el('span', { class: 'jr__dot' }, [state === 'done' ? Icons.icon('check', 12) : D.el('span', { class: 't-num', text: String(index + 1) })]),
-        current ? D.el('span', { class: 'jr__label', text: Model.describeStage(stage).name }) : null
-      ]);
+  /** Termin etapu do podglądu: najbliższy termin otwartego zadania albo termin etapu. */
+  function stageDue(stage) {
+    var at = stage.status === 'done' ? '' : (E.Tasks.nearestDeadline(stage) || stage.deadline || '');
+    return at ? String(at).slice(0, 10) : '';
+  }
+
+  /** Które etapy pokazuje lupa: bieżące (w toku) obok siebie albo sąsiedzi, gdy żaden nie jest w toku. */
+  function lensStages(project, expanded) {
+    var stages = project.stages;
+    var working = [];
+    stages.forEach(function (st, i) { if (st.status === 'working') working.push(i); });
+    var firstTodo = -1;
+    stages.forEach(function (st, i) { if (firstTodo < 0 && st.status === 'todo') firstTodo = i; });
+    var lastDone = -1;
+    stages.forEach(function (st, i) { if (st.status === 'done') lastDone = i; });
+    if (!working.length) return { main: [], side: [lastDone, firstTodo].filter(function (i) { return i >= 0; }), hidden: 0 };
+    if (working.length === 1) {
+      var at = working[0];
+      return { main: working, side: [at - 1, at + 1].filter(function (i) { return i >= 0 && i < stages.length; }), hidden: 0, sideLabels: true };
+    }
+    var ordered = working.slice().sort(function (x, y) {
+      var dx = stageDue(stages[x]) || '9999'; var dy = stageDue(stages[y]) || '9999';
+      return dx < dy ? -1 : dx > dy ? 1 : x - y;
     });
-    return D.el('ol', { class: 'jr', attrs: { 'aria-label': 'Przebieg etapów' } }, nodes);
+    var shown = (working.length > 3 && !expanded) ? ordered.slice(0, 3) : ordered;
+    shown = shown.slice().sort(function (x, y) { return x - y; });
+    var next = -1;
+    for (var i = working[0] + 1; i < stages.length; i += 1) { if (stages[i].status === 'todo') { next = i; break; } }
+    return { main: shown, side: working.length <= 3 && next >= 0 ? [next] : [], hidden: working.length - shown.length, nextOnly: true };
+  }
+
+  function lensMain(project, stage, index, ctx) {
+    var info = Model.describeStage(stage);
+    var stats = Tasks.taskStats(stage.tasks || []);
+    var due = stageDue(stage);
+    var days = due ? Progress.daysUntil(due, new Date()) : null;
+    var late = days !== null && days < 0;
+    var dueText = due ? (days < 0 ? Math.abs(days) + ' dni po terminie' : days === 0 ? 'dziś' : days === 1 ? 'jutro' : days + ' dni do końca') + ' · ' + F.date(due) : 'bez terminu';
+    var pct = stats.total ? Math.round(100 * stats.done / stats.total) : 0;
+    var hoursLine = null;
+    if (E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.people)) {
+      var view = E.Budget.view(project, stage, ctx.state.workspace.entries || [], ctx.state.prefs.me, ctx.people, new Date());
+      if (view.exact) { pct = Math.max(0, Math.min(100, view.percent)); hoursLine = String(Math.round(view.used * 10) / 10).replace('.', ',') + ' / ' + F.hours(view.planned); }
+    }
+    var names = (stage.tasks || []).reduce(function (acc, t) { (t.assignees || []).forEach(function (id) { if (acc.indexOf(id) < 0) acc.push(id); }); return acc; }, [])
+      .map(function (id) { var p = E.Team.findPerson(ctx.people || [], id); return p ? p.firstName + ' ' + (p.lastName || '').slice(0, 1) + '.' : ''; }).filter(Boolean).slice(0, 3).join(', ');
+    return D.el('button', {
+      class: 'jl__main' + (late ? ' is-late' : ''), attrs: { type: 'button', 'data-fk': 'jl-main-' + stage.id, 'data-tooltip': 'Pokaż zadania etapu' },
+      on: { click: function () { ctx.actions.toggleStage(project.id, stage.id); } }
+    }, [
+      D.el('span', { class: 'jl__top' }, [
+        D.el('span', { class: 'jl__pill', text: 'Etap ' + (index + 1) + ' z ' + project.stages.length }),
+        D.el('span', { class: 'jl__state', text: '◐ W toku' }),
+        D.el('span', { class: 'jl__grow' }),
+        D.el('span', { class: 'jl__due', text: dueText })
+      ]),
+      D.el('span', { class: 'jl__name', text: info.name }),
+      D.el('span', { class: 'jl__bar' }, [D.el('i', { style: { width: pct + '%' } })]),
+      D.el('span', { class: 'jl__meta' }, [
+        hoursLine ? D.el('span', { class: 't-num', text: hoursLine }) : null,
+        D.el('span', { text: stats.total ? 'zadania ' + stats.done + ' z ' + stats.total : 'brak zadań' }),
+        names ? D.el('span', { text: names }) : null
+      ])
+    ]);
+  }
+
+  function lensSide(project, stage, index, label, ctx) {
+    var info = Model.describeStage(stage);
+    var st = Model.STAGE_STATUS[stage.status] || '';
+    return D.el('button', {
+      class: 'jl__side' + (info.decision ? ' is-post' : ''), attrs: { type: 'button', 'data-fk': 'jl-side-' + stage.id },
+      on: { click: function () { ctx.actions.toggleStage(project.id, stage.id); } }
+    }, [
+      D.el('span', { class: 'jl__label', text: label + ' · ' + (index + 1) }),
+      D.el('span', { class: 'jl__sname', text: (info.decision ? '⏳ ' : '') + info.name }),
+      D.el('span', { class: 'jl__sstate', text: st })
+    ]);
+  }
+
+  /** Oś przebiegu SP3-C: minimapa całego projektu w skali godzin i „lupa” na bieżące etapy. */
+  function journey(project, ctx) {
+    var stages = project.stages;
+    var wrap = D.el('div', { class: 'jr', attrs: { 'aria-label': 'Przebieg etapów' } });
+    var expanded = false;
+
+    var mini = D.el('ol', { class: 'jm' }, stages.map(function (stage, index) {
+      var info = Model.describeStage(stage);
+      var late = stage.status !== 'done' && Tasks.taskStats(stage.tasks || []).overdue > 0;
+      return D.el('li', {
+        class: 'jm__seg jm__seg--' + stage.status + (late ? ' is-late' : '') + (info.decision ? ' is-post' : ''),
+        style: { 'flex-grow': String(Math.max(8, Number(stage.hours) || 8)) },
+        attrs: { 'data-tooltip': (index + 1) + '. ' + info.name + ' — ' + (Model.STAGE_STATUS[stage.status] || ''), 'data-stage': stage.id }
+      });
+    }));
+    var lens = D.el('div', { class: 'jl' });
+
+    function paint() {
+      var plan = lensStages(project, expanded);
+      D.clear ? D.clear(lens) : (lens.textContent = '');
+      plan.main.forEach(function (i) { lens.appendChild(lensMain(project, stages[i], i, ctx)); });
+      var firstMain = plan.main.length ? plan.main[0] : null;
+      plan.side.forEach(function (i) {
+        var label = plan.nextOnly ? 'Następny' : (firstMain === null ? (stages[i].status === 'done' ? 'Poprzedni' : 'Następny') : (i < firstMain ? 'Poprzedni' : 'Następny'));
+        lens.appendChild(lensSide(project, stages[i], i, label, ctx));
+      });
+      if (plan.hidden > 0 || (expanded && plan.main.length > 3)) {
+        lens.appendChild(D.el('button', {
+          class: 'jl__more', attrs: { type: 'button', 'data-fk': 'jl-more' },
+          text: expanded ? 'Zwiń' : '+' + plan.hidden + ' w toku',
+          on: { click: function () { expanded = !expanded; paint(); } }
+        }));
+      }
+      Array.prototype.forEach.call(mini.children, function (li, i) { li.classList.toggle('is-active', plan.main.indexOf(i) >= 0); });
+    }
+    paint();
+    wrap.appendChild(mini);
+    wrap.appendChild(lens);
+    return wrap;
   }
 
   function stageList(project, ctx) {

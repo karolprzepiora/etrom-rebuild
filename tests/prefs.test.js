@@ -24,6 +24,8 @@ test('wariant nurtu przyjmuje tylko znane nazwy, dawne nazwy przechodzą na obec
   assert.equal(Prefs.normalize({ accent: 'raspberry' }).accent, 'standard', 'usunięta malina wraca do stali');
   assert.equal(Prefs.normalize({ accent: 'graphite' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'graphite');
+  ['etrom', 'morski', 'lesny', 'granat'].forEach((a) => assert.equal(Prefs.normalize({ accent: a }).accent, a));
+  assert.equal(Prefs.normalize({ palette: 'etrom' }).palette, 'etrom');
   assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'standard');
   assert.equal(Prefs.normalize({ accent: 'neonowy' }).accent, 'standard');
 });

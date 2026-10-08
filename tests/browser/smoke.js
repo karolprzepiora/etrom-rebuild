@@ -407,6 +407,26 @@ async function main() {
       await evaluate('const rows = document.querySelectorAll(".plan-item[data-stage-id] > .plan-row"); return document.activeElement === rows[rows.length - 1].querySelector(".srow__status");')
       && (await state('s.workspace.projects.find(x => x.code === "2602").stages[s.workspace.projects.find(x => x.code === "2602").stages.length - 1].status')) === 'todo');
 
+    /* 9b. Automat statusów etapu: start sam, zamknięcie za potwierdzeniem */
+    const autoInfo = await state('(() => { const p = s.workspace.projects.find(x => x.code === "2603"); const st = p.stages.find(x => x.status === "todo" && (x.tasks || []).length && x.tasks.every(t => t.status === "todo")); return st ? { p: p.id, s: st.id, t: st.tasks[0].id } : null; })()');
+    if (autoInfo) {
+      await evaluate('window.ETROM.app.actions.moveTask(' + JSON.stringify(autoInfo.p) + ',' + JSON.stringify(autoInfo.s) + ',' + JSON.stringify(autoInfo.t) + ',"working"); return true;');
+      await sleep(200);
+      const stageOf = (expr) => state('(() => { const st = s.workspace.projects.find(x => x.code === "2603").stages.find(x => x.id === ' + JSON.stringify(autoInfo.s) + '); return ' + expr + '; })()');
+      check('automat: ruszone zadanie przestawia etap na „W toku” samo', (await stageOf('st.status')) === 'working');
+      await evaluate('window.ETROM.app.actions.moveTask(' + JSON.stringify(autoInfo.p) + ',' + JSON.stringify(autoInfo.s) + ',' + JSON.stringify(autoInfo.t) + ',"done"); return true;');
+      await sleep(200);
+      check('automat: zakończenie wszystkich zadań nie zamyka etapu samo', (await stageOf('st.status')) === 'working');
+      await evaluate('window.ETROM.app.actions.confirmStageDone(' + JSON.stringify(autoInfo.p) + ',' + JSON.stringify(autoInfo.s) + '); return true;');
+      await sleep(200);
+      check('automat: potwierdzenie zamyka etap', (await stageOf('st.status')) === 'done');
+      await evaluate('window.ETROM.app.actions.moveTask(' + JSON.stringify(autoInfo.p) + ',' + JSON.stringify(autoInfo.s) + ',' + JSON.stringify(autoInfo.t) + ',"todo"); return true;');
+      await sleep(200);
+      check('automat: wznowione zadanie w zamkniętym etapie wraca do „W toku”', (await stageOf('st.status')) === 'working');
+    } else {
+      check('automat: brak etapu testowego w danych przykładowych', false);
+    }
+
     /* 10. Wstecz w przeglądarce */
     await evaluate('history.back(); return true;');
     await sleep(500);
@@ -575,6 +595,7 @@ async function main() {
     await pressKey('enter');
     await sleep(300);
     check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'graphite');
+    check('ustawienia mają sześć kolorów pracy w toku', (await evaluate('return window.ETROM.Prefs.ACCENTS.length;')) === 6);
 
     await pressKey('k', CTRL);
     await pressKey('escape');

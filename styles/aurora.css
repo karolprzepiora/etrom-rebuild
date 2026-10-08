@@ -1,6 +1,6 @@
 /* ETROM — motyw „aurora”: jeden język barw dla całej aplikacji.
    Sterowany czterema ustawieniami (Ustawienia → Wygląd):
-     data-palette  — motyw kolorystyczny (ciemne: ocean, graphite, forest, sunset, violet; jasne: sky, mint, peach, lilac)
+     data-palette  — motyw kolorystyczny (ciemne: ocean, graphite, forest, sunset, violet, etrom; jasne: sky, mint, peach, lilac)
      --hdr         — 1/0: połysk, kolorowa poświata i rozszerzona gama barw
      --vivid       — mnożnik nasycenia (0,4–1,5)
      --ctr         — kontrast −1…+1 (ciemniejsze tła pod białym tekstem, mocniejsze linie i tekst)
@@ -18,6 +18,7 @@
 :root[data-palette="forest"]   { --au-h1: 160; --au-h2: 195; --au-h3: 140; --au-bh: 175; }
 :root[data-palette="sunset"]   { --au-h1: 38;  --au-h2: 12;  --au-h3: 65;  --au-bh: 22; }
 :root[data-palette="violet"]   { --au-h1: 335; --au-h2: 288; --au-h3: 355; --au-bh: 290; }
+:root[data-palette="etrom"]    { --au-h1: 350; --au-h2: 228; --au-h3: 355; --au-bh: 235; --au-sat: .85; }
 /* jasne motywy: pastelowe tło okna i jasny panel boczny (w ciemnym trybie systemu wracają do ciemnej wersji) */
 :root[data-palette="sky"]   { --au-h1: 225; --au-h2: 262; --au-h3: 200; --au-bh: 240; }
 :root[data-palette="mint"]  { --au-h1: 170; --au-h2: 205; --au-h3: 150; --au-bh: 175; }

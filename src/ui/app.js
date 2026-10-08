@@ -12,6 +12,7 @@
   var Query = E.Query;
   var Catalog = E.Catalog;
   var Progress = E.Progress;
+  var StageAuto = E.StageAuto;
   var Dialog = E.Dialog;
   var Toast = E.Toast;
   var Motion = E.Motion;
@@ -213,9 +214,29 @@
     });
   }
 
+  /** Automat statusów etapów: po każdej zmianie projektów start etapu dzieje się sam. */
+  function reconcileProjects(projects) {
+    var notes = [];
+    var next = projects.map(function (project) {
+      var r = StageAuto.reconcile(project.stages, { decisionOf: function (stage) { return Model.describeStage(stage).decision; } });
+      if (!r.changes.length) return project;
+      r.changes.forEach(function (c) {
+        var st = project.stages.filter(function (x) { return x.id === c.id; })[0];
+        notes.push({ name: st ? Model.describeStage(st).name : '', to: c.to, reason: c.reason });
+      });
+      return Object.assign({}, project, { stages: r.stages });
+    });
+    if (notes.length && notes.length <= 2) {
+      notes.forEach(function (n) {
+        Toast.show({ message: 'Etap „' + n.name + '” ' + (n.reason === 'reopened' ? 'wrócił do „W toku”: doszło otwarte zadanie.' : 'jest teraz w toku.'), tone: 'success', timeout: 4000 });
+      });
+    }
+    return notes.length ? next : projects;
+  }
+
   function setWorkspace(producer) {
     updateWorkspace(function (workspace) {
-      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: producer(workspace.projects) });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: reconcileProjects(producer(workspace.projects)) });
     });
   }
 
@@ -483,9 +504,22 @@
     mapProject(projectId, function (project) {
       return Object.assign({}, project, {
         stages: project.stages.map(function (stage) {
-          return stage.id === stageId ? Object.assign({}, stage, { status: Model.cycleStageStatus(stage.status) }) : stage;
+          return stage.id === stageId ? StageAuto.markManual(stage, Model.cycleStageStatus(stage.status)) : stage;
         })
       });
+    });
+  }
+
+  function confirmStageDone(projectId, stageId) {
+    pendingFlash = { projectId: projectId, stageId: stageId };
+    mapProject(projectId, function (project) {
+      return Object.assign({}, project, { stages: project.stages.map(function (stage) { return stage.id === stageId ? StageAuto.confirmDone(stage) : stage; }) });
+    });
+  }
+
+  function dismissStageAsk(projectId, stageId) {
+    mapProject(projectId, function (project) {
+      return Object.assign({}, project, { stages: project.stages.map(function (stage) { return stage.id === stageId ? StageAuto.dismissAsk(stage) : stage; }) });
     });
   }
 
@@ -2815,15 +2849,16 @@
       { label: 'Motyw jasny', icon: 'sun', meta: now(prefs.theme === 'light'), run: function () { setPref({ theme: 'light' }); } },
       { label: 'Motyw ciemny', icon: 'moon', meta: now(prefs.theme === 'dark'), run: function () { setPref({ theme: 'dark' }); } },
       { label: 'Motyw jak w systemie', icon: 'monitor', meta: now(prefs.theme === 'system'), run: function () { setPref({ theme: 'system' }); } },
-      { label: 'Kolor pracy w toku: nurt', icon: 'water', meta: now(prefs.accent === 'standard'), keywords: 'akcent barwy kolor standard morski hydro turkus', run: function () { setPref({ accent: 'standard' }); } },
-      { label: 'Kolor pracy w toku: grafit', icon: 'datum', meta: now(prefs.accent === 'graphite'), keywords: 'akcent barwy kolor szary topo', run: function () { setPref({ accent: 'graphite' }); } },
+    ].concat([['standard', 'nurt', 'water'], ['etrom', 'etrom logo magenta', 'sparkle'], ['graphite', 'grafit', 'datum'], ['morski', 'morski turkus', 'water'], ['lesny', 'leśny zieleń', 'water'], ['granat', 'granat indygo', 'water']].map(function (a) {
+      return { label: 'Kolor pracy w toku: ' + a[1].split(' ')[0], icon: a[2], meta: now(prefs.accent === a[0]), keywords: 'akcent barwy kolor ' + a[1], run: function () { setPref({ accent: a[0] }); } };
+    })).concat([
       { label: 'Skróty klawiszowe', icon: 'keyboard', meta: '?', keywords: 'pomoc klawiatura', run: showShortcuts },
       { label: (prefs.sidebarCollapsed ? 'Rozwiń' : 'Zwiń') + ' panel boczny', icon: 'sidebar', meta: '[', keywords: 'nawigacja menu', run: toggleSidebar },
       { label: 'Dodaj dane przykładowe', icon: 'sparkle', keywords: 'demo testowe przykład', run: loadDemo },
       { label: 'Pobierz kopię zapasową', icon: 'download', keywords: 'eksport json backup zapis', run: exportJson },
       { label: 'Wczytaj kopię zapasową', icon: 'upload', keywords: 'import json przywróć', run: function () { nodes.fileInput.click(); } },
       { label: 'Usuń wszystkie dane', icon: 'trash', keywords: 'wyczyść skasuj', run: clearAll }
-    ];
+    ]);
   }
 
   function openPalette() {
@@ -2880,6 +2915,8 @@
     setSort: setSort,
     setPage: function (page) { store.set({ page: page }); nodes.scroller.scrollTop = 0; },
     cycleStage: cycleStage,
+    confirmStageDone: confirmStageDone,
+    dismissStageAsk: dismissStageAsk,
     addStage: addStage,
     removeStage: removeStage,
     moveStage: moveStage,

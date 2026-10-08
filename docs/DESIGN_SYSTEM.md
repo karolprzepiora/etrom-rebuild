@@ -105,7 +105,7 @@ w awatarze). Elegancji nie osiąga się zmniejszaniem — tylko odstępem, grubo
 | Element | Funkcja | Zasady |
 |---|---|---|
 | Rzędna ▽ | `Sig.datum(level)` | `normal` / `warning` / `alarm` / `closed`; zawsze z powodem w słowach lub w podpowiedzi |
-| Oś etapów | klasy `.rail`, `.rail__node--*` | węzły: tusz/ptaszek, nurt/pierścień, pusty, czerwony pierścień |
+| Oś etapów (SP3-C) | `StageList.journey`, klasy `.jr`, `.jm__seg`, `.jl__main`, `.jl__side` | minimapa całego projektu (szerokość odcinka = godziny etapu; zakończone ciemne, w toku w kolorze pracy, czerwona obwódka przy zaległościach, kreskowane postępowania) i „lupa”: 0 etapów w toku = ostatni zakończony + najbliższy; 1 = poprzedni · bieżący · następny; 2–3 = wszystkie bieżące + następny; 4 i więcej = trzy z najbliższym terminem + „+N w toku” |
 | Inspektor | `ETROM.Inspector.render` | zadanie, osoba, projekt; Escape zamyka i oddaje fokus |
 | Widoki listy | `ProjectList.views(projects, ctx)` | zakładki z licznikami: Wszystkie, Moje, Wymaga uwagi, Po terminie, Zakończone + własne (`prefs.customViews`, do 6); wybór w `prefs.projectView` |
 | Pasek stanu | `ProjectList.strip` | cienki pasek: wymaga uwagi / w normie / zakończone + godziny; kolor czerwony tylko dla „wymaga uwagi” |
@@ -727,3 +727,11 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Nie ma przypomnień „dopytaj”: sprawa pokazuje tylko dni od złożenia; „Zapytałem” i notatka trafiają do historii. Zwinięta szyna sygnalizuje (czerwony licznik) wyłącznie pytania „Czy czekasz na odpowiedź?”. Widoki Wszystko / Dziś / Ten tydzień pokazują te same otwarte sprawy osoby.
 - Szyna „Najbliższe terminy” na Projektach ma ten sam wygląd co pozostałe szyny (niebieski przycisk, tło i ramka w kolorze akcentu po zwinięciu).
 - Czym jest sprawa: oczekiwanie na kogoś spoza zespołu (decyzja, pozwolenie, uzgodnienie, materiały). Formularz wymaga pola „Od kogo czekasz”, a podpowiedź mówi, że pracy własnej (operat, dokumentacja) tu się nie dodaje. Pytanie „Czy czekasz…?” po zamknięciu zadania pojawia się tylko w etapach rodzaju „Decyzje” (postępowania i uzgodnienia); w pozostałych etapach sprawę dodaje się ręcznie. Wywołują je tylko zadania zaczynające się od: złożyć, zamówić, wystąpić, zgłosić, skierować, uzyskać, zapytać o, wysłać wniosek/pismo/zapytanie/prośbę. Sprawę dodaną przez pomyłkę usuwa „Usuń (pomyłka)” w oknie sprawy; zadanie zostaje bez zmian.
+
+
+## Kolor pracy w toku i automat statusów etapów
+
+- **Kolor pracy w toku**: sześć wariantów `data-accent` (Nurt, Etrom, Grafit, Morski, Leśny, Granat) w `styles/tokens.css`; każdy to `--flow`, `--flow-ink`, `--flow-wash`, `--flow-ring` dla jasnego i ciemnego motywu (test kontrastu w `tests/tokens.test.js`). Wariant Etrom zmienia też `--done` na błękitną szarość z logo. Barwy ryzyka (czerwony, pomarańczowy, żółty) nie są dostępne jako kolor pracy. Nowy wariant: wpis w `ACCENTS` (`core/prefs.js`, `ui/shell.js`) i blok w `tokens.css`.
+- **Motywy kolorystyczne**: dziesięć, w tym ciemny „Etrom” (magenta i błękitna szarość z logo); kolor pracy jest niezależny od motywu.
+- **Nie tylko kolor**: etap w toku zawsze ma też pasek godzin, podpis „W toku” i ikonę ◐, więc wariant grafitowy jest czytelny obok zakończonych.
+- **Automat statusów** (`core/stageauto.js`): `todo` → `working` samo, gdy ruszy któreś zadanie; `working` → `done` tylko po potwierdzeniu lidera lub zarządu („Zakończyć etap?”, „Jeszcze nie” wycisza pytanie do zmiany zadań); zamknięcie potwierdzone wraca do „W toku”, gdy dojdzie otwarte zadanie. Ręczna zmiana statusu (`statusManual`) wygrywa z automatem. Etapy „Postępowanie” są zawsze ręczne.
