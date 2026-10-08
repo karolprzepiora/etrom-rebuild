@@ -1235,7 +1235,7 @@
       ])
     ], filters()));
 
-    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (emph !== 'both' ? ' pb--emph-' + emph : '') + (compact ? ' pb--compact' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
+    var board = D.el('div', { class: 'pb' + (solo ? ' pb--solo' : '') + (emph !== 'both' ? ' pb--emph-' + emph : '') + (compact ? ' pb--compact' : '') + (weeksN >= 12 ? ' pb--quarter' : ''), style: { '--n': String(N), '--weeks': String(weeksN), '--lw': labelW + 'px' }, attrs: { 'aria-label': 'Plan tygodni' } }, [
       D.el('div', { class: 'pb-scroll' }, [D.el('div', { class: 'pb-grid' }, [head].concat(mode === 'projects' ? projectBoardRows() : plan.rows.map(personRow)))])
     ]);
 
