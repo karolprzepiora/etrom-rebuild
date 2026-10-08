@@ -330,13 +330,7 @@
     var dock = dockState(state.prefs, !!caseEl);
     if (caseEl) {
       // Sprawy w zwijanej szynie obok listy; karty zaczynają się na wysokości zakładek, tak jak „Zegar i projekty”.
-      main = [UI.railLayout({
-        id: 'mycases', title: caseEl.dataset.title, label: 'Sprawy w toku', cls: 'rl--cases',
-        collapsed: dock.cases,
-        onToggle: function () { setDock(ctx.actions, state.prefs, dock.cases ? 'cases' : null); },
-        badge: caseEl.dataset.count, late: Number(caseEl.dataset.attention) > 0,
-        main: main.concat(visible), side: [caseEl]
-      })];
+      main = main.concat(visible);
     } else main = main.concat(visible);
     if (current !== 'all' && current !== 'weeks' && !visible.length && !caseEl) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
     if (current === 'all' && !m.open && !m.react.length) {
@@ -353,13 +347,7 @@
       body: (function () {
         var todays = TL.forDay(state.workspace.entries || [], me.id, now);
         var minutes = TL.sum(todays, now);
-        return UI.railLayout({
-          id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', cls: 'mywork', mainCls: 'mywork__main',
-          collapsed: dock.zegar,
-          onToggle: function () { if (caseEl) setDock(ctx.actions, state.prefs, dock.zegar ? 'zegar' : null); else ctx.actions.toggleRail('mywork'); },
-          badge: minutes ? (TL.hoursOf(minutes) + " h").replace(".", ",") : '',
-          main: main,
-          side: [
+        var zegarSide = [
             D.el('div', { class: 'mywork__aside' }, [
               E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: state.pendingSwitch ? ctx.find(state.pendingSwitch) : null }),
               E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions }),
@@ -368,7 +356,14 @@
                 projectsAside(m.work, now)
               ])
             ])
-          ]
+          ];
+        var items = [];
+        if (caseEl) items.push({ id: 'mycases', title: caseEl.dataset.title, label: 'Sprawy w toku', icon: 'history', tone: 'warn', badge: caseEl.dataset.count, late: Number(caseEl.dataset.attention) > 0, side: [caseEl] });
+        items.push({ id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', icon: 'clock', tone: 'accent', badge: minutes ? (TL.hoursOf(minutes) + ' h').replace('.', ',') : '', side: zegarSide });
+        var openId = caseEl ? (!dock.cases ? 'mycases' : (!dock.zegar ? 'mywork' : null)) : (dock.zegar ? null : 'mywork');
+        return UI.railLayout({
+          id: 'mywork', cls: 'mywork', mainCls: 'mywork__main', items: items, active: openId, main: main,
+          onSelect: function (id) { if (caseEl) setDock(ctx.actions, state.prefs, id === 'mycases' ? 'cases' : (id === 'mywork' ? 'zegar' : null)); else ctx.actions.toggleRail('mywork'); }
         });
       })(),
       work: m.work

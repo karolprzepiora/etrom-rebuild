@@ -941,11 +941,11 @@ async function main() {
     check('Sprawy w toku: Moja praca ma sekcję „Czekam na odpowiedź” z licznikiem dni i przyciskiem „Zapytałem”',
       await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-open-]") && !sec.querySelector("[data-fk^=case-ask-]");'));
     check('Moja praca: sprawy stoją w zwijanej szynie jako kafelki, a termin zadania to chip w jednej gramatyce',
-      await evaluate('const side = document.querySelector(".rl--cases .rl__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".rl--cases .rl__main") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
+      await evaluate('const side = document.querySelector(".rl--dock .rl__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".rl--dock .rl__main") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
     await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
     await sleep(300);
     check('Moja praca: szynę „Czekam na odpowiedź” można zwinąć, a zwinięta pokazuje licznik spraw',
-      await evaluate('const r = document.querySelector(".rl--cases.is-collapsed"); return !!r && !!r.querySelector(".rl__vcount") && /^\\d+$/.test(r.querySelector(".rl__vcount").textContent) && !document.querySelector("[data-fk=my-cases]");'));
+      await evaluate('const r = document.querySelector(".rl--dock.is-collapsed"); const bc = document.querySelector("[data-fk=rail-mycases] .rl__vcount"); return !!r && !!bc && /^\\d+$/.test(bc.textContent) && !document.querySelector("[data-fk=my-cases]");'));
     await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
     await sleep(300);
     check('Moja praca: rozwinięcie spraw zwija „Zegar i projekty”, a rozwinięcie zegara zwija sprawy',
@@ -1884,11 +1884,11 @@ async function main() {
     await click('[data-fk="rail-filter-late"]');
     await sleep(250);
     check('drugi klik zdejmuje filtr radaru', (await state('s.filters.health')) === 'all');
-    await click('[data-fk="rail-toggle"]');
+    await click('[data-fk="rail-terminy"]');
     await sleep(300);
     check('panel „Najbliższe terminy” zwija się do paska z licznikiem i pamięta wybór',
-      (await state('s.prefs.railCollapsed')) === true && await evaluate('return !!document.querySelector(".pf-layout.is-rail-collapsed") && !!document.querySelector(".pf-rail__vcount") && !document.querySelector(".pf-rail__sec");'));
-    await click('[data-fk="rail-toggle"]');
+      (await state('s.prefs.railCollapsed')) === true && await evaluate('return !!document.querySelector(".pf-layout.is-rail-collapsed") && !!document.querySelector("[data-fk=rail-terminy] .rl__vcount") && !document.querySelector(".pf-rail__sec");'));
+    await click('[data-fk="rail-terminy"]');
     await sleep(300);
     check('panel terminów da się rozwinąć z powrotem', (await state('s.prefs.railCollapsed')) === false && await evaluate('return !!document.querySelector(".pf-rail__sec");'));
     await click('#action-settings');

@@ -110,12 +110,6 @@
       attrs: { 'data-fk': 'look-tiles', 'aria-describedby': 'look-tiles-hint' },
       onChange: function (on) { look.tilesFull = on; actions.setPref({ tilesFull: on }); syncLook(); }
     });
-    var colorBySelect = UI.select({
-      id: 'look-colorby', value: look.colorBy || 'number',
-      options: [{ value: 'number', label: 'według numeru projektu' }, { value: 'kind', label: 'według rodzaju projektu' }],
-      on: { change: function () { look.colorBy = colorBySelect.value; actions.setPref({ colorBy: look.colorBy }); syncLook(); } },
-      attrs: { 'data-fk': 'look-colorby', 'aria-label': 'Barwa kafla projektu' }
-    });
     function slider(o) {
       var out = D.el('output', { class: 'look-slider__val t-num', attrs: { for: o.id } });
       var input = D.el('input', {
@@ -143,7 +137,6 @@
       palButtons.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === look.palette)); });
       hdrSwitch.input.checked = !!look.hdr;
       tilesSwitch.input.checked = !!look.tilesFull;
-      colorBySelect.value = look.colorBy || 'number';
       [vividSlider, contrastSlider].forEach(function (sl) { sl.input.value = String(sl.o.get()); sl.out.textContent = sl.o.format(sl.o.get()); });
       actions.previewLook(look);
     }
@@ -206,7 +199,6 @@
         D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
       ]),
       D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
-      D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Barwa kafla' }), colorBySelect, D.el('span', { class: 'settings__hint', text: 'kolor ręcznie wybrany w projekcie ma pierwszeństwo' })]),
       D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie jednolity kolor, bez połysku i cieniowania' })]),
       vividSlider.node,
       contrastSlider.node,

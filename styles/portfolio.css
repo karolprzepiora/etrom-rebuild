@@ -187,15 +187,9 @@
 /* ---------- Panel terminów: zwijany ---------- */
 .pf-rail__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-4); }
 .pf-rail__head .pf-rail__title { margin: 0; }
-.pf-rail__toggle { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); cursor: pointer; }
-.pf-rail__toggle:hover { background: var(--sheet); color: var(--ink); }
 .pf-layout { transition: grid-template-columns .22s cubic-bezier(.2,.8,.2,1); }
 .pf-layout.is-rail-collapsed { grid-template-columns: minmax(0, 1fr) 3rem; }
 .pf-layout.is-rail-collapsed .pf-rail { padding: var(--space-2) 0; }
-.pf-rail__inner--collapsed { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
-.pf-rail__vtitle { writing-mode: vertical-rl; transform: rotate(180deg); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
-.pf-rail__vcount { min-width: 1.5rem; padding: 1px 6px; border-radius: 999px; text-align: center; font-size: var(--fs-xs); font-weight: 600; background: var(--sheet); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
-.pf-rail__vcount.is-late { background: var(--alarm); color: #fff; box-shadow: none; }
 
 
 .pc .pf-reason, .pc .pf-reason--alarm, .pc .pf-reason--warning { color: #fff; font-weight: 500; }

@@ -215,12 +215,11 @@
     return {
       summary: part.summary, tools: tools,
       body: UI.railLayout({
-        id: 'time', title: 'Panel dnia', cls: 'rl--time',
-        collapsed: (state.prefs.collapsedRails || []).indexOf('time') >= 0,
-        onToggle: function () { ctx.actions.toggleRail('time'); },
-        badge: minutes ? (TL.hoursOf(minutes) + " h").replace(".", ",") : '',
-        main: [main],
-        side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])]
+        id: 'time', cls: 'rl--time',
+        items: [{ id: 'time', title: 'Panel dnia', icon: 'hours', tone: 'accent', badge: minutes ? (TL.hoursOf(minutes) + ' h').replace('.', ',') : '', side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])] }],
+        active: (state.prefs.collapsedRails || []).indexOf('time') >= 0 ? null : 'time',
+        onSelect: function () { ctx.actions.toggleRail('time'); },
+        main: [main]
       })
     };
   }

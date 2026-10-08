@@ -468,7 +468,7 @@ Suwaki dają podgląd na żywo (`actions.previewLook`), zapis następuje po pusz
 - **Paleta 40 kolorów** (`Identity.swatches()`): 20 barw od żółtozielonej po różową (czerwień i bursztyn zostają dla stanów) × dwa tony (jaśniejszy / głębszy). Kolor wynika z numeru projektu (ostatnie dwie cyfry kodu, krok 7 w permutacji), więc kolejne numery w roku różnią się wyraźnie, a 40 projektów z rzędu nie powtarza koloru.
 - **Wybór ręczny**: `project.color` (indeks 0–39 albo `null` = automatyczny), pole „Kolor projektu” w formularzu projektu (zakładanie i edycja). `Identity.setColors(projects)` jest wołane przy każdym renderze, więc `tileHue/tileTone/hueStyle/segStyle` biorą kolor wybrany ręcznie w kaflu, pillach, pasku czasu i karcie czasu. Zmienne CSS: `--hue` + `--tone` (kafle), `--seg-h` + `--seg-t` (paski).
 - **Jeden kafel wskaźnika**: `.pd-prop` (projekt), `.ts-stat` (Czas), `.an-tile` (Analiza) mają wspólny wygląd (tło, obrys, cień, odstępy, etykieta 11 px wersalikami, wartość 1,25 rem, podpis xs). Nowy kafel wskaźnika używa tych samych reguł.
-- **Wysuwany panel boczny**: `UI.railLayout({id, title, collapsed, onToggle, main, side, badge})`. Stan zwinięcia w `prefs.collapsedRails`, przełączany akcją `toggleRail(id)`. Używany w „Mojej pracy” (zegar i projekty) i w „Czasie” (panel dnia); lista projektów ma własną wersję „Najbliższe terminy” (`prefs.railCollapsed`).
+- **Panel boczny (dok RL1)**: `UI.railLayout({id, items:[{id, label, icon, tone, count, content}], active, onSelect, main})`. Pasek ikon po prawej stronie, każda funkcja ma własną barwę (`tone`: warn / accent / violet) i licznik; naraz otwarty jest jeden panel, ponowne kliknięcie go zwija. Nowa funkcja = nowy wpis w `items`. Stan: `prefs.collapsedRails` (zwinięte id) i `railCollapsed` (Projekty, „Najbliższe terminy”). Używany w „Mojej pracy”, „Czasie”, planie i liście projektów.
 
 ## Audyt UI i standard rozmiarów
 
@@ -509,7 +509,7 @@ Trzy siatki — obciążenie w Analizie, karta czasu i plan obciążenia — maj
 - **Znak stanu** (`Sig.datum`) to okrąg, nie trójkąt: alarm = pełne czerwone koło z wykrzyknikiem, uwaga = bursztynowy pierścień z wykrzyknikiem, w normie = mała kropka, zakończony = pierścień z haczykiem. Kształt różni się nie tylko barwą.
 - **Brak kolorowych obramowań** kafli i wierszy dla stanu. Stan niesie znak, plakietka „Alarm / Uwaga” i powód.
 - **Paleta 40 kolorów**: 20 barw (miedź i brąz, zieleń, błękity, fiolety, róż) × 2 tony; czerwień, bursztyn i oliwka pominięte. Ciepłe barwy stoją w liście tak, by nie wypadały przy kolejnych numerach.
-- **Barwa kafla** (Ustawienia → Wygląd): „według numeru projektu” (domyślnie) albo „według rodzaju projektu” (rodzina barw rodzaju, numer tylko ją odcienia). Kolor wybrany ręcznie w projekcie ma pierwszeństwo.
+- **Barwa kafla**: zawsze według numeru projektu (barwy rozłożone po kole), bez ustawienia. Kolor wybrany ręcznie w projekcie ma pierwszeństwo.
 
 ## Zakres opracowania i procedury
 

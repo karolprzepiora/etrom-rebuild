@@ -170,8 +170,8 @@ test('tilesFull: domyślnie spokojne kafle, tylko true włącza pełny kolor', (
   assert.equal(Prefs.normalize({ tilesFull: true }).tilesFull, true);
 });
 
-test('colorBy: domyślnie według numeru, tylko „kind” włącza barwę według rodzaju', () => {
+test('colorBy: zawsze według numeru (barwy rozstawione po kole), także gdy zapis ma starą wartość „kind”', () => {
   assert.equal(Prefs.normalize({}).colorBy, 'number');
   assert.equal(Prefs.normalize({ colorBy: 'xyz' }).colorBy, 'number');
-  assert.equal(Prefs.normalize({ colorBy: 'kind' }).colorBy, 'kind');
+  assert.equal(Prefs.normalize({ colorBy: 'kind' }).colorBy, 'number');
 });

@@ -583,23 +583,19 @@
     });
 
     var collapsed = !!ctx.state.prefs.railCollapsed;
-    var toggle = D.el('button', {
-      class: 'pf-rail__toggle',
-      attrs: { type: 'button', 'aria-expanded': String(!collapsed), 'aria-label': collapsed ? 'Rozwiń panel Najbliższe terminy' : 'Zwiń panel Najbliższe terminy', 'data-tooltip': collapsed ? 'Rozwiń panel' : 'Zwiń panel', 'data-fk': 'rail-toggle' },
+    var late = buckets.late.length;
+    var btn = D.el('button', {
+      class: 'rl__btn' + (collapsed ? '' : ' is-on'), dataset: { tone: 'violet' },
+      attrs: { type: 'button', 'aria-expanded': String(!collapsed), 'aria-label': (collapsed ? 'Rozwiń panel ' : 'Zwiń panel ') + 'Najbliższe terminy', 'data-tooltip': 'Najbliższe terminy', 'data-fk': 'rail-terminy' },
       on: { click: function () { act.setPref({ railCollapsed: !collapsed }); } }
-    }, [Icons.icon(collapsed ? 'chevronLeft' : 'chevronRight', 16)]);
-    if (collapsed) {
-      var late = buckets.late.length;
-      return D.el('div', { class: 'pf-rail__inner pf-rail__inner--collapsed' }, [
-        toggle,
-        D.el('span', { class: 'pf-rail__vtitle', text: 'Najbliższe terminy' }),
-        items.length ? D.el('span', { class: 'pf-rail__vcount t-num' + (late ? ' is-late' : ''), text: String(late || items.length), attrs: { 'aria-label': late ? late + ' po terminie' : items.length + ' terminów' } }) : null
-      ]);
-    }
+    }, [Icons.icon('calendar', 20), items.length ? D.el('span', { class: 'rl__vcount t-num' + (late ? ' is-late' : ''), text: String(late || items.length), attrs: { 'aria-label': late ? late + ' po terminie' : items.length + ' terminów' } }) : null]);
+    var dock = D.el('nav', { class: 'rl__dock', attrs: { 'aria-label': 'Panele boczne' } }, [btn]);
+    if (collapsed) return D.el('div', { class: 'pf-dock' }, [dock]);
 
-    return D.el('div', { class: 'pf-rail__inner' }, [
-      D.el('div', { class: 'pf-rail__head' }, [D.el('h2', { class: 'pf-rail__title', text: 'Najbliższe terminy' }), toggle])
+    var panel = D.el('div', { class: 'pf-rail__inner', dataset: { tone: 'violet' } }, [
+      D.el('div', { class: 'pf-rail__head' }, [D.el('h2', { class: 'pf-rail__title', text: 'Najbliższe terminy' })])
     ].concat(sections.length ? sections : [D.el('p', { class: 'cockpit__empty', text: 'Brak terminów w najbliższych 60 dniach.' })]).concat([biuroDzis(projects, ctx)]));
+    return D.el('div', { class: 'pf-dock' }, [panel, dock]);
   }
 
   /* ---------- Pierwsze uruchomienie ---------- */

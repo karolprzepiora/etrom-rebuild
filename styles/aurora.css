@@ -784,16 +784,6 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 @media (max-width: 40rem) { .pb-grid { min-width: calc(13rem + var(--n) * 1.75rem); } .pb-row { grid-template-columns: 13rem minmax(0, 1fr); } }
 
 /* Przycisk zwijania panelu bocznego: wyraźny na każdym ekranie (Moja praca, Czas, Plan, Projekty). */
-.rl__toggle { width: 2rem; height: 2rem; border-radius: 10px; background: var(--accent); color: var(--on-accent, #fff); box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 70%, transparent); }
-.rl__toggle:hover { background: color-mix(in srgb, var(--accent) 85%, #000); color: var(--on-accent, #fff); }
-.rl__toggle svg { stroke-width: 2.2; }
-.rl.is-collapsed .rl__inner { background: color-mix(in srgb, var(--accent) 10%, var(--wash)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, var(--line)); padding: var(--space-3) 0; }
-.rl__vtitle { color: var(--ink); }
-.pf-rail__toggle { width: 2rem; height: 2rem; border-radius: 10px; background: var(--accent); color: var(--on-accent, #fff); box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 70%, transparent); }
-.pf-rail__toggle:hover { background: color-mix(in srgb, var(--accent) 85%, #000); color: var(--on-accent, #fff); }
-.pf-rail__toggle svg { stroke-width: 2.2; }
-.pf-layout.is-rail-collapsed .pf-rail { padding: var(--space-3) 0; border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, var(--wash)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, var(--line)); }
-.pf-rail__vtitle { color: var(--ink); }
 
 /* Plan tygodni: pełna nazwa zadania i godziny (przepracowano / zaplanowano) na etykiecie, wychodzącej poza pasek. */
 .pb-bar { overflow: visible; background: transparent; box-shadow: none; }
@@ -1422,15 +1412,34 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .case-chip .case-glyph--letter { margin: 0 2px; }
 /* Sprawy w toku: kolumna boczna z kafelkami w kolorze projektu (Moja praca) */
 .mywork__main { container-type: inline-size; container-name: mwm; }
-.rl--cases { grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-5); }
-.rl--cases.is-collapsed { grid-template-columns: minmax(0, 1fr) 3rem; }
-.rl--cases > .rl__main { gap: var(--space-4); }
-@container mwm (max-width: 56rem) {
-  .rl--cases, .rl--cases.is-collapsed { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-  .rl--cases > .rl__side { position: static; order: -1; }
-  .rl--cases.is-collapsed .rl__inner { flex-direction: row; justify-content: flex-start; padding: var(--space-2) var(--space-3); }
-  .rl--cases .rl__vtitle { writing-mode: horizontal-tb; transform: none; }
+/* RL1: prawy pasek ikon z panelami (Moja praca, Czas, Plan, Projekty). Jeden panel naraz, kolor i licznik per funkcja. */
+.rl--dock { grid-template-columns: minmax(0, 1fr) 20rem 3.5rem; gap: var(--space-5); }
+.rl--dock.is-collapsed { grid-template-columns: minmax(0, 1fr) 3.5rem; }
+.rl--dock > .rl__main { gap: var(--space-4); }
+.rl--time > .rl__main { gap: var(--space-6); }
+.rl__dock { position: sticky; top: var(--space-4); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; border-radius: 18px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+.rl__btn { --rc: var(--accent, #0b7285); all: unset; box-sizing: border-box; position: relative; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 13px; cursor: pointer; color: var(--rc); background: color-mix(in srgb, var(--rc) 15%, transparent); transition: background-color .14s, color .14s, box-shadow .14s; }
+.rl__btn[data-tone="warn"] { --rc: light-dark(#b7791f, #e0a73a); }
+.rl__btn[data-tone="violet"] { --rc: light-dark(#6d4bb0, #b79cf0); }
+.rl__btn:hover { background: color-mix(in srgb, var(--rc) 26%, transparent); }
+.rl__btn.is-on { background: var(--rc); color: light-dark(#fff, #14222c); box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--rc) 70%, transparent); }
+.rl__btn:focus-visible { box-shadow: var(--focus-ring); }
+.rl__btn svg { stroke-width: 2; }
+.rl__btn .rl__vcount { position: absolute; top: -5px; right: -6px; min-width: 1.1rem; padding: 0 4px; box-shadow: 0 0 0 2px var(--wash); }
+.rl--dock .rl__inner { padding: var(--space-4); border-radius: 18px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); gap: var(--space-4); }
+.rl--dock .rl__title { font-size: var(--fs-sm); font-weight: 700; }
+.rl--dock .rl__side[data-tone="warn"] .rl__inner { background: color-mix(in srgb, #b7791f 6%, var(--wash)); }
+.rl--dock .rl__side[data-tone="violet"] .rl__inner { background: color-mix(in srgb, #6d4bb0 5%, var(--wash)); }
+@container page (max-width: 62rem) {
+  .rl--dock, .rl--dock.is-collapsed { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .rl--dock > .rl__dock { order: -2; flex-direction: row; justify-self: start; position: static; padding: 6px 8px; }
+  .rl--dock > .rl__side { order: -1; position: static; }
 }
+.pf-layout, .pf-layout.is-rail-collapsed { grid-template-columns: minmax(0, 1fr) auto; }
+.pf-rail, .pf-layout.is-rail-collapsed .pf-rail { padding: 0; border-radius: 0; background: none; box-shadow: none; }
+.pf-dock { display: flex; align-items: flex-start; gap: var(--space-4); }
+.pf-dock > .rl__dock { flex: none; width: 3.5rem; }
+.pf-dock > .pf-rail__inner { width: 19.5rem; padding: var(--space-4); border-radius: 18px; background: color-mix(in srgb, #6d4bb0 5%, var(--wash)); box-shadow: inset 0 0 0 1px var(--line); }
 .case-sec { display: grid; gap: var(--space-2); }
 .case-sec__head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-1); }
 .case-sec__t { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }

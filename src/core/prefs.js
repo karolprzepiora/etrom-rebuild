@@ -108,7 +108,7 @@
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
       hdr: source.hdr !== false,
       tilesFull: source.tilesFull === true,
-      colorBy: source.colorBy === 'kind' ? 'kind' : 'number',
+      colorBy: 'number',
       vivid: clampInt(source.vivid, VIVID_MIN, VIVID_MAX, VIVID_DEFAULT),
       contrast: clampInt(source.contrast, 0, 100, CONTRAST_DEFAULT),
       dayTarget: clampInt(source.dayTarget, 120, 720, 480),
