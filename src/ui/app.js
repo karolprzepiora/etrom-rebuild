@@ -1773,6 +1773,13 @@
   function reopenCase(id) { setCases(function (list) { return Cases.reopen(list, id, dayNow()); }); }
 
   /** Zadanie „złożyć…” nie wymaga śledzenia: zapisujemy decyzję, żeby nie pytać ponownie. */
+  function deleteCase(id) {
+    var c = caseList().filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    setCases(function (list) { return Cases.remove(list, id); });
+    Toast.show({ message: 'Usunięto sprawę „' + c.name + '”.', tone: 'success', timeout: 3500 });
+  }
+
   function skipTaskCase(projectId, stageId, taskId) {
     var task = taskOf(projectId, stageId, taskId);
     if (!task) return;
@@ -2987,6 +2994,7 @@
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
     meId: currentMe,
+    deleteCase: deleteCase,
     canManageList: canManageList, assignPoint: assignChecklistPoint, addPoint: addChecklistPoint, togglePoint: toggleChecklistPoint, removePoint: removeChecklistPoint,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
     setKanban: function (patch) { store.update(function (state) { return Object.assign({}, state, { kanban: Object.assign({}, state.kanban, patch) }); }); },

@@ -45,8 +45,8 @@ test('pismo dodane jako zadanie wiąże zadanie ze sprawą', () => {
 });
 
 test('wykrywanie zadań typu „złożyć / wysłać / zamówić”', () => {
-  ['Złożyć wniosek o decyzję', 'Wysłać pismo do RDOŚ', 'Zamówić mapę do celów projektowych', 'Wystąpić o wypis z rejestru', 'Złożenie wniosku', 'Przekazać do klienta'].forEach((n) => assert.equal(C.looksLikeFiling(n), true, n));
-  ['Opracować rysunki wykonawcze', 'Obliczenia hydrauliczne', 'Skompletować załączniki do wniosku', 'Przekazanie dokumentacji zamawiającemu', ''].forEach((n) => assert.equal(C.looksLikeFiling(n), false, n));
+  ['Złożyć wniosek o decyzję', 'Wysłać pismo do RDOŚ', 'Zamówić mapę do celów projektowych', 'Wystąpić o wypis z rejestru', 'Złożenie wniosku', 'Uzyskać uzgodnienie z zarządcą drogi'].forEach((n) => assert.equal(C.looksLikeFiling(n), true, n));
+  ['Opracować rysunki wykonawcze', 'Obliczenia hydrauliczne', 'Skompletować załączniki do wniosku', 'Przekazanie dokumentacji zamawiającemu', 'Przekazać do klienta', 'Wysłać rysunki do druku', 'Sporządzić operat wodnoprawny', ''].forEach((n) => assert.equal(C.looksLikeFiling(n), false, n));
 });
 
 test('nie pomijamy śledzenia: zamknięte zadanie „złożyć…” czeka na decyzję, aż je rozstrzygniesz', () => {
@@ -70,7 +70,7 @@ test('przestrzeń robocza zachowuje sprawy istniejących projektów i odrzuca os
 });
 
 test('notatka trafia do historii', () => {
-  const made = C.create([], { projectId: 1, name: 'Wniosek', startedAt: '2026-10-01' }, [1]);
+  const made = C.create([], { projectId: 1, name: 'Wniosek', org: 'Urząd', startedAt: '2026-10-01' }, [1]);
   const list = C.addEvent(made.list, made.item.id, { kind: 'note', note: 'Telefon do urzędu' }, '2026-10-05');
   const c = list[0];
   assert.equal(c.events[c.events.length - 1].kind, 'note');

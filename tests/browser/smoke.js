@@ -978,7 +978,11 @@ async function main() {
       await evaluate('const t = document.getElementById("cs-task"); return !!t && !t.disabled && t.options.length > 1;'));
     await evaluate('const t = document.getElementById("cs-task"); t.value = t.options[1].value; t.dispatchEvent(new Event("change", { bubbles: true })); return true;');
     await sleep(200);
-    await evaluate('document.getElementById("cs-name").value = "Sprawa przypięta testowa"; document.getElementById("case-form").requestSubmit(); return true;');
+    await evaluate('document.getElementById("cs-name").value = "Sprawa przypięta testowa"; document.getElementById("cs-org").value = ""; document.getElementById("case-form").requestSubmit(); return true;');
+    await sleep(400);
+    check('Sprawa: bez pola „Od kogo czekasz” formularz się nie zapisuje',
+      await evaluate('return !!document.getElementById("case-form") && !ETROM.app.store.getState().workspace.cases.some(x => x.name === "Sprawa przypięta testowa");'));
+    await evaluate('document.getElementById("cs-org").value = "Zarząd Dróg"; document.getElementById("case-form").requestSubmit(); return true;');
     await sleep(500);
     check('Sprawa przypięta do zadania jest z nim powiązana (znacznik „sprawa” przy zadaniu)',
       await evaluate('const cs = ETROM.app.store.getState().workspace.cases; const c = cs.find(x => x.name === "Sprawa przypięta testowa"); return !!c && !!c.sourceTaskId && !!ETROM.Cases.byTask(cs, c.sourceTaskId);'));
@@ -986,6 +990,10 @@ async function main() {
     await sleep(300);
     check('Sprawa: „Dodaj notatkę” zapisuje wpis w historii i nie przesuwa przypomnienia',
       await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.name === "Sprawa przypięta testowa"); const last = c.events[c.events.length - 1]; return last.kind === "note" && last.note === "Notatka testowa" && c.remindAt === undefined;'));
+    await evaluate('const cs = ETROM.app.store.getState().workspace.cases; const c = cs.find(x => x.name === "Sprawa przypięta testowa"); ETROM.app.actions.deleteCase(c.id); return true;');
+    await sleep(300);
+    check('Sprawa dodana przez pomyłkę da się usunąć, a przypięte zadanie zostaje',
+      await evaluate('const s = ETROM.app.store.getState(); return !s.workspace.cases.some(x => x.name === "Sprawa przypięta testowa") && s.workspace.projects.some(p => p.stages.some(st => st.tasks.length > 0));'));
     await evaluate('ETROM.app.actions.setMyView("today"); return true;');
     await sleep(400);
     check('Sprawy w toku: widok „Dziś” pokazuje wszystkie otwarte sprawy osoby (bez przypomnień)',

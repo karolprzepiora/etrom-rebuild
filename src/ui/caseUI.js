@@ -33,7 +33,7 @@
     var taskSel = UI.select({ id: 'cs-task', value: v.sourceTaskId || '', options: [{ value: '', label: chosen ? 'Bez zadania' : 'Najpierw wybierz projekt' }].concat(tasks.map(function (t) { return { value: t.taskId, label: t.label }; })) });
     if (!chosen) taskSel.disabled = true;
     var name = UI.input({ id: 'cs-name', value: v.name || '', maxlength: 120, placeholder: 'np. Decyzja środowiskowa', error: problems.name });
-    var org = UI.input({ id: 'cs-org', value: v.org || '', maxlength: 120, placeholder: 'np. RDOŚ Kraków, nr OO.4210.12' });
+    var org = UI.input({ id: 'cs-org', value: v.org || '', maxlength: 120, placeholder: 'np. RDOŚ Kraków, nr OO.4210.12', error: problems.org });
     var at = UI.input({ id: 'cs-start', type: 'date', value: v.startedAt || '', error: problems.startedAt });
     function values() {
       var t = tasks.filter(function (x) { return x.taskId === taskSel.value; })[0];
@@ -57,9 +57,9 @@
         UI.field({ id: 'cs-project', label: 'Projekt', control: project, error: problems.projectId }),
         UI.field({ id: 'cs-task', label: 'Zadanie, którego dotyczy sprawa', optional: true, control: taskSel }),
         UI.field({ id: 'cs-name', label: 'Nazwa sprawy', control: name, error: problems.name }),
-        UI.field({ id: 'cs-org', label: 'Organ i numer sprawy', optional: true, control: org }),
+        UI.field({ id: 'cs-org', label: 'Od kogo czekasz i numer sprawy', control: org, error: problems.org }),
         UI.field({ id: 'cs-start', label: 'Złożono / zamówiono', control: at, error: problems.startedAt }),
-        D.el('p', { class: 't-meta', text: 'Licznik liczy dni od dnia złożenia. Sprawa zostaje widoczna w Planie, w Mojej pracy i w projekcie, aż ją zakończysz. Przypięte zadanie dostaje znacznik „sprawa”.' })
+        D.el('p', { class: 't-meta', text: 'Sprawa to oczekiwanie na kogoś spoza zespołu: decyzję, pozwolenie, uzgodnienie albo materiały. Pracy własnej (operat, dokumentacja) tu nie dodawaj, od tego są zadania.' })
       ]
     });
     window.setTimeout(function () { (v.projectId ? name : project).focus(); }, 0);
@@ -97,6 +97,7 @@
       c.status === 'open' ? D.el('div', { class: 'bflagform__actions case-detail__acts' }, [
         UI.button({ label: 'Dodaj notatkę', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-note-add' }, onClick: function () { if (!note.value.trim()) { note.focus(); return; } E.Menu.close(); ctx.actions.caseNote(c.id, note.value); } }),
         UI.button({ label: 'Dodaj pismo', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-letter' }, onClick: function () { E.Menu.close(); ctx.actions.openCaseLetter(c.id); } }),
+        UI.button({ label: 'Usuń (pomyłka)', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-delete', 'data-tooltip': 'Dodana przez pomyłkę; zadanie zostaje bez zmian' }, onClick: function () { E.Menu.close(); ctx.actions.deleteCase(c.id); } }),
         UI.button({ label: 'Zakończ sprawę', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-close' }, onClick: function () { E.Menu.close(); ctx.actions.closeCase(c.id, note.value); } }),
         UI.button({ label: 'Zapytałem', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'case-call' }, onClick: function () { E.Menu.close(); ctx.actions.caseCall(c.id, note.value); } })
       ]) : D.el('div', { class: 'bflagform__actions' }, [UI.button({ label: 'Wznów sprawę', variant: 'ghost', size: 'sm', onClick: function () { E.Menu.close(); ctx.actions.reopenCase(c.id); } })])
@@ -133,7 +134,7 @@
   function pendingRow(p, ctx) {
     var project = (ctx.projects || []).filter(function (x) { return x.id === p.projectId; })[0];
     return D.el('div', { class: 'case-ask', dataset: { taskId: p.taskId } }, [
-      D.el('div', { class: 'case-ask__txt' }, [D.el('b', { text: 'Czy czekasz na odpowiedź po: „' + p.name + '”?' }), D.el('small', { class: 't-muted', text: (project ? project.code + ' · ' : '') + 'zamknięto ' + shortDay(p.at) + ' · bez decyzji sprawa nie będzie śledzona' })]),
+      D.el('div', { class: 'case-ask__txt' }, [D.el('b', { text: 'Czy czekasz teraz na decyzję, uzgodnienie lub materiały od kogoś spoza zespołu?' }), D.el('small', { class: 't-muted', text: (project ? project.code + ' · ' : '') + '„' + p.name + '”, zamknięto ' + shortDay(p.at) + ' · bez decyzji sprawa nie będzie śledzona' })]),
       D.el('div', { class: 'case-card__btns' }, [
         UI.button({ label: 'Nie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-no-' + p.taskId }, onClick: function () { ctx.actions.skipTaskCase(p.projectId, p.stageId, p.taskId); } }),
         UI.button({ label: 'Tak, śledź', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'case-yes-' + p.taskId }, onClick: function () { ctx.actions.openCaseFromTask(p.projectId, p.stageId, p.taskId); } })

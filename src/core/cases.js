@@ -6,8 +6,9 @@
 
   var STATUS = { open: 'W toku', closed: 'Zakończona', skipped: 'Pominięta' };
   var KINDS = { filed: 'Złożono', letter: 'Pismo od organu', call: 'Dopytano', filled: 'Uzupełniono', note: 'Notatka' };
-  // Nazwy zadań, po których zwykle zaczyna się oczekiwanie na odpowiedź.
-  var FILING = /(z[łl]o[żz](yć|enie|enia|yli)|wy[śs][łl]a(ć|nie)|wystąpi(ć|enie)|wystąpień|zam[óo]wi(ć|enie)|zg[łl]o(si[ćc]|szenie)|skierowa(ć|nie)|przekaza(ć|nie) do\s)/i;
+  // Zadania, po których zwykle czeka się na kogoś z zewnątrz (organ, klient, dostawca): złożenie, zamówienie, wystąpienie, zgłoszenie.
+  // Praca własna (opracowanie, operat, dokumentacja) i zwykłe „wyślij/przekaż” nie uruchamiają pytania.
+  var FILING = /^\s*(z[łl]o[żz](yć|enie)|wystąpi(ć|enie)|zam[óo]wi(ć|enie)|zg[łl]o(si[ćc]|szenie)|skierowa(ć|nie)|wy[śs][łl]a(ć|nie)\s+(wniosek|wniosku|zapytanie|pro[śs]b|pism)|uzyska(ć|nie)|zapyta(ć|nie)\s+o)/i;
 
   function isDay(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v + 'T00:00:00')); }
   function isoOf(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -52,6 +53,7 @@
     var errors = {};
     if (!d.projectId || (projectIds && projectIds.indexOf(d.projectId) < 0)) errors.projectId = 'Wybierz projekt.';
     if (!str(d.name, 120)) errors.name = 'Podaj nazwę sprawy.';
+    if (!str(d.org, 120) && d.status !== 'skipped') errors.org = 'Podaj, od kogo czekasz.';
     if (!isDay(d.startedAt)) errors.startedAt = 'Podaj datę złożenia.';
     return { valid: Object.keys(errors).length === 0, errors: errors };
   }
@@ -84,6 +86,9 @@
       return { events: c.events.concat([e]) };
     });
   }
+
+  /** Usuwa sprawę (pomyłka); zadanie przypięte zostaje bez zmian. */
+  function remove(list, id) { return (list || []).filter(function (c) { return c.id !== id; }); }
 
   function close(list, id, day, note) { return update(list, id, function () { return { status: 'closed', closedAt: day, closedNote: str(note, 300) }; }); }
   function reopen(list, id) { return update(list, id, function () { return { status: 'open', closedAt: '' }; }); }
@@ -144,7 +149,7 @@
   var api = {
     STATUS: STATUS, KINDS: KINDS, isDay: isDay, isoOf: isoOf, addDays: addDays, diffDays: diffDays,
     looksLikeFiling: looksLikeFiling, normalize: normalize, validate: validate, create: create, addEvent: addEvent,
-    close: close, reopen: reopen, daysSince: daysSince, open: open, lastCall: lastCall,
+    remove: remove, close: close, reopen: reopen, daysSince: daysSince, open: open, lastCall: lastCall,
     byTask: byTask, visible: visible, projectTasks: projectTasks, doneDay: doneDay, pendingDecisions: pendingDecisions
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
