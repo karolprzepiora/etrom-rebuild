@@ -1561,3 +1561,8 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .pb-live-line--short { gap: .35rem; font-size: var(--fs-xs); font-weight: 700; color: var(--good-ink); }
 .pb-row--who .pb-label { justify-content: flex-start; }
 .pb-wk__top { padding-inline: var(--space-2); gap: 4px; }
+/* PD1: tygodnie i dni wyśrodkowane nad swoimi kolumnami, litera dnia nad dużym numerem */
+.pb-wk__top { justify-content: center; text-align: center; padding-inline: 4px; }
+.pb-dh small { font-size: 10.5px; letter-spacing: 0; }
+.pb-dh { gap: 3px; }
+.pb-month { text-transform: uppercase; }

@@ -931,7 +931,7 @@
         out.push(D.el('span', {
           class: 'pb-dh' + (todayWork && slot === todaySlot ? ' is-today' : '') + (hol ? ' is-hol' : ''),
           attrs: hol ? { 'data-tooltip': hol } : {}
-        }, compact ? [D.el('b', { text: String(Number(key.slice(8))) })] : [D.el('small', { text: DOWS[k] }), D.el('b', { text: String(Number(key.slice(8))) })]));
+        }, compact ? [D.el('b', { text: String(Number(key.slice(8))) })] : [D.el('small', { text: DOWS[k].charAt(0).toUpperCase(), attrs: { 'data-tooltip': DOWS[k] } }), D.el('b', { text: String(Number(key.slice(8))) })]));
       }
       return D.el('span', { class: 'pb-days' }, out);
     }
@@ -943,7 +943,13 @@
         var key = thu.getFullYear() * 12 + thu.getMonth();
         var last = groups[groups.length - 1];
         if (last && last.key === key) last.n += 1;
-        else groups.push({ key: key, n: 1, label: MONTH_NAMES[thu.getMonth()] + (thu.getMonth() === 0 || !groups.length ? ' ' + thu.getFullYear() : '') });
+        else {
+          var mon = new Date(w.start);
+          var label = MONTH_NAMES[thu.getMonth()];
+          // Pierwszy tydzień okna zaczyna się w poprzednim miesiącu: „wrzesień / październik”.
+          if (!groups.length && mon.getMonth() !== thu.getMonth()) label = MONTH_NAMES[mon.getMonth()] + ' / ' + label;
+          groups.push({ key: key, n: 1, label: label + (thu.getMonth() === 0 || !groups.length ? ' ' + thu.getFullYear() : '') });
+        }
       });
       return D.el('div', { class: 'pb-months', attrs: { 'aria-hidden': 'true' } }, groups.map(function (g) { return D.el('span', { class: 'pb-month', style: { flex: String(g.n) }, text: g.label }); }));
     }
