@@ -588,7 +588,7 @@
    * Ostatnia aktywność w projekcie: zmiany statusów zadań i wpisy w dzienniku pism, najnowsze pierwsze.
    * @returns {Array<{at:string, kind:'task'|'mail', text:string}>}
    */
-  function activity(project, mail, limit) {
+  function activity(project, mail, limit, cases) {
     var out = [];
     allTasks(project || {}).forEach(function (e) {
       (e.task.history || []).forEach(function (h) {
@@ -597,6 +597,14 @@
     });
     (mail || []).filter(function (m) { return project && m.projectId === project.id; }).forEach(function (m) {
       out.push({ at: m.createdAt || m.registeredDate, kind: 'mail', text: (m.direction === 'in' ? 'Pismo przychodzące ' : 'Pismo wychodzące ') + m.regNo + ': ' + m.subject });
+    });
+    // Sprawy w toku: złożenie, pismo od organu, dopytanie, notatka i zakończenie (dzień bez godziny, więc na koniec dnia).
+    (cases || []).filter(function (c) { return project && c.projectId === project.id && c.status !== 'skipped'; }).forEach(function (c) {
+      (c.events || []).forEach(function (e) {
+        var what = { filed: 'Sprawa złożona', letter: 'Pismo w sprawie', call: 'Dopytano w sprawie', filled: 'Uzupełniono sprawę', note: 'Notatka w sprawie' }[e.kind] || 'Sprawa';
+        out.push({ at: e.at + 'T12:00', kind: 'case', text: what + ' „' + c.name + '”' + (e.note ? ': ' + e.note : '') });
+      });
+      if (c.status === 'closed' && c.closedAt) out.push({ at: c.closedAt + 'T18:00', kind: 'case', text: 'Sprawa zakończona „' + c.name + '”' + (c.closedNote ? ': ' + c.closedNote : '') });
     });
     out = out.filter(function (x) { return x.at; });
     out.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });

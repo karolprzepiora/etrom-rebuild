@@ -27,6 +27,25 @@
     { key: 'none', label: 'Bez terminu', tone: '' }
   ];
 
+  /**
+   * Dwie szyny po prawej („Czekam na odpowiedź” i „Zegar i projekty”) otwierają się zamiennie:
+   * rozwinięcie jednej zwija drugą. Bez zapisanego wyboru otwarty jest zegar, a sprawy
+   * pokazują licznik (czerwony, gdy coś czeka na dopytanie lub decyzję).
+   */
+  function dockState(prefs, hasCases) {
+    var list = (prefs && prefs.collapsedRails) || [];
+    var zegar = list.indexOf('mywork') >= 0;
+    var cases = list.indexOf('mycases') >= 0;
+    if (hasCases && !zegar && !cases) cases = true;
+    return { zegar: zegar, cases: cases };
+  }
+  function setDock(actions, prefs, open) {
+    var list = ((prefs && prefs.collapsedRails) || []).filter(function (id) { return id !== 'mywork' && id !== 'mycases'; });
+    if (open !== 'zegar') list.push('mywork');
+    if (open !== 'cases') list.push('mycases');
+    actions.setPref({ collapsedRails: list });
+  }
+
   function inspectRef(row) {
     return { kind: 'task', projectId: row.project.id, stageId: row.stage.id, taskId: row.task.id };
   }
@@ -308,15 +327,16 @@
     });
     rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
     var visible = rest.filter(Boolean);
+    var dock = dockState(state.prefs, !!caseEl);
     if (caseEl) {
-      // Sprawy w zwijanej szynie obok listy (jak „Zegar i projekty”); zwinięta pokazuje licznik, a czerwony, gdy coś czeka na dopytanie lub decyzję.
-      main.push(UI.railLayout({
+      // Sprawy w zwijanej szynie obok listy; karty zaczynają się na wysokości zakładek, tak jak „Zegar i projekty”.
+      main = [UI.railLayout({
         id: 'mycases', title: caseEl.dataset.title, label: 'Sprawy w toku', cls: 'rl--cases',
-        collapsed: (state.prefs.collapsedRails || []).indexOf('mycases') >= 0,
-        onToggle: function () { ctx.actions.toggleRail('mycases'); },
+        collapsed: dock.cases,
+        onToggle: function () { setDock(ctx.actions, state.prefs, dock.cases ? 'cases' : null); },
         badge: caseEl.dataset.count, late: Number(caseEl.dataset.attention) > 0,
-        main: visible, side: [caseEl]
-      }));
+        main: main.concat(visible), side: [caseEl]
+      })];
     } else main = main.concat(visible);
     if (current !== 'all' && current !== 'weeks' && !visible.length && !caseEl) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
     if (current === 'all' && !m.open && !m.react.length) {
@@ -335,8 +355,8 @@
         var minutes = TL.sum(todays, now);
         return UI.railLayout({
           id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', cls: 'mywork', mainCls: 'mywork__main',
-          collapsed: (state.prefs.collapsedRails || []).indexOf('mywork') >= 0,
-          onToggle: function () { ctx.actions.toggleRail('mywork'); },
+          collapsed: dock.zegar,
+          onToggle: function () { if (caseEl) setDock(ctx.actions, state.prefs, dock.zegar ? 'zegar' : null); else ctx.actions.toggleRail('mywork'); },
           badge: minutes ? (TL.hoursOf(minutes) + " h").replace(".", ",") : '',
           main: main,
           side: [

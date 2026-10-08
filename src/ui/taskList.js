@@ -140,6 +140,7 @@
         on: { click: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } }
       }),
       task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null,
+      (function () { var cs = actions.caseOfTask ? actions.caseOfTask(task.id) : null; return cs && E.CaseUI ? E.CaseUI.chip(cs, { actions: actions, projects: [project] }) : null; })(),
       task.draft ? UI.badge(task.fromReserve ? 'Zamrożone · z rezerwy' : 'Zamrożone', 'outline', { icon: 'clock', attrs: { 'data-tooltip': 'Szkic planu: bez osób i terminu, widzi go tylko zarząd i lider. Odmroź, aby dodać realizatorów.' } }) : null
     ]);
 

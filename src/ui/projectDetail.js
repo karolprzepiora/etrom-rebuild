@@ -23,6 +23,7 @@
     { value: 'etapy', label: 'Plan' },
     { value: 'budzet', label: 'Plan wstępny' },
     { value: 'zadania', label: 'Zadania' },
+    { value: 'sprawy', label: 'Sprawy' },
     { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' },
     { value: 'czas', label: 'Czas' },
@@ -379,7 +380,7 @@
   }
 
   function activityTab(project, ctx) {
-    var list = Insight.activity(project, ctx.state.workspace.mail || [], 60);
+    var list = Insight.activity(project, ctx.state.workspace.mail || [], 60, ctx.state.workspace.cases || []);
     if (!list.length) {
       return D.el('section', { class: 'section' }, [D.el('div', { class: 'card' }, [UI.emptyState({
         icon: 'history', title: 'Jeszcze nic się nie wydarzyło', text: 'Zmiany statusów zadań i pisma w dzienniku pojawią się tu w kolejności od najnowszych.'
@@ -389,7 +390,7 @@
       D.el('div', { class: 'section__head' }, [D.el('div', { class: 'section__titles' }, [D.el('h2', { class: 'section__title', text: 'Aktywność' }), D.el('span', { class: 'section__meta t-num', text: String(list.length) })])]),
       D.el('ol', { class: 'pd-feed' }, list.map(function (a) {
         return D.el('li', { class: 'pd-feed__item' }, [
-          D.el('span', { class: 'pd-feed__icon', attrs: { 'aria-hidden': 'true' } }, [Icons.icon(a.kind === 'mail' ? 'mail' : 'checklist', 14)]),
+          D.el('span', { class: 'pd-feed__icon', attrs: { 'aria-hidden': 'true' } }, [Icons.icon(a.kind === 'mail' ? 'mail' : (a.kind === 'case' ? 'clock' : 'checklist'), 14)]),
           D.el('span', { class: 'pd-feed__text', text: a.text }),
           D.el('span', { class: 'pd-feed__at t-num', text: F.dateTime(String(a.at).slice(0, 16)) })
         ]);
@@ -414,11 +415,12 @@
     var tab = ctx.state.route.tab || 'etapy';
     var stats = Progress.projectProgress(project);
     var tasks = Tasks.projectTaskStats(project);
-    var counts = { etapy: stats.total, zadania: tasks.open, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zespol: Team.projectPeople(project.team).length };
+    var counts = { etapy: stats.total, zadania: tasks.open, sprawy: E.Cases.open(ctx.state.workspace.cases || []).filter(function (c) { return c.projectId === project.id; }).length, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zespol: Team.projectPeople(project.team).length };
 
     var canAnalyse = E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.state.workspace.people || []);
     var body;
     if (tab === 'zadania') body = tasksTab(project, ctx);
+    else if (tab === 'sprawy') body = E.CaseUI.projectTab(project, ctx);
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else if (tab === 'czas') body = timeTab(project, ctx);

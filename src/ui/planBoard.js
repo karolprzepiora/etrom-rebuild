@@ -316,7 +316,7 @@
     }
     /** Wiersze „Sprawy w toku” osoby: kropka = złożono, linia = dni od złożenia, ◇ pismo, ✆ dopytano. */
     function caseRows(personId, trackOf) {
-      var list = E.Cases.open(state.workspace.cases || []).filter(function (c) { return c.ownerId === personId && (!wantProject || c.projectId === wantProject); })
+      var list = E.Cases.visible(state.workspace.cases || [], projects).filter(function (c) { return c.ownerId === personId && (!wantProject || c.projectId === wantProject); })
         .sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
       if (!list.length) return [];
       function slotIso(iso, dir) { return slotOf(plan.first, new Date(iso + 'T00:00:00').getTime(), dir || 1); }

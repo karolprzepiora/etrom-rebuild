@@ -81,7 +81,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'budzet', 'zadania', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
+  var TABS = ['etapy', 'budzet', 'zadania', 'sprawy', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -1744,6 +1744,16 @@
     Toast.show({ message: 'Zapisano, że dopytano. Przypomnę za ' + c.remindEvery + ' dni.', tone: 'success', timeout: 3500 });
   }
 
+  /** Notatka lub informacja w historii sprawy; nie przesuwa przypomnienia. */
+  function caseNote(id, note) {
+    if (!String(note || '').trim()) return;
+    setCases(function (list) { return Cases.addEvent(list, id, { kind: 'note', note: note, by: currentMe() || '' }, dayNow()); });
+    Toast.show({ message: 'Dodano notatkę do sprawy', tone: 'success', timeout: 3000 });
+  }
+
+  /** Sprawa przypięta do zadania (do znacznika w listach zadań). */
+  function caseOfTask(taskId) { return Cases.byTask(caseList(), taskId); }
+
   function closeCase(id, note) {
     var before = caseList();
     setCases(function (list) { return Cases.close(list, id, dayNow(), note || ''); });
@@ -2773,6 +2783,7 @@
     var now = function (on) { return on ? 'teraz' : ''; };
     return [
       { label: 'Nowy projekt', icon: 'plus', meta: 'N', keywords: 'dodaj utwórz', run: openCreate },
+      { label: 'Nowa sprawa w toku', icon: 'plus', keywords: 'sprawa wniosek złożony zamówiony czekam na odpowiedź urząd', run: function () { openCase({}); } },
       { label: 'Nowa osoba', icon: 'person', keywords: 'zespół pracownik dodaj', run: function () { goTo('team'); openNewPerson(); } },
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
       { label: 'Przejdź do karty czasu', icon: 'clock', meta: now(state.route.name === 'time'), keywords: 'czas godziny tydzień miesiąc eksport csv plan obciążenia', run: function () { goTo('time'); } },
@@ -2935,6 +2946,8 @@
     switchTimer: switchTimer,
     setBudgetFlag: setBudgetFlag,
     openCase: openCase,
+    caseNote: caseNote,
+    caseOfTask: caseOfTask,
     openCaseFromTask: openCaseFromTask,
     submitCase: submitCase,
     caseCall: caseCall,
@@ -3452,7 +3465,7 @@
     } else if (current === state.caseForm) {
       settings.title = 'Sprawa w toku';
       settings.subtitle = 'Wniosek złożony lub materiał zamówiony: sprawa zostaje widoczna z licznikiem dni, aż ją zakończysz.';
-      settings.content = E.CaseUI.form(current.draft, current.errors, { onSubmit: submitCase, onCancel: function () { store.set({ caseForm: null }); } }, state.workspace.projects.filter(function (p) { return p.status !== 'done'; }), Model);
+      settings.content = E.CaseUI.form(current.draft, current.errors, { onSubmit: submitCase, onCancel: function () { store.set({ caseForm: null }); }, onDraft: function (draft) { store.set({ caseForm: Object.assign({}, current, { draft: draft, errors: {} }) }); }, nameFromTask: caseNameFromTask }, state.workspace.projects.filter(function (p) { return p.status !== 'done'; }), Model);
     } else if (current === state.mailForm) {
       var mailProject = findProject(current.projectId);
       settings.title = current.mode === 'edit' ? 'Edytuj wpis w dzienniku' : (current.draft.direction === 'out' ? 'Pismo wychodzące' : 'Pismo przychodzące');

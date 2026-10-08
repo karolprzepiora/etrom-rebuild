@@ -931,18 +931,26 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: „Zapytałem” zapisuje wpis z notatką, przesuwa przypomnienie i zostawia znacznik na wykresie',
       await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.id === "' + caseInfo.id + '"); return c.events.length === ' + (caseInfo.n + 1) + ' && c.events[c.events.length - 1].note === "Rozmowa testowa" && c.remindAt >= "' + caseInfo.remind + '" && !!document.querySelector(".pb-row--case[data-case-id=\\"' + caseInfo.id + '\\"] .pb-case__m--call");'));
+    const railsBefore = JSON.stringify(await state('s.prefs.collapsedRails || []'));
     const meBeforeCases = await state('s.prefs.me');
     await evaluate('ETROM.app.actions.setMe("' + caseInfo.owner + '"); return true;');
     await go('#/moja-praca');
     await sleep(500);
+    await evaluate('const b = document.querySelector("[data-fk=rail-mycases]"); if (b && b.getAttribute("aria-expanded") === "false") b.click(); return true;');
+    await sleep(400);
     check('Sprawy w toku: Moja praca ma sekcję „Czekam na odpowiedź” z licznikiem dni i przyciskiem „Zapytałem”',
-      await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-ask-]");'));
+      await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-open-]") && !sec.querySelector("[data-fk^=case-ask-]");'));
     check('Moja praca: sprawy stoją w zwijanej szynie jako kafelki, a termin zadania to chip w jednej gramatyce',
       await evaluate('const side = document.querySelector(".rl--cases .rl__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".rl--cases .rl__main") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
     await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
     await sleep(300);
     check('Moja praca: szynę „Czekam na odpowiedź” można zwinąć, a zwinięta pokazuje licznik spraw',
       await evaluate('const r = document.querySelector(".rl--cases.is-collapsed"); return !!r && !!r.querySelector(".rl__vcount") && /^\\d+$/.test(r.querySelector(".rl__vcount").textContent) && !document.querySelector("[data-fk=my-cases]");'));
+    await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
+    await sleep(300);
+    check('Moja praca: rozwinięcie spraw zwija „Zegar i projekty”, a rozwinięcie zegara zwija sprawy',
+      await evaluate('return document.querySelector("[data-fk=rail-mywork]").getAttribute("aria-expanded") === "false" && document.querySelector("[data-fk=rail-mycases]").getAttribute("aria-expanded") === "true";')
+      && await (async () => { await evaluate('document.querySelector("[data-fk=rail-mywork]").click(); return true;'); await sleep(300); return await evaluate('return document.querySelector("[data-fk=rail-mycases]").getAttribute("aria-expanded") === "false" && document.querySelector("[data-fk=rail-mywork]").getAttribute("aria-expanded") === "true";'); })());
     await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
     await sleep(300);
     check('Moja praca: wiersze „Wymaga reakcji” nie mają kolorowej szyny z lewej',
@@ -962,6 +970,22 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: „+ Sprawa” zakłada sprawę bez zadania i od razu widać ją w Mojej pracy',
       (await state('s.workspace.cases.length')) === casesBefore + 1 && await evaluate('return [...document.querySelectorAll(".case-card")].some(c => /Mapa do celów projektowych/.test(c.textContent));'));
+    await evaluate('document.querySelector("[data-fk=case-add]").click(); return true;');
+    await sleep(400);
+    await evaluate('const p = document.getElementById("cs-project"); p.value = p.options[1].value; p.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(500);
+    check('Sprawa: po wyborze projektu formularz podaje jego zadania do opcjonalnego przypięcia',
+      await evaluate('const t = document.getElementById("cs-task"); return !!t && !t.disabled && t.options.length > 1;'));
+    await evaluate('const t = document.getElementById("cs-task"); t.value = t.options[1].value; t.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(200);
+    await evaluate('document.getElementById("cs-name").value = "Sprawa przypięta testowa"; document.getElementById("case-form").requestSubmit(); return true;');
+    await sleep(500);
+    check('Sprawa przypięta do zadania jest z nim powiązana (znacznik „sprawa” przy zadaniu)',
+      await evaluate('const cs = ETROM.app.store.getState().workspace.cases; const c = cs.find(x => x.name === "Sprawa przypięta testowa"); return !!c && !!c.sourceTaskId && !!ETROM.Cases.byTask(cs, c.sourceTaskId);'));
+    await evaluate('const cs = ETROM.app.store.getState().workspace.cases; const c = cs.find(x => x.name === "Sprawa przypięta testowa"); ETROM.app.actions.caseNote(c.id, "Notatka testowa"); return true;');
+    await sleep(300);
+    check('Sprawa: „Dodaj notatkę” zapisuje wpis w historii i nie przesuwa przypomnienia',
+      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.name === "Sprawa przypięta testowa"); const last = c.events[c.events.length - 1]; return last.kind === "note" && last.note === "Notatka testowa" && c.remindAt === ETROM.Cases.addDays(c.startedAt, c.remindEvery);'));
     await evaluate('ETROM.app.actions.setMyView("today"); return true;');
     await sleep(400);
     check('Sprawy w toku: widok „Dziś” pokazuje tylko sprawy do dopytania dziś (lub zaległe)',
@@ -975,6 +999,10 @@ async function main() {
     check('Sprawy w toku: widok „Tygodnie” pokazuje pas spraw tej osoby',
       await evaluate('return !!document.querySelector(".pb-row--case");'));
     await evaluate('ETROM.app.actions.setMyView("all"); return true;');
+    await evaluate('location.hash = "#/projekty/" + ETROM.app.store.getState().workspace.cases[0].projectId + "/sprawy"; return true;');
+    await sleep(500);
+    check('Projekt ma zakładkę „Sprawy” z listą spraw i przyciskiem „Dodaj sprawę” w stylu innych zakładek',
+      await evaluate('const s = document.querySelector("[data-fk=project-cases]"); const b = document.querySelector("[data-fk=project-case-add]"); return !!s && s.querySelectorAll(".case-card").length >= 1 && !!b && b.classList.contains("btn--ghost") && !!b.querySelector("svg");'));
     await go('#/przeglad');
     await sleep(400);
     check('Przegląd: sekcja „Sprawy w toku” pokazuje sprawy różnych osób z licznikiem dni, a klik otwiera historię',
@@ -984,7 +1012,7 @@ async function main() {
       await evaluate('const ok = !!document.querySelector("[data-fk=case-close]") && !!document.querySelector("[data-fk=case-letter]"); ETROM.Menu.close(); return ok;'));
     await go('#/moja-praca');
     await sleep(300);
-    await evaluate('ETROM.app.store.update(function (st) { var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects.forEach(function (p) { p.stages.forEach(function (s) { s.tasks = s.tasks.filter(function (t) { return t.id !== "t-smoke-filing"; }); }); }); ws.cases = ws.cases.filter(function (c) { return c.name !== "Mapa do celów projektowych" && c.sourceTaskId !== "t-smoke-filing"; }); return Object.assign({}, st, { workspace: ws }); }); ETROM.app.actions.setMe("' + meBeforeCases + '"); return true;');
+    await evaluate('ETROM.app.store.update(function (st) { var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects.forEach(function (p) { p.stages.forEach(function (s) { s.tasks = s.tasks.filter(function (t) { return t.id !== "t-smoke-filing"; }); }); }); ws.cases = ws.cases.filter(function (c) { return c.name !== "Mapa do celów projektowych" && c.name !== "Sprawa przypięta testowa" && c.sourceTaskId !== "t-smoke-filing"; }); return Object.assign({}, st, { workspace: ws }); }); ETROM.app.actions.setMe("' + meBeforeCases + '"); ETROM.app.actions.setPref({ collapsedRails: ' + railsBefore + ' }); return true;');
     await go('#/plan');
     await sleep(400);
     await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
@@ -1412,8 +1440,8 @@ async function main() {
       await evaluate('return !!document.querySelector(".pd-head__id .detail__status") && !document.querySelector(".pd-state button");'));
     check('termin umowy i lider da się zmienić w miejscu',
       await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader");'));
-    check('zakładki projektu: Plan, Budżet, Zadania, Korespondencja, Zespół, Czas, Aktywność',
-      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,korespondencja,zespol,czas,analiza,aktywnosc";'));
+    check('zakładki projektu: Plan, Budżet, Zadania, Sprawy, Korespondencja, Zespół, Czas, Aktywność',
+      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,sprawy,korespondencja,zespol,czas,analiza,aktywnosc";'));
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',

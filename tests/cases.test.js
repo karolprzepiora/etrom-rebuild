@@ -72,3 +72,22 @@ test('przestrzeń robocza zachowuje sprawy istniejących projektów i odrzuca os
   assert.equal(ws.cases[0].projectId, 3);
   assert.deepEqual(Model.emptyWorkspace().cases, []);
 });
+
+test('notatka trafia do historii i nie przesuwa przypomnienia', () => {
+  const made = C.create([], { projectId: 1, name: 'Wniosek', startedAt: '2026-10-01', remindEvery: 7 }, [1]);
+  const before = made.item.remindAt;
+  const list = C.addEvent(made.list, made.item.id, { kind: 'note', note: 'Telefon do urzędu' }, '2026-10-05');
+  const c = list[0];
+  assert.equal(c.events[c.events.length - 1].kind, 'note');
+  assert.equal(c.remindAt, before);
+});
+
+test('widoczne są tylko sprawy istniejących projektów, a zadania projektu trafiają do formularza', () => {
+  const list = C.normalize([
+    { id: 'c-1', projectId: 1, name: 'A', startedAt: '2026-10-01' },
+    { id: 'c-2', projectId: 2, name: 'B', startedAt: '2026-10-01' }
+  ]);
+  assert.deepEqual(C.visible(list, [{ id: 1 }]).map((c) => c.id), ['c-1']);
+  const tasks = C.projectTasks({ stages: [{ id: 's1', tasks: [{ id: 't1', name: 'Zadanie' }] }] }, () => 'Etap');
+  assert.deepEqual(tasks, [{ taskId: 't1', stageId: 's1', label: 'Etap · Zadanie' }]);
+});

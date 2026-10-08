@@ -5,7 +5,7 @@
   'use strict';
 
   var STATUS = { open: 'W toku', closed: 'Zakończona', skipped: 'Pominięta' };
-  var KINDS = { filed: 'Złożono', letter: 'Pismo od organu', call: 'Dopytano', filled: 'Uzupełniono' };
+  var KINDS = { filed: 'Złożono', letter: 'Pismo od organu', call: 'Dopytano', filled: 'Uzupełniono', note: 'Notatka' };
   var REMIND = [3, 7, 14, 30];
   // Nazwy zadań, po których zwykle zaczyna się oczekiwanie na odpowiedź.
   var FILING = /(z[łl]o[żz](yć|enie|enia|yli)|wy[śs][łl]a(ć|nie)|wystąpi(ć|enie)|wystąpień|zam[óo]wi(ć|enie)|zg[łl]o(si[ćc]|szenie)|skierowa(ć|nie)|przekaza(ć|nie) do\s)/i;
@@ -107,6 +107,22 @@
     })[0] || null;
   }
 
+  /** Sprawy otwarte, które mają jeszcze swój projekt (po usunięciu projektu nie wiszą bez kontekstu). */
+  function visible(list, projects) {
+    var ids = {};
+    (projects || []).forEach(function (p) { ids[p.id] = true; });
+    return open(list).filter(function (c) { return ids[c.projectId]; });
+  }
+
+  /** Zadania projektu do wyboru w formularzu sprawy: etap · nazwa. */
+  function projectTasks(project, stageName) {
+    var out = [];
+    ((project && project.stages) || []).forEach(function (st) {
+      (st.tasks || []).forEach(function (t) { out.push({ taskId: t.id, stageId: st.id, label: (stageName ? stageName(st) + ' · ' : '') + t.name }); });
+    });
+    return out;
+  }
+
   function doneDay(task) {
     var h = (task && task.history) || [];
     for (var i = h.length - 1; i >= 0; i -= 1) if (h[i].to === 'done' && typeof h[i].at === 'string') return isoOf(new Date(h[i].at));
@@ -136,7 +152,7 @@
     STATUS: STATUS, KINDS: KINDS, REMIND: REMIND, isDay: isDay, isoOf: isoOf, addDays: addDays, diffDays: diffDays,
     looksLikeFiling: looksLikeFiling, normalize: normalize, validate: validate, create: create, addEvent: addEvent,
     close: close, reopen: reopen, daysSince: daysSince, open: open, remindDue: remindDue, lastCall: lastCall,
-    byTask: byTask, doneDay: doneDay, pendingDecisions: pendingDecisions
+    byTask: byTask, visible: visible, projectTasks: projectTasks, doneDay: doneDay, pendingDecisions: pendingDecisions
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Cases = api; }
