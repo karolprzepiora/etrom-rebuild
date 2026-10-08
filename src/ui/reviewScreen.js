@@ -89,6 +89,11 @@
         return row(m.code, m.name, m.count + ' ' + (m.count === 1 ? 'pismo' : 'pisma'), function () { ctx.actions.openProject(m.projectId, 'korespondencja'); }, 'warn');
       }), 'Brak pism czekających na reakcję.')
     ];
+    // Sprawy w toku to nie „decyzje”: pokazujemy je osobno, z licznikiem dni od złożenia.
+    var caseRows = E.CaseUI.reviewRows(state, ctx, sc.projectIds);
+    var caseSec = section('Sprawy w toku', caseRows.length, caseRows, 'Żadna sprawa nie czeka na odpowiedź.');
+    caseSec.classList.add('rv-sec--cases');
+    cards.push(caseSec);
     return {
       summary: r.total ? E.Format.count(r.total, 'sprawa do decyzji', 'sprawy do decyzji', 'spraw do decyzji') : 'Nic nie wymaga teraz decyzji.',
       body: D.el('div', { class: 'rv' }, cards)

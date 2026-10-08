@@ -866,7 +866,7 @@
         rows.push(D.el('div', { class: 'pb-free' }, [D.el('span', { class: 'pb-free__l t-muted', text: 'Bez terminu' })].concat(row.unscheduled.tasks.map(function (t) { return trayChip(t, person); }))));
       }
       if (!rows.length) rows.push(D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [D.el('span', { class: 't-muted', text: 'Brak zadań z terminem' })]), D.el('div', { class: 'pb-cell' }, [trackOf([])])]));
-      if (!solo) caseRows(row.personId, trackOf).forEach(function (r) { rows.push(r); });
+      caseRows(row.personId, trackOf).forEach(function (r) { rows.push(r); });
       var el = D.el('div', { class: 'pb-person', dataset: { person: row.personId }, attrs: { role: 'group', 'aria-label': Team.fullName(person) } }, rows);
       rowEls[row.personId] = el;
       return el;

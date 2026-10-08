@@ -140,22 +140,44 @@
     ]);
   }
 
-  /** Sekcja w Mojej pracy: własne sprawy w toku i zadania czekające na decyzję. */
-  function section(state, ctx) {
+  /** Koniec bieżącego tygodnia (niedziela) jako dzień ISO. */
+  function weekEnd(day) {
+    var dow = new Date(day + 'T00:00:00').getDay() || 7;
+    return Cases.addDays(day, 7 - dow);
+  }
+
+  /** Zakres widoku: „all” = wszystko, „today” = dopytać dziś (lub zaległe), „week” = do końca tygodnia. */
+  function inRange(c, mode, day) {
+    if (mode === 'today') return c.remindAt <= day;
+    if (mode === 'week') return c.remindAt <= weekEnd(day);
+    return true;
+  }
+
+  /** Sekcja w Mojej pracy: własne sprawy w toku i zadania czekające na decyzję (zależnie od widoku). */
+  function section(state, ctx, mode) {
     var me = ctx.meId;
     var day = today();
+    var scope = mode || 'all';
     var projects = state.workspace.projects || [];
     var cases = state.workspace.cases || [];
     var c2 = Object.assign({}, ctx, { projects: projects });
-    var mine = Cases.open(cases).filter(function (c) { return c.ownerId === me; }).sort(function (a, b) { return a.remindAt < b.remindAt ? -1 : 1; });
-    var pend = Cases.pendingDecisions(projects, cases, day, 30).filter(function (p) { return p.assignees.indexOf(me) >= 0; });
+    var allMine = Cases.open(cases).filter(function (c) { return c.ownerId === me; });
+    var mine = allMine.filter(function (c) { return inRange(c, scope, day); }).sort(function (a, b) { return a.remindAt < b.remindAt ? -1 : 1; });
+    var pend = Cases.pendingDecisions(projects, cases, day, 30).filter(function (p) {
+      if (p.assignees.indexOf(me) < 0) return false;
+      if (scope === 'today') return p.at >= Cases.addDays(day, -1);
+      if (scope === 'week') return p.at >= Cases.addDays(day, -7);
+      return true;
+    });
     if (!mine.length && !pend.length) return null;
     var due = mine.filter(function (c) { return Cases.remindDue(c, day); }).length;
-    return D.el('section', { class: 'case-sec', attrs: { 'data-fk': 'my-cases', 'aria-label': 'Sprawy w toku' } }, [
+    var title = scope === 'today' ? 'Dopytać dziś' : scope === 'week' ? 'Dopytać w tym tygodniu' : 'Czekam na odpowiedź';
+    return D.el('section', { class: 'case-sec', attrs: { 'data-fk': 'my-cases', 'data-scope': scope, 'aria-label': 'Sprawy w toku' } }, [
       D.el('div', { class: 'case-sec__head' }, [
-        D.el('h2', { class: 'case-sec__t', text: 'Czekam na odpowiedź' }),
+        D.el('h2', { class: 'case-sec__t', text: title }),
         D.el('span', { class: 'case-sec__n t-num', text: String(mine.length) }),
-        due ? D.el('span', { class: 'case-sec__due', text: due + ' do dopytania' }) : null,
+        scope === 'all' && due ? D.el('span', { class: 'case-sec__due', text: due + ' do dopytania' }) : null,
+        scope !== 'all' && allMine.length > mine.length ? D.el('span', { class: 't-muted', text: 'wszystkich w toku: ' + allMine.length }) : null,
         D.el('span', { class: 'case-sec__sp' }),
         UI.button({ label: '+ Sprawa', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-add' }, onClick: function () { ctx.actions.openCase({}); } })
       ]),
@@ -163,5 +185,28 @@
     ]);
   }
 
-  E.CaseUI = { form: form, history: history, openDetail: openDetail, chip: chip, card: card, section: section, remindInfo: remindInfo, findTask: findTask };
+  /** Sekcja w Przeglądzie: sprawy w toku (zakres zarządu albo lidera), najpierw te do dopytania. */
+  function reviewRows(state, ctx, projectIds) {
+    var day = today();
+    var people = state.workspace.people || [];
+    var projects = state.workspace.projects || [];
+    var c2 = Object.assign({}, ctx, { projects: projects });
+    var list = Cases.open(state.workspace.cases || []).filter(function (c) { return !projectIds || projectIds.indexOf(c.projectId) >= 0; })
+      .sort(function (a, b) { return (a.remindAt <= day ? 0 : 1) - (b.remindAt <= day ? 0 : 1) || (a.startedAt < b.startedAt ? -1 : 1); });
+    return list.map(function (c) {
+      var project = projects.filter(function (p) { return p.id === c.projectId; })[0];
+      var owner = c.ownerId ? E.Team.findPerson(people, c.ownerId) : null;
+      var info = remindInfo(c, day);
+      var days = Cases.daysSince(c, day);
+      var btn = D.el('button', { class: 'rv-row' + (info.due ? ' is-warn' : ''), attrs: { type: 'button', 'data-fk': 'rv-case-' + c.id } }, [
+        D.el('span', { class: 'rv-row__code', style: project ? E.Identity.hueStyle(project.code) : null, text: project ? project.code : '' }),
+        D.el('span', { class: 'rv-row__main truncate', text: c.name + (c.org ? ' · ' + c.org : '') + (owner ? ' · ' + E.Team.fullName(owner) : ' · bez osoby') }),
+        D.el('span', { class: 'rv-row__side t-num', text: days + ' ' + plural(days) + (info.due ? ' · dopytaj' : '') })
+      ]);
+      btn.addEventListener('click', function () { openDetail(btn, c, c2); });
+      return D.el('li', null, [btn]);
+    });
+  }
+
+  E.CaseUI = { form: form, history: history, openDetail: openDetail, chip: chip, card: card, section: section, remindInfo: remindInfo, findTask: findTask, reviewRows: reviewRows, inRange: inRange };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

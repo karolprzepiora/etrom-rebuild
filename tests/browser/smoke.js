@@ -804,8 +804,8 @@ async function main() {
       await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-hm__head .ts-hm__day").length === days;'));
     await go('#/przeglad');
     await sleep(300);
-    check('ekran „Przegląd” pokazuje 6 sekcji spraw do decyzji z klikalnymi wierszami i ma pozycję w menu',
-      await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 6 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
+    check('ekran „Przegląd” pokazuje 7 sekcji spraw do decyzji z klikalnymi wierszami i ma pozycję w menu',
+      await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 7 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
     await go('#/kalendarz');
     await sleep(300);
     check('ekran „Kalendarz”: siatka miesiąca 42 dni z numerami tygodni, wybrany dzień i lista najbliższych terminów',
@@ -952,6 +952,28 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: „+ Sprawa” zakłada sprawę bez zadania i od razu widać ją w Mojej pracy',
       (await state('s.workspace.cases.length')) === casesBefore + 1 && await evaluate('return [...document.querySelectorAll(".case-card")].some(c => /Mapa do celów projektowych/.test(c.textContent));'));
+    await evaluate('ETROM.app.actions.setMyView("today"); return true;');
+    await sleep(400);
+    check('Sprawy w toku: widok „Dziś” pokazuje tylko sprawy do dopytania dziś (lub zaległe)',
+      await evaluate('const sec = document.querySelector("[data-fk=my-cases][data-scope=today]"); const day = ETROM.Cases.isoOf(new Date()); const mine = ETROM.app.store.getState().workspace.cases.filter(c => c.status === "open" && c.ownerId === ETROM.app.store.getState().prefs.me); const due = mine.filter(c => c.remindAt <= day).length; return due ? (!!sec && sec.querySelectorAll(".case-card").length === due) : !sec;'));
+    await evaluate('ETROM.app.actions.setMyView("week"); return true;');
+    await sleep(400);
+    check('Sprawy w toku: widok „Ten tydzień” obejmuje sprawy z przypomnieniem do końca tygodnia',
+      await evaluate('const sec = document.querySelector("[data-fk=my-cases][data-scope=week]"); return !sec || sec.querySelectorAll(".case-card").length >= 1;'));
+    await evaluate('ETROM.app.actions.setMyView("weeks"); return true;');
+    await sleep(600);
+    check('Sprawy w toku: widok „Tygodnie” pokazuje pas spraw tej osoby',
+      await evaluate('return !!document.querySelector(".pb-row--case");'));
+    await evaluate('ETROM.app.actions.setMyView("all"); return true;');
+    await go('#/przeglad');
+    await sleep(400);
+    check('Przegląd: sekcja „Sprawy w toku” pokazuje sprawy różnych osób z licznikiem dni, a klik otwiera historię',
+      await evaluate('const sec = document.querySelector("[data-fk=rv-sprawy-w-toku]"); if (!sec) return false; const rows = sec.querySelectorAll("[data-fk^=rv-case-]"); if (rows.length < 5 || !/\\d+ dn/.test(sec.textContent)) return false; rows[0].click(); return true;'));
+    await sleep(300);
+    check('Przegląd: okno sprawy ma historię i przycisk „Zakończ sprawę”',
+      await evaluate('const ok = !!document.querySelector("[data-fk=case-close]") && !!document.querySelector("[data-fk=case-letter]"); ETROM.Menu.close(); return ok;'));
+    await go('#/moja-praca');
+    await sleep(300);
     await evaluate('ETROM.app.store.update(function (st) { var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects.forEach(function (p) { p.stages.forEach(function (s) { s.tasks = s.tasks.filter(function (t) { return t.id !== "t-smoke-filing"; }); }); }); ws.cases = ws.cases.filter(function (c) { return c.name !== "Mapa do celów projektowych" && c.sourceTaskId !== "t-smoke-filing"; }); return Object.assign({}, st, { workspace: ws }); }); ETROM.app.actions.setMe("' + meBeforeCases + '"); return true;');
     await go('#/plan');
     await sleep(400);

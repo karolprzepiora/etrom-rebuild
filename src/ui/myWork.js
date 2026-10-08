@@ -278,7 +278,7 @@
       shown = { react: [], alarms: [], snoozed: [], groups: {} };
     }
     var rest = current === 'weeks' ? [] : [
-      current === 'all' ? E.CaseUI.section(state, ctx) : null,
+      (current === 'all' || current === 'today' || current === 'week') ? E.CaseUI.section(state, ctx, current) : null,
       E.InboxScreen.alarmStrip(shown.alarms, ctx),
       E.InboxScreen.section(shown.react, ctx, now)
     ];
