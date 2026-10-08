@@ -921,6 +921,40 @@ async function main() {
     check('Oznaczenie etapu: „Zdejmij” usuwa flagę', !(await evaluate(anyFlag)));
     await evaluate('ETROM.app.actions.setMe(' + JSON.stringify(meNow) + '); return true;');
     await sleep(300);
+    /* Sprawy w toku: wiersze w Planie, „Zapytałem”, sekcja w Mojej pracy, zabezpieczenie przed pominięciem. */
+    await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
+    await sleep(500);
+    check('Sprawy w toku: Plan pokazuje osobny pas „Sprawy w toku” z wierszem sprawy i licznikiem dni',
+      await evaluate('const r = document.querySelector(".pb-row--case"); return !!document.querySelector(".pb-row--casehead") && !!r && /\\d+ dni/.test(r.textContent) && !!r.querySelector(".pb-case__m--filed");'));
+    const caseInfo = JSON.parse(await evaluate('const c = ETROM.app.store.getState().workspace.cases[0]; return JSON.stringify({ id: c.id, owner: c.ownerId, remind: c.remindAt, n: c.events.length });'));
+    await evaluate('ETROM.app.actions.caseCall("' + caseInfo.id + '", "Rozmowa testowa"); return true;');
+    await sleep(500);
+    check('Sprawy w toku: „Zapytałem” zapisuje wpis z notatką, przesuwa przypomnienie i zostawia znacznik na wykresie',
+      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.id === "' + caseInfo.id + '"); return c.events.length === ' + (caseInfo.n + 1) + ' && c.events[c.events.length - 1].note === "Rozmowa testowa" && c.remindAt >= "' + caseInfo.remind + '" && !!document.querySelector(".pb-row--case[data-case-id=\\"' + caseInfo.id + '\\"] .pb-case__m--call");'));
+    const meBeforeCases = await state('s.prefs.me');
+    await evaluate('ETROM.app.actions.setMe("' + caseInfo.owner + '"); return true;');
+    await go('#/moja-praca');
+    await sleep(500);
+    check('Sprawy w toku: Moja praca ma sekcję „Czekam na odpowiedź” z licznikiem dni i przyciskiem „Zapytałem”',
+      await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-ask-]");'));
+    await evaluate('ETROM.app.store.update(function (st) { var t = ETROM.Tasks.createTask({ name: "Złożyć wniosek testowy", deadline: "2026-10-20", assignees: ["' + caseInfo.owner + '"] }, [], ["' + caseInfo.owner + '"]); t.id = "t-smoke-filing"; t.status = "done"; t.history = [{ from: "review", to: "done", at: new Date().toISOString(), reason: "", by: "" }]; var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects[0].stages[0].tasks.push(t); return Object.assign({}, st, { workspace: ws }); }); return true;');
+    await sleep(500);
+    check('Sprawy w toku: zamknięte zadanie „Złożyć…” bez decyzji czeka na liście „Czy czekasz na odpowiedź?”',
+      await evaluate('return !!document.querySelector("[data-fk=case-yes-t-smoke-filing]") && !!document.querySelector("[data-fk=case-no-t-smoke-filing]");'));
+    await evaluate('document.querySelector("[data-fk=case-no-t-smoke-filing]").click(); return true;');
+    await sleep(500);
+    check('Sprawy w toku: „Nie” zapisuje decyzję i pytanie nie wraca',
+      await evaluate('const cs = ETROM.app.store.getState().workspace.cases; return !document.querySelector("[data-fk=case-no-t-smoke-filing]") && cs.some(x => x.sourceTaskId === "t-smoke-filing" && x.status === "skipped") && ETROM.Cases.open(cs).every(x => x.sourceTaskId !== "t-smoke-filing");'));
+    const casesBefore = await state('s.workspace.cases.length');
+    await evaluate('document.querySelector("[data-fk=case-add]").click(); return true;');
+    await sleep(400);
+    await evaluate('const p = document.getElementById("cs-project"); p.value = p.options[1].value; document.getElementById("cs-name").value = "Mapa do celów projektowych"; document.getElementById("cs-org").value = "Starostwo"; document.getElementById("case-form").requestSubmit(); return true;');
+    await sleep(500);
+    check('Sprawy w toku: „+ Sprawa” zakłada sprawę bez zadania i od razu widać ją w Mojej pracy',
+      (await state('s.workspace.cases.length')) === casesBefore + 1 && await evaluate('return [...document.querySelectorAll(".case-card")].some(c => /Mapa do celów projektowych/.test(c.textContent));'));
+    await evaluate('ETROM.app.store.update(function (st) { var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects.forEach(function (p) { p.stages.forEach(function (s) { s.tasks = s.tasks.filter(function (t) { return t.id !== "t-smoke-filing"; }); }); }); ws.cases = ws.cases.filter(function (c) { return c.name !== "Mapa do celów projektowych" && c.sourceTaskId !== "t-smoke-filing"; }); return Object.assign({}, st, { workspace: ws }); }); ETROM.app.actions.setMe("' + meBeforeCases + '"); return true;');
+    await go('#/plan');
+    await sleep(400);
     await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
     await sleep(300);
     check('Plan: przy zadaniu godziny wykonane / plan z procentem, a budżet etapu w dymku',

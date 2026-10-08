@@ -49,6 +49,7 @@
           on: { click: function () { ctx.actions.inspect(inspectRef(row)); } }
         }),
         task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null,
+        (function () { var cs = E.Cases.byTask((ctx.state && ctx.state.workspace.cases) || ctx.cases || [], task.id); return cs ? E.CaseUI.chip(cs, { actions: ctx.actions, projects: ctx.state ? ctx.state.workspace.projects : [] }) : null; })(),
         row.stage.budgetFlag && row.stage.status !== 'done' && task.status !== 'done' ? E.BudgetFlag.badge(row.stage.budgetFlag, ctx.people || (ctx.state && ctx.state.workspace.people)) : null
       ]),
       context(row)
@@ -257,7 +258,7 @@
     var m = model(state, now);
     if (!m) return { summary: 'Twoje zadania, zatwierdzenia i pisma w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
     var me = m.me;
-    ctx = Object.assign({}, ctx, { people: people, meId: me.id });
+    ctx = Object.assign({}, ctx, { people: people, meId: me.id, state: state });
     var nothing = !m.open && !m.react.length && !m.work.projects.length;
 
     var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
@@ -277,6 +278,7 @@
       shown = { react: [], alarms: [], snoozed: [], groups: {} };
     }
     var rest = current === 'weeks' ? [] : [
+      current === 'all' ? E.CaseUI.section(state, ctx) : null,
       E.InboxScreen.alarmStrip(shown.alarms, ctx),
       E.InboxScreen.section(shown.react, ctx, now)
     ];

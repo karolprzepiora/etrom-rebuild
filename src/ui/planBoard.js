@@ -309,6 +309,61 @@
     }
 
     var chkCtx = Object.assign({}, ctx, { people: people, meId: me.id });
+    var caseCtx = { actions: ctx.actions, projects: projects };
+    function taskCaseChip(b) {
+      var cs = E.Cases.byTask(state.workspace.cases || [], b.taskId);
+      return cs ? E.CaseUI.chip(cs, caseCtx) : null;
+    }
+    /** Wiersze „Sprawy w toku” osoby: kropka = złożono, linia = dni od złożenia, ◇ pismo, ✆ dopytano. */
+    function caseRows(personId, trackOf) {
+      var list = E.Cases.open(state.workspace.cases || []).filter(function (c) { return c.ownerId === personId && (!wantProject || c.projectId === wantProject); })
+        .sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
+      if (!list.length) return [];
+      function slotIso(iso, dir) { return slotOf(plan.first, new Date(iso + 'T00:00:00').getTime(), dir || 1); }
+      function pos(slot) { return ((Math.max(0, Math.min(N - 1, slot)) + 0.5) / N * 100) + '%'; }
+      var nowIso = Plan.isoDay(new Date(plan.today));
+      var out = [D.el('div', { class: 'pb-row pb-row--casehead' }, [
+        D.el('div', { class: 'pb-label pb-label--casehead' }, [D.el('span', { text: 'Sprawy w toku' }), D.el('small', { class: 't-muted', text: 'dni od złożenia' })]),
+        D.el('div', { class: 'pb-cell' }, [trackOf([])])
+      ])];
+      list.forEach(function (c) {
+        var pr = projects.filter(function (x) { return x.id === c.projectId; })[0];
+        var code = pr ? pr.code : '';
+        var days = E.Cases.daysSince(c, nowIso);
+        var info = E.CaseUI.remindInfo(c, nowIso);
+        var s0 = slotIso(c.startedAt);
+        var marks = [];
+        if (s0 > 0 || todaySlot >= 0) {
+          var from = Math.max(0, s0);
+          var to = todaySlot >= 0 ? Math.min(N - 1, todaySlot) : -1;
+          if (to >= from && s0 < N) marks.push(D.el('span', { class: 'pb-case__line', style: { left: pos(from), width: ((to - from) / N * 100) + '%' }, attrs: { 'aria-hidden': 'true' } }));
+        }
+        if (s0 < 0) marks.push(D.el('span', { class: 'pb-case__more', text: '◂', style: { left: '2px' }, attrs: { 'data-tooltip': 'Złożono ' + c.startedAt.slice(8, 10) + '.' + c.startedAt.slice(5, 7) + ' (przed oknem)' } }));
+        c.events.forEach(function (e) {
+          var sl = slotIso(e.at);
+          if (sl < 0 || sl >= N) return;
+          var linked = e.taskId ? E.CaseUI.findTask(projects, e.taskId) : null;
+          var done = e.kind === 'letter' && linked && linked.task.status === 'done';
+          var tip = (e.kind === 'filed' ? 'Złożono' : e.kind === 'call' ? 'Dopytano' : done ? 'Uzupełniono' : 'Pismo od organu') + ' · ' + e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + (e.note ? ' · ' + e.note : '');
+          if (e.kind === 'letter' && linked && linked.task.status !== 'done' && linked.task.deadline) {
+            var se = Math.max(sl, Math.min(N - 1, slotIso(linked.task.deadline, -1)));
+            marks.push(D.el('span', { class: 'pb-case__task', style: { left: (sl / N * 100) + '%', width: ((se - sl + 1) / N * 100) + '%' }, attrs: { 'data-tooltip': 'Zadanie: ' + linked.task.name + ' · termin ' + linked.task.deadline.slice(8, 10) + '.' + linked.task.deadline.slice(5, 7) } }));
+          }
+          marks.push(D.el('span', { class: 'pb-case__m pb-case__m--' + e.kind + (done ? ' is-filled' : ''), style: { left: pos(sl) }, attrs: { 'data-tooltip': tip, 'data-fk': 'pb-case-mark-' + c.id + '-' + e.id }, text: e.kind === 'call' ? '✆' : '' }));
+        });
+        var open = D.el('button', { class: 'pb-case__name', attrs: { type: 'button', 'data-fk': 'pb-case-' + c.id, title: c.name }, text: c.name });
+        open.addEventListener('click', function () { E.CaseUI.openDetail(open, c, caseCtx); });
+        out.push(D.el('div', { class: 'pb-row pb-row--case' + (info.due ? ' is-due' : ''), style: Identity.hueStyle(code), dataset: { caseId: c.id } }, [
+          D.el('div', { class: 'pb-label pb-label--case' }, [
+            D.el('span', { class: 'mrow__project', style: Identity.hueStyle(code), text: code }),
+            D.el('span', { class: 'pb-case__txt' }, [open, D.el('small', { class: 't-muted truncate', text: c.org || 'sprawa w toku' })]),
+            D.el('span', { class: 'pb-case__days' }, [D.el('b', { class: 't-num', text: String(days) + ' dni' }), D.el('small', { class: info.due ? 'is-due' : 't-muted', text: info.due ? 'dopytaj dziś' : '' })])
+          ]),
+          D.el('div', { class: 'pb-cell' }, [trackOf([D.el('div', { class: 'pb-case__track' }, marks)])])
+        ]));
+      });
+      return out;
+    }
     function taskOf(b) {
       var pr = projects.filter(function (x) { return x.id === b.projectId; })[0];
       var st = pr && (pr.stages || []).filter(function (x) { return x.id === b.stageId; })[0];
@@ -372,7 +427,8 @@
             who === undefined
               ? D.el('small', { class: 'pb-tn__proj truncate', text: projectName(b.projectId), attrs: { title: projectName(b.projectId) } })
               : D.el('span', { class: 'pb-tn__who' }, who.length ? who.map(function (pp) { return E.Avatar.avatar(pp, { size: 'xs' }); }) : [D.el('small', { class: 'pb-tn__free', text: 'Bez osoby' })]),
-            chkIndicator(b)
+            chkIndicator(b),
+            taskCaseChip(b)
           ])
         ]),
         side
@@ -810,6 +866,7 @@
         rows.push(D.el('div', { class: 'pb-free' }, [D.el('span', { class: 'pb-free__l t-muted', text: 'Bez terminu' })].concat(row.unscheduled.tasks.map(function (t) { return trayChip(t, person); }))));
       }
       if (!rows.length) rows.push(D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [D.el('span', { class: 't-muted', text: 'Brak zadań z terminem' })]), D.el('div', { class: 'pb-cell' }, [trackOf([])])]));
+      if (!solo) caseRows(row.personId, trackOf).forEach(function (r) { rows.push(r); });
       var el = D.el('div', { class: 'pb-person', dataset: { person: row.personId }, attrs: { role: 'group', 'aria-label': Team.fullName(person) } }, rows);
       rowEls[row.personId] = el;
       return el;

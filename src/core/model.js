@@ -32,6 +32,9 @@
     ? require('./library.js')
     : root.ETROM.Library;
 
+  var Cases = (typeof module !== 'undefined' && module.exports)
+    ? require('./cases.js')
+    : root.ETROM.Cases;
   var Absences = (typeof module !== 'undefined' && module.exports)
     ? require('./absences.js')
     : root.ETROM.Absences;
@@ -516,11 +519,11 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences) };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences), cases: Cases.normalize(source.cases, projects.map(function (project) { return project.id; })) };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null), absences: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null), absences: [], cases: [] };
   }
 
   var api = {

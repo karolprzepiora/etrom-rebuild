@@ -705,3 +705,10 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 
 - Lewa kolumna identyczna w każdym zoomie (2/4/6/8 tyg.): imię, ewentualnie „zarejestrowano N h”, pod spodem zielona kapsuła „teraz” (kod, zadanie, od kiedy). Suma „N h w oknie” jest tylko w dymku.
 - Obciążenie tygodnia zawsze na początku tygodnia: mieści się → szare „14 / 40 h”; przekroczenie → czerwona pigułka „+34 h” i drobno „42 / 8 h” (plan / wolne); minione tygodnie „wyk. N h”. Bez trójkąta ▲.
+
+## Sprawy w toku
+
+- Sprawa (`workspace.cases`) to oczekiwanie na organ lub klienta: nazwa, projekt, organ/numer, dzień złożenia, osoba prowadząca, przypomnienie „dopytaj” co 3/7/14/30 dni, historia (złożono, pismo, dopytano). Nie ma terminów ustawowych: tylko licznik dni od złożenia. Widzą ją wszyscy; kończy się ręcznie („Zakończ sprawę”, można wznowić).
+- Powstaje: przy zamknięciu zadania typu „złożyć / wysłać / zamówić / wystąpić” (toast „Śledź jako sprawę”), z inspektora zadania („Śledź jako sprawę”) albo „+ Sprawa” w Mojej pracy. Zabezpieczenie: zamknięte zadanie tego typu bez decyzji zostaje na liście „Czy czekasz na odpowiedź?” w Mojej pracy (30 dni), aż wybierzesz „Tak, śledź” lub „Nie”.
+- Plan → Wg osób: każda osoba jest osobną kartą; pod zadaniami pas „Sprawy w toku” (kropka = złożono, linia = dni, ◇ pismo, ◆ uzupełniono, ✆ dopytano, cienki pasek = zadanie uzupełnienia). Zadanie przypięte do sprawy ma chip „◇ sprawa: …”.
+- Moja praca: sekcja „Czekam na odpowiedź” z licznikiem dni, „Zapytałem” (notatka + przesunięcie przypomnienia), „Otwórz” (historia, „Dodaj pismo”, „Zakończ sprawę”).

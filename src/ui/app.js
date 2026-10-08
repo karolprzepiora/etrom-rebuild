@@ -59,6 +59,7 @@
     myView: 'all',
     taskForm: null,
     absenceForm: null,
+    caseForm: null,
     expandedStages: {},
     showDone: {},
     stageGroup: false,
@@ -684,6 +685,7 @@
     } else {
       var created = Tasks.createTask(values, stage.tasks || [], allowed);
       pendingFlash = { projectId: form.projectId, taskId: created.id };
+      if (form.caseId) setCases(function (list) { return Cases.addEvent(list, form.caseId, { kind: 'letter', taskId: created.id, note: created.name, by: currentMe() || '' }, dayNow()); });
       // Pismo przerobione na zadanie przestaje wymagać reakcji: sprawę prowadzi zadanie.
       if (created.mailId) setMail(function (current) { return current.map(function (e) { return e.id === created.mailId ? Object.assign({}, e, { needsAction: false }) : e; }); });
       mapStage(form.projectId, form.stageId, function (current) {
@@ -709,6 +711,13 @@
     }
     pendingFlash = { projectId: projectId, taskId: taskId };
     mapTask(projectId, stageId, taskId, function () { return result.task; });
+    // Zamknięcie zadania „złożyć / wysłać / zamówić…”: pytamy od razu, a gdy się to pominie, zadanie czeka na liście „Do rozstrzygnięcia”.
+    if (next === 'done' && Cases.looksLikeFiling(task.name) && !caseList().some(function (c) { return c.sourceTaskId === taskId; })) {
+      Toast.show({
+        message: 'Zamknięto „' + task.name + '”. Czekasz na odpowiedź?', actionLabel: 'Śledź jako sprawę', timeout: 15000,
+        onAction: function () { openCaseFromTask(projectId, stageId, taskId); }
+      });
+    }
   }
 
 
@@ -1687,6 +1696,82 @@
     Toast.show({ message: 'Usunięto nieobecność', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
   }
 
+  /* =========================================================
+     Sprawy w toku: wniosek złożony / materiał zamówiony, licznik dni do zakończenia
+     ========================================================= */
+
+  var Cases = E.Cases;
+  function caseList() { return store.getState().workspace.cases || []; }
+  function setCases(producer) {
+    updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, cases: producer(workspace.cases || []) }); });
+  }
+  function dayNow() { return Cases.isoOf(new Date()); }
+  function caseProjectIds() { return store.getState().workspace.projects.map(function (p) { return p.id; }); }
+
+  /** Nazwa sprawy z nazwy zadania: „Złożyć wniosek o decyzję” → „Wniosek o decyzję”. */
+  function caseNameFromTask(name) {
+    var rest = String(name || '').replace(/^\s*(złożyć|złożenie|wysłać|wysłanie|zamówić|zamówienie|wystąpić o|wystąpić|zgłosić|zgłoszenie)\s+/i, '').trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : String(name || '');
+  }
+
+  function openCase(preset) {
+    var base = { projectId: '', stageId: '', name: '', org: '', startedAt: dayNow(), remindEvery: 7, sourceTaskId: '' };
+    store.set({ caseForm: { draft: Object.assign(base, preset || {}), errors: {} } });
+  }
+
+  function openCaseFromTask(projectId, stageId, taskId) {
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    openCase({ projectId: projectId, stageId: stageId, name: caseNameFromTask(task.name), sourceTaskId: taskId, startedAt: Cases.doneDay(task) || dayNow() });
+  }
+
+  function submitCase(values) {
+    var form = store.getState().caseForm;
+    if (!form) return;
+    var project = store.getState().workspace.projects.filter(function (p) { return String(p.id) === String(values.projectId); })[0];
+    var data = Object.assign({}, values, { projectId: project ? project.id : '', ownerId: currentMe() || '' });
+    var res = Cases.create(caseList(), data, caseProjectIds());
+    if (!res.valid) { store.set({ caseForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
+    setCases(function () { return res.list; });
+    store.set({ caseForm: null });
+    Toast.show({ message: 'Sprawa w toku: ' + res.item.name, tone: 'success', timeout: 4000 });
+  }
+
+  function caseCall(id, note) {
+    var c = caseList().filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    setCases(function (list) { return Cases.addEvent(list, id, { kind: 'call', note: note || '', by: currentMe() || '' }, dayNow()); });
+    Toast.show({ message: 'Zapisano, że dopytano. Przypomnę za ' + c.remindEvery + ' dni.', tone: 'success', timeout: 3500 });
+  }
+
+  function closeCase(id, note) {
+    var before = caseList();
+    setCases(function (list) { return Cases.close(list, id, dayNow(), note || ''); });
+    Toast.show({ message: 'Sprawa zakończona', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setCases(function () { return before; }); } });
+  }
+
+  function reopenCase(id) { setCases(function (list) { return Cases.reopen(list, id, dayNow()); }); }
+
+  /** Zadanie „złożyć…” nie wymaga śledzenia: zapisujemy decyzję, żeby nie pytać ponownie. */
+  function skipTaskCase(projectId, stageId, taskId) {
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    var res = Cases.create(caseList(), { projectId: projectId, stageId: stageId, name: task.name, startedAt: dayNow(), sourceTaskId: taskId, status: 'skipped', ownerId: currentMe() || '' }, caseProjectIds());
+    if (res.valid) setCases(function () { return res.list; });
+  }
+
+  /** Pismo od organu (np. wezwanie do uzupełnienia) dodajemy jako zadanie przypięte do sprawy. */
+  function openCaseLetter(id) {
+    var c = caseList().filter(function (x) { return x.id === id; })[0];
+    var project = c && findProject(c.projectId);
+    if (!project) return;
+    var stage = (c.stageId && stageOf(project.id, c.stageId)) || Progress.activeStage(project) || project.stages[0];
+    if (!stage) return;
+    openAddTask(project.id, stage.id);
+    var form = store.getState().taskForm;
+    if (form) store.set({ taskForm: Object.assign({}, form, { caseId: id, draft: Object.assign({}, form.draft, { name: 'Uzupełnić: ' + c.name }) }) });
+  }
+
   /** Kolejność projektów na liście: identyfikatory od najpilniejszego. Tylko zarząd, do cofnięcia. */
   function setProjectOrder(ids) {
     if (!E.Budget.isManagement(currentMe(), people())) { Toast.show({ message: 'Kolejność projektów ustala zarząd.', tone: 'danger' }); return false; }
@@ -2278,6 +2363,27 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
     });
+    // Sprawy w toku (wniosek złożony, materiał zamówiony): licznik dni i przypomnienia „dopytaj”.
+    updateWorkspace(function (workspace) {
+      if ((workspace.cases || []).length) return workspace;
+      var byCode = function (code) { return workspace.projects.filter(function (p) { return p.code === code; })[0]; };
+      var specs = [
+        { code: '2606', who: 1, name: 'Decyzja środowiskowa', org: 'RDOŚ Kraków · OO.4210.12', at: -8, every: 7, calls: [0] },
+        { code: '2603', who: 2, name: 'Wypis z rejestru gruntów', org: 'Starostwo · zamówiono', at: -2, every: 7, calls: [] },
+        { code: '2601', who: 1, name: 'Uzgodnienie z zarządcą drogi', org: 'ZDW', at: -23, every: 7, calls: [-12] }
+      ];
+      var list = [];
+      specs.forEach(function (sp) {
+        var project = byCode(sp.code);
+        var who = demoPersonId(sp.who);
+        if (!project || !who) return;
+        var res = E.Cases.create(list, { projectId: project.id, name: sp.name, org: sp.org, ownerId: who, startedAt: demoDate(sp.at), remindEvery: sp.every }, workspace.projects.map(function (p) { return p.id; }));
+        if (!res.valid) return;
+        list = res.list;
+        sp.calls.forEach(function (off) { list = E.Cases.addEvent(list, res.item.id, { kind: 'call', note: 'Rozmowa telefoniczna', by: who }, demoDate(off)); });
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, cases: list });
+    });
     // Zadania wywołane pismami: łączymy po temacie pisma (task.mailId), żeby widać było pismo → zadanie → czas.
     updateWorkspace(function (workspace) {
       var changed = false;
@@ -2815,6 +2921,14 @@
     stopTimer: stopTimer,
     switchTimer: switchTimer,
     setBudgetFlag: setBudgetFlag,
+    openCase: openCase,
+    openCaseFromTask: openCaseFromTask,
+    submitCase: submitCase,
+    caseCall: caseCall,
+    closeCase: closeCase,
+    reopenCase: reopenCase,
+    skipTaskCase: skipTaskCase,
+    openCaseLetter: openCaseLetter,
     commitSwitch: commitSwitch,
     cancelSwitch: cancelSwitch,
     openTasks: function () { var me = currentMe(); return me ? taskChoices(me) : []; },
@@ -3284,7 +3398,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.caseForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -3322,6 +3436,10 @@
         onCancel: function () { store.set({ absenceForm: null }); },
         onDelete: current.draft.id ? function () { deleteAbsence(current.draft.id); } : null
       }, (state.workspace.people || []).filter(function (p) { return p.active !== false; }));
+    } else if (current === state.caseForm) {
+      settings.title = 'Sprawa w toku';
+      settings.subtitle = 'Wniosek złożony lub materiał zamówiony: sprawa zostaje widoczna z licznikiem dni, aż ją zakończysz.';
+      settings.content = E.CaseUI.form(current.draft, current.errors, { onSubmit: submitCase, onCancel: function () { store.set({ caseForm: null }); } }, state.workspace.projects.filter(function (p) { return p.status !== 'done'; }), Model);
     } else if (current === state.mailForm) {
       var mailProject = findProject(current.projectId);
       settings.title = current.mode === 'edit' ? 'Edytuj wpis w dzienniku' : (current.draft.direction === 'out' ? 'Pismo wychodzące' : 'Pismo przychodzące');
@@ -3446,6 +3564,7 @@
       people: people(),
       projects: state.workspace.projects,
       entries: state.workspace.entries || [],
+      cases: state.workspace.cases || [],
       me: state.prefs.me,
       findProject: findProject,
       mailOf: function (id) { return mailList().filter(function (e) { return e.id === id; })[0] || null; },
