@@ -39,6 +39,7 @@
     personForm: null,
     stageForm: null,
     timeForm: null,
+    pendingSwitch: null,
     mailForm: null,
     mailView: { direction: 'all', waiting: false, query: '' },
     analysisProject: null,
@@ -943,6 +944,37 @@
     Toast.show({ message: 'Zakończono o ' + E.Timer.hm(new Date()) + ' (start ' + E.Timer.hm(result.stopped.start) + ') · ' + TL.duration(TL.minutes(result.stopped)) + ' na „' + (where.task ? where.task.name : result.stopped.label) + '”.', tone: 'success', timeout: 4000 });
   }
 
+  /* Przełączenie zegara na inne zadanie: 5 s na reakcję (cofnięcie), potem stary wpis się domyka, a nowy startuje. */
+  var SWITCH_DELAY = 5000;
+  var switchTimerId = null;
+
+  function cancelSwitch() {
+    if (switchTimerId) { window.clearTimeout(switchTimerId); switchTimerId = null; }
+    if (store.getState().pendingSwitch) store.set({ pendingSwitch: null });
+  }
+
+  function commitSwitch() {
+    var pending = store.getState().pendingSwitch;
+    cancelSwitch();
+    if (pending) toggleTimer(pending.projectId, pending.stageId, pending.taskId);
+  }
+
+  function switchTimer(projectId, stageId, taskId) {
+    var run = runningTimer();
+    if (!run) { toggleTimer(projectId, stageId, taskId); return; }
+    if (isTiming(projectId, stageId, taskId)) return;
+    var task = taskOf(projectId, stageId, taskId);
+    if (!task) return;
+    if (task.status === 'done') {
+      Toast.show({ message: 'Zadanie jest zakończone. Cofnij je do „Do wykonania”, żeby dalej zapisywać czas.', tone: 'info', timeout: 5000 });
+      return;
+    }
+    cancelSwitch();
+    store.set({ pendingSwitch: { projectId: projectId, stageId: stageId, taskId: taskId, until: Date.now() + SWITCH_DELAY } });
+    Toast.show({ message: 'Zegar przejdzie na „' + task.name + '” za ' + Math.round(SWITCH_DELAY / 1000) + ' s.', tone: 'info', timeout: SWITCH_DELAY, actionLabel: 'Cofnij', onAction: cancelSwitch });
+    switchTimerId = window.setTimeout(commitSwitch, SWITCH_DELAY);
+  }
+
   /** Ostatnio zatrzymane zadanie osoby, które nadal jest otwarte. */
   function lastTimedTask() {
     var me = currentMe();
@@ -1015,7 +1047,7 @@
         (stage.tasks || []).forEach(function (task) {
           if (task.status === 'done' || (task.assignees || []).indexOf(personId) < 0) return;
           var key = project.id + '|' + stage.id + '|' + task.id;
-          out.push({ value: key, label: project.code + ' · ' + task.name + ' (' + Model.describeStage(stage).name + ')', rank: key in recent ? recent[key] : 1e6 });
+          out.push({ value: key, label: project.code + ' · ' + task.name + ' (' + Model.describeStage(stage).name + ')', rank: key in recent ? recent[key] : 1e6, ref: { projectId: project.id, stageId: stage.id, taskId: task.id }, code: project.code, name: task.name });
         });
       });
     });
@@ -2769,6 +2801,10 @@
     lastTimedTask: lastTimedTask,
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
+    switchTimer: switchTimer,
+    commitSwitch: commitSwitch,
+    cancelSwitch: cancelSwitch,
+    openTasks: function () { var me = currentMe(); return me ? taskChoices(me) : []; },
     isTiming: isTiming,
     logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
     editEntry: function (id) { openTimeForm({ mode: 'edit', entryId: id }); },

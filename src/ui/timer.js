@@ -462,13 +462,58 @@
     }));
   }
 
+  /** Karta „Teraz pracujesz”: licznik, zatrzymanie i przełączenie na inne zadanie (z 5 s na cofnięcie). */
+  function nowCard(entries, ctx) {
+    var run = (entries || []).filter(function (e) { return !e.end; })[0];
+    var pend = ctx.pending;
+    if (!run && !pend) return null;
+    var found = run ? ctx.find(run) : null;
+    var name = run ? ((found && found.task && found.task.name) || run.label || 'Zadanie') : '';
+    var code = run ? ((found && found.project && found.project.code) || '') : '';
+    if (pend) {
+      var to = pend.task ? pend.task.name : 'zadanie';
+      return D.el('section', { class: 'enow is-pending', attrs: { 'aria-label': 'Zaplanowane przełączenie zegara', 'data-fk': 'enow-pending' } }, [
+        D.el('p', { class: 'enow__kicker', text: 'Za chwilę' }),
+        D.el('p', { class: 'enow__txt' }, [
+          D.el('span', { text: 'Zegar przejdzie z ' }), D.el('b', { class: 'truncate', text: name || '—' }), D.el('span', { text: ' na ' }),
+          D.el('span', { class: 'code', text: pend.project ? pend.project.code : '' }), D.el('b', { class: 'truncate', text: to })
+        ]),
+        D.el('span', { class: 'enow__bar', attrs: { 'aria-hidden': 'true' } }),
+        D.el('div', { class: 'enow__btns' }, [
+          UI.button({ label: 'Cofnij', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'switch-cancel' }, onClick: function () { ctx.actions.cancelSwitch(); } }),
+          UI.button({ label: 'Przełącz teraz', size: 'sm', attrs: { 'data-fk': 'switch-now' }, onClick: function () { ctx.actions.commitSwitch(); } })
+        ])
+      ]);
+    }
+    var startMs = Date.parse(run.start);
+    var more = UI.button({ label: 'Przełącz', variant: 'secondary', size: 'sm', iconRight: 'chevronDown', attrs: { 'data-fk': 'switch-menu' } });
+    Menu.bind(more.nodeType ? more : more.node, function () {
+      var list = (ctx.actions.openTasks ? ctx.actions.openTasks() : []).filter(function (c) { return !ctx.actions.isTiming(c.ref.projectId, c.ref.stageId, c.ref.taskId); }).slice(0, 12);
+      return {
+        label: 'Przełącz zegar na zadanie',
+        items: list.length ? list.map(function (c) { return { label: c.code + ' · ' + c.name, onSelect: function () { ctx.actions.switchTimer(c.ref.projectId, c.ref.stageId, c.ref.taskId); } }; }) : [{ label: 'Brak innych otwartych zadań', disabled: true }]
+      };
+    });
+    return D.el('section', { class: 'enow is-on', attrs: { 'aria-label': 'Teraz pracujesz', 'data-fk': 'enow' } }, [
+      D.el('p', { class: 'enow__kicker' }, [D.el('i', { class: 'enow__dot', attrs: { 'aria-hidden': 'true' } }), D.el('span', { text: 'Teraz pracujesz' })]),
+      D.el('time', { class: 'enow__clock t-num', text: TL.clock(Date.now() - startMs), attrs: { 'data-timer-start': String(startMs) } }),
+      D.el('p', { class: 'enow__txt' }, [code ? D.el('span', { class: 'code', text: code }) : null, D.el('b', { class: 'truncate', text: name })]),
+      D.el('div', { class: 'enow__btns' }, [
+        UI.button({ label: 'Zatrzymaj', icon: 'stop', size: 'sm', attrs: { 'data-fk': 'enow-stop' }, onClick: function () { ctx.actions.stopTimer(); } }),
+        more
+      ])
+    ]);
+  }
+
   /** Czas zapisany dziś: pasek celu dnia, podział na projekty, oś dnia i wpisy. */
   function todayBlock(entries, ctx) {
     var now = Date.now();
     var parts = dayParts(entries, ctx);
     var total = partsTotal(parts, now);
     var left = Math.max(0, DAY_TARGET - total);
+    var live = nowCard(entries, ctx);
     return D.el('section', { class: 'etoday', attrs: { 'aria-label': 'Czas zapisany dziś' } }, [
+      live,
       D.el('div', { class: 'etoday__head' }, [
         D.el('h2', { class: 'msec__title', text: 'Dzisiaj' }),
         ctx.actions && ctx.actions.addTimeEntry ? UI.iconButton({ icon: 'plus', label: 'Dopisz czas wstecz', size: 'sm', tooltip: 'Dopisz czas wstecz', attrs: { 'data-fk': 'time-add' }, onClick: function () { ctx.actions.addTimeEntry(); } }) : null,

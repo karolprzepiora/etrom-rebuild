@@ -1269,3 +1269,44 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 /* Plan i realizacja: wyróżnienie jednej warstwy, druga wyszarzona */
 .pb--emph-plan .pb-real, .pb--emph-plan .pb-spark { filter: grayscale(1) opacity(.35); }
 .pb--emph-real .pb-bars--real .pb-bar { filter: grayscale(1) opacity(.35); }
+
+/* Nieobecności (A1): fioletowy pas na całej wysokości osoby, etykieta „Urlop · 3 dn.” u góry. Dzisiaj zostaje turkusowe. */
+.pb-absent, .pb-absent[data-kind] { --abs: oklch(.5 .2 290); background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--abs) 32%, transparent) 0 .4rem, color-mix(in oklab, var(--abs) 10%, transparent) .4rem .8rem); box-shadow: inset 2px 0 0 var(--abs), inset -2px 0 0 var(--abs); }
+.pb-absent[data-kind="sick"] { --abs: oklch(.55 .17 45); }
+.pb-absent[data-kind="training"] { --abs: oklch(.5 .1 215); }
+.pb-absent[data-kind="other"] { --abs: oklch(.5 .02 250); }
+.pb-absent.is-head { top: auto; bottom: 2px; height: 1.3rem; border-radius: 8px; background: var(--abs); color: #fff; box-shadow: none; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .01em; }
+
+/* Bieżąca praca: zielony wiersz zadania, znaczek TERAZ, uchwyt i cel przeciągania zegara. */
+.pb-row--now { background: color-mix(in oklab, var(--good) 11%, transparent); box-shadow: inset 4px 0 0 var(--good); }
+.pb-row--now .pb-label { background: transparent; }
+.pb-now { display: flex; align-items: center; gap: .4rem; margin-top: .15rem; white-space: nowrap; }
+.pb-now b { background: var(--good); color: #fff; font-size: .62rem; letter-spacing: .08em; padding: .1rem .45rem; border-radius: 99px; }
+.pb-now time, .pb-now small { font-weight: 700; font-size: var(--fs-xs); color: var(--good-ink); }
+.pb-live-line--short { gap: .35rem; }
+.pb-grip { all: unset; box-sizing: border-box; cursor: grab; touch-action: none; padding: .2rem .15rem; margin-right: .1rem; color: var(--good-ink); font-weight: 800; letter-spacing: -.15em; line-height: 1; flex: none; }
+.pb-grip:active { cursor: grabbing; }
+.pb-grip:focus-visible { box-shadow: var(--focus-ring); border-radius: 4px; }
+.pb-label--task { position: relative; }
+.pb-switch { all: unset; box-sizing: border-box; display: none; align-items: center; gap: .3rem; position: absolute; right: .5rem; bottom: .3rem; padding: .15rem .55rem; background: var(--sheet); border-radius: 99px; font-size: var(--fs-xs); font-weight: 700; color: var(--good-ink); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--good) 55%, transparent); cursor: pointer; z-index: 3; }
+.pb-row--task:hover .pb-switch, .pb-switch:focus-visible { display: inline-flex; }
+.pb-switch:focus-visible { box-shadow: var(--focus-ring); }
+.pb-row--task.is-dragging { opacity: .6; }
+.pb-row--task.is-drop { outline: 2px dashed var(--good); outline-offset: -3px; background: color-mix(in oklab, var(--good) 9%, transparent); position: relative; }
+.pb-row--task.is-drop::after { content: 'Upuść tutaj — zegar przejdzie za 5 s'; position: absolute; left: 50%; bottom: .3rem; transform: translateX(-50%); font-weight: 800; font-size: var(--fs-sm); color: var(--good-ink); pointer-events: none; background: var(--sheet); padding: 0 .5rem; border-radius: 99px; }
+.pb-row--task.is-pending { box-shadow: inset 0 0 0 2px var(--good); background: color-mix(in oklab, var(--good) 8%, transparent); }
+.pb-ghost { position: fixed; z-index: 400; pointer-events: none; padding: .5rem .8rem; border-radius: 12px; background: var(--sheet); font-weight: 700; box-shadow: 0 0 0 2px var(--good), 0 24px 36px -14px rgb(0 0 0 / .4); max-width: 26rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Panel „Zegar i projekty”: karta „Teraz pracujesz”. */
+.enow { border-radius: var(--r-lg, 16px); padding: .85rem .95rem; margin-bottom: .75rem; background: var(--sheet); box-shadow: 0 0 0 2px var(--good), 0 14px 26px -18px color-mix(in oklab, var(--good) 60%, transparent); display: grid; gap: .45rem; }
+.enow__kicker { margin: 0; display: flex; align-items: center; gap: .45rem; font-family: var(--mono, ui-monospace, monospace); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.enow__dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in oklab, var(--good) 28%, transparent); }
+.enow__clock { font-family: var(--mono, ui-monospace, monospace); font-size: 1.9rem; font-weight: 800; color: var(--good-ink); line-height: 1.1; }
+.enow__txt { margin: 0; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; font-size: var(--fs-sm); min-width: 0; }
+.enow__btns { display: flex; gap: .5rem; margin-top: .2rem; }
+.enow__btns .btn { flex: 1; justify-content: center; }
+.enow.is-pending { box-shadow: 0 0 0 2px var(--good); }
+.enow__bar { display: block; height: 6px; border-radius: 3px; background: color-mix(in oklab, var(--ink) 10%, transparent); overflow: hidden; position: relative; }
+.enow__bar::after { content: ''; position: absolute; inset: 0; background: var(--good); transform-origin: left; animation: enow-drain 5s linear forwards; }
+@keyframes enow-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .enow__bar::after { animation: none; transform: scaleX(.5); } }

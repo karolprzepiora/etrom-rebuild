@@ -158,8 +158,9 @@
       return Object.assign({}, r, { bars: r.bars.filter(function (b) { return b.projectId === wantProject; }) });
     }).filter(function (r) { return !wantProject || wantPerson || r.bars.length; });
     plan.unassigned = (plan.unassigned || []).filter(function (t) { return (!wantProject || t.projectId === wantProject) && !wantPerson; });
-    var viewSel = solo ? (state.myPlanView === 'done' ? 'done' : 'plan') : (['plan', 'both', 'done', 'live'].indexOf(state.planView) >= 0 ? state.planView : 'both');
-    var emph = viewSel === 'both' && (state.planEmph === 'plan' || state.planEmph === 'real') ? state.planEmph : 'both';
+    var viewSel = solo ? (['plan', 'done', 'both'].indexOf(state.myPlanView) >= 0 ? state.myPlanView : 'plan') : (['plan', 'both', 'done', 'live'].indexOf(state.planView) >= 0 ? state.planView : 'both');
+    var emphKey = solo ? state.myPlanEmph : state.planEmph;
+    var emph = viewSel === 'both' && (emphKey === 'plan' || emphKey === 'real') ? emphKey : 'both';
     var real = Plan.realization({ projects: projects, entries: state.workspace.entries || [], now: now, first: new Date(plan.first), weeks: weeksN, personIds: visibleIds });
     var N = weeksN * 5;
     var dayH = (state.prefs.dayTarget || 480) / 60;
@@ -575,6 +576,64 @@
       return D.el('span', { class: 'pb-live-line' }, [D.el('small', { class: 't-muted', text: 'ostatnio ' + DAY_NAMES[d.getDay()] + ' ' + clockText(rec.last.at) + ' · ' + rec.last.code + ' ' + rec.last.name })]);
     }
 
+    /* ---------- bieżąca praca: zielony wiersz, uchwyt do przeciągania zegara (pracownik) ---------- */
+    function nowBadge(cur) {
+      return D.el('span', { class: 'pb-now', attrs: { 'data-fk': 'pb-now' } }, [
+        D.el('b', { text: 'TERAZ' }),
+        solo
+          ? D.el('time', { class: 't-num', text: durClock(Date.now() - cur.since), attrs: { 'data-timer-start': String(cur.since), 'aria-hidden': 'true' } })
+          : D.el('small', { class: 't-num', text: 'od ' + clockText(cur.since) + ' · ' + durText(cur.minutes) })
+      ]);
+    }
+    function durClock(ms) {
+      var s = Math.max(0, Math.floor(ms / 1000));
+      return String(Math.floor(s / 3600)).padStart(2, '0') + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+    function dropRef(rowEl) {
+      var tn = rowEl && rowEl.querySelector('.pb-tn');
+      if (!tn) return null;
+      var pr = projects.filter(function (p) { return String(p.id) === tn.dataset.projectId; })[0];
+      return pr ? { projectId: pr.id, stageId: tn.dataset.stageId, taskId: tn.dataset.taskId } : null;
+    }
+    function attachSwitchDrag(grip, srcRow, label) {
+      grip.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        var ghost = D.el('div', { class: 'pb-ghost', text: label });
+        document.body.appendChild(ghost);
+        var over = null;
+        function place(ev) { ghost.style.left = (ev.clientX + 12) + 'px'; ghost.style.top = (ev.clientY + 6) + 'px'; }
+        function mark(ev) {
+          place(ev);
+          var hit = document.elementFromPoint(ev.clientX, ev.clientY);
+          var row = hit && hit.closest ? hit.closest('.pb-row--task') : null;
+          if (row && (row === srcRow || !row.querySelector('.pb-tn') || row.classList.contains('pb-row--now'))) row = null;
+          if (row !== over) { if (over) over.classList.remove('is-drop'); over = row; if (over) over.classList.add('is-drop'); }
+        }
+        function end(ev, cancel) {
+          grip.removeEventListener('pointermove', mark);
+          grip.removeEventListener('pointerup', up);
+          grip.removeEventListener('pointercancel', cancelUp);
+          try { grip.releasePointerCapture(e.pointerId); } catch (err) { /* testy */ }
+          ghost.remove();
+          srcRow.classList.remove('is-dragging');
+          var target = over;
+          if (over) over.classList.remove('is-drop');
+          over = null;
+          var ref = !cancel && target ? dropRef(target) : null;
+          if (ref) ctx.actions.switchTimer(ref.projectId, ref.stageId, ref.taskId);
+        }
+        function up(ev) { end(ev, false); }
+        function cancelUp(ev) { end(ev, true); }
+        try { grip.setPointerCapture(e.pointerId); } catch (err) { /* testy */ }
+        srcRow.classList.add('is-dragging');
+        grip.addEventListener('pointermove', mark);
+        grip.addEventListener('pointerup', up);
+        grip.addEventListener('pointercancel', cancelUp);
+        mark(e);
+      });
+    }
+
     /* ---------- wiersze osób: nagłówek z obciążeniem (tylko zarząd/lider) i wiersz na zadanie ---------- */
     function personRow(row) {
       var person = Team.findPerson(people, row.personId);
@@ -587,6 +646,28 @@
       var recTasks = (rec ? rec.tasks : []).filter(function (t) { return !wantProject || t.projectId === wantProject; });
       var realOf = {};
       recTasks.forEach(function (t) { realOf[realTaskKey(t)] = t; });
+      var curRun = rec && rec.current ? rec.current : null;
+      var nowKey = curRun ? curRun.projectId + '|' + curRun.stageId + '|' + curRun.taskId : null;
+      var nowVisible = !!curRun && (items.some(function (it) { return it.b.projectId + '|' + it.b.stageId + '|' + it.b.taskId === nowKey; }) || (rv && recTasks.some(function (t) { return realTaskKey(t) === nowKey; })));
+      function decorate(rowEl, nameNode, b) {
+        var key = b.projectId + '|' + b.stageId + '|' + b.taskId;
+        var pend = state.pendingSwitch;
+        if (curRun && key === nowKey) {
+          rowEl.classList.add('pb-row--now');
+          var txt = nameNode.querySelector('.pb-tn__txt');
+          if (txt) txt.appendChild(nowBadge(curRun));
+          if (solo) {
+            var grip = D.el('button', { class: 'pb-grip', text: '⋮⋮', attrs: { type: 'button', 'data-fk': 'pb-grip', 'data-tooltip': 'Przeciągnij na inne zadanie, żeby przenieść tam zegar', 'aria-label': 'Przeciągnij na inne zadanie, żeby przenieść zegar' } });
+            attachSwitchDrag(grip, rowEl, b.code + ' · ' + b.name);
+            var lab = rowEl.firstChild;
+            lab.insertBefore(grip, lab.firstChild);
+          }
+        } else if (solo && curRun && b.status !== 'done') {
+          var sw = D.el('button', { class: 'pb-switch', attrs: { type: 'button', 'data-fk': 'pb-switch-' + b.taskId, 'aria-label': 'Przełącz zegar na to zadanie' }, on: { click: function () { ctx.actions.switchTimer(b.projectId, b.stageId, b.taskId); } } }, [E.Icons.icon('play', 12), D.el('span', { text: 'Przełącz tu' })]);
+          rowEl.firstChild.appendChild(sw);
+        }
+        if (pend && pend.projectId === b.projectId && pend.stageId === b.stageId && pend.taskId === b.taskId) rowEl.classList.add('is-pending');
+      }
       if (solo) items.sort(function (a, b) { return (a.b.overdue ? 0 : 1) - (b.b.overdue ? 0 : 1) || a.e - b.e || a.s - b.s; });
       else items.sort(function (a, b) { return (rankOf[a.b.projectId] || 1e6) - (rankOf[b.b.projectId] || 1e6) || a.s - b.s; });
       var weekEndSlot = Math.floor(Math.max(todaySlot, 0) / 5) * 5 + 4;
@@ -599,10 +680,10 @@
           var s0 = Math.max(0, bs), e0 = Math.min(N - 1, be);
           var tip = (E.Absences.KINDS[a.kind] || 'Nieobecność') + ' · ' + a.from.slice(8) + '.' + a.from.slice(5, 7) + ' – ' + a.to.slice(8) + '.' + a.to.slice(5, 7) + (a.note ? ' · ' + a.note : '') + (interactive && management ? ' — kliknij, żeby zmienić' : '');
           var el = D.el(interactive && management ? 'button' : 'span', {
-            class: 'pb-absent' + (interactive ? ' is-head' : ''),
+            class: 'pb-absent' + (interactive ? ' is-head' : ''), dataset: { kind: a.kind },
             style: { left: (s0 / N * 100) + '%', width: ((e0 - s0 + 1) / N * 100) + '%' },
             attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip } : { 'aria-hidden': 'true' },
-            text: interactive && (e0 - s0 + 1) >= 2 ? (E.Absences.KINDS[a.kind] || '') : ''
+            text: interactive ? ((e0 - s0 + 1) >= 2 ? (E.Absences.KINDS[a.kind] || '') + ' · ' + (e0 - s0 + 1) + ' dn.' : (E.Absences.KINDS[a.kind] || 'N').charAt(0)) : ''
           });
           if (interactive && management) el.addEventListener('click', function () { ctx.actions.openAbsence(row.personId, a.id); });
           return el;
@@ -624,7 +705,7 @@
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
         var label = D.el('div', { class: 'pb-label' }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' + (rv && rec ? ' · zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' : '') }), viewSel === 'plan' ? null : liveLine(rec)])
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' + (rv && rec ? ' · zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' : '') }), curRun ? (nowVisible ? D.el('span', { class: 'pb-live-line is-on pb-live-line--short' }, [D.el('i', { class: 'pb-dot', attrs: { 'aria-hidden': 'true' } }), D.el('small', { text: 'pracuje' })]) : liveLine(rec)) : (viewSel === 'plan' ? null : liveLine(rec))])
         ]);
         var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
         var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {
@@ -655,6 +736,7 @@
         var taskRowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
         var chkHolder = nameNode.querySelector('.pb-tn__chk');
         if (chkHolder && chkHolder.__open) chkHolder.__open(taskRowEl);
+        decorate(taskRowEl, nameNode, it.b);
         rows.push(taskRowEl);
       });
       if (rv) {
@@ -664,6 +746,7 @@
           var nameNode = nameCell(b0);
           var bars = D.el('div', { class: 'pb-bars pb-bars--real' }, [realStrip(t, null)]);
           var rowEl = D.el('div', { class: 'pb-row pb-row--task' }, [D.el('div', { class: 'pb-label pb-label--task' }, [nameNode]), D.el('div', { class: 'pb-cell' }, [trackOf([bars])])]);
+          decorate(rowEl, nameNode, b0);
           rows.push(rowEl);
         });
       }
@@ -938,14 +1021,14 @@
       ]),
       UI.segmented({
         label: 'Co pokazać', value: solo ? viewSel : (mode === 'projects' && (viewSel === 'both' || viewSel === 'done') ? 'plan' : viewSel),
-        items: solo ? [{ value: 'plan', label: 'Plan' }, { value: 'done', label: 'Realizacja' }]
+        items: solo ? [{ value: 'plan', label: 'Plan' }, { value: 'done', label: 'Realizacja' }, { value: 'both', label: 'Plan i realizacja' }]
           : (mode === 'projects' ? [{ value: 'plan', label: 'Plan' }, { value: 'live', label: 'Na żywo' }] : [{ value: 'plan', label: 'Plan' }, { value: 'done', label: 'Realizacja' }, { value: 'both', label: 'Plan i realizacja' }, { value: 'live', label: 'Na żywo' }]),
         onChange: function (v) { ctx.actions.setTime(solo ? { myPlanView: v } : { planView: v }); }
       }).node,
       viewSel === 'both' && mode === 'people' ? UI.segmented({
         label: 'Wyróżnij', value: emph,
         items: [{ value: 'both', label: 'Oba' }, { value: 'plan', label: 'Plan' }, { value: 'real', label: 'Realizacja' }],
-        onChange: function (v) { ctx.actions.setTime({ planEmph: v }); }
+        onChange: function (v) { ctx.actions.setTime(solo ? { myPlanEmph: v } : { planEmph: v }); }
       }).node : null,
       canProjects ? UI.segmented({
         label: 'Widok planu', value: mode,

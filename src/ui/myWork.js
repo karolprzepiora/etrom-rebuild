@@ -309,7 +309,7 @@
           main: main,
           side: [
             D.el('div', { class: 'mywork__aside' }, [
-              E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id }),
+              E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: state.pendingSwitch ? ctx.find(state.pendingSwitch) : null }),
               E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions }),
               D.el('div', { class: 'maside__projects' }, [
                 D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),

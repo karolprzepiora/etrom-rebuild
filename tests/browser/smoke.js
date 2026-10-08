@@ -956,11 +956,46 @@ async function main() {
     await sleep(500);
     check('Na żywo: karty osób z zadaniem i oś dzisiejszego dnia',
       await evaluate('return document.querySelectorAll(".pb-lc").length >= 2 && !!document.querySelector(".pb-tl") && document.querySelectorAll(".pb-lc__task").length > 0;'));
+    check('Na żywo: bez powielonego wykresu planu (tylko karty i oś dnia)',
+      await evaluate('return !document.querySelector(".pb-grid");'));
+    // Bieżąca praca: zielony wiersz w Planie, przełączanie zegara z oknem na cofnięcie.
+    await evaluate('ETROM.app.actions.setTime({ planView: "plan", planOffset: 0, planPerson: "", planProject: "" }); return true;');
+    await evaluate(
+      'const me = ETROM.app.store.getState().prefs.me; const run = ETROM.app.store.getState().workspace.entries.filter(e => !e.end && e.personId === me)[0]; if (run) ETROM.app.actions.stopTimer();' +
+      'window.__sw = ETROM.app.actions.openTasks().slice(0, 2).map(c => c.ref);' +
+      'const pad = (n) => String(n).padStart(2, "0"); const d0 = new Date(); const d1 = new Date(Date.now() + 3 * 86400000);' +
+      'const iso = (d, h) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + h;' +
+      'ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.map(p => Object.assign({}, p, { stages: p.stages.map(st => Object.assign({}, st, { tasks: (st.tasks || []).map(t => window.__sw.some(r => r.projectId === p.id && r.stageId === st.id && r.taskId === t.id) ? Object.assign({}, t, { start: iso(d0, "08:00"), deadline: iso(d1, "18:00") }) : t) })) })) }) }));' +
+      'ETROM.app.actions.toggleTimer(window.__sw[0].projectId, window.__sw[0].stageId, window.__sw[0].taskId); return true;'
+    );
+    await sleep(500);
+    check('zadanie, przy którym chodzi zegar, jest zielonym wierszem ze znaczkiem TERAZ (godzina startu i czas), a przy nazwisku jest „pracuje”',
+      await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-live-line--short");'));
+    await evaluate('const r = window.__sw[1]; ETROM.app.actions.switchTimer(r.projectId, r.stageId, r.taskId); return true;');
+    await sleep(300);
+    check('przełączenie zegara czeka 5 s: w stanie jest oczekująca zmiana, a stary zegar nadal chodzi',
+      await evaluate('const st = ETROM.app.store.getState(); const r = window.__sw[0]; return !!st.pendingSwitch && st.pendingSwitch.taskId === window.__sw[1].taskId && ETROM.app.actions.isTiming(r.projectId, r.stageId, r.taskId);'));
+    await evaluate('ETROM.app.actions.cancelSwitch(); return true;');
+    check('„Cofnij” kasuje oczekujące przełączenie bez zmiany zegara',
+      await evaluate('const r = window.__sw[0]; return !ETROM.app.store.getState().pendingSwitch && ETROM.app.actions.isTiming(r.projectId, r.stageId, r.taskId);'));
+    await evaluate('const r = window.__sw[1]; ETROM.app.actions.switchTimer(r.projectId, r.stageId, r.taskId); ETROM.app.actions.commitSwitch(); return true;');
+    await sleep(300);
+    check('„Przełącz teraz” zamyka stary wpis i uruchamia nowy (jeden działający zegar)',
+      await evaluate('const me = ETROM.app.store.getState().prefs.me; const run = ETROM.app.store.getState().workspace.entries.filter(e => !e.end && e.personId === me); const r = window.__sw[1]; return run.length === 1 && run[0].taskId === r.taskId && !ETROM.app.store.getState().pendingSwitch;'));
+    await evaluate('ETROM.app.actions.stopTimer(); return true;');
+    await sleep(200);
     await evaluate('ETROM.app.actions.setTime({ planView: "plan", planOffset: 0 }); return true;');
     await sleep(300);
     check('siedem pierwszych projektów ma wyraźnie różne barwy (paleta rozstawiona po kole)',
       await evaluate('const I = ETROM.Identity; const sw = [1,2,3,4,5,6,7].map(n => I.swatch(I.autoIndex("260" + n))); for (let i = 0; i < sw.length; i++) for (let j = i + 1; j < sw.length; j++) { const d = Math.min(Math.abs(sw[i].hue - sw[j].hue), 360 - Math.abs(sw[i].hue - sw[j].hue)); if (d < 25 && Math.abs(sw[i].tone - sw[j].tone) < 0.5) return false; } return true;'));
 
+    await go('#/moja-praca');
+    await evaluate('ETROM.app.actions.setMyView("weeks"); ETROM.app.actions.setTime({ myPlanView: "both" }); return true;');
+    await sleep(500);
+    const soloBar = await evaluate('const labels = [...document.querySelectorAll(".mywork__main .pb-toolbar .segmented__btn")].map(x => x.textContent.trim()); return JSON.stringify({ l: labels, loads: !!document.querySelector(".mywork__main .pb-loads"), hash: location.hash, v: ETROM.app.store.getState().myView });');
+    check('Moja praca → Tygodnie: te same widoki co w Planie (Plan, Realizacja, Plan i realizacja) i „Wyróżnij”, bez chipów obciążenia',
+      ["Plan", "Realizacja", "Plan i realizacja", "Oba"].every((t) => soloBar.indexOf('"' + t + '"') >= 0) && soloBar.indexOf('"loads":false') >= 0, soloBar);
+    await evaluate('ETROM.app.actions.setTime({ myPlanView: "plan" }); ETROM.app.actions.setMyView("all"); return true;');
     await go('#/czas');
     await sleep(200);
     await click('[data-fk="ts-export-menu"]');

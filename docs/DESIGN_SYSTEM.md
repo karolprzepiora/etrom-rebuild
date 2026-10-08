@@ -671,3 +671,11 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - W „Plan i realizacja” drugi przełącznik „Wyróżnij: Oba / Plan / Realizacja” (`planEmph`) wyszarza drugą warstwę (`.pb--emph-plan`, `.pb--emph-real`).
 - „Na żywo” pokazuje tylko karty i oś dnia, bez powielonego wykresu planu.
 - Moja praca → Tygodnie: przełącznik Plan / Realizacja (`myPlanView`), bez widoku łączonego; pracownik widzi własne zarejestrowane godziny.
+
+## Bieżąca praca, przełączanie zegara i nieobecności (aktualizacja)
+- **Moja praca → Tygodnie** ma te same widoki co Plan (Plan, Realizacja, Plan i realizacja + „Wyróżnij”: `myPlanView`, `myPlanEmph`), bez obciążenia i planowanych godzin.
+- **Zielony wiersz bieżącej pracy** (`.pb-row--now`): zielone tło, pasek z lewej, znaczek TERAZ (`.pb-now`). Pracownik widzi licznik, zarządca „od 11:32 · 2 h 14 min”. Przy nazwisku w Planie jest tylko „pracuje” (zamiast linii „teraz: …”; gdy zadanie nie ma wiersza w oknie, zostaje stara linia). Zieleń oznacza wyłącznie stan „teraz”; barwy projektów zostają w kodach i paskach (`Identity`, paleta rozstawiona po kole).
+- **Przełączanie zegara** (`actions.switchTimer`): pracownik chwyta uchwyt ⋮⋮ (`.pb-grip`) zielonego wiersza i upuszcza go na inne zadanie (`.is-drop`), albo klika „Przełącz tu” (`.pb-switch`, widoczne po najechaniu). Po upuszczeniu jest 5 s na reakcję (`pendingSwitch` w stanie, toast „Cofnij”): stary wpis czasu domyka się dokładnie w chwili startu nowego. `commitSwitch` skraca czekanie, `cancelSwitch` je odwołuje. Zarządca ma wyłącznie podgląd.
+- **Panel „Zegar i projekty”**: u góry karta „Teraz pracujesz” (licznik, Zatrzymaj, Przełącz ▾ z listą otwartych zadań) albo „Za chwilę” (Cofnij / Przełącz teraz, pasek 5 s).
+- **Na żywo** pokazuje wyłącznie karty i oś dnia, bez powielonego wykresu planu.
+- **Nieobecności (A1)**: fioletowy pas na całej wysokości osoby (kreskowany, z krawędziami), etykieta „Urlop · 3 dn.” w nagłówku osoby; zwolnienie i szkolenie mają własne barwy (`data-kind`). Dzisiejszy dzień zostaje tylko turkusowy.
