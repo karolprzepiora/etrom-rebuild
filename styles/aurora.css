@@ -789,6 +789,11 @@ a.fd__chip--project:hover { background: light-dark(oklch(calc(.38 + .07 * var(--
 .rl__toggle svg { stroke-width: 2.2; }
 .rl.is-collapsed .rl__inner { background: color-mix(in srgb, var(--accent) 10%, var(--wash)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, var(--line)); padding: var(--space-3) 0; }
 .rl__vtitle { color: var(--ink); }
+.pf-rail__toggle { width: 2rem; height: 2rem; border-radius: 10px; background: var(--accent); color: var(--on-accent, #fff); box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 70%, transparent); }
+.pf-rail__toggle:hover { background: color-mix(in srgb, var(--accent) 85%, #000); color: var(--on-accent, #fff); }
+.pf-rail__toggle svg { stroke-width: 2.2; }
+.pf-layout.is-rail-collapsed .pf-rail { padding: var(--space-3) 0; border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, var(--wash)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.pf-rail__vtitle { color: var(--ink); }
 
 /* Plan tygodni: pełna nazwa zadania i godziny (przepracowano / zaplanowano) na etykiecie, wychodzącej poza pasek. */
 .pb-bar { overflow: visible; background: transparent; box-shadow: none; }
@@ -1415,7 +1420,6 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .case-sec__head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-1); }
 .case-sec__t { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .case-sec__n { font-size: var(--fs-xs); background: var(--wash); border-radius: var(--radius-full); padding: 0 var(--space-2); color: var(--ink-3); font-weight: 700; }
-.case-sec__due { font-size: var(--fs-xs); font-weight: 700; color: var(--warn-ink, var(--ink)); background: color-mix(in srgb, var(--warn) 18%, transparent); border-radius: 99px; padding: 1px 9px; }
 .case-sec__sp { flex: 1; }
 .case-sec__list { display: grid; gap: 8px; }
 .case-card {
@@ -1424,7 +1428,6 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: 14px; color: #fff;
   background: radial-gradient(130% 160% at 0% 0%, rgb(255 255 255 / calc(.2 * var(--hdr))), transparent 55%), linear-gradient(150deg, var(--pj-a), var(--pj-b));
 }
-.case-card.is-due { box-shadow: 0 0 0 2px var(--warn); }
 .case-card__days { display: grid; justify-items: center; flex: none; width: 3.1rem; line-height: 1; }
 .case-card__days b { font-size: 1.9rem; font-weight: 800; }
 .case-card__days span { font-size: .62rem; font-weight: 600; opacity: .85; }
@@ -1433,7 +1436,6 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .case-card__txt > small { font-size: var(--fs-xs); opacity: .85; }
 .case-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); margin-top: 6px; }
 .case-card__foot small { margin-left: auto; font-size: .66rem; opacity: .85; }
-.case-card__foot small.is-due { font-weight: 800; opacity: 1; }
 .case-card__ask, .case-card__open { all: unset; box-sizing: border-box; cursor: pointer; font-size: .72rem; font-weight: 700; border-radius: 8px; padding: 3px 10px; }
 .case-card__ask { background: #fff; color: #14222c; }
 .case-card__open { color: #fff; }
@@ -1494,7 +1496,6 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .mywork__main .trow__deadline { justify-self: end; }
 .mywork__main .mrow__title .trow__name, .mywork__main .ibx__title { font-size: .9375rem; }
 .case-sec__head { flex-wrap: nowrap; white-space: nowrap; }
-.case-sec__due { font-size: .68rem; padding: 1px 8px; }
 
 /* Wiersze „Wymaga reakcji”: bez kolorowej szyny i ramki, pilność mówi czerwony termin */
 .ibx__row, .ibx__row.is-urgent { box-shadow: inset 0 0 0 1px var(--line); }

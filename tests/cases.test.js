@@ -5,9 +5,9 @@ const C = require('../src/core/cases.js');
 const Model = require('../src/core/model.js');
 
 const ids = [1, 2];
-const data = { projectId: 1, name: ' Decyzja środowiskowa ', org: 'RDOŚ', ownerId: 'p-3', startedAt: '2026-09-30', remindEvery: 7 };
+const data = { projectId: 1, name: ' Decyzja środowiskowa ', org: 'RDOŚ', ownerId: 'p-3', startedAt: '2026-09-30' };
 
-test('nowa sprawa: walidacja, id, wpis „złożono” i przypomnienie za okres dopytywania', () => {
+test('nowa sprawa: walidacja, id, wpis „złożono”', () => {
   assert.equal(C.create([], { ...data, name: '  ' }, ids).errors.name, 'Podaj nazwę sprawy.');
   assert.ok(C.create([], { ...data, projectId: 9 }, ids).errors.projectId);
   assert.ok(C.create([], { ...data, startedAt: '30.09' }, ids).errors.startedAt);
@@ -15,18 +15,14 @@ test('nowa sprawa: walidacja, id, wpis „złożono” i przypomnienie za okres 
   assert.equal(res.valid, true);
   assert.equal(res.item.id, 'c-1');
   assert.equal(res.item.name, 'Decyzja środowiskowa');
-  assert.equal(res.item.remindAt, '2026-10-07');
   assert.deepEqual(res.item.events.map((e) => e.kind), ['filed']);
   assert.equal(C.create(res.list, data, ids).item.id, 'c-2');
 });
 
-test('licznik liczy dni od złożenia, a „dopytano” przesuwa przypomnienie', () => {
+test('licznik liczy dni od złożenia, a „dopytano” trafia do historii', () => {
   let list = C.create([], data, ids).list;
   assert.equal(C.daysSince(list[0], '2026-10-08'), 8);
-  assert.equal(C.remindDue(list[0], '2026-10-07'), true);
   list = C.addEvent(list, 'c-1', { kind: 'call', note: 'Anna N. potwierdza' }, '2026-10-08');
-  assert.equal(list[0].remindAt, '2026-10-15');
-  assert.equal(C.remindDue(list[0], '2026-10-08'), false);
   assert.equal(C.lastCall(list[0]).note, 'Anna N. potwierdza');
 });
 
@@ -73,13 +69,11 @@ test('przestrzeń robocza zachowuje sprawy istniejących projektów i odrzuca os
   assert.deepEqual(Model.emptyWorkspace().cases, []);
 });
 
-test('notatka trafia do historii i nie przesuwa przypomnienia', () => {
-  const made = C.create([], { projectId: 1, name: 'Wniosek', startedAt: '2026-10-01', remindEvery: 7 }, [1]);
-  const before = made.item.remindAt;
+test('notatka trafia do historii', () => {
+  const made = C.create([], { projectId: 1, name: 'Wniosek', startedAt: '2026-10-01' }, [1]);
   const list = C.addEvent(made.list, made.item.id, { kind: 'note', note: 'Telefon do urzędu' }, '2026-10-05');
   const c = list[0];
   assert.equal(c.events[c.events.length - 1].kind, 'note');
-  assert.equal(c.remindAt, before);
 });
 
 test('widoczne są tylko sprawy istniejących projektów, a zadania projektu trafiają do formularza', () => {

@@ -926,11 +926,11 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: Plan pokazuje osobny pas „Sprawy w toku” z wierszem sprawy i licznikiem dni',
       await evaluate('const r = document.querySelector(".pb-row--case"); return !!document.querySelector(".pb-row--casehead") && !!r && /\\d+ dni/.test(r.textContent) && !!r.querySelector(".pb-case__m--filed");'));
-    const caseInfo = JSON.parse(await evaluate('const c = ETROM.app.store.getState().workspace.cases[0]; return JSON.stringify({ id: c.id, owner: c.ownerId, remind: c.remindAt, n: c.events.length });'));
+    const caseInfo = JSON.parse(await evaluate('const c = ETROM.app.store.getState().workspace.cases[0]; return JSON.stringify({ id: c.id, owner: c.ownerId, n: c.events.length });'));
     await evaluate('ETROM.app.actions.caseCall("' + caseInfo.id + '", "Rozmowa testowa"); return true;');
     await sleep(500);
     check('Sprawy w toku: „Zapytałem” zapisuje wpis z notatką, przesuwa przypomnienie i zostawia znacznik na wykresie',
-      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.id === "' + caseInfo.id + '"); return c.events.length === ' + (caseInfo.n + 1) + ' && c.events[c.events.length - 1].note === "Rozmowa testowa" && c.remindAt >= "' + caseInfo.remind + '" && !!document.querySelector(".pb-row--case[data-case-id=\\"' + caseInfo.id + '\\"] .pb-case__m--call");'));
+      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.id === "' + caseInfo.id + '"); return c.events.length === ' + (caseInfo.n + 1) + ' && c.events[c.events.length - 1].note === "Rozmowa testowa" && !!document.querySelector(".pb-row--case[data-case-id=\\"' + caseInfo.id + '\\"] .pb-case__m--call");'));
     const railsBefore = JSON.stringify(await state('s.prefs.collapsedRails || []'));
     const meBeforeCases = await state('s.prefs.me');
     await evaluate('ETROM.app.actions.setMe("' + caseInfo.owner + '"); return true;');
@@ -985,11 +985,11 @@ async function main() {
     await evaluate('const cs = ETROM.app.store.getState().workspace.cases; const c = cs.find(x => x.name === "Sprawa przypięta testowa"); ETROM.app.actions.caseNote(c.id, "Notatka testowa"); return true;');
     await sleep(300);
     check('Sprawa: „Dodaj notatkę” zapisuje wpis w historii i nie przesuwa przypomnienia',
-      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.name === "Sprawa przypięta testowa"); const last = c.events[c.events.length - 1]; return last.kind === "note" && last.note === "Notatka testowa" && c.remindAt === ETROM.Cases.addDays(c.startedAt, c.remindEvery);'));
+      await evaluate('const c = ETROM.app.store.getState().workspace.cases.find(x => x.name === "Sprawa przypięta testowa"); const last = c.events[c.events.length - 1]; return last.kind === "note" && last.note === "Notatka testowa" && c.remindAt === undefined;'));
     await evaluate('ETROM.app.actions.setMyView("today"); return true;');
     await sleep(400);
-    check('Sprawy w toku: widok „Dziś” pokazuje tylko sprawy do dopytania dziś (lub zaległe)',
-      await evaluate('const sec = document.querySelector("[data-fk=my-cases][data-scope=today]"); const day = ETROM.Cases.isoOf(new Date()); const mine = ETROM.app.store.getState().workspace.cases.filter(c => c.status === "open" && c.ownerId === ETROM.app.store.getState().prefs.me); const due = mine.filter(c => c.remindAt <= day).length; return due ? (!!sec && sec.querySelectorAll(".case-card").length === due) : !sec;'));
+    check('Sprawy w toku: widok „Dziś” pokazuje wszystkie otwarte sprawy osoby (bez przypomnień)',
+      await evaluate('const sec = document.querySelector("[data-fk=my-cases][data-scope=today]"); const day = ETROM.Cases.isoOf(new Date()); const mine = ETROM.app.store.getState().workspace.cases.filter(c => c.status === "open" && c.ownerId === ETROM.app.store.getState().prefs.me); return mine.length ? (!!sec && sec.querySelectorAll(".case-card").length === mine.length) : !sec;'));
     await evaluate('ETROM.app.actions.setMyView("week"); return true;');
     await sleep(400);
     check('Sprawy w toku: widok „Ten tydzień” obejmuje sprawy z przypomnieniem do końca tygodnia',

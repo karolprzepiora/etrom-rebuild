@@ -1715,7 +1715,7 @@
   }
 
   function openCase(preset) {
-    var base = { projectId: '', stageId: '', name: '', org: '', startedAt: dayNow(), remindEvery: 7, sourceTaskId: '' };
+    var base = { projectId: '', stageId: '', name: '', org: '', startedAt: dayNow(), sourceTaskId: '' };
     store.set({ caseForm: { draft: Object.assign(base, preset || {}), errors: {} } });
   }
 
@@ -1741,7 +1741,7 @@
     var c = caseList().filter(function (x) { return x.id === id; })[0];
     if (!c) return;
     setCases(function (list) { return Cases.addEvent(list, id, { kind: 'call', note: note || '', by: currentMe() || '' }, dayNow()); });
-    Toast.show({ message: 'Zapisano, że dopytano. Przypomnę za ' + c.remindEvery + ' dni.', tone: 'success', timeout: 3500 });
+    Toast.show({ message: 'Zapisano, że dopytano.', tone: 'success', timeout: 3500 });
   }
 
   /** Notatka lub informacja w historii sprawy; nie przesuwa przypomnienia. */
@@ -2373,31 +2373,31 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
     });
-    // Sprawy w toku (wniosek złożony, materiał zamówiony): licznik dni i przypomnienia „dopytaj”.
+    // Sprawy w toku (wniosek złożony, materiał zamówiony): licznik dni od złożenia.
     updateWorkspace(function (workspace) {
       if ((workspace.cases || []).length) return workspace;
       var byCode = function (code) { return workspace.projects.filter(function (p) { return p.code === code; })[0]; };
-      // Różne osoby i sytuacje: świeża, po dopytaniu, zaległa do dopytania, z wezwaniem do uzupełnienia, długa, bez osoby.
+      // Różne osoby i sytuacje: świeża, po dopytaniu, dopytana dawno temu, z wezwaniem do uzupełnienia, długa, bez osoby.
       var specs = [
-        { code: '2606', who: 1, name: 'Decyzja środowiskowa', org: 'RDOŚ Kraków · OO.4210.12', at: -8, every: 7, calls: [0] },
-        { code: '2603', who: 2, name: 'Wypis z rejestru gruntów', org: 'Starostwo · zamówiono', at: -2, every: 7, calls: [] },
-        { code: '2601', who: 1, name: 'Uzgodnienie z zarządcą drogi', org: 'ZDW', at: -23, every: 7, calls: [-12] },
-        { code: '2601', who: 4, name: 'Uzgodnienie przebiegu z Wodami Polskimi', org: 'RZGW Kraków', at: -19, every: 7, calls: [-12, -5] },
-        { code: '2607', who: 4, name: 'Opinia konserwatora zabytków', org: 'WUOZ · znak ZN.5130.7', at: -5, every: 7, calls: [] },
-        { code: '2607', who: 4, name: 'Wniosek o pozwolenie wodnoprawne', org: 'Wody Polskie · KR.ZZŚ.2.421', at: -41, every: 14, calls: [-27, -13], letters: [-20] },
-        { code: '2602', who: 1, name: 'Warunki techniczne od gestora sieci', org: 'Tauron Dystrybucja', at: -15, every: 14, calls: [] },
-        { code: '2601', who: 2, name: 'Mapa do celów projektowych', org: 'Powiatowy Ośrodek Dokumentacji', at: -9, every: 7, calls: [], letters: [-3] },
-        { code: '2602', who: 7, name: 'Zamówienie mapy sytuacyjno-wysokościowej', org: 'Geodeta powiatowy', at: -4, every: 3, calls: [-1] },
-        { code: '2606', who: 6, name: 'Dane hydrologiczne', org: 'IMGW-PIB · wniosek', at: -30, every: 30, calls: [] },
-        { code: '2602', who: 3, name: 'Akceptacja wariantu koncepcji przez klienta', org: 'Wody Polskie RZGW', at: -6, every: 7, calls: [] },
-        { code: '2601', who: -1, name: 'Zgoda właściciela działki 112/4', org: 'osoba prywatna', at: -3, every: 14, calls: [] }
+        { code: '2606', who: 1, name: 'Decyzja środowiskowa', org: 'RDOŚ Kraków · OO.4210.12', at: -8, calls: [0] },
+        { code: '2603', who: 2, name: 'Wypis z rejestru gruntów', org: 'Starostwo · zamówiono', at: -2, calls: [] },
+        { code: '2601', who: 1, name: 'Uzgodnienie z zarządcą drogi', org: 'ZDW', at: -23, calls: [-12] },
+        { code: '2601', who: 4, name: 'Uzgodnienie przebiegu z Wodami Polskimi', org: 'RZGW Kraków', at: -19, calls: [-12, -5] },
+        { code: '2607', who: 4, name: 'Opinia konserwatora zabytków', org: 'WUOZ · znak ZN.5130.7', at: -5, calls: [] },
+        { code: '2607', who: 4, name: 'Wniosek o pozwolenie wodnoprawne', org: 'Wody Polskie · KR.ZZŚ.2.421', at: -41, calls: [-27, -13], letters: [-20] },
+        { code: '2602', who: 1, name: 'Warunki techniczne od gestora sieci', org: 'Tauron Dystrybucja', at: -15, calls: [] },
+        { code: '2601', who: 2, name: 'Mapa do celów projektowych', org: 'Powiatowy Ośrodek Dokumentacji', at: -9, calls: [], letters: [-3] },
+        { code: '2602', who: 7, name: 'Zamówienie mapy sytuacyjno-wysokościowej', org: 'Geodeta powiatowy', at: -4, calls: [-1] },
+        { code: '2606', who: 6, name: 'Dane hydrologiczne', org: 'IMGW-PIB · wniosek', at: -30, calls: [] },
+        { code: '2602', who: 3, name: 'Akceptacja wariantu koncepcji przez klienta', org: 'Wody Polskie RZGW', at: -6, calls: [] },
+        { code: '2601', who: -1, name: 'Zgoda właściciela działki 112/4', org: 'osoba prywatna', at: -3, calls: [] }
       ];
       var list = [];
       specs.forEach(function (sp) {
         var project = byCode(sp.code);
         var who = sp.who >= 0 ? demoPersonId(sp.who) : '';
         if (!project || (sp.who >= 0 && !who)) return;
-        var res = E.Cases.create(list, { projectId: project.id, name: sp.name, org: sp.org, ownerId: who, startedAt: demoDate(sp.at), remindEvery: sp.every }, workspace.projects.map(function (p) { return p.id; }));
+        var res = E.Cases.create(list, { projectId: project.id, name: sp.name, org: sp.org, ownerId: who, startedAt: demoDate(sp.at) }, workspace.projects.map(function (p) { return p.id; }));
         if (!res.valid) return;
         list = res.list;
         var events = (sp.calls || []).map(function (off) { return { off: off, kind: 'call', note: 'Rozmowa telefoniczna' }; })

@@ -330,7 +330,6 @@
         var pr = projects.filter(function (x) { return x.id === c.projectId; })[0];
         var code = pr ? pr.code : '';
         var days = E.Cases.daysSince(c, nowIso);
-        var info = E.CaseUI.remindInfo(c, nowIso);
         var s0 = slotIso(c.startedAt);
         var marks = [];
         if (s0 > 0 || todaySlot >= 0) {
@@ -353,11 +352,11 @@
         });
         var open = D.el('button', { class: 'pb-case__name', attrs: { type: 'button', 'data-fk': 'pb-case-' + c.id, title: c.name }, text: c.name });
         open.addEventListener('click', function () { E.CaseUI.openDetail(open, c, caseCtx); });
-        out.push(D.el('div', { class: 'pb-row pb-row--case' + (info.due ? ' is-due' : ''), style: Identity.hueStyle(code), dataset: { caseId: c.id } }, [
+        out.push(D.el('div', { class: 'pb-row pb-row--case', style: Identity.hueStyle(code), dataset: { caseId: c.id } }, [
           D.el('div', { class: 'pb-label pb-label--case' }, [
             D.el('span', { class: 'mrow__project', style: Identity.hueStyle(code), text: code }),
             D.el('span', { class: 'pb-case__txt' }, [open, D.el('small', { class: 't-muted truncate', text: c.org || 'sprawa w toku' })]),
-            D.el('span', { class: 'pb-case__days' }, [D.el('b', { class: 't-num', text: String(days) + ' dni' }), D.el('small', { class: info.due ? 'is-due' : 't-muted', text: info.due ? 'dopytaj dziś' : '' })])
+            D.el('span', { class: 'pb-case__days' }, [D.el('b', { class: 't-num', text: String(days) + ' dni' })])
           ]),
           D.el('div', { class: 'pb-cell' }, [trackOf([D.el('div', { class: 'pb-case__track' }, marks)])])
         ]));

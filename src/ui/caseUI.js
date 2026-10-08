@@ -8,8 +8,6 @@
   var UI = E.UI;
   var Cases = E.Cases;
 
-  var REMIND_LABEL = { 3: 'co 3 dni', 7: 'co 7 dni', 14: 'co 14 dni', 30: 'co 30 dni' };
-
   function today() { return Cases.isoOf(new Date()); }
   function shortDay(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : ''; }
   function plural(n) { return n === 1 ? 'dzień' : 'dni'; }
@@ -25,14 +23,6 @@
     return null;
   }
 
-  /** Opis przypomnienia: „dopytaj dziś”, „za 5 dni” albo „zaległe 3 dni”. */
-  function remindInfo(c, day) {
-    var d = Cases.diffDays(day, c.remindAt);
-    if (d < 0) return { due: true, text: 'dopytaj dziś · zaległe ' + (-d) + ' ' + plural(-d) };
-    if (d === 0) return { due: true, text: 'dopytaj dziś' };
-    return { due: false, text: 'przypomnienie za ' + d + ' ' + plural(d) };
-  }
-
   /* ---------- formularz nowej sprawy ---------- */
   function form(draft, errors, handlers, projects, Model) {
     var v = draft || {};
@@ -45,10 +35,9 @@
     var name = UI.input({ id: 'cs-name', value: v.name || '', maxlength: 120, placeholder: 'np. Decyzja środowiskowa', error: problems.name });
     var org = UI.input({ id: 'cs-org', value: v.org || '', maxlength: 120, placeholder: 'np. RDOŚ Kraków, nr OO.4210.12' });
     var at = UI.input({ id: 'cs-start', type: 'date', value: v.startedAt || '', error: problems.startedAt });
-    var every = UI.select({ id: 'cs-every', value: String(v.remindEvery || 7), options: Cases.REMIND.map(function (n) { return { value: String(n), label: 'Dopytuj ' + REMIND_LABEL[n] }; }) });
     function values() {
       var t = tasks.filter(function (x) { return x.taskId === taskSel.value; })[0];
-      return { projectId: project.value, stageId: t ? t.stageId : (v.stageId || ''), name: name.value, org: org.value, startedAt: at.value, remindEvery: Number(every.value), sourceTaskId: t ? t.taskId : '' };
+      return { projectId: project.value, stageId: t ? t.stageId : (v.stageId || ''), name: name.value, org: org.value, startedAt: at.value, sourceTaskId: t ? t.taskId : '' };
     }
     // Zmiana projektu odświeża listę zadań; wybór zadania podpowiada nazwę sprawy, jeśli jej jeszcze nie ma.
     project.addEventListener('change', function () { if (handlers.onDraft) handlers.onDraft(Object.assign(values(), { sourceTaskId: '', stageId: '' })); });
@@ -69,10 +58,7 @@
         UI.field({ id: 'cs-task', label: 'Zadanie, którego dotyczy sprawa', optional: true, control: taskSel }),
         UI.field({ id: 'cs-name', label: 'Nazwa sprawy', control: name, error: problems.name }),
         UI.field({ id: 'cs-org', label: 'Organ i numer sprawy', optional: true, control: org }),
-        D.el('div', { class: 'form__row' }, [
-          UI.field({ id: 'cs-start', label: 'Złożono / zamówiono', control: at, error: problems.startedAt }),
-          UI.field({ id: 'cs-every', label: 'Przypomnienia', control: every })
-        ]),
+        UI.field({ id: 'cs-start', label: 'Złożono / zamówiono', control: at, error: problems.startedAt }),
         D.el('p', { class: 't-meta', text: 'Licznik liczy dni od dnia złożenia. Sprawa zostaje widoczna w Planie, w Mojej pracy i w projekcie, aż ją zakończysz. Przypięte zadanie dostaje znacznik „sprawa”.' })
       ]
     });
@@ -100,13 +86,12 @@
   /* ---------- okno szczegółów sprawy ---------- */
   function openDetail(anchor, c, ctx) {
     var day = today();
-    var info = remindInfo(c, day);
     var note = D.el('textarea', { class: 'bflagform__note', attrs: { rows: '2', maxlength: '300', placeholder: 'Np. rozmowa z Anną N., wpływ pisma potwierdzony', 'data-fk': 'case-note', 'aria-label': 'Notatka lub informacja' } });
     var project = (ctx.projects || []).filter(function (p) { return p.id === c.projectId; })[0];
     var content = D.el('div', { class: 'bflagform case-detail', attrs: { 'data-fk': 'case-detail' } }, [
       D.el('b', { class: 'bflagform__title', text: c.name }),
       D.el('p', { class: 'bflagform__sub t-muted', text: (project ? project.code + ' · ' : '') + (c.org || 'sprawa w toku') + ' · złożono ' + shortDay(c.startedAt) }),
-      D.el('div', { class: 'case-detail__count' }, [D.el('b', { class: 't-num', text: String(Cases.daysSince(c, day)) }), D.el('span', { text: ' ' + plural(Cases.daysSince(c, day)) + ' od złożenia' }), D.el('small', { class: info.due ? 'is-due' : 't-muted', text: info.text })]),
+      D.el('div', { class: 'case-detail__count' }, [D.el('b', { class: 't-num', text: String(Cases.daysSince(c, day)) }), D.el('span', { text: ' ' + plural(Cases.daysSince(c, day)) + ' od złożenia' })]),
       history(c, ctx),
       c.status === 'open' ? D.el('label', { class: 'bflagform__lbl t-muted', text: 'Notatka lub informacja (opcjonalnie)' }, [note]) : null,
       c.status === 'open' ? D.el('div', { class: 'bflagform__actions case-detail__acts' }, [
@@ -130,18 +115,17 @@
   function card(c, ctx) {
     var day = today();
     var days = Cases.daysSince(c, day);
-    var info = remindInfo(c, day);
     var project = (ctx.projects || []).filter(function (p) { return p.id === c.projectId; })[0];
     var last = Cases.lastCall(c);
     var det = D.el('button', { class: 'case-card__ask', attrs: { type: 'button', 'data-fk': 'case-open-' + c.id }, text: 'Otwórz' });
     det.addEventListener('click', function () { openDetail(det, c, ctx); });
     var owner = c.ownerId && c.ownerId !== ctx.meId && ctx.people ? E.Team.findPerson(ctx.people, c.ownerId) : null;
-    return D.el('div', { class: 'case-card' + (info.due ? ' is-due' : ''), style: project ? E.Identity.hueStyle(project.code) : null, dataset: { caseId: c.id } }, [
+    return D.el('div', { class: 'case-card', style: project ? E.Identity.hueStyle(project.code) : null, dataset: { caseId: c.id } }, [
       D.el('div', { class: 'case-card__days' }, [D.el('b', { class: 't-num', text: String(days) }), D.el('span', { text: plural(days) })]),
       D.el('div', { class: 'case-card__txt' }, [
         D.el('b', { text: c.name }),
         D.el('small', { class: 'truncate', text: (project ? project.code + ' · ' : '') + (owner ? E.Team.fullName(owner) + ' · ' : '') + (c.org ? c.org + ' · ' : '') + 'złożono ' + shortDay(c.startedAt) + (last ? ' · dopytano ' + shortDay(last.at) : '') }),
-        D.el('div', { class: 'case-card__foot' }, [det, D.el('small', { class: info.due ? 'is-due' : '', text: info.text })])
+        D.el('div', { class: 'case-card__foot' }, [det])
       ])
     ]);
   }
@@ -157,18 +141,8 @@
     ]);
   }
 
-  /** Koniec bieżącego tygodnia (niedziela) jako dzień ISO. */
-  function weekEnd(day) {
-    var dow = new Date(day + 'T00:00:00').getDay() || 7;
-    return Cases.addDays(day, 7 - dow);
-  }
-
-  /** Zakres widoku: „all” = wszystko, „today” = dopytać dziś (lub zaległe), „week” = do końca tygodnia. */
-  function inRange(c, mode, day) {
-    if (mode === 'today') return c.remindAt <= day;
-    if (mode === 'week') return c.remindAt <= weekEnd(day);
-    return true;
-  }
+  /** Wszystkie otwarte sprawy są widoczne w każdym widoku; nie ma przypomnień, więc zakres nie zawęża listy. */
+  function inRange() { return true; }
 
   /** Sekcja w Mojej pracy: własne sprawy w toku i zadania czekające na decyzję (zależnie od widoku). */
   function section(state, ctx, mode) {
@@ -179,7 +153,7 @@
     var cases = state.workspace.cases || [];
     var c2 = Object.assign({}, ctx, { projects: projects });
     var allMine = Cases.visible(cases, projects).filter(function (c) { return c.ownerId === me; });
-    var mine = allMine.filter(function (c) { return inRange(c, scope, day); }).sort(function (a, b) { return a.remindAt < b.remindAt ? -1 : 1; });
+    var mine = allMine.slice().sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
     var pend = Cases.pendingDecisions(projects, cases, day, 30).filter(function (p) {
       if (p.assignees.indexOf(me) < 0) return false;
       if (scope === 'today') return p.at >= Cases.addDays(day, -1);
@@ -187,12 +161,9 @@
       return true;
     });
     if (!mine.length && !pend.length) return null;
-    var due = mine.filter(function (c) { return Cases.remindDue(c, day); }).length;
-    var title = scope === 'today' ? 'Dopytać dziś' : scope === 'week' ? 'Dopytać w tym tygodniu' : 'Czekam na odpowiedź';
+    var title = 'Czekam na odpowiedź';
     var el = D.el('section', { class: 'case-sec', attrs: { 'data-fk': 'my-cases', 'data-scope': scope, 'aria-label': 'Sprawy w toku' } }, [
       D.el('div', { class: 'case-sec__head' }, [
-        due ? D.el('span', { class: 'case-sec__due', text: due + ' do dopytania' }) : null,
-        scope !== 'all' && allMine.length > mine.length ? D.el('span', { class: 't-muted case-sec__more', text: 'wszystkich w toku: ' + allMine.length }) : null,
         D.el('span', { class: 'case-sec__sp' }),
         UI.button({ label: 'Dodaj sprawę', icon: 'plus', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-add' }, onClick: function () { ctx.actions.openCase({}); } })
       ]),
@@ -201,27 +172,26 @@
     // Dane dla zwijanej szyny: tytuł, liczba pozycji i to, co wymaga uwagi (zwinięcie niczego nie chowa bez śladu).
     el.dataset.title = title;
     el.dataset.count = String(mine.length + pend.length);
-    el.dataset.attention = String(due + pend.length);
+    el.dataset.attention = String(pend.length);
     return el;
   }
 
-  /** Sekcja w Przeglądzie: sprawy w toku (zakres zarządu albo lidera), najpierw te do dopytania. */
+  /** Sekcja w Przeglądzie: sprawy w toku (zakres zarządu albo lidera), najstarsze na górze. */
   function reviewRows(state, ctx, projectIds) {
     var day = today();
     var people = state.workspace.people || [];
     var projects = state.workspace.projects || [];
     var c2 = Object.assign({}, ctx, { projects: projects });
     var list = Cases.visible(state.workspace.cases || [], projects).filter(function (c) { return !projectIds || projectIds.indexOf(c.projectId) >= 0; })
-      .sort(function (a, b) { return (a.remindAt <= day ? 0 : 1) - (b.remindAt <= day ? 0 : 1) || (a.startedAt < b.startedAt ? -1 : 1); });
+      .sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
     return list.map(function (c) {
       var project = projects.filter(function (p) { return p.id === c.projectId; })[0];
       var owner = c.ownerId ? E.Team.findPerson(people, c.ownerId) : null;
-      var info = remindInfo(c, day);
       var days = Cases.daysSince(c, day);
-      var btn = D.el('button', { class: 'rv-row' + (info.due ? ' is-warn' : ''), attrs: { type: 'button', 'data-fk': 'rv-case-' + c.id } }, [
+      var btn = D.el('button', { class: 'rv-row', attrs: { type: 'button', 'data-fk': 'rv-case-' + c.id } }, [
         D.el('span', { class: 'rv-row__code', style: project ? E.Identity.hueStyle(project.code) : null, text: project ? project.code : '' }),
         D.el('span', { class: 'rv-row__main truncate', text: c.name + (c.org ? ' · ' + c.org : '') + (owner ? ' · ' + E.Team.fullName(owner) : ' · bez osoby') }),
-        D.el('span', { class: 'rv-row__side t-num', text: days + ' ' + plural(days) + (info.due ? ' · dopytaj' : '') })
+        D.el('span', { class: 'rv-row__side t-num', text: days + ' ' + plural(days) })
       ]);
       btn.addEventListener('click', function () { openDetail(btn, c, c2); });
       return D.el('li', null, [btn]);
@@ -232,7 +202,7 @@
   function projectTab(project, ctx) {
     var day = today();
     var all = (ctx.state.workspace.cases || []).filter(function (c) { return c.projectId === project.id && c.status !== 'skipped'; });
-    var opened = all.filter(function (c) { return c.status === 'open'; }).sort(function (a, b) { return a.remindAt < b.remindAt ? -1 : 1; });
+    var opened = all.filter(function (c) { return c.status === 'open'; }).sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
     var closed = all.filter(function (c) { return c.status === 'closed'; }).sort(function (a, b) { return a.closedAt < b.closedAt ? 1 : -1; });
     var c2 = { actions: ctx.actions, projects: [project], people: ctx.state.workspace.people || [], meId: ctx.state.prefs.me };
     var head = D.el('div', { class: 'section__head' }, [
@@ -260,5 +230,5 @@
     ]);
   }
 
-  E.CaseUI = { projectTab: projectTab, form: form, history: history, openDetail: openDetail, chip: chip, card: card, section: section, remindInfo: remindInfo, findTask: findTask, reviewRows: reviewRows, inRange: inRange };
+  E.CaseUI = { projectTab: projectTab, form: form, history: history, openDetail: openDetail, chip: chip, card: card, section: section, findTask: findTask, reviewRows: reviewRows, inRange: inRange };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

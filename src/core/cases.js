@@ -1,12 +1,11 @@
 /* ETROM — sprawy w toku: wniosek złożony, materiał zamówiony, odpowiedź oczekiwana od organu lub klienta.
    Sprawa nie jest zadaniem: zostaje widoczna z licznikiem dni od złożenia, aż ją zakończysz.
-   Czyste funkcje, bez DOM. Terminów ustawowych nie liczymy: tylko dni od złożenia i przypomnienia „dopytaj”. */
+   Czyste funkcje, bez DOM. Terminów ustawowych nie liczymy: tylko dni od złożenia. Bez przypomnień. */
 (function (root) {
   'use strict';
 
   var STATUS = { open: 'W toku', closed: 'Zakończona', skipped: 'Pominięta' };
   var KINDS = { filed: 'Złożono', letter: 'Pismo od organu', call: 'Dopytano', filled: 'Uzupełniono', note: 'Notatka' };
-  var REMIND = [3, 7, 14, 30];
   // Nazwy zadań, po których zwykle zaczyna się oczekiwanie na odpowiedź.
   var FILING = /(z[łl]o[żz](yć|enie|enia|yli)|wy[śs][łl]a(ć|nie)|wystąpi(ć|enie)|wystąpień|zam[óo]wi(ć|enie)|zg[łl]o(si[ćc]|szenie)|skierowa(ć|nie)|przekaza(ć|nie) do\s)/i;
 
@@ -30,14 +29,12 @@
     var out = (Array.isArray(list) ? list : []).map(function (c) {
       if (!c || !isDay(c.startedAt) || typeof c.name !== 'string' || !c.name.trim()) return null;
       if (known && known.indexOf(c.projectId) < 0) return null;
-      var every = REMIND.indexOf(Number(c.remindEvery)) >= 0 ? Number(c.remindEvery) : 7;
       var id = typeof c.id === 'string' && c.id && !seen[c.id] ? c.id : '';
       if (id) seen[id] = true;
       var status = STATUS[c.status] ? c.status : 'open';
       return {
         id: id, projectId: c.projectId, stageId: str(c.stageId, 60), name: str(c.name, 120), org: str(c.org, 120),
-        ownerId: str(c.ownerId, 40), startedAt: c.startedAt, remindEvery: every,
-        remindAt: isDay(c.remindAt) ? c.remindAt : addDays(c.startedAt, every),
+        ownerId: str(c.ownerId, 40), startedAt: c.startedAt,
         status: status, closedAt: status === 'closed' && isDay(c.closedAt) ? c.closedAt : '', closedNote: str(c.closedNote, 300),
         sourceTaskId: str(c.sourceTaskId, 40),
         events: (Array.isArray(c.events) ? c.events : []).map(normalizeEvent).filter(Boolean)
@@ -64,10 +61,9 @@
     var check = validate(data, projectIds);
     var current = normalize(list, projectIds);
     if (!check.valid) return { valid: false, errors: check.errors, list: current, item: null };
-    var every = REMIND.indexOf(Number(data.remindEvery)) >= 0 ? Number(data.remindEvery) : 7;
     var raw = {
       id: '', projectId: data.projectId, stageId: data.stageId || '', name: data.name, org: data.org || '', ownerId: data.ownerId || '',
-      startedAt: data.startedAt, remindEvery: every, remindAt: addDays(data.startedAt, every), status: data.status === 'skipped' ? 'skipped' : 'open',
+      startedAt: data.startedAt, status: data.status === 'skipped' ? 'skipped' : 'open',
       sourceTaskId: data.sourceTaskId || '',
       events: data.status === 'skipped' ? [] : [{ id: 'e-1', kind: 'filed', at: data.startedAt, note: '', taskId: data.sourceTaskId || '', by: data.ownerId || '' }]
     };
@@ -79,24 +75,21 @@
     return (list || []).map(function (c) { return c.id === id ? Object.assign({}, c, change(c)) : c; });
   }
 
-  /** Dopisuje wpis do historii; „dopytano” przesuwa przypomnienie. */
+  /** Dopisuje wpis do historii; „dopytano” i notatka tylko trafiają do historii. */
   function addEvent(list, id, event, today) {
     return update(list, id, function (c) {
       var e = normalizeEvent(Object.assign({ at: today }, event), c.events.length);
       if (!e) return {};
       e.id = 'e-' + (c.events.length + 1);
-      var change = { events: c.events.concat([e]) };
-      if (e.kind === 'call') change.remindAt = addDays(e.at, c.remindEvery);
-      return change;
+      return { events: c.events.concat([e]) };
     });
   }
 
   function close(list, id, day, note) { return update(list, id, function () { return { status: 'closed', closedAt: day, closedNote: str(note, 300) }; }); }
-  function reopen(list, id, today) { return update(list, id, function (c) { return { status: 'open', closedAt: '', remindAt: addDays(today, c.remindEvery) }; }); }
+  function reopen(list, id) { return update(list, id, function () { return { status: 'open', closedAt: '' }; }); }
 
   function daysSince(c, today) { return Math.max(0, diffDays(c.startedAt, today)); }
   function open(list) { return (list || []).filter(function (c) { return c.status === 'open'; }); }
-  function remindDue(c, today) { return c.status === 'open' && c.remindAt <= today; }
   function lastCall(c) { var calls = c.events.filter(function (e) { return e.kind === 'call'; }); return calls.length ? calls[calls.length - 1] : null; }
 
   /** Sprawa związana z zadaniem (źródło albo pismo dodane jako zadanie). */
@@ -149,9 +142,9 @@
   }
 
   var api = {
-    STATUS: STATUS, KINDS: KINDS, REMIND: REMIND, isDay: isDay, isoOf: isoOf, addDays: addDays, diffDays: diffDays,
+    STATUS: STATUS, KINDS: KINDS, isDay: isDay, isoOf: isoOf, addDays: addDays, diffDays: diffDays,
     looksLikeFiling: looksLikeFiling, normalize: normalize, validate: validate, create: create, addEvent: addEvent,
-    close: close, reopen: reopen, daysSince: daysSince, open: open, remindDue: remindDue, lastCall: lastCall,
+    close: close, reopen: reopen, daysSince: daysSince, open: open, lastCall: lastCall,
     byTask: byTask, visible: visible, projectTasks: projectTasks, doneDay: doneDay, pendingDecisions: pendingDecisions
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
