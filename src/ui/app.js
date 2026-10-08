@@ -210,15 +210,24 @@
 
   function updateWorkspace(producer) {
     store.update(function (state) {
-      return Object.assign({}, state, { workspace: producer(state.workspace) });
+      var next = producer(state.workspace);
+      // Automat statusów etapów działa po każdej zmianie zadań i spraw.
+      if (next && next.projects) {
+        var projects = reconcileProjects(next.projects, next.cases || []);
+        if (projects !== next.projects) next = Object.assign({}, next, { projects: projects });
+      }
+      return Object.assign({}, state, { workspace: next });
     });
   }
 
   /** Automat statusów etapów: po każdej zmianie projektów start etapu dzieje się sam. */
-  function reconcileProjects(projects) {
+  function reconcileProjects(projects, cases) {
     var notes = [];
     var next = projects.map(function (project) {
-      var r = StageAuto.reconcile(project.stages, { decisionOf: function (stage) { return Model.describeStage(stage).decision; } });
+      var r = StageAuto.reconcile(project.stages, {
+        decisionOf: function (stage) { return Model.describeStage(stage).decision; },
+        casesOf: function (stage) { return (cases || []).filter(function (c) { return c.projectId === project.id && c.stageId === stage.id; }); }
+      });
       if (!r.changes.length) return project;
       r.changes.forEach(function (c) {
         var st = project.stages.filter(function (x) { return x.id === c.id; })[0];
@@ -236,7 +245,7 @@
 
   function setWorkspace(producer) {
     updateWorkspace(function (workspace) {
-      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: reconcileProjects(producer(workspace.projects)) });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: producer(workspace.projects) });
     });
   }
 
@@ -519,7 +528,7 @@
 
   function dismissStageAsk(projectId, stageId) {
     mapProject(projectId, function (project) {
-      return Object.assign({}, project, { stages: project.stages.map(function (stage) { return stage.id === stageId ? StageAuto.dismissAsk(stage) : stage; }) });
+      return Object.assign({}, project, { stages: project.stages.map(function (stage) { return stage.id === stageId ? StageAuto.dismissAsk(stage, Model.describeStage(stage).decision ? caseList().filter(function (c) { return c.projectId === projectId && c.stageId === stageId; }) : null) : stage; }) });
     });
   }
 

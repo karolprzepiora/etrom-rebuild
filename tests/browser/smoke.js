@@ -427,6 +427,23 @@ async function main() {
       check('automat: brak etapu testowego w danych przykładowych', false);
     }
 
+    /* 9c. Etap „Postępowanie”: status z otwartych spraw */
+    const decInfo = await state('(() => { const p = s.workspace.projects.find(x => x.code === "2603"); const st = p.stages.find(x => x.status === "todo" && window.ETROM.Model.describeStage(x).decision); return st ? { p: p.id, s: st.id } : null; })()');
+    if (decInfo) {
+      await evaluate('const a = window.ETROM.app; const r = window.ETROM.Cases.create(a.store.getState().workspace.cases || [], { projectId: ' + JSON.stringify(decInfo.p) + ', stageId: ' + JSON.stringify(decInfo.s) + ', name: "Test postępowania", org: "Urząd", startedAt: "2026-10-01" }, a.store.getState().workspace.projects.map(function (x) { return x.id; })); window.__decCase = r.item.id; a.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { cases: window.ETROM.Cases.close(r.list, r.item.id, "2026-10-02", "") }) }); }); a.actions.reopenCase(r.item.id); return true;');
+      await sleep(250);
+      const decStatus = () => state('s.workspace.projects.find(x => x.code === "2603").stages.find(x => x.id === ' + JSON.stringify(decInfo.s) + ').status');
+      const decAsk = () => state('(() => { const p = s.workspace.projects.find(x => x.code === "2603"); const st = p.stages.find(x => x.id === ' + JSON.stringify(decInfo.s) + '); const r = window.ETROM.StageAuto.suggest(st, { decision: true, cases: (s.workspace.cases || []).filter(c => c.stageId === st.id) }); return r ? r.mode : null; })()');
+      check('automat: otwarta sprawa w etapie „Postępowanie” ustawia „W toku”', (await decStatus()) === 'working');
+      await evaluate('window.ETROM.app.actions.closeCase(window.__decCase, ""); return true;');
+      await sleep(200);
+      check('automat: zamknięcie wszystkich spraw etapu „Postępowanie” pyta o zakończenie', (await decAsk()) === 'ask');
+      await evaluate('window.ETROM.app.actions.deleteCase(window.__decCase); return true;');
+      await sleep(150);
+    } else {
+      check('automat: brak etapu „Postępowanie” w danych przykładowych', false);
+    }
+
     /* 10. Wstecz w przeglądarce */
     await evaluate('history.back(); return true;');
     await sleep(500);

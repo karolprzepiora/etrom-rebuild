@@ -43,10 +43,30 @@ test('ręczna zmiana wygrywa z automatem', () => {
   assert.equal(A.suggest(manualTodo), null);
 });
 
-test('etapy „Postępowanie” zostają ręczne', () => {
+test('etap „Postępowanie” liczy się ze spraw, nie z zadań', () => {
+  const open = [{ id: 'c1', status: 'open' }];
+  const closed = [{ id: 'c1', status: 'closed' }];
+  const s = stage('todo', [], {});
+  assert.equal(A.suggest(s, { decision: true, cases: [] }), null);
+  assert.deepEqual(A.suggest(s, { decision: true, cases: open }), { to: 'working', mode: 'apply', reason: 'started' });
+  const w = stage('working', []);
+  assert.equal(A.suggest(w, { decision: true, cases: open }), null);
+  assert.equal(A.suggest(w, { decision: true, cases: closed }).mode, 'ask');
+  assert.equal(A.suggest(w, { decision: true, cases: [{ id: 'c2', status: 'skipped' }] }), null);
+  const dismissed = A.dismissAsk(w, closed);
+  assert.equal(A.suggest(dismissed, { decision: true, cases: closed }), null);
+  assert.equal(A.suggest(dismissed, { decision: true, cases: closed.concat([{ id: 'c3', status: 'closed' }]) }).mode, 'ask');
+});
+
+test('etapy „Postępowanie” nie reagują na zadania', () => {
+  const s = stage('todo', [t('a', 'working')]);
+  assert.equal(A.suggest(s, { decision: true, cases: [] }), null);
+});
+
+test('stary test: etapy „Postępowanie” zostają ręczne bez spraw', () => {
   const s = stage('todo', [t('a', 'working')]);
   assert.equal(A.suggest(s, { decision: true }), null);
-  assert.equal(A.reconcile([s], { decisionOf: () => true }).changes.length, 0);
+  assert.equal(A.reconcile([s], { decisionOf: () => true, casesOf: () => [] }).changes.length, 0);
 });
 
 test('reconcile nie zmienia tablicy, gdy nic się nie dzieje', () => {

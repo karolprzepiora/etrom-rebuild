@@ -142,12 +142,13 @@
     row.querySelector('.plan-row__main').addEventListener('click', function () { actions.toggleStage(project.id, stage.id); });
 
     var children = [row];
-    var ask = E.StageAuto ? E.StageAuto.suggest(stage, { decision: info.decision }) : null;
+    var stageCases = info.decision ? ((ctx.state.workspace.cases || []).filter(function (c) { return c.projectId === project.id && c.stageId === stage.id; })) : [];
+    var ask = E.StageAuto ? E.StageAuto.suggest(stage, { decision: info.decision, cases: stageCases }) : null;
     if (ask && ask.mode === 'ask') {
       var canClose = !!(actions.canManageList && actions.canManageList(project.id));
       children.push(D.el('div', { class: 'plan-ask', attrs: { 'data-fk': 'stage-ask-' + stage.id, role: 'status' } }, [
         D.el('span', { class: 'plan-ask__dot', text: '?', attrs: { 'aria-hidden': 'true' } }),
-        D.el('span', { class: 'plan-ask__text', text: 'Wszystkie zadania tego etapu są zakończone. Zakończyć etap?' }),
+        D.el('span', { class: 'plan-ask__text', text: info.decision ? 'Wszystkie sprawy tego etapu są zamknięte. Zakończyć etap?' : 'Wszystkie zadania tego etapu są zakończone. Zakończyć etap?' }),
         canClose ? UI.button({ label: 'Tak, zakończ', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'stage-ask-yes-' + stage.id }, onClick: function () { actions.confirmStageDone(project.id, stage.id); } }) : D.el('span', { class: 'plan-ask__hint', text: 'Potwierdza lider lub zarząd.' }),
         canClose ? UI.button({ label: 'Jeszcze nie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'stage-ask-no-' + stage.id }, onClick: function () { actions.dismissStageAsk(project.id, stage.id); } }) : null
       ]));
