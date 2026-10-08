@@ -1566,3 +1566,5 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .pb-dh small { font-size: 10.5px; letter-spacing: 0; }
 .pb-dh { gap: 3px; }
 .pb-month { text-transform: uppercase; }
+/* PD1: w nagłówku (daty) bez pionowych kresek — linie siatki zostają tylko w treści planu */
+.pb-wk.pb-wk--head { border-left: 0; background-image: none; }
