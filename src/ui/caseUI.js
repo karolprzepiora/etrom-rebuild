@@ -116,23 +116,24 @@
     var info = remindInfo(c, day);
     var project = (ctx.projects || []).filter(function (p) { return p.id === c.projectId; })[0];
     var last = Cases.lastCall(c);
-    var det = D.el('button', { class: 'btn btn--ghost btn--sm', attrs: { type: 'button', 'data-fk': 'case-open-' + c.id }, text: 'Otwórz' });
+    var det = D.el('button', { class: 'case-card__open', attrs: { type: 'button', 'data-fk': 'case-open-' + c.id }, text: 'Otwórz' });
     det.addEventListener('click', function () { openDetail(det, c, ctx); });
-    var ask = D.el('button', { class: 'btn btn--secondary btn--sm', attrs: { type: 'button', 'data-fk': 'case-ask-' + c.id }, text: 'Zapytałem' });
+    var ask = D.el('button', { class: 'case-card__ask', attrs: { type: 'button', 'data-fk': 'case-ask-' + c.id }, text: 'Zapytałem' });
     ask.addEventListener('click', function () { openDetail(ask, c, ctx); });
-    return D.el('div', { class: 'case-card' + (info.due ? ' is-due' : ''), dataset: { caseId: c.id } }, [
-      D.el('span', { class: 'mrow__project', style: project ? E.Identity.hueStyle(project.code) : null, text: project ? project.code : '' }),
-      D.el('div', { class: 'case-card__txt' }, [D.el('b', { text: c.name }), D.el('small', { class: 't-muted truncate', text: (c.org ? c.org + ' · ' : '') + 'złożono ' + shortDay(c.startedAt) + (last ? ' · dopytano ' + shortDay(last.at) : '') })]),
-      D.el('div', { class: 'case-card__days' }, [D.el('b', { class: 't-num', text: String(days) }), D.el('span', { text: ' ' + plural(days) }), D.el('small', { class: info.due ? 'is-due' : 't-muted', text: info.text })]),
-      D.el('div', { class: 'case-card__btns' }, [ask, det])
+    return D.el('div', { class: 'case-card' + (info.due ? ' is-due' : ''), style: project ? E.Identity.hueStyle(project.code) : null, dataset: { caseId: c.id } }, [
+      D.el('div', { class: 'case-card__days' }, [D.el('b', { class: 't-num', text: String(days) }), D.el('span', { text: plural(days) })]),
+      D.el('div', { class: 'case-card__txt' }, [
+        D.el('b', { text: c.name }),
+        D.el('small', { class: 'truncate', text: (project ? project.code + ' · ' : '') + (c.org ? c.org + ' · ' : '') + 'złożono ' + shortDay(c.startedAt) + (last ? ' · dopytano ' + shortDay(last.at) : '') }),
+        D.el('div', { class: 'case-card__foot' }, [ask, det, D.el('small', { class: info.due ? 'is-due' : '', text: info.text })])
+      ])
     ]);
   }
 
   function pendingRow(p, ctx) {
     var project = (ctx.projects || []).filter(function (x) { return x.id === p.projectId; })[0];
-    return D.el('div', { class: 'case-card case-card--ask', dataset: { taskId: p.taskId } }, [
-      D.el('span', { class: 'mrow__project', style: project ? E.Identity.hueStyle(project.code) : null, text: project ? project.code : '' }),
-      D.el('div', { class: 'case-card__txt' }, [D.el('b', { text: 'Czy czekasz na odpowiedź po: „' + p.name + '”?' }), D.el('small', { class: 't-muted', text: 'zamknięto ' + shortDay(p.at) + ' · bez decyzji sprawa nie będzie śledzona' })]),
+    return D.el('div', { class: 'case-ask', dataset: { taskId: p.taskId } }, [
+      D.el('div', { class: 'case-ask__txt' }, [D.el('b', { text: 'Czy czekasz na odpowiedź po: „' + p.name + '”?' }), D.el('small', { class: 't-muted', text: (project ? project.code + ' · ' : '') + 'zamknięto ' + shortDay(p.at) + ' · bez decyzji sprawa nie będzie śledzona' })]),
       D.el('div', { class: 'case-card__btns' }, [
         UI.button({ label: 'Nie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-no-' + p.taskId }, onClick: function () { ctx.actions.skipTaskCase(p.projectId, p.stageId, p.taskId); } }),
         UI.button({ label: 'Tak, śledź', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'case-yes-' + p.taskId }, onClick: function () { ctx.actions.openCaseFromTask(p.projectId, p.stageId, p.taskId); } })

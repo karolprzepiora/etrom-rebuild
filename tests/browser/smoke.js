@@ -937,6 +937,8 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: Moja praca ma sekcję „Czekam na odpowiedź” z licznikiem dni i przyciskiem „Zapytałem”',
       await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-ask-]");'));
+    check('Moja praca: sprawy stoją w kolumnie bocznej jako kafelki, a termin zadania to chip w jednej gramatyce',
+      await evaluate('const side = document.querySelector(".mw-cols__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".mw-cols__list") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
     await evaluate('ETROM.app.store.update(function (st) { var t = ETROM.Tasks.createTask({ name: "Złożyć wniosek testowy", deadline: "2026-10-20", assignees: ["' + caseInfo.owner + '"] }, [], ["' + caseInfo.owner + '"]); t.id = "t-smoke-filing"; t.status = "done"; t.history = [{ from: "review", to: "done", at: new Date().toISOString(), reason: "", by: "" }]; var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects[0].stages[0].tasks.push(t); return Object.assign({}, st, { workspace: ws }); }); return true;');
     await sleep(500);
     check('Sprawy w toku: zamknięte zadanie „Złożyć…” bez decyzji czeka na liście „Czy czekasz na odpowiedź?”',

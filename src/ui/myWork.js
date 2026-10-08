@@ -36,6 +36,26 @@
     return UI.projectTag(row.project, { href: E.ProjectList.projectHref(row.project, 'zadania'), stage: E.Model.describeStage(row.stage).name });
   }
 
+  /** Termin w jednej gramatyce: „po terminie 1 d · śr 7.10”, „dziś 17:00”, „jutro 20:00”, „sob 10.10 · 14:00”. */
+  var DOW = ['nd', 'pn', 'wt', 'śr', 'czw', 'pt', 'sob'];
+  function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+  function deadlineChip(task, info) {
+    if (task.status === 'done' || !task.deadline || Number.isNaN(Date.parse(task.deadline))) return E.TaskList.deadlineBlock(task, info);
+    var d = new Date(task.deadline);
+    var now = new Date();
+    var days = Math.round((dayStart(d) - dayStart(now)) / 86400000);
+    var hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    var dm = d.getDate() + '.' + (d.getMonth() + 1);
+    var text; var tone;
+    if (d.getTime() < now.getTime()) {
+      tone = 'late';
+      text = days < 0 ? 'po terminie ' + (-days) + ' d · ' + DOW[d.getDay()] + ' ' + dm : 'po terminie ' + Math.max(1, Math.floor((now.getTime() - d.getTime()) / 3600000)) + ' h';
+    } else if (days === 0) { tone = 'today'; text = 'dziś ' + hh; }
+    else if (days === 1) { tone = 'soon'; text = 'jutro ' + hh; }
+    else { tone = 'later'; text = DOW[d.getDay()] + ' ' + dm + ' · ' + hh; }
+    return D.el('span', { class: 'tdue dchip dchip--' + tone, attrs: { 'data-tooltip': 'Termin: ' + E.Format.dateLong(task.deadline.slice(0, 10)) + ', ' + hh + ' — ' + info.text } }, [D.el('span', { class: 'tdue__date t-num', text: text })]);
+  }
+
   function taskRow(row, ctx, options) {
     var settings = options || {};
     var task = row.task;
@@ -65,7 +85,7 @@
           UI.button({ label: 'Zatwierdź', icon: 'check', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'approve-' + task.id }, onClick: function () { ctx.actions.moveTask(row.project.id, row.stage.id, task.id, 'done'); } }),
           UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'return-' + task.id }, onClick: function () { ctx.actions.moveTask(row.project.id, row.stage.id, task.id, 'changes'); } })
         ])
-      : D.el('span', { class: 'trow__deadline' }, [E.TaskList.deadlineBlock(task, info)]);
+      : D.el('span', { class: 'trow__deadline' }, [deadlineChip(task, info)]);
 
     var ref = { projectId: row.project.id, stageId: row.stage.id };
     var li = null;
@@ -277,8 +297,8 @@
       main = main.concat(board.body.filter(Boolean));
       shown = { react: [], alarms: [], snoozed: [], groups: {} };
     }
+    var caseEl = (current === 'all' || current === 'today' || current === 'week') ? E.CaseUI.section(state, ctx, current) : null;
     var rest = current === 'weeks' ? [] : [
-      (current === 'all' || current === 'today' || current === 'week') ? E.CaseUI.section(state, ctx, current) : null,
       E.InboxScreen.alarmStrip(shown.alarms, ctx),
       E.InboxScreen.section(shown.react, ctx, now)
     ];
@@ -288,8 +308,11 @@
     });
     rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
     var visible = rest.filter(Boolean);
-    main = main.concat(visible);
-    if (current !== 'all' && current !== 'weeks' && !visible.length) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
+    if (caseEl) {
+      // Sprawy w stałej kolumnie obok listy (na wąskim ekranie nad listą), żeby nie spychały zadań.
+      main.push(D.el('div', { class: 'mw-cols' }, [D.el('aside', { class: 'mw-cols__side', attrs: { 'aria-label': 'Sprawy w toku' } }, [caseEl]), D.el('div', { class: 'mw-cols__list' }, visible)]));
+    } else main = main.concat(visible);
+    if (current !== 'all' && current !== 'weeks' && !visible.length && !caseEl) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
     if (current === 'all' && !m.open && !m.react.length) {
       main.push(UI.emptyState({
         icon: 'checkCircle',

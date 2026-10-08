@@ -1400,23 +1400,59 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .case-chip:hover span { text-decoration: underline; text-underline-offset: 2px; }
 .case-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .case-chip .case-glyph--letter { margin: 0 2px; }
-.case-sec { display: grid; gap: var(--space-2); margin-block: var(--space-4); padding: var(--space-3); border-radius: 14px; background: color-mix(in srgb, var(--flow) 7%, var(--sheet)); box-shadow: inset 3px 0 0 var(--flow, var(--accent)); }
-.case-sec__head { display: flex; align-items: center; gap: var(--space-2); }
-.case-sec__t { margin: 0; font-size: var(--fs-sm); font-weight: 800; }
-.case-sec__n { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 700; }
+/* Sprawy w toku: kolumna boczna z kafelkami w kolorze projektu (Moja praca) */
+.mywork__main { container-type: inline-size; container-name: mwm; }
+.mw-cols { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.mw-cols__list { display: grid; gap: var(--space-2); min-width: 0; }
+@container mwm (min-width: 56rem) {
+  .mw-cols { grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-5); }
+  .mw-cols__side { grid-column: 2; grid-row: 1; }
+  .mw-cols__list { grid-column: 1; grid-row: 1; }
+}
+.case-sec { display: grid; gap: var(--space-2); }
+.case-sec__head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-1); }
+.case-sec__t { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.case-sec__n { font-size: var(--fs-xs); background: var(--wash); border-radius: var(--radius-full); padding: 0 var(--space-2); color: var(--ink-3); font-weight: 700; }
 .case-sec__due { font-size: var(--fs-xs); font-weight: 700; color: var(--warn-ink, var(--ink)); background: color-mix(in srgb, var(--warn) 18%, transparent); border-radius: 99px; padding: 1px 9px; }
 .case-sec__sp { flex: 1; }
-.case-sec__list { display: grid; }
-.case-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--line); }
-.case-card:first-child { border-top: 0; }
-.case-card__txt { display: grid; min-width: 0; }
-.case-card__txt b { font-size: var(--fs-sm); }
-.case-card__days { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 4px; min-width: 7.5rem; font-size: var(--fs-sm); text-align: right; }
-.case-card__days b { font-size: 1.05rem; }
-.case-card__days small { flex: 1 0 100%; font-size: var(--fs-xs); }
-.case-card .is-due, .pb-case__days .is-due, .case-detail__count .is-due { color: var(--warn-ink, var(--ink)); font-weight: 700; }
+.case-sec__list { display: grid; gap: 8px; }
+.case-card {
+  --pj-a: light-dark(oklch(calc(.47 - .07 * var(--ctr) + .07 * var(--tone, 0)) var(--pj-c) var(--hue)), oklch(calc(.4 - .05 * var(--ctr) + .07 * var(--tone, 0)) calc(var(--pj-c) * .9) var(--hue)));
+  --pj-b: light-dark(oklch(calc(.36 - .06 * var(--ctr) + .07 * var(--tone, 0)) calc(var(--pj-c) * .9) calc(var(--hue) + 26)), oklch(calc(.3 - .04 * var(--ctr) + .07 * var(--tone, 0)) calc(var(--pj-c) * .8) calc(var(--hue) + 26)));
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: 14px; color: #fff;
+  background: radial-gradient(130% 160% at 0% 0%, rgb(255 255 255 / calc(.2 * var(--hdr))), transparent 55%), linear-gradient(150deg, var(--pj-a), var(--pj-b));
+}
+.case-card.is-due { box-shadow: 0 0 0 2px var(--warn); }
+.case-card__days { display: grid; justify-items: center; flex: none; width: 3.1rem; line-height: 1; }
+.case-card__days b { font-size: 1.9rem; font-weight: 800; }
+.case-card__days span { font-size: .62rem; font-weight: 600; opacity: .85; }
+.case-card__txt { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.case-card__txt > b { font-size: var(--fs-sm); font-weight: 700; }
+.case-card__txt > small { font-size: var(--fs-xs); opacity: .85; }
+.case-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); margin-top: 6px; }
+.case-card__foot small { margin-left: auto; font-size: .66rem; opacity: .85; }
+.case-card__foot small.is-due { font-weight: 800; opacity: 1; }
+.case-card__ask, .case-card__open { all: unset; box-sizing: border-box; cursor: pointer; font-size: .72rem; font-weight: 700; border-radius: 8px; padding: 3px 10px; }
+.case-card__ask { background: #fff; color: #14222c; }
+.case-card__open { color: #fff; }
+.case-card__ask:hover, .case-card__open:hover { filter: brightness(.94); }
+.case-card__open:hover { text-decoration: underline; text-underline-offset: 2px; filter: none; }
+.case-card__ask:focus-visible, .case-card__open:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .case-card__btns { display: flex; gap: 6px; }
-.case-card--ask { grid-template-columns: auto minmax(0, 1fr) auto; }
+.case-ask { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: 14px; background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line-strong), inset 3px 0 0 var(--warn); }
+.case-ask__txt { display: grid; gap: 2px; font-size: var(--fs-sm); }
+.case-ask .case-card__btns { justify-content: flex-end; }
+/* Termin w wierszu zadania: jedna gramatyka, kolor niesie pilność */
+.dchip { display: inline-flex; align-items: center; border-radius: 99px; padding: 3px 10px; font-size: .72rem; font-weight: 700; white-space: nowrap; background: var(--wash); color: var(--ink); }
+.dchip--late { background: color-mix(in srgb, var(--alarm) 14%, transparent); color: var(--alarm-ink); }
+.dchip--today { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn-ink, var(--ink)); }
+.dchip--soon { background: color-mix(in srgb, var(--warn) 10%, transparent); color: var(--warn-ink, var(--ink)); }
+/* Wiersz zadania w Mojej pracy: status jako kropka, kontekst i szybkie kroki w jednej linii */
+.mywork__main .trow__status span.truncate, .mywork__main .trow__status .status-btn__caret { display: none; }
+.mywork__main .trow__status { padding-inline: 6px; min-width: 0; }
+.mywork__main .mrow__body { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-3); }
+.mywork__main .mrow__body > .mrow__title, .mywork__main .mrow__body > .trow__feedback { flex: 1 1 100%; }
+.mywork__main .mrow__body > .trow__meta { margin: 0; }
 .case-detail__count { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-sm); }
 .case-detail__count b { font-size: 1.4rem; }
 .case-detail__count small { margin-left: auto; font-size: var(--fs-xs); }
@@ -1451,3 +1487,10 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .pb-tn__sub .case-chip { flex: 1 1 100%; }
 
 .rv-sec--cases .rv-sec__count { background: var(--line-strong, var(--line)); color: var(--ink, inherit); }
+
+.mywork__main .mrow:not(.mrow--approve) { grid-template-columns: 2rem minmax(0, 1fr) 4rem 10.5rem 2rem; }
+.mywork__main .trow__deadline { justify-self: end; }
+.mywork__main .mrow__title .trow__name, .mywork__main .ibx__title { font-size: .9375rem; }
+.mw-cols__list { gap: var(--space-4); }
+.case-sec__head { flex-wrap: nowrap; white-space: nowrap; }
+.case-sec__due { font-size: .68rem; padding: 1px 8px; }
