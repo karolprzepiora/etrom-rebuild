@@ -375,7 +375,7 @@
       var ref = { projectId: b.projectId, stageId: b.stageId };
       var holder = D.el('span', { class: 'pb-tn__chk' });
       function draw() {
-        var node = E.Checklist.indicator(task, toggle, chkCtx);
+        var node = E.Checklist.indicator(task, toggle, chkCtx, ref);
         holder.replaceChildren.apply(holder, node ? [node] : []);
       }
       function toggle() {

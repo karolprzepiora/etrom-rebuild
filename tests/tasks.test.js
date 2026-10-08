@@ -257,6 +257,19 @@ test('data startu: poprawna data, nie po terminie; szkic jej nie ma; normalizacj
   assert.equal(Tasks.validateTask({ name: 'A', start: '2026-10-05', draft: true }, []).value.start, '');
 });
 
+test('punkt listy może wskazywać osobę, a zmiana nie psuje reszty', () => {
+  const T = Tasks;
+  let t = { id: 't-1', name: 'Wniosek', assignees: ['p-1', 'p-2'] };
+  t = T.addPoint(t, 'Zebrać dane', 'p-9', '2026-10-05T09:00:00Z', 'p-2');
+  t = T.addPoint(t, 'Opis', 'p-9', '2026-10-05T09:01:00Z');
+  assert.equal(t.checklist[0].to, 'p-2');
+  assert.equal(t.checklist[1].to, '');
+  t = T.assignPoint(t, t.checklist[1].id, 'p-1');
+  assert.equal(t.checklist[1].to, 'p-1');
+  assert.equal(t.checklist[0].to, 'p-2');
+  assert.equal(T.normalizeChecklist(t.checklist)[0].to, 'p-2');
+});
+
 test('lista punktów: dopisywanie, odhaczanie z autorem, zmiana nazwy, usuwanie', () => {
   const T = Tasks;
   let t = { id: 't-1', name: 'Wniosek', assignees: ['p-1', 'p-2'] };

@@ -114,10 +114,10 @@
       if (cur) cur.remove();
       if (open) { li.appendChild(E.Checklist.panel(task, ref, ctx)); var f = li.querySelector('.chk__input'); if (f) f.focus(); }
       var old = li.querySelector('.chk-ind');
-      if (old) old.replaceWith(E.Checklist.indicator(task, toggleList, ctx));
+      if (old) old.replaceWith(E.Checklist.indicator(task, toggleList, ctx, ref));
     }
     var withList = !settings.approve && ctx.meId;
-    if (withList) body[0].appendChild(E.Checklist.indicator(task, toggleList, ctx));
+    if (withList) body[0].appendChild(E.Checklist.indicator(task, toggleList, ctx, ref));
     li = D.el('li', { class: 'mrow row trow--' + task.status + (settings.approve ? ' mrow--approve' : ''), dataset: { taskId: task.id } }, [
       settings.approve ? UI.status('task', task.status) : E.TaskList.statusControl(row.project, row.stage, task, ctx.actions),
       D.el('div', { class: 'mrow__body' }, body),

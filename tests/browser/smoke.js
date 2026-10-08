@@ -1003,6 +1003,25 @@ async function main() {
     await sleep(500);
     check('Projekt ma zakładkę „Sprawy” z listą spraw i przyciskiem „Dodaj sprawę” w stylu innych zakładek',
       await evaluate('const s = document.querySelector("[data-fk=project-cases]"); const b = document.querySelector("[data-fk=project-case-add]"); return !!s && s.querySelectorAll(".case-card").length >= 1 && !!b && b.classList.contains("btn--ghost") && !!b.querySelector("svg");'));
+    // Lista punktów w zakładce Zadania projektu: lider i zarząd dopisują punkty i wskazują osoby.
+    const lz = JSON.parse(await evaluate('const s = ETROM.app.store.getState(); for (const p of s.workspace.projects) for (const st of p.stages) for (const t of st.tasks) { if (!t.draft && t.status !== "done" && (t.assignees || []).length && t.assignees.indexOf("p-1") < 0 && (t.assignees || []).length > 1) return JSON.stringify({ pid: p.id, sid: st.id, tid: t.id, who: t.assignees[0] }); } return "null";') || 'null');
+    if (lz) {
+      await evaluate('ETROM.app.actions.setMe("p-1"); location.hash = "#/projekty/' + lz.pid + '/zadania"; return true;');
+      await sleep(600);
+      check('Zakładka Zadania projektu: zarząd widzi „+ lista” przy zadaniu, którego nie realizuje',
+        await evaluate('return !!document.querySelector(".trow[data-task-id=\\"' + lz.tid + '\\"] .trow__list .chk-ind");'));
+      await evaluate('document.querySelector(".trow[data-task-id=\\"' + lz.tid + '\\"] .trow__list .chk-ind").click(); return true;');
+      await sleep(300);
+      check('Panel listy w projekcie ma wybór osoby dla nowego punktu (zarząd)',
+        await evaluate('return !!document.querySelector(".trow .chk [data-fk^=chk-target-]");'));
+      await evaluate('const i = document.querySelector(".trow .chk__input"); i.value = "Punkt od zarządu"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+      await sleep(300);
+      await evaluate('const t = ETROM.app.store.getState().workspace.projects.find(p => p.id === ' + JSON.stringify(lz.pid) + ').stages.find(s => s.id === ' + JSON.stringify(lz.sid) + ').tasks.find(t => t.id === ' + JSON.stringify(lz.tid) + '); ETROM.app.actions.assignPoint(' + JSON.stringify(lz.pid) + ', ' + JSON.stringify(lz.sid) + ', ' + JSON.stringify(lz.tid) + ', t.checklist[t.checklist.length - 1].id, ' + JSON.stringify(lz.who) + '); return true;');
+      await sleep(300);
+      check('Zarząd dopisał punkt i wskazał osobę; punkt ma autora i osobę odpowiedzialną',
+        await evaluate('const t = ETROM.app.store.getState().workspace.projects.find(p => p.id === ' + JSON.stringify(lz.pid) + ').stages.find(s => s.id === ' + JSON.stringify(lz.sid) + ').tasks.find(t => t.id === ' + JSON.stringify(lz.tid) + '); const p = t.checklist[t.checklist.length - 1]; return p.text === "Punkt od zarządu" && p.by === "p-1" && p.to === ' + JSON.stringify(lz.who) + ';'));
+      await evaluate('ETROM.app.actions.setMe(' + JSON.stringify(meBeforeCases) + '); return true;');
+    }
     await go('#/przeglad');
     await sleep(400);
     check('Przegląd: sekcja „Sprawy w toku” pokazuje sprawy różnych osób z licznikiem dni, a klik otwiera historię',

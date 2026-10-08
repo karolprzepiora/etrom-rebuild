@@ -313,7 +313,7 @@
       taken[id] = true;
       out.push({
         id: id, text: label, done: item.done === true,
-        by: text(item.by), doneBy: item.done === true ? text(item.doneBy) : '',
+        by: text(item.by), to: text(item.to), doneBy: item.done === true ? text(item.doneBy) : '',
         at: typeof item.at === 'string' ? item.at : ''
       });
     });
@@ -329,11 +329,11 @@
   }
 
   /** Dopisuje punkt; ignoruje pusty tekst i przekroczenie limitu. */
-  function addPoint(task, label, by, now) {
+  function addPoint(task, label, by, now, to) {
     var value = text(label).slice(0, CHECK_LIMITS.text);
     var list = checklistOf(task);
     if (!task || !value || list.length >= CHECK_LIMITS.items) return task;
-    var point = { id: nextPointId(list), text: value, done: false, by: text(by), doneBy: '', at: now || '' };
+    var point = { id: nextPointId(list), text: value, done: false, by: text(by), to: text(to), doneBy: '', at: now || '' };
     return Object.assign({}, task, { checklist: list.concat([point]) });
   }
 
@@ -350,6 +350,11 @@
     var value = text(label).slice(0, CHECK_LIMITS.text);
     if (!value) return task;
     return Object.assign({}, task, { checklist: checklistOf(task).map(function (p) { return p.id === id ? Object.assign({}, p, { text: value }) : p; }) });
+  }
+
+  /** Wskazuje osobę odpowiedzialną za punkt ('' = cały zespół). */
+  function assignPoint(task, id, to) {
+    return Object.assign({}, task, { checklist: checklistOf(task).map(function (p) { return p.id === id ? Object.assign({}, p, { to: text(to) }) : p; }) });
   }
 
   function removePoint(task, id) {
@@ -476,6 +481,7 @@
     togglePoint: togglePoint,
     renamePoint: renamePoint,
     removePoint: removePoint,
+    assignPoint: assignPoint,
     checklistStats: checklistStats
   };
 

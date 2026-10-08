@@ -160,12 +160,30 @@
     } else stepButtons(project, stage, task, actions).forEach(function (b) { meta.push(b); });
     if (meta.length) body.push(D.el('p', { class: 'trow__meta t-meta' }, meta));
 
-    return D.el('li', {
+    /* Lista punktów (jak w Mojej pracy): chip w stałej kolumnie, panel rozwija się pod wierszem. */
+    var ref = { projectId: project.id, stageId: stage.id };
+    var lctx = { actions: actions, people: people, meId: actions.meId ? actions.meId() : '' };
+    var listSlot = D.el('span', { class: 'trow__list' });
+    var li = null;
+    function drawList() {
+      var node = task.draft || !lctx.meId ? null : E.Checklist.indicator(task, toggleList, lctx, ref);
+      listSlot.replaceChildren.apply(listSlot, node ? [node] : []);
+    }
+    function toggleList() {
+      var open = E.Checklist.toggle(task.id);
+      var cur = li.querySelector(':scope > .chk');
+      if (cur) cur.remove();
+      if (open) { li.appendChild(E.Checklist.panel(task, ref, lctx)); var f = li.querySelector('.chk__input'); if (f) f.focus(); }
+      drawList();
+    }
+    drawList();
+    li = D.el('li', {
       class: 'trow row trow--' + task.status + (task.draft ? ' trow--frozen' : '') + (motion && motion.flashTask === task.id ? ' is-flash' : '') + (actions.isInspected && actions.isInspected('task', task.id) ? ' is-inspected' : ''),
       dataset: { taskId: task.id }
     }, [
       statusControl(project, stage, task, actions),
       D.el('div', { class: 'trow__body' }, body),
+      listSlot,
       D.el('div', { class: 'trow__people' }, assigned.length
         ? assigned.map(function (person) { return partButton(project, stage, task, person, actions); })
         : [D.el('span', { class: 't-meta', text: 'Bez realizatora' })]),
@@ -174,6 +192,8 @@
       task.draft ? D.el('span') : E.Timer.timerButton(project, stage, task, actions),
       taskMenu(project, stage, task, actions)
     ]);
+    if (!task.draft && lctx.meId && E.Checklist.isOpen(task.id)) li.appendChild(E.Checklist.panel(task, ref, lctx));
+    return li;
   }
 
   /**

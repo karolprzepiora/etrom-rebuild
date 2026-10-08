@@ -1247,14 +1247,24 @@
   }
 
   /* Lista punktów przy zadaniu: tylko realizatorzy dopisują i odhaczają; nie zmienia statusu ani godzin. */
+  /** Listę prowadzi realizator, zarząd albo lider projektu (ci dwaj mogą wskazywać osoby przy punktach). */
+  function canManageList(projectId) {
+    var me = currentMe();
+    var project = (store.getState().workspace.projects || []).filter(function (p) { return p.id === projectId; })[0];
+    return !!me && (E.Budget.isManagement(me, people()) || (!!project && !!project.team && project.team.leader === me));
+  }
   function checklistChange(projectId, stageId, taskId, change) {
     var me = currentMe();
     var task = taskOf(projectId, stageId, taskId);
-    if (!me || !task || (task.assignees || []).indexOf(me) < 0) return;
+    if (!me || !task || ((task.assignees || []).indexOf(me) < 0 && !canManageList(projectId))) return;
     mapTask(projectId, stageId, taskId, function (t) { return change(t, me); });
   }
-  function addChecklistPoint(projectId, stageId, taskId, text) {
-    checklistChange(projectId, stageId, taskId, function (t, me) { return Tasks.addPoint(t, text, me, new Date().toISOString()); });
+  function addChecklistPoint(projectId, stageId, taskId, text, to) {
+    checklistChange(projectId, stageId, taskId, function (t, me) { return Tasks.addPoint(t, text, me, new Date().toISOString(), to || ''); });
+  }
+  function assignChecklistPoint(projectId, stageId, taskId, pointId, to) {
+    if (!canManageList(projectId)) return;
+    checklistChange(projectId, stageId, taskId, function (t) { return Tasks.assignPoint(t, pointId, to); });
   }
   function toggleChecklistPoint(projectId, stageId, taskId, pointId) {
     checklistChange(projectId, stageId, taskId, function (t, me) { return Tasks.togglePoint(t, pointId, me); });
@@ -2976,7 +2986,8 @@
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
-    addPoint: addChecklistPoint, togglePoint: toggleChecklistPoint, removePoint: removeChecklistPoint,
+    meId: currentMe,
+    canManageList: canManageList, assignPoint: assignChecklistPoint, addPoint: addChecklistPoint, togglePoint: toggleChecklistPoint, removePoint: removeChecklistPoint,
     setTaskFilter: function (value) { store.set({ taskFilter: value }); },
     setKanban: function (patch) { store.update(function (state) { return Object.assign({}, state, { kanban: Object.assign({}, state.kanban, patch) }); }); },
     editPerson: openEditPerson,

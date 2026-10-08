@@ -176,7 +176,7 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .trows { display: grid; gap: 2px; padding: var(--space-1); border-radius: var(--radius-md); background: var(--sheet); box-shadow: var(--elev-lift); }
 .trow {
   display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr) auto 5.5rem 10.5rem 2rem 2rem;
+  grid-template-columns: 10rem minmax(0, 1fr) 6.5rem auto 5.5rem 10.5rem 2rem 2rem;
   align-items: center;
   gap: var(--space-3);
   min-height: 2.75rem;
@@ -197,6 +197,8 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .trow__feedback svg { width: 13px; height: 13px; margin-top: 1px; flex: none; }
 .trow__people { display: flex; align-items: center; gap: var(--space-1-5); }
 .trow__load { white-space: nowrap; }
+.trow__list { display: flex; justify-content: flex-end; min-width: 0; }
+.trow > .chk { grid-column: 1 / -1; }
 .trow__deadline { min-width: 0; }
 
 .part { position: relative; display: inline-grid; border-radius: var(--radius-full); transition: transform var(--duration-fast) var(--ease-spring); }
@@ -208,13 +210,14 @@ tr:hover .pick .datum, .pick:has(.checkbox:focus-visible) .datum, .pick:has(.che
 .part--todo .avatar { opacity: 0.7; }
 
 @container page (max-width: 60rem) {
-  .trow { grid-template-columns: 8.5rem minmax(0, 1fr) auto 10rem 2rem 2rem; }
+  .trow { grid-template-columns: 8.5rem minmax(0, 1fr) 6.5rem auto 10rem 2rem 2rem; }
   .trow__load { display: none; }
 }
 @container page (max-width: 42rem) {
   .trow { grid-template-columns: auto minmax(0, 1fr) 2rem 2rem; row-gap: 0; }
   .trow__status span.truncate { display: none; }
-  .trow__people, .trow__deadline { grid-column: 2; }
+  .trow__people, .trow__deadline, .trow__list { grid-column: 2; }
+  .trow__list { justify-content: flex-start; }
   .trow__people { order: 3; padding-bottom: var(--space-1); }
   .trow__deadline { order: 4; padding-bottom: var(--space-2); }
 }
