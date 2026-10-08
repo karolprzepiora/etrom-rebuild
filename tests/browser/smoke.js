@@ -937,8 +937,16 @@ async function main() {
     await sleep(500);
     check('Sprawy w toku: Moja praca ma sekcję „Czekam na odpowiedź” z licznikiem dni i przyciskiem „Zapytałem”',
       await evaluate('const sec = document.querySelector("[data-fk=my-cases]"); return !!sec && sec.querySelectorAll(".case-card").length >= 1 && /\\d+\\s*dni/.test(sec.textContent) && !!sec.querySelector("[data-fk^=case-ask-]");'));
-    check('Moja praca: sprawy stoją w kolumnie bocznej jako kafelki, a termin zadania to chip w jednej gramatyce',
-      await evaluate('const side = document.querySelector(".mw-cols__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".mw-cols__list") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
+    check('Moja praca: sprawy stoją w zwijanej szynie jako kafelki, a termin zadania to chip w jednej gramatyce',
+      await evaluate('const side = document.querySelector(".rl--cases .rl__side [data-fk=my-cases]"); const chips = [...document.querySelectorAll(".mrow .dchip")].map(c => c.textContent); return !!side && !!document.querySelector(".rl--cases .rl__main") && chips.length >= 1 && chips.every(t => /^(po terminie \\d+ (d|h)|dziś \\d\\d:\\d\\d|jutro \\d\\d:\\d\\d|(nd|pn|wt|śr|czw|pt|sob) \\d+\\.\\d+ · \\d\\d:\\d\\d)/.test(t));'));
+    await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
+    await sleep(300);
+    check('Moja praca: szynę „Czekam na odpowiedź” można zwinąć, a zwinięta pokazuje licznik spraw',
+      await evaluate('const r = document.querySelector(".rl--cases.is-collapsed"); return !!r && !!r.querySelector(".rl__vcount") && /^\\d+$/.test(r.querySelector(".rl__vcount").textContent) && !document.querySelector("[data-fk=my-cases]");'));
+    await evaluate('document.querySelector("[data-fk=rail-mycases]").click(); return true;');
+    await sleep(300);
+    check('Moja praca: wiersze „Wymaga reakcji” nie mają kolorowej szyny z lewej',
+      await evaluate('const r = document.querySelector(".ibx__row"); return !r || !/inset 4px 0px 0px|inset 4px 0 0/.test(getComputedStyle(r).boxShadow);'));
     await evaluate('ETROM.app.store.update(function (st) { var t = ETROM.Tasks.createTask({ name: "Złożyć wniosek testowy", deadline: "2026-10-20", assignees: ["' + caseInfo.owner + '"] }, [], ["' + caseInfo.owner + '"]); t.id = "t-smoke-filing"; t.status = "done"; t.history = [{ from: "review", to: "done", at: new Date().toISOString(), reason: "", by: "" }]; var ws = JSON.parse(JSON.stringify(st.workspace)); ws.projects[0].stages[0].tasks.push(t); return Object.assign({}, st, { workspace: ws }); }); return true;');
     await sleep(500);
     check('Sprawy w toku: zamknięte zadanie „Złożyć…” bez decyzji czeka na liście „Czy czekasz na odpowiedź?”',

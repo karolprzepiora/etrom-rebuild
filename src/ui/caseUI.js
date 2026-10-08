@@ -173,17 +173,20 @@
     if (!mine.length && !pend.length) return null;
     var due = mine.filter(function (c) { return Cases.remindDue(c, day); }).length;
     var title = scope === 'today' ? 'Dopytać dziś' : scope === 'week' ? 'Dopytać w tym tygodniu' : 'Czekam na odpowiedź';
-    return D.el('section', { class: 'case-sec', attrs: { 'data-fk': 'my-cases', 'data-scope': scope, 'aria-label': 'Sprawy w toku' } }, [
+    var el = D.el('section', { class: 'case-sec', attrs: { 'data-fk': 'my-cases', 'data-scope': scope, 'aria-label': 'Sprawy w toku' } }, [
       D.el('div', { class: 'case-sec__head' }, [
-        D.el('h2', { class: 'case-sec__t', text: title }),
-        D.el('span', { class: 'case-sec__n t-num', text: String(mine.length) }),
-        scope === 'all' && due ? D.el('span', { class: 'case-sec__due', text: due + ' do dopytania' }) : null,
-        scope !== 'all' && allMine.length > mine.length ? D.el('span', { class: 't-muted', text: 'wszystkich w toku: ' + allMine.length }) : null,
+        due ? D.el('span', { class: 'case-sec__due', text: due + ' do dopytania' }) : null,
+        scope !== 'all' && allMine.length > mine.length ? D.el('span', { class: 't-muted case-sec__more', text: 'wszystkich w toku: ' + allMine.length }) : null,
         D.el('span', { class: 'case-sec__sp' }),
         UI.button({ label: '+ Sprawa', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'case-add' }, onClick: function () { ctx.actions.openCase({}); } })
       ]),
       D.el('div', { class: 'case-sec__list' }, pend.map(function (p) { return pendingRow(p, c2); }).concat(mine.map(function (c) { return card(c, c2); })))
     ]);
+    // Dane dla zwijanej szyny: tytuł, liczba pozycji i to, co wymaga uwagi (zwinięcie niczego nie chowa bez śladu).
+    el.dataset.title = title;
+    el.dataset.count = String(mine.length + pend.length);
+    el.dataset.attention = String(due + pend.length);
+    return el;
   }
 
   /** Sekcja w Przeglądzie: sprawy w toku (zakres zarządu albo lidera), najpierw te do dopytania. */

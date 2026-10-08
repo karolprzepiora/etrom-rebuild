@@ -309,8 +309,14 @@
     rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
     var visible = rest.filter(Boolean);
     if (caseEl) {
-      // Sprawy w stałej kolumnie obok listy (na wąskim ekranie nad listą), żeby nie spychały zadań.
-      main.push(D.el('div', { class: 'mw-cols' }, [D.el('aside', { class: 'mw-cols__side', attrs: { 'aria-label': 'Sprawy w toku' } }, [caseEl]), D.el('div', { class: 'mw-cols__list' }, visible)]));
+      // Sprawy w zwijanej szynie obok listy (jak „Zegar i projekty”); zwinięta pokazuje licznik, a czerwony, gdy coś czeka na dopytanie lub decyzję.
+      main.push(UI.railLayout({
+        id: 'mycases', title: caseEl.dataset.title, label: 'Sprawy w toku', cls: 'rl--cases',
+        collapsed: (state.prefs.collapsedRails || []).indexOf('mycases') >= 0,
+        onToggle: function () { ctx.actions.toggleRail('mycases'); },
+        badge: caseEl.dataset.count, late: Number(caseEl.dataset.attention) > 0,
+        main: visible, side: [caseEl]
+      }));
     } else main = main.concat(visible);
     if (current !== 'all' && current !== 'weeks' && !visible.length && !caseEl) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
     if (current === 'all' && !m.open && !m.react.length) {
