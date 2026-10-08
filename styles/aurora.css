@@ -1380,3 +1380,11 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
 .bflagform__note { font: inherit; font-size: var(--fs-sm); color: var(--ink); background: var(--sheet); border: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line); padding: 6px 8px; resize: vertical; }
 .bflagform__note:focus-visible { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent), var(--focus-ring); }
 .bflagform__actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: 4px; }
+
+/* Plan: nagłówek osoby (wariant H3) — nadmiar jako czerwona pigułka, „teraz” w zielonej kapsule, jedna linia w obu zoomach. */
+.pb-load--over { color: var(--alarm-ink); }
+.pb-load--over .pb-load__a { justify-self: start; padding: 1px 9px; border-radius: 99px; background: color-mix(in srgb, var(--alarm) 14%, transparent); font-weight: 800; }
+.pb-load--over .pb-load__b, .pb-load .pb-load__b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-load { padding-left: var(--space-2); }
+.pb-label .pb-live-line.is-on { justify-self: start; max-width: 100%; padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--good) 11%, transparent); }
+.pb-label__name { font-weight: 800; }

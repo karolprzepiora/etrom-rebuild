@@ -93,7 +93,15 @@
   }
   function chipText(cell) {
     if (!cell.planned && !cell.capacity) return cell.absentDays ? 'urlop ' + cell.absentDays + ' dn.' : '';
-    return Math.round(cell.planned) + '/' + Math.round(cell.capacity) + ' h' + (cell.state === 'over' ? ' ▲' : '');
+    if (cell.state === 'over') return '+' + Math.round(cell.planned - cell.capacity) + ' h';
+    return Math.round(cell.planned) + ' / ' + Math.round(cell.capacity) + ' h';
+  }
+  /** Druga linia komórki tygodnia: przy przeciążeniu „plan / wolne”, przy minionej pracy „wyk.”. */
+  function chipSub(cell, real) {
+    var parts = [];
+    if (cell.state === 'over') parts.push(Math.round(cell.planned) + ' / ' + Math.round(cell.capacity) + ' h');
+    if (real) parts.push('wyk. ' + hh(real) + ' h');
+    return parts.join(' · ');
   }
   function chipTip(cell) {
     return cell.planned
@@ -746,14 +754,14 @@
             class: chipState(cell) + (isSel ? ' is-selected' : ''),
             attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + row.personId + '-' + i, 'data-tooltip': chipTip(cell) },
             on: { click: function () { ctx.actions.setTime(Object.fromEntries([[K.cell, isSel ? null : { personId: row.personId, week: i }]])); } }
-          }, [D.el('span', { class: 'pb-load__a', text: chipText(cell) }), weekReal[i] ? D.el('small', { class: 'pb-load__b', text: 'wyk. ' + hh(weekReal[i]) + ' h' }) : null]);
+          }, [D.el('span', { class: 'pb-load__a', text: chipText(cell) }), chipSub(cell, weekReal[i]) ? D.el('small', { class: 'pb-load__b', text: chipSub(cell, weekReal[i]) }) : null]);
           chips[row.personId + ':' + i] = chip;
           return chip;
         }));
         var total = row.weeks.reduce(function (t, c) { return t + c.planned; }, 0);
-        var label = D.el('div', { class: 'pb-label' }, [
+        var label = D.el('div', { class: 'pb-label', attrs: { 'data-tooltip': hh(total) + ' h planu w oknie' } }, [
           E.Avatar.avatar(person, { size: 'sm', tooltip: false }),
-          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), D.el('small', { class: 't-muted t-num', text: hh(total) + ' h w oknie' + (rv && rec ? ' · zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' : '') }), curRun ? (nowVisible ? D.el('span', { class: 'pb-live-line is-on pb-live-line--short' }, [D.el('i', { class: 'pb-dot', attrs: { 'aria-hidden': 'true' } }), D.el('small', { text: 'pracuje' })]) : liveLine(rec)) : (viewSel === 'plan' ? null : liveLine(rec))])
+          D.el('span', { class: 'pb-label__txt' }, [D.el('span', { class: 'pb-label__name truncate', text: Team.fullName(person) }), (rv && rec ? D.el('small', { class: 't-muted t-num', text: 'zarejestrowano ' + hh(recTasks.reduce(function (t, x) { return t + x.total; }, 0)) + ' h' }) : null), curRun ? liveLine(rec) : (viewSel === 'plan' ? null : liveLine(rec))])
         ]);
         var openWeek = selected && selected.personId === row.personId && typeof selected.week === 'number' ? selected.week : -1;
         var dayBars = openWeek < 0 ? null : D.el('div', { class: 'pb-dbars', attrs: { 'aria-hidden': 'true' } }, (function () {

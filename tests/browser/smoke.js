@@ -992,8 +992,8 @@ async function main() {
       'ETROM.app.actions.toggleTimer(window.__sw[0].projectId, window.__sw[0].stageId, window.__sw[0].taskId); return true;'
     );
     await sleep(500);
-    check('zadanie, przy którym chodzi zegar, jest zielonym wierszem ze znaczkiem TERAZ (godzina startu i czas), a przy nazwisku jest „pracuje”',
-      await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-live-line--short");'));
+    check('zadanie, przy którym chodzi zegar, jest zielonym wierszem ze znaczkiem TERAZ (godzina startu i czas), a przy nazwisku jest zielona linia „teraz”',
+      await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-row--who .pb-live-line.is-on");'));
     await evaluate('const r = window.__sw[1]; ETROM.app.actions.switchTimer(r.projectId, r.stageId, r.taskId); return true;');
     await sleep(300);
     check('przełączenie zegara czeka 5 s: w stanie jest oczekująca zmiana, a stary zegar nadal chodzi',

@@ -700,3 +700,8 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Lider projektu i zarząd: w Plan → Wg projektów nagłówek etapu pokazuje automatyczny chip („na wyczerpaniu” / „przekroczony”) i przycisk „Oznacz dla zespołu” (okienko: dwa stany, uwaga, Zapisz/Zdejmij). Po oznaczeniu przycisk zmienia się w „oznaczone dla zespołu”.
 - Pracownik: `E.BudgetFlag.badge` (flaga bursztynowa / czerwona, dymek z autorem, datą i uwagą) w Mojej pracy, w Tygodniach planu (dodatkowo lewa szyna `.has-bflag`), na liście etapów i w zakładce Czas.
 - Dane: `stage.budgetFlag = {state: 'warn'|'over', note, by, at}`.
+
+## Plan: nagłówek osoby (H3)
+
+- Lewa kolumna identyczna w każdym zoomie (2/4/6/8 tyg.): imię, ewentualnie „zarejestrowano N h”, pod spodem zielona kapsuła „teraz” (kod, zadanie, od kiedy). Suma „N h w oknie” jest tylko w dymku.
+- Obciążenie tygodnia zawsze na początku tygodnia: mieści się → szare „14 / 40 h”; przekroczenie → czerwona pigułka „+34 h” i drobno „42 / 8 h” (plan / wolne); minione tygodnie „wyk. N h”. Bez trójkąta ▲.
