@@ -693,3 +693,10 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Plan, zarządca (Wg osób i Wg projektów):** „wykonane / plan h · %” (np. „35,8 / 64 h · 56%”) i cienka, neutralna belka 3 px. Czerwień dopiero po przekroczeniu planu zadania. Budżet etapu jest w dymku po najechaniu na godziny („Budżet etapu „X”: 212 / 280 h · 76%”) oraz w nagłówku etapu w widoku Wg projektów (`.pb-row--stage`, czerwony po przekroczeniu). Godziny budżetu widzą tylko zarząd i lider projektu; pozostali widzą sam procent.
 - **Moja praca, pracownik:** termin tekstem („dziś”, „jutro”, „pn 12”, „po terminie 2 dni”), cienka neutralna oś upływu czasu do terminu (czerwona po terminie), pod spodem własna rejestracja („zarejestrowano 12,5 h”). Bez godzin planu, procentu wykonania i budżetu.
 - **Pasek zegara (górny):** znacznik budżetu etapu i ostrzeżenie o 80% / 100% tylko dla zarządu i lidera projektu (`E.Budget.canSeeHours`); pracownik nie dostaje ani jednego, ani drugiego.
+
+## Oznaczenie etapu dla zespołu (budżet)
+
+- Pracownik nigdy nie widzi liczb ani procentów budżetu (Plan, lista etapów, zakładka Czas, zegar) — tylko flagę ustawioną przez człowieka.
+- Lider projektu i zarząd: w Plan → Wg projektów nagłówek etapu pokazuje automatyczny chip („na wyczerpaniu” / „przekroczony”) i przycisk „Oznacz dla zespołu” (okienko: dwa stany, uwaga, Zapisz/Zdejmij). Po oznaczeniu przycisk zmienia się w „oznaczone dla zespołu”.
+- Pracownik: `E.BudgetFlag.badge` (flaga bursztynowa / czerwona, dymek z autorem, datą i uwagą) w Mojej pracy, w Tygodniach planu (dodatkowo lewa szyna `.has-bflag`), na liście etapów i w zakładce Czas.
+- Dane: `stage.budgetFlag = {state: 'warn'|'over', note, by, at}`.

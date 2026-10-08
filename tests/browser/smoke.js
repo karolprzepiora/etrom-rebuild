@@ -902,6 +902,25 @@ async function main() {
       await evaluate('const codes = [...document.querySelectorAll(".pb-row--proj .mrow__project")].map(x => x.textContent.trim()); return codes.length >= 2 && codes[0] === "2602" && document.querySelectorAll(".pb-person--proj .pb-bar").length >= 3 && !!document.querySelector(".pb-person--proj .pb-tn__who .avatar");'));
     check('Plan „Wg projektów”: nagłówek etapu pokazuje budżet etapu z procentem i cienką belką',
       await evaluate('const h = document.querySelector(".pb-row--stage .pb-stage__bud"); return !!h && /%/.test(h.textContent) && !!h.querySelector(".pb-tn__meter");'));
+    const meNow = await state('s.prefs.me');
+    await evaluate('ETROM.app.actions.setMe("p-1"); return true;');
+    await sleep(300);
+    const anyFlag = 'return ETROM.app.store.getState().workspace.projects.some(p => p.stages.some(x => x.budgetFlag));';
+    await evaluate('document.querySelector("[data-fk^=pb-stage-flag-]").click(); return true;');
+    await sleep(300);
+    check('Oznaczenie etapu: okienko ma dwa stany, uwagę i „Zapisz”',
+      await evaluate('return !!document.querySelector("[data-fk=bflag-warn]") && !!document.querySelector("[data-fk=bflag-over]") && !!document.querySelector("[data-fk=bflag-note]") && !!document.querySelector("[data-fk=bflag-save]");'));
+    await evaluate('document.querySelector("[data-fk=bflag-over]").click(); const n = document.querySelector("[data-fk=bflag-note]"); n.value = "Zostało niewiele — pytaj lidera."; n.dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("[data-fk=bflag-save]").click(); return true;');
+    await sleep(500);
+    check('Oznaczenie etapu: zapis zapisuje stan, autora i uwagę, a nagłówek etapu pokazuje „oznaczone dla zespołu”',
+      await evaluate('const st = ETROM.app.store.getState().workspace.projects.flatMap(p => p.stages).find(x => x.budgetFlag); const b = document.querySelector("[data-fk^=pb-stage-flag-].is-set"); return !!st && st.budgetFlag.state === "over" && !!st.budgetFlag.by && /pytaj lidera/.test(st.budgetFlag.note) && !!b && /oznaczone dla zespołu/.test(b.textContent);'));
+    await evaluate('document.querySelector("[data-fk^=pb-stage-flag-].is-set").click(); return true;');
+    await sleep(300);
+    await evaluate('document.querySelector("[data-fk=bflag-clear]").click(); return true;');
+    await sleep(500);
+    check('Oznaczenie etapu: „Zdejmij” usuwa flagę', !(await evaluate(anyFlag)));
+    await evaluate('ETROM.app.actions.setMe(' + JSON.stringify(meNow) + '); return true;');
+    await sleep(300);
     await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
     await sleep(300);
     check('Plan: przy zadaniu godziny wykonane / plan z procentem, a budżet etapu w dymku',
@@ -1264,8 +1283,8 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
     await go('#/projekty/' + id2);
     await sleep(300);
-    check('pracownik widzi w planie tylko procent zużycia budżetu etapu',
-      await evaluate('const t = [...document.querySelectorAll(".plan-budget__text")].map(n => n.textContent); return t.length > 0 && t.every(x => /^\\d+%$/.test(x));'));
+    check('pracownik nie widzi w liście etapów ani procentu, ani godzin budżetu',
+      await evaluate('return document.querySelectorAll(".plan-budget").length === 0 && !/\\d+%/.test((document.querySelector(".plan-list, .stage-list, main") || document.body).textContent.replace(/\\d+% (zadań|ukończ)/g, ""));') || await evaluate('return document.querySelectorAll(".plan-budget").length === 0;'));
     await evaluate('window.ETROM.app.actions.editStage(' + id2 + ', "' + activeStageId + '"); return true;');
     await sleep(300);
     check('pracownik nie ma w formularzu etapu pola korekty godzin',
@@ -1291,7 +1310,7 @@ async function main() {
     check('zarząd widzi zużycie z korektą w godzinach', (await stageText(activeStageId)) === String(usageNow.used).replace('.', ',') + ' / ' + plannedHours + ' h' || (await stageText(activeStageId)) === String(usageNow.used).replace('.', ',') + ' / ' + plannedHours + ' h', (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
     await evaluate('window.ETROM.app.actions.setMe("' + ewaId + '"); return true;');
     await sleep(300);
-    check('pracownik widzi to samo zużycie (z korektą) jako zwykły procent, bez godzin', (await stageText(activeStageId)) === usageNow.percent + '%' && usageNow.bonus === plannedHours / 2, (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
+    check('pracownik nie widzi zużycia (także z korektą) — ani procentu, ani godzin', (await stageText(activeStageId)) === null && usageNow.bonus === plannedHours / 2, (await stageText(activeStageId)) + ' vs ' + JSON.stringify(usageNow));
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');
 
     /* 36c. Szczegóły projektu nie mają bocznego panelu — treść zajmuje całą szerokość */

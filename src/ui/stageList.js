@@ -82,6 +82,9 @@
    * widzi lider projektu i zarząd; pozostali tylko procent.
    */
   function budgetCell(project, stage, ctx) {
+    if (!E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.people)) {
+      return stage.budgetFlag && stage.status !== 'done' ? E.BudgetFlag.badge(stage.budgetFlag, ctx.people, { text: true }) : null;
+    }
     var view = E.Budget.view(project, stage, ctx.state.workspace.entries || [], ctx.state.prefs.me, ctx.people, new Date());
     var width = Math.max(0, Math.min(100, view.percent));
     var tip = view.exact

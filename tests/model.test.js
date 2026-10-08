@@ -396,3 +396,11 @@ test('distributeHours dzieli budżet proporcjonalnie, w pełnych godzinach, z su
   assert.deepEqual(Model.distributeHours(0, [{ id: 'a', weight: 1 }]), {});
   assert.deepEqual(Model.distributeHours(100, []), {});
 });
+
+test('budgetFlag etapu: tylko stany warn/over, uwaga przycięta, reszta odrzucona', () => {
+  const stage = (flag) => Model.normalizeWorkspace({ projects: [{ id: 1, code: 'A-1', name: 'N', stages: [{ id: 's1', source: 'custom', name: 'E', domain: 'water', budgetFlag: flag }] }] }).projects[0].stages[0].budgetFlag;
+  assert.equal(stage({ state: 'over', note: ' x '.repeat(200), by: 'p-1', at: '2026-10-08T10:00:00.000Z' }).state, 'over');
+  assert.ok(stage({ state: 'over', note: 'a'.repeat(500) }).note.length <= 240);
+  assert.equal(stage({ state: 'ok' }), null);
+  assert.equal(stage(undefined), null);
+});

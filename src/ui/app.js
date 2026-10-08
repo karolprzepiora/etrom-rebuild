@@ -1762,6 +1762,16 @@
     }
   }
 
+  /** Oznaczenie etapu dla zespołu („budżet na wyczerpaniu” / „przekroczony”): ustawia człowiek, pracownik widzi tylko stan i komunikat. */
+  function setBudgetFlag(projectId, stageId, flag) {
+    var project = findProject(projectId);
+    if (!project || !canPlan(project)) { Toast.show({ message: 'Etap oznacza zarząd lub lider projektu.', tone: 'danger' }); return; }
+    var next = flag && (flag.state === 'warn' || flag.state === 'over')
+      ? { state: flag.state, note: String(flag.note || '').trim().slice(0, 240), by: currentMe(), at: new Date().toISOString() }
+      : null;
+    patchStage(projectId, stageId, { budgetFlag: next }, next ? 'Etap oznaczony dla zespołu' : 'Zdjęto oznaczenie etapu');
+  }
+
   function toggleBudgetStage(projectId, stageId) {
     store.update(function (state) {
       var open = Object.assign({}, state.expandedStages);
@@ -2804,6 +2814,7 @@
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
     switchTimer: switchTimer,
+    setBudgetFlag: setBudgetFlag,
     commitSwitch: commitSwitch,
     cancelSwitch: cancelSwitch,
     openTasks: function () { var me = currentMe(); return me ? taskChoices(me) : []; },

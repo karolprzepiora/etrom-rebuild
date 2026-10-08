@@ -55,6 +55,16 @@
 
   var LIMITS = { code: 50, name: 200, client: 200 };
 
+  function normalizeBudgetFlag(flag) {
+    if (!flag || (flag.state !== 'warn' && flag.state !== 'over')) return null;
+    return {
+      state: flag.state,
+      note: String(flag.note == null ? '' : flag.note).trim().slice(0, 240),
+      by: flag.by == null ? null : flag.by,
+      at: typeof flag.at === 'string' ? flag.at : ''
+    };
+  }
+
   function text(value) {
     return typeof value === 'string' ? value.trim() : '';
   }
@@ -451,6 +461,8 @@
           adjustments: Budget.normalizeAdjustments(stage.adjustments),
           weight: Number(stage.weight) > 0 && Number(stage.weight) <= 1000 ? Number(stage.weight) : null,
           locked: stage.locked === true,
+          // Oznaczenie dla zespołu ustawia lider albo zarząd: „na wyczerpaniu” (warn) lub „przekroczony” (over).
+          budgetFlag: normalizeBudgetFlag(stage.budgetFlag),
           reserve: stage.reserve !== null && stage.reserve !== undefined && Number(stage.reserve) >= 0 && Number(stage.reserve) <= 5000 ? Number(stage.reserve) : null,
           // Realizatorem może być tylko ktoś z zespołu projektu.
           tasks: Tasks.normalizeTasks(stage.tasks, roster)

@@ -48,7 +48,8 @@
           attrs: { type: 'button', 'aria-label': 'Szczegóły zadania: ' + task.name, 'data-fk': 'my-task-' + task.id },
           on: { click: function () { ctx.actions.inspect(inspectRef(row)); } }
         }),
-        task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null
+        task.important ? UI.badge('Ważne', 'warning', { icon: 'flag' }) : null,
+        row.stage.budgetFlag && row.stage.status !== 'done' && task.status !== 'done' ? E.BudgetFlag.badge(row.stage.budgetFlag, ctx.people || (ctx.state && ctx.state.workspace.people)) : null
       ]),
       context(row)
     ];

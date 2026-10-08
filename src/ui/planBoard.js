@@ -350,7 +350,13 @@
           D.el('i', { class: 'pb-tn__meter', style: { '--p': (b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0) + '%' }, attrs: { 'aria-hidden': 'true' } })
         ]);
       }
-      return D.el('div', { class: 'pb-tn' + (focusProject && focusProject !== b.projectId ? ' is-dim' : ''), style: Identity.hueStyle(b.code), dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId } }, [
+      var flagStage = (function () {
+        var pr = projects.filter(function (x) { return x.id === b.projectId; })[0];
+        return pr && (pr.stages || []).filter(function (x) { return x.id === b.stageId; })[0];
+      })();
+      var bflag = flagStage && flagStage.budgetFlag && b.status !== 'done' ? flagStage.budgetFlag : null;
+      return D.el('div', { class: 'pb-tn' + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (bflag ? ' has-bflag has-bflag--' + bflag.state : ''), style: Identity.hueStyle(b.code), dataset: { projectId: String(b.projectId), stageId: b.stageId, taskId: b.taskId } }, [
+        bflag ? E.BudgetFlag.badge(bflag, people) : null,
         D.el('span', { class: 'mrow__project pb-tn__code', style: Identity.hueStyle(b.code), text: b.code }),
         D.el('span', { class: 'pb-tn__txt' }, [
           D.el('button', { class: 'pb-tn__name', attrs: { type: 'button', title: b.name }, text: b.name, on: { click: function () { ctx.actions.inspect({ kind: 'task', projectId: b.projectId, stageId: b.stageId, taskId: b.taskId }); } } }),
@@ -962,9 +968,24 @@
       var v = Budget.view(project, st, state.workspace.entries || [], me.id, people, new Date(plan.today));
       var over = v.state === 'over';
       var txt = (v.exact ? hh(v.used) + ' / ' + hh(v.planned) + ' h · ' : '') + v.percent + '%';
+      var flag = st.budgetFlag;
+      var auto = st.status !== 'done' && (v.state === 'warn' || v.state === 'over')
+        ? D.el('span', { class: 'pb-stage__auto pb-stage__auto--' + v.state, attrs: { 'data-tooltip': 'Sygnał z budżetu etapu (widzi lider projektu i zarząd)' }, text: E.BudgetFlag.SHORT[v.state] }) : null;
+      var ctl = null;
+      if (canEdit(project.id) && (auto || flag)) {
+        var flagBtn = D.el('button', {
+          class: 'pb-stage__flag' + (flag ? ' is-set' : ''),
+          attrs: { type: 'button', 'data-fk': 'pb-stage-flag-' + st.id, 'data-tooltip': flag ? E.BudgetFlag.tip(flag, people) : 'Zespół zobaczy oznaczenie przy zadaniach etapu' }
+        }, [E.Icons.icon('flag', 12), D.el('span', { text: flag ? 'oznaczone dla zespołu' : 'Oznacz dla zespołu' })]);
+        flagBtn.addEventListener('click', function () { E.BudgetFlag.openForm(flagBtn, project, st, flag, ctx.actions); });
+        ctl = flagBtn;
+      }
       return D.el('div', { class: 'pb-row pb-row--stage' }, [
         D.el('div', { class: 'pb-label pb-label--stage' }, [
-          D.el('span', { class: 'pb-stage__name truncate', text: E.Model.describeStage(st).name, attrs: { title: E.Model.describeStage(st).name } }),
+          D.el('span', { class: 'pb-stage__lead' }, [
+            D.el('span', { class: 'pb-stage__name truncate', text: E.Model.describeStage(st).name, attrs: { title: E.Model.describeStage(st).name } }),
+            D.el('span', { class: 'pb-stage__ctl' }, [auto, ctl])
+          ]),
           D.el('span', { class: 'pb-stage__bud t-num' + (over ? ' is-over' : ''), attrs: { 'data-tooltip': 'Budżet godzin etapu' } }, [
             D.el('span', { text: txt }),
             D.el('i', { class: 'pb-tn__meter', style: { '--p': Math.min(100, v.percent) + '%' }, attrs: { 'aria-hidden': 'true' } }),

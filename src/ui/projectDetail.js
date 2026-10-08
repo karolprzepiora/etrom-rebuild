@@ -333,6 +333,23 @@
       })])]);
     }
     function hrs(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
+    if (!exact) {
+      var flagged = project.stages.filter(function (st) { return st.budgetFlag && st.status !== 'done'; });
+      return D.el('section', { class: 'section' }, [
+        D.el('div', { class: 'section__head' }, [D.el('div', { class: 'section__titles' }, [
+          D.el('h2', { class: 'section__title', text: 'Czas pracy' }),
+          D.el('span', { class: 'section__meta', text: 'Godziny i budżet widzi lider projektu i zarząd.' })
+        ])]),
+        flagged.length ? D.el('table', { class: 'table pd-time', attrs: { 'aria-label': 'Etapy oznaczone dla zespołu' } }, [
+          D.el('tbody', null, flagged.map(function (st) {
+            return D.el('tr', null, [
+              D.el('td', { text: Model.describeStage(st).name }),
+              D.el('td', null, [E.BudgetFlag.badge(st.budgetFlag, ctx.people, { text: true })])
+            ]);
+          }))
+        ]) : null
+      ]);
+    }
     var head = exact
       ? [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zapisano' }), D.el('th', { class: 'cell--num', text: 'Korekta zarządu' }), D.el('th', { class: 'cell--num', text: 'Budżet etapu' }), D.el('th', { class: 'cell--num', text: 'Zużycie' })]
       : [D.el('th', { text: 'Etap' }), D.el('th', { class: 'cell--num', text: 'Zużycie budżetu etapu (cały zespół)' })];
