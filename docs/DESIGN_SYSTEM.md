@@ -755,3 +755,11 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 ## Zespół → Konta i role (`styles/accounts.css`)
 
 Zakładka widoczna tylko dla dyrekcji (przełącznik „Osoby / Konta i role” nad listą). Tabela kont: osoba z e-mailem, rola (plakietka), stan konta (`badge--success` aktywne, `--warning` czeka na pierwsze logowanie, `--outline` bez konta lub wyłączone), urlop, stawka, funkcje w projektach, menu ⋯. Pod tabelą macierz „Kto co widzi” i dziennik zmian. Kreator osoby to panel boczny z trzema krokami (`.ac-steps`); hasło tymczasowe w ciemnym polu `.secret` z kopiowaniem, pokazywane jeden raz (`Dialog.reveal`). Kolory z motywu aplikacji (`--success`, `--warn`, `--accent`, `--flow-wash`).
+
+## Plan i Moja praca: kapsuły (`styles/capsules.css`, makieta PL1)
+
+- **Paski bez obramowań.** O stanie mówi wykrzyknik w kapsule terminu: bursztynowy (napięty termin, „musi ruszyć teraz”, w Mojej pracy ≥ 75% czasu), czerwony (po terminie).
+- **Termin w kapsule przy prawym końcu paska** (`.pb-bar__due`). W bardzo krótkim pasku kapsuła stoi tuż za nim (zapytanie kontenerowe `@container pbbar`). Kapsuła zagrożona zmienia kolor (`--warn-wash`, `--alarm-wash`).
+- **Godziny i postęp w jednej kapsule z wypełnieniem** (`.pb-cap--fill`, zmienna `--p`). W Mojej pracy kapsuła z terminem ma wypełnienie upływu czasu.
+- **Obciążenie tygodnia to jedna kapsuła** (`+35 h` w bursztynie lub czerwieni, `34 / 40 h` neutralna). Drugiej linii „43 / 8 h” nie ma, pełne liczby są w podpowiedzi.
+- **Urlop**: kolor `--leave` (morski błękit, osobny od fioletu „do przeglądu”), ikona słońca, kolumna dni przez cały blok osoby bez prążków, kapsuła „Urlop 12–13 paź” w wierszu osoby. Ten sam kolor w ekranie Urlopy i w Kalendarzu. Zmiana barwy urlopu to trzy tokeny w `tokens.css` (`--leave`, `--leave-ink`, `--leave-wash`).

@@ -93,14 +93,13 @@
     return 'pb-load pb-load--' + cell.state + (cell.planned ? '' : ' is-empty');
   }
   function chipText(cell) {
-    if (!cell.planned && !cell.capacity) return cell.absentDays ? 'urlop ' + cell.absentDays + ' dn.' : '';
+    if (!cell.planned && !cell.capacity) return cell.absentDays ? 'Urlop ' + cell.absentDays + ' dn' : '';
     if (cell.state === 'over') return '+' + Math.round(cell.planned - cell.capacity) + ' h';
     return Math.round(cell.planned) + ' / ' + Math.round(cell.capacity) + ' h';
   }
   /** Druga linia komórki tygodnia: przy przeciążeniu „plan / wolne”, przy minionej pracy „wyk.”. */
   function chipSub(cell, real) {
     var parts = [];
-    if (cell.state === 'over') parts.push(Math.round(cell.planned) + ' / ' + Math.round(cell.capacity) + ' h');
     if (real) parts.push('wyk. ' + hh(real) + ' h');
     return parts.join(' · ');
   }
@@ -287,6 +286,7 @@
       var pct = elapsedOf(b);
       var cls = 'pb-bar' + (b.overdue ? ' is-late' : '') + (!solo && b.squeezed ? ' is-tight' : '') + (!solo && b.mustStartNow ? ' is-now' : '') + (b.free ? ' is-free' : '') + (editable ? ' is-editable' : '') + (b.status === 'review' ? ' is-review' : '') + (focusProject && focusProject !== b.projectId ? ' is-dim' : '') + (!solo && b.logged > b.planned + 0.05 ? ' is-over' : '') + (solo ? ' is-time' + (pct >= 75 ? ' is-hot' : '') : ' is-prog');
       var key = b.projectId + '|' + b.stageId + '|' + b.taskId + '|' + person.id;
+      var dueWarn = !b.overdue && b.status !== 'done' && (solo ? pct >= 75 : (b.squeezed || b.mustStartNow));
       var el = D.el('div', {
         class: cls, style: Object.assign({ '--d': (solo ? pct : donePct(b)) + '%' }, Identity.hueStyle(b.code)),
         attrs: { tabindex: '0', role: 'button', 'data-fk': 'pb-bar-' + b.taskId, 'data-tooltip': barTip(b), 'aria-label': barTip(b) + (editable ? '. Strzałki przesuwają, Shift i Alt zmieniają termin i start.' : ''), 'data-key': key },
@@ -295,7 +295,10 @@
         D.el('span', { class: 'pb-bar__clip', attrs: { 'aria-hidden': 'true' } }),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null,
-        item.e >= N ? null : D.el('span', { class: 'pb-bar__due' + (b.overdue ? ' is-late' : '') + (item.e >= N - 3 ? ' is-in' : ''), attrs: { 'aria-hidden': 'true' }, text: b.overdue ? 'po terminie' : dueShort(b) })
+        item.e >= N ? null : D.el('span', { class: 'pb-bar__due' + (b.overdue ? ' is-late is-long' : (dueWarn ? ' is-warn' : '')), attrs: { 'aria-hidden': 'true' } }, [
+          b.overdue || dueWarn ? D.el('i', { class: 'pb-bang', text: '!' }) : null,
+          D.el('span', { text: b.overdue ? 'po terminie' : dueShort(b) })
+        ])
       ]);
       paintBar(el, item.s, item.e);
       if (pendingFocus === key) { pendingFocus = null; window.setTimeout(function () { el.focus({ preventScroll: true }); }, 30); }
@@ -399,18 +402,15 @@
         var pct = elapsedOf(b);
         var mine = soloLogged(b);
         side = D.el('span', { class: 'pb-tn__side pb-tn__time' + (b.overdue ? ' is-late' : ''), attrs: { 'data-tooltip': 'Upłynęło ' + pct + '% czasu do terminu' + (mine > 0.05 ? ' · zarejestrowano ' + hh(mine) + ' h' : '') } }, [
-          D.el('b', { class: 't-num', text: termText(b) }),
-          D.el('i', { class: 'pb-tn__meter', style: { '--p': pct + '%' }, attrs: { 'aria-hidden': 'true' } }),
-          D.el('small', { class: 't-num', text: mine > 0.05 ? 'zarejestrowano ' + hh(mine) + ' h' : '' })
+          D.el('b', { class: 'pb-cap pb-cap--fill t-num', style: { '--p': pct + '%' }, text: termText(b) })
         ]);
       } else {
         var bud = stageBudgetText(b);
         var overPlan = b.planned > 0 && b.logged > b.planned + 0.05;
-        var hoursBtn = D.el('span', { class: 'pb-bar__hours t-num' + (overPlan ? ' is-over' : ''), text: workedText(b), attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Przepracowano / zaplanowano — kliknij, żeby zmienić zaplanowane godziny' + (bud ? ' · ' + bud : '') } : {} });
+        var hoursBtn = D.el('span', { class: 'pb-bar__hours pb-cap pb-cap--fill t-num' + (overPlan ? ' is-over' : ''), style: { '--p': (b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0) + '%' }, text: workedText(b), attrs: editable ? { 'data-fk': 'pb-hours-' + b.taskId, 'data-tooltip': 'Przepracowano / zaplanowano — kliknij, żeby zmienić zaplanowane godziny' + (bud ? ' · ' + bud : '') } : {} });
         if (editable) editHours(hoursBtn, b);
         side = D.el('span', { class: 'pb-tn__side' + (overPlan ? ' is-over' : ''), attrs: bud && !editable ? { 'data-tooltip': bud } : {} }, [
-          hoursBtn,
-          D.el('i', { class: 'pb-tn__meter', style: { '--p': (b.planned > 0 ? Math.min(100, b.logged / b.planned * 100) : 0) + '%' }, attrs: { 'aria-hidden': 'true' } })
+          hoursBtn
         ]);
       }
       var flagStage = (function () {
@@ -793,14 +793,13 @@
           var el = D.el(interactive && management ? 'button' : 'span', {
             class: 'pb-absent' + (interactive ? ' is-head' : ''), dataset: { kind: a.kind },
             style: { left: (s0 / N * 100) + '%', width: ((e0 - s0 + 1) / N * 100) + '%' },
-            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip, 'data-label': absLabel(a, e0 - s0 + 1) } : { 'aria-hidden': 'true' },
-            text: ''
-          });
+            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-absent-' + a.id, 'aria-label': tip } : { 'aria-hidden': 'true' }
+          }, interactive ? [D.el('span', { class: 'pb-absent__cap' }, [E.Icons.icon('leave', 12), D.el('span', { text: absLabel(a, e0 - s0 + 1) })])] : []);
           if (interactive && management) el.addEventListener('click', function () { ctx.actions.openAbsence(row.personId, a.id); });
           return el;
         }).filter(Boolean);
       }
-      function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? [] : bands); }
+      function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? bandEls(false) : bands); }
       var rows = [];
       if (!solo) {
         var weekReal = row.weeks.map(function () { return 0; });
@@ -811,12 +810,13 @@
           });
         });
         var loads = D.el('div', { class: 'pb-loads', attrs: { role: 'row' } }, row.weeks.map(function (cell, i) {
+          var leaveOnly = !cell.planned && !cell.capacity && cell.absentDays;
           var isSel = selected && selected.personId === row.personId && selected.week === i;
           var chip = D.el('button', {
             class: chipState(cell) + (isSel ? ' is-selected' : ''),
             attrs: { type: 'button', role: 'cell', 'aria-pressed': String(!!isSel), 'data-fk': 'pl-cell-' + row.personId + '-' + i, 'data-tooltip': chipTip(cell) },
             on: { click: function () { ctx.actions.setTime(Object.fromEntries([[K.cell, isSel ? null : { personId: row.personId, week: i }]])); } }
-          }, [D.el('span', { class: 'pb-load__a', text: chipText(cell) }), chipSub(cell, weekReal[i]) ? D.el('small', { class: 'pb-load__b', text: chipSub(cell, weekReal[i]) }) : null]);
+          }, [D.el('span', { class: 'pb-load__a' + (leaveOnly ? ' is-leave' : '') }, [leaveOnly ? E.Icons.icon('leave', 12) : null, D.el('span', { text: chipText(cell) })]), chipSub(cell, weekReal[i]) ? D.el('small', { class: 'pb-load__b', text: chipSub(cell, weekReal[i]) }) : null]);
           chips[row.personId + ':' + i] = chip;
           return chip;
         }));

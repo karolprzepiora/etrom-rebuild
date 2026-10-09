@@ -1,0 +1,50 @@
+/* Plan i Moja praca: liczby w kapsułkach, bez obramowań pasków, wykrzyknik zamiast ramki, urlop jako kolumna dni.
+   Ładowany jako ostatni, więc nadpisuje wcześniejsze warstwy wykresu. */
+
+/* ---- kapsułka ogólna (godziny z wypełnieniem postępu, termin, obciążenie) ---- */
+.pb-cap { display: inline-flex; align-items: center; gap: 4px; height: 1.2rem; padding: 0 .55rem; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--track); }
+.pb-cap--fill { background: linear-gradient(90deg, color-mix(in srgb, var(--solid, var(--flow)) 34%, var(--sheet)) var(--p, 0%), var(--track) var(--p, 0%)); }
+.pb-cap--ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong, var(--line)); color: var(--ink-2); font-weight: 600; }
+.pb-bar__hours.pb-cap { padding: 0 .55rem; border-radius: 999px; }
+.pb-bar__hours.pb-cap.is-over { color: var(--alarm-ink); background: var(--alarm-wash); }
+.pb-tn__side { justify-items: end; gap: 4px; }
+.pb-tn__time.is-late b.pb-cap { color: var(--alarm-ink); background: var(--alarm-wash); }
+.pb-tn__time.is-hot b.pb-cap { color: var(--warn-ink); }
+
+/* ---- paski bez obramowań; stan mówi wykrzyknik w kapsule terminu ---- */
+.pb-bar.is-late .pb-bar__clip, .pb-bar.is-tight .pb-bar__clip, .pb-bar.is-now .pb-bar__clip { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), inset 0 -1px 0 rgb(0 0 0 / .2), 0 6px 12px -8px var(--pj-glow); }
+.pb-tn__sub .pb-tn__proj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-tn__sub > * { flex-shrink: 0; }
+.pb-tn__sub > .pb-tn__proj { flex-shrink: 1; }
+.pb-bar { container-type: inline-size; container-name: pbbar; }
+.pb-bar__due { position: absolute; left: auto; right: .3rem; top: 50%; transform: translateY(-50%); margin: 0; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 1.05rem; padding: 0 .5rem; border-radius: 999px; background: var(--sheet); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; line-height: 1; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent); pointer-events: none; }
+.pb-bar__due.is-warn { background: var(--warn-wash); color: var(--warn-ink); }
+.pb-bar__due.is-late { background: var(--alarm-wash); color: var(--alarm-ink); }
+.pb-bang { display: inline-grid; place-items: center; width: .8rem; height: .8rem; border-radius: 50%; font-style: normal; font-size: .62rem; font-weight: 800; color: #fff; background: var(--warn); margin-left: -.3rem; }
+.pb-bar__due.is-late .pb-bang { background: var(--alarm); }
+/* bardzo krótki pasek: kapsuła tuż za jego końcem */
+@container pbbar (max-width: 4.6rem) { .pb-bar__due { left: 100%; right: auto; margin-left: .35rem; } }
+@container pbbar (max-width: 6.6rem) { .pb-bar__due.is-long, .pb-bar__due.is-warn { left: 100%; right: auto; margin-left: .35rem; } }
+
+/* ---- obciążenie tygodnia: sama kapsułka, bez drugiej linii ---- */
+.pb-load { display: grid; justify-items: start; gap: 2px; padding-left: var(--space-3); }
+.pb-load__a { display: inline-flex; align-items: center; gap: 4px; height: 1.15rem; padding: 0 .55rem; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line-strong, var(--line)); }
+.pb-load--tight .pb-load__a { background: var(--warn-wash); color: var(--warn-ink); box-shadow: none; }
+.pb-load--over .pb-load__a { background: var(--alarm-wash); color: var(--alarm-ink); box-shadow: none; }
+.pb-load.is-empty .pb-load__a { box-shadow: none; background: transparent; }
+.pb-load__a.is-leave { background: var(--leave-wash); color: var(--leave-ink); box-shadow: none; }
+.pb-load__a svg { width: 12px; height: 12px; flex: none; }
+.pb-load:hover .pb-load__a { text-decoration: none; filter: brightness(.97); }
+.pb-load:focus-visible .pb-load__a, .pb-load.is-selected .pb-load__a { box-shadow: 0 0 0 2px var(--accent); }
+.pb-load__b { font-size: 10.5px; color: var(--ink-3); padding-left: .2rem; }
+
+/* ---- urlop: kolumna dni w całym bloku osoby, kapsuła ze słońcem w wierszu osoby ---- */
+.pb-absent, .pb-absent[data-kind] { --abs: var(--leave); position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--leave) 13%, transparent); border: 0; box-shadow: none; border-radius: 0; }
+.pb-absent[data-kind="sick"], .pb-absent[data-kind="training"], .pb-absent[data-kind="other"] { --abs: var(--leave); }
+.pb-absent.is-head, .pb-absent[data-kind].is-head { top: 0; bottom: 0; height: auto; display: block; overflow: visible; color: var(--leave-ink); background: color-mix(in srgb, var(--leave) 13%, transparent); border-radius: 0; font-size: var(--fs-xs); }
+.pb-absent.is-head, .pb-absent.is-head[data-kind] { box-shadow: none; }
+.pb-absent.is-head::after { content: none; }
+.pb-row--leave .pb-absent.is-head { bottom: 0; }
+.pb-absent__cap { position: absolute; left: 3px; bottom: 3px; display: inline-flex; align-items: center; gap: 4px; height: 1.15rem; padding: 0 .55rem; border-radius: 999px; background: var(--leave); color: #fff; font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.pb-absent__cap svg { width: 12px; height: 12px; flex: none; }
+.cv-ev--absence { background: var(--leave-wash); color: var(--leave-ink); }

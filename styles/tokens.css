@@ -57,6 +57,10 @@
   --warn-wash:     light-dark(#fcf3e1, #2a1f0e);
   --review:        light-dark(#5f3fc0, #ae96f4);
   --review-wash:   light-dark(#f0ecfb, #211a37);
+  /* Urlop i nieobecność: morski błękit, skojarzenie z wakacjami i odpoczynkiem. Osobny od stanu „do przeglądu” (--review). */
+  --leave:         light-dark(#0e8aa8, #4cc3e0);
+  --leave-ink:     light-dark(#0a6a83, #7dd6ec);
+  --leave-wash:    light-dark(#e0f4f9, #0d2a33);
   --success:       light-dark(#17774a, #5ccb90);
 
   /* ---------- Trasa (profil przebiegu) ---------- */

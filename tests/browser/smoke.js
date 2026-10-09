@@ -869,7 +869,7 @@ async function main() {
     await sleep(300);
     check('oś planu ma pas miesięcy, zakres tygodnia z numerem, nagłówki dni, a „Kwartał” rozciąga okno do 12 tygodni',
       await evaluate('return document.querySelectorAll(".pb-row--head .pb-dh").length === document.querySelectorAll(".pb-row--head .pb-wk--head").length * 5 && /^\\d+( \\S+)? – \\d+ \\S+$/.test(document.querySelector(".pb-wk__top b").textContent) && /^T\\d+/.test(document.querySelector(".pb-wk__top small").textContent) && !!document.querySelector(".pb-months .pb-month") && [...document.querySelectorAll(".pb-toolbar .segmented button")].some(b => b.textContent === "Kwartał");'));
-    check('urlop jest tylko w wierszu osoby, nie w wierszach zadań', await evaluate('return document.querySelectorAll(".pb-row--task .pb-absent").length === 0;'));
+    check('urlop: kapsuła ze słońcem tylko w wierszu osoby, w wierszach zadań sama kolumna dni', await evaluate('return document.querySelectorAll(".pb-row--task .pb-absent.is-head").length === 0 && !!document.querySelector(".pb-row--who .pb-absent.is-head .pb-absent__cap svg") && !document.querySelector(".pb-absent.is-head[data-label]");'));
     check('ekran „Plan” to plan tygodni: kolumny tygodni, wiersze osób, paski zadań i znaczniki obłożenia',
       await evaluate('return !!document.querySelector(".pb") && document.querySelectorAll(".pb-wk--head").length === 6 && document.querySelectorAll(".pb-person[data-person]").length >= 1 && document.querySelectorAll(".pb-bar").length >= 3 && document.querySelectorAll(".pb-load").length >= 6;'));
     await evaluate('const b = document.querySelector(".pb-load:not(.is-empty)"); if (b) b.click(); return !!b;');
@@ -1107,7 +1107,7 @@ async function main() {
     await evaluate('const b = [...document.querySelectorAll(".toast [data-toast-action]")].pop(); if (b) b.click(); return true;');
     await sleep(200);
     check('etykieta paska ma pełną nazwę zadania i godziny (przepracowano / zaplanowano), a menu ma pozycję „Plan”',
-      await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-tn__meter") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
+      await evaluate('const el = document.querySelector(".pb-tn"); return !!el.querySelector(".pb-tn__name").textContent.trim() && /h/.test(el.querySelector(".pb-bar__hours").textContent) && !!el.querySelector(".pb-bar__hours.pb-cap") && !!document.querySelector(".nav a[href=\'#/plan\']");'));
     const projectOptions = await evaluate('const s = document.getElementById("pb-project"); return s ? s.options.length : 0;');
     if (projectOptions > 2) {
       const rowsAll = await evaluate('return document.querySelectorAll(".pb-row--who").length;');
