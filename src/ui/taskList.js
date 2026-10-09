@@ -91,6 +91,7 @@
         items: [
           { label: 'Szczegóły', icon: 'inspector', onSelect: function () { actions.inspect({ kind: 'task', projectId: project.id, stageId: stage.id, taskId: task.id }); } },
           { label: 'Dopisz czas…', icon: 'clock', hint: 'ręcznie', onSelect: function () { actions.logTime(project.id, stage.id, task.id); } },
+          { label: 'Zleć…', icon: 'checklist', hint: 'podpis, wysyłka, opłata', onSelect: function () { actions.openOrder(project.id, task.name); } },
           { label: 'Edytuj zadanie', icon: 'edit', onSelect: function () { actions.editTask(project.id, stage.id, task.id); } },
           { type: 'separator' },
           { label: 'Usuń zadanie', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteTask(project.id, stage.id, task.id); } }

@@ -89,7 +89,7 @@
      Adresy (hash) — działają z file://, Wstecz w przeglądarce działa
      ========================================================= */
 
-  var TABS = ['etapy', 'budzet', 'zadania', 'sprawy', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
+  var TABS = ['etapy', 'budzet', 'zadania', 'sprawy', 'zlecenia', 'korespondencja', 'zespol', 'czas', 'analiza', 'aktywnosc'];
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -1978,11 +1978,11 @@
     updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, orders: producer(workspace.orders || []) }); });
   }
 
-  function openOrder(projectId) {
+  function openOrder(projectId, text) {
     var me = currentMe();
     if (!me) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
     var sug = E.Orders.suggestAssignee(store.getState().workspace.orders || [], 'sign', me);
-    store.set({ orderForm: { draft: { kind: 'sign', text: '', assigneeId: sug ? sug.personId : '', projectId: projectId == null ? null : projectId, doc: null, dest: '', pay: null, next: null }, errors: {} } });
+    store.set({ orderForm: { draft: { kind: 'sign', text: typeof text === 'string' ? text : '', assigneeId: sug ? sug.personId : '', projectId: projectId == null ? null : projectId, doc: null, dest: '', pay: null, next: null }, errors: {} } });
   }
 
   function orderSteps(values) {

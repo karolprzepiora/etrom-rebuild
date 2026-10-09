@@ -24,6 +24,7 @@
     { value: 'budzet', label: 'Plan wstępny' },
     { value: 'zadania', label: 'Zadania' },
     { value: 'sprawy', label: 'Sprawy' },
+    { value: 'zlecenia', label: 'Zlecenia' },
     { value: 'korespondencja', label: 'Korespondencja' },
     { value: 'zespol', label: 'Zespół' },
     { value: 'czas', label: 'Czas' },
@@ -415,12 +416,13 @@
     var tab = ctx.state.route.tab || 'etapy';
     var stats = Progress.projectProgress(project);
     var tasks = Tasks.projectTaskStats(project);
-    var counts = { etapy: stats.total, zadania: tasks.open, sprawy: E.Cases.open(ctx.state.workspace.cases || []).filter(function (c) { return c.projectId === project.id; }).length, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zespol: Team.projectPeople(project.team).length };
+    var counts = { etapy: stats.total, zadania: tasks.open, sprawy: E.Cases.open(ctx.state.workspace.cases || []).filter(function (c) { return c.projectId === project.id; }).length, korespondencja: E.Mail.pending(ctx.state.workspace.mail || [], project.id, now).length, zlecenia: (ctx.state.workspace.orders || []).filter(function (o) { return String(o.projectId) === String(project.id) && (o.status === 'open' || o.status === 'waiting') && E.Orders.canSee(ctx.state.prefs.me, o, ctx.state.workspace.people || []); }).length, zespol: Team.projectPeople(project.team).length };
 
     var canAnalyse = E.Budget.canSeeHours(ctx.state.prefs.me, project, ctx.state.workspace.people || []);
     var body;
     if (tab === 'zadania') body = tasksTab(project, ctx);
     else if (tab === 'sprawy') body = E.CaseUI.projectTab(project, ctx);
+    else if (tab === 'zlecenia') body = E.OrdersScreen.projectTab(project, ctx);
     else if (tab === 'korespondencja') body = E.MailTab.mailTab(project, ctx);
     else if (tab === 'zespol') body = teamTab(project, ctx);
     else if (tab === 'czas') body = timeTab(project, ctx);

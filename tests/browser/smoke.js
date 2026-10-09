@@ -916,6 +916,25 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("p-2"); return true;');
     await sleep(500);
     check('następna osoba widzi zlecenie „Do wysłania” u siebie', await evaluate('const cs = document.querySelectorAll("#view-orders .zl-card"); return cs.length === 1 && cs[0].dataset.kind === "send";'));
+    // zlecenia w innych miejscach: Pulpit, Moja praca, projekt, menu zadania
+    await evaluate('window.ETROM.app.actions.setMe("p-2"); return true;');
+    await go('#/pulpit');
+    await sleep(500);
+    check('Pulpit: karta „Zlecenia do mnie” z jednym zleceniem', await evaluate('const c = document.querySelector("#view-dashboard [data-fk=zl-strip]"); return !!c && c.querySelectorAll("[data-fk=zl-strip-row]").length === 1;'));
+    await go('#/moja-praca');
+    await sleep(500);
+    check('Moja praca: pasek zleceń nad listą', await evaluate('return !!document.querySelector("#view-mywork [data-fk=zl-strip]");'));
+    const zlPid = await state('s.workspace.projects[0].id');
+    await go('#/projekty/' + zlPid + '/zlecenia');
+    await sleep(500);
+    await click('[data-fk="zl-new-project"]');
+    await sleep(400);
+    check('„Nowe zlecenie” z projektu ma projekt wstępnie wybrany', (await evaluate('return document.getElementById("zf-project").value;')) === String(zlPid));
+    await evaluate('document.getElementById("order-form").querySelector("button[type=button], .btn--ghost") && 0; return true;');
+    await evaluate('window.ETROM.app.actions.openOrder(' + zlPid + ', "Zadanie testowe"); return true;');
+    await sleep(300);
+    check('openOrder z tekstem zadania wypełnia opis', (await evaluate('return document.getElementById("zf-text").value;')) === 'Zadanie testowe');
+    await evaluate('window.ETROM.app.store.set({ orderForm: null }); return true;');
     await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { orders: [] }) }); }); return true;');
     await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
     await go('#/projekty');
@@ -1575,8 +1594,8 @@ async function main() {
       await evaluate('return !!document.querySelector(".pd-head__id .detail__status") && !document.querySelector(".pd-state button");'));
     check('termin umowy i lider da się zmienić w miejscu',
       await evaluate('return !!document.querySelector("[data-fk=project-deadline]") && !!document.querySelector(".pd-props .pf-leader");'));
-    check('zakładki projektu: Plan, Budżet, Zadania, Sprawy, Korespondencja, Zespół, Czas, Aktywność',
-      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,sprawy,korespondencja,zespol,czas,analiza,aktywnosc";'));
+    check('zakładki projektu: Plan, Budżet, Zadania, Sprawy, Zlecenia, Korespondencja, Zespół, Czas, Aktywność',
+      await evaluate('return [...document.querySelectorAll(".detail__tabs .tabs__tab")].map(t => t.dataset.tab).join(",") === "etapy,budzet,zadania,sprawy,zlecenia,korespondencja,zespol,czas,analiza,aktywnosc";'));
     await click('[data-fk="attn-tasks-late-tasks"], [data-fk="attn-tasks-returned-tasks"]');
     await sleep(400);
     check('„Pokaż zadania” z listy uwagi przechodzi do zakładki Zadania',

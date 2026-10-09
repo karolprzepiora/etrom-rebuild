@@ -311,6 +311,8 @@
     var side = [];
     if (management) side.push(approveCard(state, ctx, me));
     else side.push(react ? react : D.el('section', { class: 'db-card db-card--side' }, [D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' })]), D.el('p', { class: 'db-empty', text: 'Nic nie czeka.' })]));
+    var ordersCard = E.OrdersScreen.strip(state, ctx, 'card');
+    if (ordersCard) side.push(ordersCard);
     side.push(waterCard(now), teamCard(state, ctx, now));
     if (management) side.push(financeCard());
 

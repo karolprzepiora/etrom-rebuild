@@ -283,5 +283,45 @@
     return form;
   }
 
-  E.OrdersScreen = { view: view, orderForm: orderForm, visible: visible };
+  /** Zbite zlecenia do mnie (Pulpit, Moja praca, Skrzynka): do 3 najstarszych + link do ekranu. */
+  function strip(state, ctx, variant) {
+    var me = state.prefs.me;
+    var now = new Date();
+    var mine = O.oldestFirst(O.forAssignee(state.workspace.orders || [], me), now);
+    var people = state.workspace.people || [];
+    if (!mine.length && variant !== 'card') return null;
+    function open() { ctx.actions.setOrders({ tab: 'mine' }); root.location.hash = '#/zlecenia'; }
+    var rows = mine.slice(0, 3).map(function (o) {
+      return D.el('li', null, [D.el('button', { class: 'zl-strip__row', attrs: { type: 'button', 'data-fk': 'zl-strip-row' }, on: { click: open } }, [
+        kindCap(o.kind), D.el('span', { class: 'truncate zl-strip__t', text: o.text }), D.el('span', { class: 't-meta', text: nameOf(people, o.createdBy) }), timerCap(o, now)
+      ])]);
+    });
+    var head = D.el('div', { class: variant === 'card' ? 'db-card__head' : 'zl-strip__head' }, [
+      D.el('h2', { class: variant === 'card' ? 'db-card__t' : 'zl-strip__title', text: 'Zlecenia do mnie' }),
+      mine.length ? D.el('span', { class: 'db-cap db-cap--warn', text: String(mine.length) }) : null,
+      D.el('a', { class: 'db-link', attrs: { href: '#/zlecenia' }, text: 'Wszystkie →', on: { click: function () { ctx.actions.setOrders({ tab: 'mine' }); } } })
+    ]);
+    return D.el('section', { class: variant === 'card' ? 'db-card db-card--side' : 'zl-strip', attrs: { 'aria-label': 'Zlecenia do mnie', 'data-fk': 'zl-strip' } },
+      [head, mine.length ? D.el('ul', { class: 'zl-strip__list' }, rows) : D.el('p', { class: 'db-empty', text: 'Nic nie czeka.' })]);
+  }
+
+  /** Zakładka „Zlecenia” w projekcie. */
+  function projectTab(project, ctx) {
+    var state = ctx.state;
+    var now = new Date();
+    var people = state.workspace.people || [];
+    var all = (state.workspace.orders || []).filter(function (o) { return String(o.projectId) === String(project.id) && O.canSee(state.prefs.me, o, people); });
+    var c = { now: now, me: state.prefs.me, people: people, projects: state.workspace.projects || [], orders: state.workspace.orders || [], tab: 'project', panel: state.orderPanel, actions: ctx.actions };
+    var open = all.filter(function (o) { return o.status === 'open' || o.status === 'waiting'; });
+    var closed = all.filter(function (o) { return o.status === 'done'; }).slice(-10).reverse();
+    return D.el('div', { class: 'zl', attrs: { 'data-fk': 'zl-project' } }, [
+      D.el('div', { class: 'zl-bar' }, [D.el('span', { class: 't-meta', text: open.length ? 'Otwarte: ' + open.length : 'Brak otwartych zleceń w tym projekcie.' }), D.el('span', { class: 'zl-spacer' }),
+        UI.button({ label: 'Nowe zlecenie', icon: 'plus', variant: 'primary', attrs: { 'data-fk': 'zl-new-project' }, onClick: function () { ctx.actions.openOrder(project.id); } })]),
+      open.length ? D.el('div', { class: 'zl-list' }, open.map(function (o) { return orderCard(o, c); })) : null,
+      closed.length ? D.el('h3', { class: 'zl-sub', text: 'Zrobione' }) : null,
+      closed.length ? D.el('div', { class: 'zl-list' }, closed.map(function (o) { return orderCard(o, c); })) : null
+    ]);
+  }
+
+  E.OrdersScreen = { view: view, orderForm: orderForm, visible: visible, strip: strip, projectTab: projectTab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

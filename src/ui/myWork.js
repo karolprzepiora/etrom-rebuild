@@ -318,6 +318,7 @@
     }
     var caseEl = (current === 'all' || current === 'today' || current === 'week') ? E.CaseUI.section(state, ctx, current) : null;
     var rest = current === 'weeks' ? [] : [
+      (current === 'all' || current === 'react' || current === 'today') ? E.OrdersScreen.strip(state, ctx, 'strip') : null,
       E.InboxScreen.alarmStrip(shown.alarms, ctx),
       E.InboxScreen.section(shown.react, ctx, now)
     ];
