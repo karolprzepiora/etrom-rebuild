@@ -741,3 +741,12 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Nagłówek (PD1)**: pas miesięcy (`.pb-months`), pod nim zakres tygodnia z numerem („28 wrz – 2 paź · T40”), niżej litera dnia i duży numer; dziś jako pełne koło w kolorze pracy. Od 8 tygodni tylko numer tygodnia („T41”) i numery dni.
 - **Urlop**: zawsze jeden pasek w wierszu osoby (`.pb-absent.is-head`, kreskowany, podpis „Urlop 11–12 paź” obok); wiersze zadań nie mają kolumny urlopu. W „Mojej pracy” (widok własny) pasek stoi w wierszu „Nieobecność” nad zadaniami.
 - **Jedno „teraz”**: szczegóły (TERAZ, od której godziny, ile minut) tylko w wierszu zadania; przy osobie mała zielona kropka „pracuje teraz”. Gdy zadanie z licznikiem nie jest na liście (np. filtr projektu), przy osobie zostaje pełny chip.
+
+## Urlopy (ekran `#/urlopy`)
+
+- **Zakładki**: „Mój urlop” (karty: pierścień salda, liczniki „na żądanie / zwolnienia / szkolenia”, lista wniosków, rok w skrócie; albo kalendarz roczny z zaznaczaniem zakresu), „Kalendarz zespołu” (miesiąc, osoby w wierszach) i „Do akceptacji” (tylko zarząd i liderzy).
+- **Kolory z motywu, bez własnych**: urlop = `--review` (barwa zatwierdzenia), oczekuje = `--warn`, zaakceptowany = `--success`, odrzucony = `--alarm`, dzisiaj = `--flow`. Zmiana motywu lub koloru pracy w ustawieniach przenosi się na ekran.
+- **Reguły** (`core/absences.js`): dni robocze bez weekendów i świąt; wymiar roczny z osoby (`leaveDays`, domyślnie 26); urlop na żądanie do 4 dni w roku; wniosek nie może nakładać się na inny ani przekraczać salda (z uwzględnieniem wniosków oczekujących).
+- **Akceptacja (wariant A)**: wniosek pracownika czeka na zarząd; zarząd zapisuje własny urlop od razu jako zaakceptowany. Lider projektu widzi wnioski swojego zespołu i dopisuje opinię („Bez zastrzeżeń” / „Mam zastrzeżenia”). Do planu, kalendarza i karty czasu trafiają tylko zaakceptowane nieobecności.
+- **Wpływ na plan** przy wniosku: kolidujące terminy zadań osoby i obłożenie zespołów jej projektów.
+- **Widoczność**: pracownik widzi swoje saldo i wnioski oraz to, kto z zespołu jest nieobecny, bez rodzaju nieobecności i bez cudzego salda. Egzekwowanie po stronie serwera wejdzie razem z kontami (patrz `DATA_MODEL.md`).

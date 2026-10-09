@@ -112,7 +112,7 @@
 
   /** Pasma nieobecności osoby do narysowania w planie: [{from, to, kind, note, id}] (daty ISO). */
   function absenceBands(list, personId) {
-    return (list || []).filter(function (a) { return a.personId === personId; }).map(function (a) { return { id: a.id, from: a.from, to: a.to, kind: a.kind, note: a.note || '' }; });
+    return Absences.approved(list).filter(function (a) { return a.personId === personId; }).map(function (a) { return { id: a.id, from: a.from, to: a.to, kind: a.kind, note: a.note || '' }; });
   }
 
   function deadlineDate(task) {

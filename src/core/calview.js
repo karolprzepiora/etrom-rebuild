@@ -23,7 +23,7 @@
   function build(input) {
     var projects = input.projects || [];
     var people = input.people || [];
-    var absences = input.absences || [];
+    var absences = (input.absences || []).filter(function (a) { return a.status !== 'pending' && a.status !== 'rejected'; });
     var me = input.meId;
     var management = Budget.isManagement(me, people);
     var today = Cal.isoOf(input.now);

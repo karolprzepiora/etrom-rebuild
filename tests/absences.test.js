@@ -26,3 +26,113 @@ test('dni nieobecności osoby to dni robocze zakresu (weekendy pomijane)', () =>
   assert.deepEqual(Object.keys(A.daysOf(list, 'p-1')), ['2026-10-08', '2026-10-09', '2026-10-12', '2026-10-13']);
   assert.deepEqual(Object.keys(A.daysOf(list, 'p-2')), ['2026-10-08']);
 });
+
+// ---------- wnioski urlopowe ----------
+const ppl = [
+  { id: 'p-1', orgRole: 'member', leaveDays: 26 },
+  { id: 'p-2', orgRole: 'member' },
+  { id: 'p-9', orgRole: 'managing' }
+];
+const NOW = new Date('2026-10-09T08:00:00');
+
+test('dawne wpisy bez statusu są zaakceptowane, wnioski i odrzucone nie wchodzą do dni nieobecności', () => {
+  const list = A.normalize([
+    { id: 'a-1', personId: 'p-1', from: '2026-10-12', to: '2026-10-12', kind: 'leave' },
+    { id: 'a-2', personId: 'p-1', from: '2026-10-13', to: '2026-10-13', kind: 'leave', status: 'pending' },
+    { id: 'a-3', personId: 'p-1', from: '2026-10-14', to: '2026-10-14', kind: 'leave', status: 'rejected' }
+  ]);
+  assert.equal(list[0].status, 'approved');
+  assert.deepEqual(Object.keys(A.daysOf(list, 'p-1')), ['2026-10-12']);
+  assert.deepEqual(A.approved(list).map(a => a.id), ['a-1']);
+});
+
+test('saldo: wykorzystane, zaplanowane, oczekujące, na żądanie, zwolnienia; weekendy i święta nie liczą się', () => {
+  const list = A.normalize([
+    { id: 'a-1', personId: 'p-1', from: '2026-07-14', to: '2026-07-25', kind: 'leave' },
+    { id: 'a-2', personId: 'p-1', from: '2026-08-03', to: '2026-08-03', kind: 'leave', onDemand: true },
+    { id: 'a-3', personId: 'p-1', from: '2026-11-23', to: '2026-11-27', kind: 'leave' },
+    { id: 'a-4', personId: 'p-1', from: '2026-10-12', to: '2026-10-12', kind: 'leave', status: 'pending' },
+    { id: 'a-5', personId: 'p-1', from: '2026-03-02', to: '2026-03-04', kind: 'sick' },
+    { id: 'a-6', personId: 'p-1', from: '2026-04-20', to: '2026-04-21', kind: 'training' },
+    { id: 'a-7', personId: 'p-2', from: '2026-01-05', to: '2026-01-09', kind: 'leave' }
+  ]);
+  const b = A.balance(list, ppl[0], NOW);
+  assert.equal(b.total, 26);
+  assert.equal(b.used, 9 + 1);
+  assert.equal(b.planned, 5);
+  assert.equal(b.pending, 1);
+  assert.equal(b.left, 26 - 15);
+  assert.equal(b.free, 26 - 15 - 1);
+  assert.equal(b.onDemandUsed, 1);
+  assert.equal(b.sick, 3);
+  assert.equal(b.training, 2);
+  assert.equal(A.balance(list, ppl[1], NOW).total, 26);
+  assert.equal(A.balance(list, ppl[1], NOW).used, 4); // 6 stycznia to święto
+});
+
+test('wniosek: czeka na zarząd, a złożony przez zarząd jest od razu zaakceptowany', () => {
+  const r = A.request([], { personId: 'p-1', from: '2026-10-09', to: '2026-10-12', kind: 'leave' }, ppl, { by: 'p-1', now: NOW });
+  assert.equal(r.valid, true);
+  assert.equal(r.absence.status, 'pending');
+  assert.equal(r.absence.requestedBy, 'p-1');
+  assert.equal(A.workdays(r.absence), 2);
+  const own = A.request([], { personId: 'p-9', from: '2026-10-12', to: '2026-10-13', kind: 'leave' }, ppl, { by: 'p-9', autoApprove: true, now: NOW });
+  assert.equal(own.absence.status, 'approved');
+  assert.equal(own.absence.decidedBy, 'p-9');
+});
+
+test('wniosek: walidacja zakresu, braku dni roboczych, nakładania i salda', () => {
+  assert.ok(A.request([], { personId: 'p-1', from: '2026-10-10', to: '2026-10-11', kind: 'leave' }, ppl, { now: NOW }).errors.to);
+  const first = A.request([], { personId: 'p-1', from: '2026-10-12', to: '2026-10-13', kind: 'leave' }, ppl, { now: NOW });
+  assert.ok(A.request(first.list, { personId: 'p-1', from: '2026-10-13', to: '2026-10-14', kind: 'leave' }, ppl, { now: NOW }).errors.from);
+  const tight = A.normalize([{ id: 'a-1', personId: 'p-1', from: '2026-02-02', to: '2026-03-06', kind: 'leave' }]);
+  const over = A.request(tight, { personId: 'p-1', from: '2026-12-14', to: '2026-12-23', kind: 'leave' }, ppl, { now: NOW });
+  assert.match(over.errors.to, /Brakuje dni urlopu/);
+  const sickOk = A.request(tight, { personId: 'p-1', from: '2026-12-14', to: '2026-12-23', kind: 'sick' }, ppl, { now: NOW });
+  assert.equal(sickOk.valid, true);
+});
+
+test('urlop na żądanie: limit 4 dni w roku', () => {
+  const list = A.normalize([{ id: 'a-1', personId: 'p-1', from: '2026-08-03', to: '2026-08-05', kind: 'leave', onDemand: true }]);
+  assert.ok(A.request(list, { personId: 'p-1', from: '2026-10-12', to: '2026-10-13', kind: 'leave', onDemand: true }, ppl, { now: NOW }).errors.onDemand);
+  assert.equal(A.request(list, { personId: 'p-1', from: '2026-10-12', to: '2026-10-12', kind: 'leave', onDemand: true }, ppl, { now: NOW }).valid, true);
+});
+
+test('decyzja zarządu dotyczy tylko wniosków oczekujących; opinia lidera jest jedna na osobę', () => {
+  const r = A.request([], { personId: 'p-1', from: '2026-10-12', to: '2026-10-12', kind: 'leave' }, ppl, { by: 'p-1', now: NOW });
+  const id = r.absence.id;
+  let list = A.addOpinion(r.list, id, 'p-3', 'concern', 'termin 2601', NOW);
+  list = A.addOpinion(list, id, 'p-3', 'ok', '', NOW);
+  assert.equal(list[0].opinions.length, 1);
+  assert.equal(list[0].opinions[0].verdict, 'ok');
+  const ok = A.decide(list, id, 'approve', 'p-9', 'miłego wypoczynku', NOW);
+  assert.equal(ok[0].status, 'approved');
+  assert.equal(ok[0].decidedBy, 'p-9');
+  const again = A.decide(ok, id, 'reject', 'p-9', '', NOW);
+  assert.equal(again[0].status, 'approved');
+  assert.equal(A.decide(list, id, 'reject', 'p-9', 'termin projektu', NOW)[0].status, 'rejected');
+});
+
+test('wpływ na plan: kolidujący termin zadania i nieobecność innych osób zespołu', () => {
+  const projects = [{ code: '2601', team: { leader: 'p-3', coordinator: '', proxyLead: '', proxyExtra: '', members: ['p-1', 'p-2'] }, stages: [{ tasks: [
+    { name: 'Zebrać warunki', status: 'working', assignees: ['p-1'], deadline: '2026-10-10T16:00' },
+    { name: 'Inne', status: 'todo', assignees: ['p-1'], deadline: '2026-11-10' }
+  ] }] }];
+  const abs = A.normalize([{ id: 'a-1', personId: 'p-2', from: '2026-10-09', to: '2026-10-13', kind: 'leave' }, { id: 'a-2', personId: 'p-1', from: '2026-10-09', to: '2026-10-12', kind: 'leave', status: 'pending' }]);
+  const out = A.impact(abs[1], { projects, people: ppl, absences: abs });
+  assert.equal(out[0].tone, 'alarm');
+  assert.match(out[0].text, /Zebrać warunki/);
+  assert.ok(out.some(x => x.tone === 'warn'));
+  const clean = A.impact({ id: 'x', personId: 'p-1', from: '2026-12-01', to: '2026-12-02' }, { projects, people: ppl, absences: [] });
+  assert.deepEqual(clean.map(x => x.tone), ['ok']);
+});
+
+test('widoczność wniosku: właściciel, zarząd i lider projektu osoby', () => {
+  const projects = [{ team: { leader: 'p-3', members: ['p-1'] } }];
+  const a = { personId: 'p-1' };
+  const people = ppl.concat([{ id: 'p-3', orgRole: 'member' }]);
+  assert.equal(A.canSee('p-1', a, projects, people), true);
+  assert.equal(A.canSee('p-9', a, projects, people), true);
+  assert.equal(A.canSee('p-3', a, projects, people), true);
+  assert.equal(A.canSee('p-2', a, projects, people), false);
+});

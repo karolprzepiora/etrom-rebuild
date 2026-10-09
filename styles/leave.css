@@ -1,0 +1,104 @@
+/* ETROM — ekran „Urlopy”. Kolory z motywu: urlop to barwa zatwierdzenia (--review),
+   oczekuje = --warn, zaakceptowany = --success, odrzucony = --alarm. */
+.lv { display: grid; gap: var(--space-4); }
+.lv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.lv-bar__fill { flex: 1; }
+.lv-grid { display: grid; grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.lv-col { display: grid; gap: var(--space-4); min-width: 0; }
+.lv-card { background: var(--sheet); border-radius: 14px; padding: var(--space-4); min-width: 0; }
+.lv-card__title { margin: 0 0 var(--space-3); font-size: var(--fs-sm); font-weight: 800; }
+
+/* Saldo */
+.lv-balance { display: flex; align-items: center; gap: var(--space-4); }
+.lv-ring { --u: 0%; --up: 0%; flex: none; width: 7.5rem; height: 7.5rem; border-radius: 50%; display: grid; place-content: center; text-align: center; position: relative;
+  background: conic-gradient(var(--review) 0 var(--u), color-mix(in srgb, var(--review) 42%, var(--sheet)) var(--u) var(--up), var(--track) var(--up) 100%); }
+.lv-ring::before { content: ""; position: absolute; inset: .8rem; border-radius: 50%; background: var(--sheet); }
+.lv-ring b, .lv-ring span { position: relative; }
+.lv-ring b { font-size: 1.6rem; line-height: 1; }
+.lv-ring span { font-size: var(--fs-xs); color: var(--ink-3); }
+.lv-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; font-size: var(--fs-sm); }
+.lv-legend--row { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--fs-xs); color: var(--ink-3); }
+.lv-legend li { display: flex; align-items: center; gap: .45rem; }
+.lv-dot { width: .6rem; height: .6rem; border-radius: 50%; flex: none; display: inline-block; }
+.lv-dot--used { background: var(--review); }
+.lv-dot--plan { background: color-mix(in srgb, var(--review) 42%, var(--sheet)); }
+.lv-dot--free { background: var(--track); }
+.lv-dot--wait, .lv-dot--warn { background: var(--warn); }
+.lv-dot--other { background: var(--ink-4); }
+.lv-dot--holiday, .lv-dot--alarm { background: var(--alarm); }
+.lv-dot--ok { background: var(--success); }
+.lv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: var(--space-4); }
+.lv-stat { background: var(--hover, var(--pressed)); border-radius: 10px; padding: var(--space-2) var(--space-3); display: grid; }
+.lv-stat b { font-size: var(--fs-md); }
+.lv-stat span { font-size: var(--fs-xs); color: var(--ink-3); }
+
+/* Wnioski */
+.lv-reqs { list-style: none; margin: 0; padding: 0; }
+.lv-req { display: flex; align-items: center; gap: var(--space-3); padding: .7rem .2rem; border-top: 1px solid var(--line); }
+.lv-req:first-child { border-top: 0; }
+.lv-req__main { flex: 1; min-width: 0; display: grid; }
+.lv-req__by { white-space: nowrap; }
+.lv-kind { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--review); background: var(--review-wash); border-radius: 8px; padding: .15rem .55rem; white-space: nowrap; }
+
+/* Rok w skrócie */
+.lv-year { display: flex; align-items: flex-end; gap: .35rem; height: 5.5rem; }
+.lv-year__col { flex: 1; display: grid; justify-items: stretch; gap: .25rem; height: 100%; grid-template-rows: 1fr auto; text-align: center; font-size: .6rem; color: var(--ink-3); }
+.lv-year__bar { display: flex; flex-direction: column; justify-content: flex-end; border-radius: 5px; background: color-mix(in srgb, var(--track) 45%, transparent); min-height: 4px; overflow: hidden; }
+.lv-year__plan { background: color-mix(in srgb, var(--review) 42%, var(--sheet)); display: block; }
+.lv-year__done { background: var(--review); display: block; }
+
+/* Kalendarz roczny */
+.lv-yearcal { display: grid; gap: var(--space-3); }
+.lv-yearnav { display: flex; align-items: center; gap: var(--space-2); }
+.lv-months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.lv-month { background: var(--sheet); border-radius: 12px; padding: var(--space-3); }
+.lv-month h3 { margin: 0 0 .4rem; font-size: var(--fs-sm); font-weight: 800; }
+.lv-dow, .lv-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.lv-dow span { text-align: center; font-size: .6rem; font-weight: 700; color: var(--ink-3); }
+.lv-day { all: unset; box-sizing: border-box; height: 1.45rem; display: grid; place-items: center; border-radius: 6px; font-size: .68rem; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+.lv-day:hover:not(:disabled) { background: var(--pressed); }
+.lv-day:focus-visible { box-shadow: var(--focus-ring); }
+.lv-day--blank { cursor: default; }
+.lv-day.is-weekend { color: var(--ink-4); }
+.lv-day.is-holiday { color: var(--alarm-ink); cursor: default; }
+.lv-day.is-today { box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+.lv-day.is-leave { background: var(--review); color: #fff; cursor: default; }
+.lv-day.is-other { background: var(--track); color: var(--ink-2); cursor: default; }
+.lv-day.is-pending { background: var(--review-wash); box-shadow: inset 0 0 0 1.5px var(--review); color: var(--review); cursor: default; }
+.lv-day.is-selected { background: var(--flow); color: #fff; }
+.lv-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); justify-content: space-between; }
+.lv-selbar { display: flex; align-items: center; gap: var(--space-3); background: var(--inverse); color: var(--on-inverse); border-radius: 12px; padding: .55rem .9rem; margin: 0; }
+.lv-selbar--hint { background: none; color: var(--ink-3); padding: 0; }
+
+/* Kalendarz zespołu */
+.lv-team { display: grid; gap: var(--space-3); }
+.lv-t { --days: 30; background: var(--sheet); border-radius: 14px; padding: var(--space-3); overflow-x: auto; }
+.lv-t__row { display: grid; grid-template-columns: 11rem repeat(var(--days), minmax(1rem, 1fr)); align-items: center; min-width: calc(11rem + var(--days) * 1.1rem); }
+.lv-t__row:not(.lv-t__row--head) { border-top: 1px solid var(--line); height: 2.1rem; }
+.lv-t__name { display: flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; min-width: 0; padding-right: .5rem; }
+.lv-t__d { text-align: center; font-size: .62rem; font-weight: 700; color: var(--ink-2); padding-bottom: .35rem; }
+.lv-t__d.is-weekend { color: var(--ink-4); }
+.lv-t__d.is-holiday { color: var(--alarm-ink); }
+.lv-t__d.is-today { color: var(--flow-ink); text-decoration: underline; text-underline-offset: 3px; }
+.lv-t__c { height: 1.3rem; border-left: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.lv-t__c.is-weekend { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.lv-t__c.is-away { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 16%, var(--sheet)) 0 .35rem, color-mix(in srgb, var(--ink) 7%, var(--sheet)) .35rem .7rem); }
+.lv-t__c.is-pending { background: var(--review-wash); box-shadow: inset 0 0 0 1px var(--review); }
+
+/* Skrzynka akceptacji */
+.lv-inboxes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.lv-inbox { display: flex; gap: var(--space-3); background: var(--sheet); border-radius: 14px; padding: var(--space-4); align-items: flex-start; }
+.lv-inbox__main { flex: 1; min-width: 0; display: grid; gap: var(--space-2); }
+.lv-inbox__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.lv-impactbox { background: var(--hover, var(--pressed)); border-radius: 10px; padding: var(--space-2) var(--space-3); }
+.lv-impactbox__t { font-size: .62rem; font-weight: 800; letter-spacing: .06em; color: var(--ink-3); }
+.lv-impact { list-style: none; margin: .25rem 0 0; padding: 0; display: grid; gap: .2rem; font-size: var(--fs-sm); }
+.lv-impact li { display: flex; align-items: center; gap: .5rem; }
+.lv-opinions { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; font-size: var(--fs-sm); }
+.lv-opinion.is-concern { color: var(--warn-ink); }
+.lv-opinion.is-ok { color: var(--ink-2); }
+.lv-inbox__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.lv-inbox__actions .input { flex: 1 1 14rem; min-width: 10rem; }
+
+@media (max-width: 64rem) { .lv-grid { grid-template-columns: 1fr; } .lv-months { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 40rem) { .lv-months { grid-template-columns: 1fr; } .lv-balance { flex-direction: column; align-items: flex-start; } }

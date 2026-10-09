@@ -275,6 +275,7 @@
           D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
           D.el('li', null, [navItem('time', 'clock', 'Czas', '#/czas')]),
           D.el('li', null, [navItem('calendar', 'calendar', 'Kalendarz', '#/kalendarz')]),
+          D.el('li', null, [navItem('leave', 'leave', 'Urlopy', '#/urlopy')]),
           D.el('li', { class: 'nav__plan' }, [navItem('plan', 'columns', 'Plan', '#/plan')]),
           D.el('li', { class: 'nav__review' }, [navItem('review', 'flag', 'Przegląd', '#/przeglad')]),
           D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
@@ -316,6 +317,7 @@
     if (route.name === 'library') return [{ label: 'Biblioteka' }];
     if (route.name === 'plan') return [{ label: 'Plan' }];
     if (route.name === 'calendar') return [{ label: 'Kalendarz' }];
+    if (route.name === 'leave') return [{ label: 'Urlopy' }];
     if (route.name === 'review') return [{ label: 'Przegląd' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
@@ -327,7 +329,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
+    var section = route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
     Object.keys(nodes.nav).forEach(function (key) {
       var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
@@ -338,6 +340,11 @@
     if (nodes.counts.library) nodes.counts.library.hidden = true;
     if (nodes.counts.plan) nodes.counts.plan.hidden = true;
     if (nodes.counts.calendar) nodes.counts.calendar.hidden = true;
+    if (nodes.counts.leave) {
+      var pendingLeave = E.LeaveScreen ? E.LeaveScreen.pendingFor(state, E.Team.findPerson(state.workspace.people || [], state.prefs.me)) : 0;
+      nodes.counts.leave.hidden = !pendingLeave;
+      nodes.counts.leave.textContent = String(pendingLeave);
+    }
     if (nodes.counts.review) nodes.counts.review.hidden = true;
     (function () {
       var meNow = E.Team.findPerson(state.workspace.people || [], state.prefs.me);

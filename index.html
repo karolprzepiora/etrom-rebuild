@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="styles/analysis.css">
   <link rel="stylesheet" href="styles/polish.css">
   <link rel="stylesheet" href="styles/aurora.css">
+  <link rel="stylesheet" href="styles/leave.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -138,6 +139,16 @@
             <div id="calendar-body"></div>
           </section>
 
+          <section class="view" id="view-leave" hidden aria-labelledby="leave-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="leave-title">Urlopy</h1>
+                <p class="page-header__description" id="leave-summary"></p>
+              </div>
+            </header>
+            <div id="leave-body"></div>
+          </section>
+
           <section class="view" id="view-review" hidden aria-labelledby="review-title">
             <header class="page-header">
               <div class="page-header__main">
@@ -190,9 +201,9 @@
   <script src="src/core/catalog.js"></script>
   <script src="src/core/library.js"></script>
   <script src="src/core/calendar.js"></script>
+  <script src="src/core/team.js"></script>
   <script src="src/core/absences.js"></script>
   <script src="src/core/cases.js"></script>
-  <script src="src/core/team.js"></script>
   <script src="src/core/tasks.js"></script>
   <script src="src/core/timelog.js"></script>
   <script src="src/core/social.js"></script>
@@ -252,6 +263,7 @@
   <script src="src/ui/daySummary.js"></script>
   <script src="src/ui/reviewScreen.js"></script>
   <script src="src/ui/calendarScreen.js"></script>
+  <script src="src/ui/leaveScreen.js"></script>
   <script src="src/ui/stageForm.js"></script>
   <script src="src/ui/teamScreen.js"></script>
   <script src="src/ui/checklist.js"></script>

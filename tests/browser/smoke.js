@@ -1150,12 +1150,13 @@ async function main() {
       'window.__sw = ETROM.app.actions.openTasks().slice(0, 2).map(c => c.ref);' +
       'const pad = (n) => String(n).padStart(2, "0"); const d0 = new Date(); const d1 = new Date(Date.now() + 3 * 86400000);' +
       'const iso = (d, h) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + h;' +
-      'ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.map(p => Object.assign({}, p, { stages: p.stages.map(st => Object.assign({}, st, { tasks: (st.tasks || []).map(t => window.__sw.some(r => r.projectId === p.id && r.stageId === st.id && r.taskId === t.id) ? Object.assign({}, t, { start: iso(d0, "08:00"), deadline: iso(d1, "18:00") }) : t) })) })) }) }));' +
+      'ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.map(p => Object.assign({}, p, { stages: p.stages.map(st => Object.assign({}, st, { tasks: (st.tasks || []).map(t => window.__sw.some(r => r.projectId === p.id && r.stageId === st.id && r.taskId === t.id) ? Object.assign({}, t, { start: iso(d0, "00:00"), deadline: iso(d1, "18:00") }) : t) })) })) }) }));' +
       'ETROM.app.actions.toggleTimer(window.__sw[0].projectId, window.__sw[0].stageId, window.__sw[0].taskId); return true;'
     );
     await sleep(500);
     check('zadanie, przy którym chodzi zegar, jest zielonym wierszem ze znaczkiem TERAZ (godzina startu i czas), a przy nazwisku jest zielona linia „teraz”',
-      await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-row--who .pb-live-line.is-on");'));
+      await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-row--who .pb-live-line.is-on");'),
+      await evaluate('return JSON.stringify({ now: document.querySelectorAll(".pb-row--now").length, live: document.querySelectorAll(".pb-live-line.is-on").length, run: window.ETROM.app.store.getState().workspace.entries.filter(e => !e.end).length, me: window.ETROM.app.store.getState().prefs.me, hash: location.hash, h: new Date().getHours() });'));
     await evaluate('const r = window.__sw[1]; ETROM.app.actions.switchTimer(r.projectId, r.stageId, r.taskId); return true;');
     await sleep(300);
     check('przełączenie zegara czeka 5 s: w stanie jest oczekująca zmiana, a stary zegar nadal chodzi',
@@ -2020,6 +2021,37 @@ async function main() {
     await sleep(400);
     check('zamrożone zadania w Zadaniach mają plakietkę „Zamrożone” i przycisk Odmroź',
       await evaluate('return !!document.querySelector(".trow--frozen .badge") && !!document.querySelector("[data-fk^=task-unfreeze-]");'));
+
+    /* 38j. Urlopy: wniosek pracownika, skrzynka akceptacji zarządu, widoczność */
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/urlopy"; return true;');
+    await sleep(400);
+    check('urlopy: ekran widoczny, w menu licznik wniosków do akceptacji dla zarządu',
+      await evaluate('const n = document.querySelector("[data-screen=leave] .nav__count"); return !document.getElementById("view-leave").hidden && !!n && !n.hidden && Number(n.textContent) >= 1;'));
+    await evaluate('window.ETROM.app.actions.setLeave({ tab: "inbox" }); return true;');
+    await sleep(300);
+    check('urlopy: skrzynka pokazuje wnioski z wpływem na plan i przyciskami decyzji',
+      await evaluate('const c = document.querySelectorAll(".lv-inbox"); return c.length >= 2 && [...c].every(x => /WPŁYW NA PLAN/.test(x.textContent)) && !!document.querySelector("[data-fk=lv-approve]") && !!document.querySelector("[data-fk=lv-reject]");'));
+    const leaveId = await evaluate('return document.querySelector(".lv-inbox").dataset.id;');
+    await evaluate('document.querySelector(".lv-inbox [data-fk=lv-approve]").click(); return true;');
+    await sleep(250);
+    check('urlopy: akceptacja zmienia status wniosku na zaakceptowany i zapisuje decydenta',
+      await evaluate('const a = window.ETROM.app.store.getState().workspace.absences.find(x => x.id === ' + JSON.stringify(leaveId) + '); return a.status === "approved" && a.decidedBy === "p-1";'));
+    await evaluate('window.ETROM.app.actions.setMe("p-8"); window.ETROM.app.actions.setLeave({ tab: "mine", view: "cards" }); return true;');
+    await sleep(300);
+    check('urlopy: pracownik bez zespołu nie ma zakładki „Do akceptacji”, ma saldo i przycisk wniosku',
+      await evaluate('const t = [...document.querySelectorAll(".lv-bar .segmented__btn")].map(b => b.textContent).join("|"); return !/Do akceptacji/.test(t) && !!document.querySelector(".lv-ring") && /Złóż wniosek/.test(document.querySelector("[data-fk=lv-new]").textContent);'));
+    await evaluate('window.ETROM.app.actions.openLeaveRequest({ from: "2026-12-14", to: "2026-12-15", kind: "leave" }); return true;');
+    await sleep(400);
+    await evaluate('document.getElementById("leave-form").requestSubmit(); return true;');
+    await sleep(300);
+    check('urlopy: wniosek pracownika czeka na zarząd i nie wchodzi do nieobecności w planie',
+      await evaluate('const st = window.ETROM.app.store.getState(); const a = st.workspace.absences.find(x => x.personId === "p-8" && x.from === "2026-12-14"); return !!a && a.status === "pending" && a.requestedBy === "p-8" && Object.keys(window.ETROM.Absences.daysOf(st.workspace.absences, "p-8")).indexOf("2026-12-14") < 0 && !!document.querySelector(".lv-req[data-status=pending]");'));
+    await evaluate('window.ETROM.app.actions.setLeave({ tab: "team" }); return true;');
+    await sleep(300);
+    check('urlopy: kalendarz zespołu dla pracownika nie zdradza rodzaju cudzej nieobecności',
+      await evaluate('const cells = [...document.querySelectorAll(".lv-t__c.is-away")]; return cells.length > 0 && cells.every(c => !/Urlop|Zwolnienie|Szkolenie/.test(c.getAttribute("data-tooltip") || ""));'));
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/moja-praca"; return true;');
+    await sleep(200);
 
     /* 39. Brak błędów i wyjątków w konsoli przez cały scenariusz */
     check('brak wyjątków i błędów konsoli w całym scenariuszu', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));

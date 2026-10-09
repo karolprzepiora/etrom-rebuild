@@ -21,7 +21,7 @@ Konta zakłada, loguje (e-mail i hasło) i role nadaje dyrekcja.
 
 | Tabela | Dziś | Najważniejsze pola | Uwagi |
 |---|---|---|---|
-| `profiles` | `people` | id (= konto logowania), imię, nazwisko, stanowisko, rola globalna, współpraca, aktywny | stawka godzinowa przeniesiona do `person_rates` |
+| `profiles` | `people` | id (= konto logowania), imię, nazwisko, stanowisko, rola globalna, współpraca, wymiar urlopu (dni), aktywny | stawka godzinowa przeniesiona do `person_rates` |
 | `person_rates` | `people.hourlyCost` | person_id, stawka, obowiązuje od | tylko dyrekcja; z historią zmian stawki |
 | `projects` | `projects[]` | id, kod, nazwa, klient, status, termin, kolor, rodzaj, zakres, priorytet, wartość umowy, baseline (zamrożony plan), plan zaakceptowany | wartość umowy i baseline: lider i dyrekcja |
 | `project_team` | `project.team` | project_id, person_id, funkcja (lider, koordynator, pełnomocnik wiodący/dodatkowy, członek) | z funkcji lidera wynika pełny dostęp do projektu |
@@ -35,7 +35,7 @@ Konta zakłada, loguje (e-mail i hasło) i role nadaje dyrekcja.
 | `mail_entries` | `mail[]` | id, project_id, kierunek, nr rejestru, dane pisma, odpowiedź na, autor, daty | dziennik pism, bez „czeka na odpowiedź” |
 | `cases` | `cases[]` | id, project_id, stage_id, nazwa, urząd, właściciel, data złożenia, status, zamknięcie, zadanie źródłowe | widzą wszyscy |
 | `case_events` | `case.events[]` | id, case_id, rodzaj, data, notatka, zadanie, kto | |
-| `absences` | `absences[]` | id, person_id, od, do, rodzaj, notatka | później z wnioskami urlopowymi i akceptacją |
+| `absences` | `absences[]` | id, person_id, od, do, rodzaj, notatka, **status** (oczekuje, zaakceptowany, odrzucony), na żądanie, kto i kiedy złożył, kto i kiedy zdecydował, powód, opinie liderów | wniosek urlopowy z akceptacją dyrekcji (wdrożone w aplikacji); pracownik widzi własne i obecność innych bez rodzaju |
 | `task_library` | `library.tasks` | id, stage_katalogowy, nazwa | wspólna lista, rośnie |
 | `posts`, `comments`, `reactions`, `events` | `social.*` | autor, treść, kiedy, klucz obiektu | aktualności i komentarze |
 | `settings_org` | część `prefs` i reguły | próg +10 i +25, godzin dziennie, rezerwa, wagi, kolory rodzajów | wspólne dla biura, edytuje dyrekcja |
@@ -53,7 +53,7 @@ Konta zakłada, loguje (e-mail i hasło) i role nadaje dyrekcja.
 
 ## Otwarte decyzje
 
-- Zakładka wniosków urlopowych: kto akceptuje i jak liczymy dni.
+- Zakładka urlopów: zdecydowano wariant A (akceptuje dyrekcja, lider dopisuje opinię); dni liczone jako robocze.
 - Czy Lider widzi stawki godzinowe osób, czy tylko dyrekcja.
 - Czy komentarze i aktualności są wspólne dla biura, czy per projekt.
 - Zasady archiwizacji: po jakim czasie projekt przestaje być „aktywny”.

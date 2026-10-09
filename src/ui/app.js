@@ -60,6 +60,8 @@
     myView: 'all',
     taskForm: null,
     absenceForm: null,
+    leaveForm: null,
+    leave: { tab: 'mine', view: 'cards', year: 0, sel: null, monthOffset: 0 },
     caseForm: null,
     expandedStages: {},
     showDone: {},
@@ -91,6 +93,7 @@
     if (parts[0] === 'plan') return { name: 'plan' };
     if (parts[0] === 'przeglad') return { name: 'review' };
     if (parts[0] === 'kalendarz') return { name: 'calendar' };
+    if (parts[0] === 'urlopy') return { name: 'leave' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
@@ -104,7 +107,7 @@
   }
 
   function screenOf(route) {
-    return route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -113,6 +116,7 @@
     if (route.name === 'plan') return '#/plan';
     if (route.name === 'review') return '#/przeglad';
     if (route.name === 'calendar') return '#/kalendarz';
+    if (route.name === 'leave') return '#/urlopy';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
@@ -195,7 +199,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -1744,6 +1748,62 @@
     Toast.show({ message: values.id ? 'Zmieniono nieobecność' : 'Dodano nieobecność', tone: 'success', timeout: 3000 });
   }
 
+  /* ---------- Urlopy: wnioski, decyzje, opinie ---------- */
+  function setLeave(patch) {
+    store.set({ leave: Object.assign({}, store.getState().leave || {}, patch) });
+  }
+
+  /** Kalendarz roczny: pierwsze kliknięcie zaczyna zakres, drugie go kończy (kolejne zaczyna od nowa). */
+  function pickLeaveDay(key) {
+    var sel = (store.getState().leave || {}).sel;
+    if (!sel || !sel.from || sel.to) { setLeave({ sel: { from: key, to: '' } }); return; }
+    setLeave({ sel: key < sel.from ? { from: key, to: sel.from } : { from: sel.from, to: key } });
+  }
+
+  function openLeaveRequest(draft) {
+    var me = currentMe();
+    if (!me) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
+    var d = draft || {};
+    var day = E.Absences.isoOf(new Date());
+    store.set({ leaveForm: { draft: { from: d.from || day, to: d.to || d.from || day, kind: d.kind || 'leave', note: '', onDemand: false }, errors: {} } });
+  }
+
+  function submitLeaveRequest(values) {
+    var form = store.getState().leaveForm;
+    var me = currentMe();
+    if (!form || !me) return;
+    var management = E.Budget.isManagement(me, people());
+    var res = E.Absences.request(store.getState().workspace.absences || [], Object.assign({}, values, { personId: me }), people(), { by: me, autoApprove: management, now: new Date() });
+    if (!res.valid) { store.set({ leaveForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
+    setAbsences(function () { return res.list; });
+    store.set({ leaveForm: null, leave: Object.assign({}, store.getState().leave || {}, { sel: null, tab: 'mine' }) });
+    Toast.show({ message: management ? 'Zapisano urlop' : 'Wniosek złożony, czeka na decyzję zarządu', tone: 'success', timeout: 4000 });
+  }
+
+  function decideLeave(id, decision, note) {
+    var me = currentMe();
+    if (!me || !E.Budget.isManagement(me, people())) { Toast.show({ message: 'Wnioski rozpatruje zarząd.', tone: 'danger' }); return; }
+    setAbsences(function (list) { return E.Absences.decide(list, id, decision, me, note, new Date()); });
+    Toast.show({ message: decision === 'approve' ? 'Wniosek zaakceptowany. Urlop jest w Planie.' : 'Wniosek odrzucony', tone: decision === 'approve' ? 'success' : 'default', timeout: 3500 });
+  }
+
+  function opinionLeave(id, verdict, note) {
+    var me = currentMe();
+    var found = (store.getState().workspace.absences || []).filter(function (a) { return a.id === id; })[0];
+    if (!me || !found || !E.Absences.isLeaderOf(me, found, store.getState().workspace.projects || [])) { Toast.show({ message: 'Opinię dopisuje lider projektu tej osoby.', tone: 'danger' }); return; }
+    setAbsences(function (list) { return E.Absences.addOpinion(list, id, me, verdict, note, new Date()); });
+    Toast.show({ message: 'Opinia zapisana', tone: 'success', timeout: 2500 });
+  }
+
+  function withdrawLeave(id) {
+    var me = currentMe();
+    var before = store.getState().workspace.absences || [];
+    var found = before.filter(function (a) { return a.id === id; })[0];
+    if (!found || found.personId !== me || found.status !== 'pending') return;
+    setAbsences(function (list) { return E.Absences.remove(list, id); });
+    Toast.show({ message: 'Wniosek wycofany', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
+  }
+
   function deleteAbsence(id) {
     var before = store.getState().workspace.absences || [];
     setAbsences(function (list) { return E.Absences.remove(list, id); });
@@ -2423,7 +2483,13 @@
         { who: 4, from: -31, to: -31, kind: 'training', note: 'Szkolenie BHP' },
         { who: 3, from: -22, to: -19, kind: 'sick', note: 'Zwolnienie lekarskie' },
         { who: 7, from: -118, to: -108, kind: 'leave', note: 'Urlop wypoczynkowy' },
-        { who: 1, from: -95, to: -91, kind: 'leave', note: 'Urlop' }
+        { who: 1, from: -95, to: -91, kind: 'leave', note: 'Urlop' },
+        { who: 1, from: 3, to: 5, kind: 'leave', note: 'Wyjazd rodzinny', state: 'pending' },
+        { who: 1, from: 45, to: 49, kind: 'leave', note: 'Urlop listopadowy' },
+        { who: 1, from: -120, to: -120, kind: 'leave', note: 'Urlop na żądanie', onDemand: true },
+        { who: 1, from: -60, to: -59, kind: 'leave', note: 'Termin złożenia projektu', state: 'rejected', reason: 'termin złożenia projektu 2601' },
+        { who: 2, from: 17, to: 21, kind: 'leave', note: 'Urlop', state: 'pending' },
+        { who: 3, from: 28, to: 29, kind: 'leave', note: 'Dwa dni wolne', state: 'pending' }
       ];
       var list = (workspace.absences || []).slice();
       rows.forEach(function (r) {
@@ -2432,6 +2498,16 @@
         if (list.some(function (a) { return a.personId === who && a.note === r.note && a.from === iso(r.from); })) return;
         var res = E.Absences.save(list, { personId: who, from: iso(r.from), to: iso(r.to), kind: r.kind, note: r.note }, workspace.people || []);
         if (res.valid) list = res.list;
+        if (res.valid && r.state) {
+          // Wnioski urlopowe w różnych stanach: oczekujące, odrzucone, na żądanie.
+          var boss = (workspace.people || []).filter(function (p) { return p.orgRole === 'managing'; })[0];
+          var rec = list[list.length - 1];
+          rec.requestedBy = who;
+          rec.requestedAt = new Date(Date.now() - 2 * 86400000).toISOString();
+          if (r.state === 'pending') rec.status = 'pending';
+          if (r.state === 'rejected') { rec.status = 'rejected'; rec.decidedBy = boss ? boss.id : ''; rec.decidedAt = new Date(Date.now() - 20 * 86400000).toISOString(); rec.decisionNote = r.reason || ''; }
+          if (r.onDemand) rec.onDemand = true;
+        } else if (res.valid && r.onDemand) list[list.length - 1].onDemand = true;
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
     });
@@ -3036,7 +3112,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
@@ -3422,6 +3498,12 @@
     D.patch(nodes.calendarBody, [screen.body]);
   }
 
+  function renderLeave(state) {
+    var screen = E.LeaveScreen.view(state, { actions: actions });
+    nodes.leaveSummary.textContent = screen.summary;
+    D.patch(nodes.leaveBody, [screen.body]);
+  }
+
   function renderReview(state) {
     var screen = E.ReviewScreen.view(state, { actions: actions });
     nodes.reviewSummary.textContent = screen.summary;
@@ -3491,7 +3573,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.caseForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.leaveForm || state.caseForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -3529,6 +3611,14 @@
         onCancel: function () { store.set({ absenceForm: null }); },
         onDelete: current.draft.id ? function () { deleteAbsence(current.draft.id); } : null
       }, (state.workspace.people || []).filter(function (p) { return p.active !== false; }));
+    } else if (current === state.leaveForm) {
+      var meL = Team.findPerson(people(), state.prefs.me);
+      var mgmt = !!meL && E.Budget.isManagement(meL.id, people());
+      var balL = E.Absences.balance(state.workspace.absences || [], meL, new Date());
+      settings.title = mgmt ? 'Nowy urlop' : 'Wniosek urlopowy';
+      settings.subtitle = mgmt ? 'Jako zarząd zapisujesz urlop od razu, bez akceptacji.' : 'Wniosek trafia do zarządu. Po akceptacji urlop pojawi się w Planie.';
+      settings.content = E.LeaveScreen.requestForm(current.draft, current.errors, { onSubmit: submitLeaveRequest, onCancel: function () { store.set({ leaveForm: null }); } },
+        { free: balL.free, onDemandLeft: balL.onDemandLimit - balL.onDemandUsed - balL.onDemandPending, auto: mgmt });
     } else if (current === state.caseForm) {
       settings.title = 'Sprawa w toku';
       settings.subtitle = 'Wniosek złożony lub materiał zamówiony: sprawa zostaje widoczna z licznikiem dni, aż ją zakończysz.';
@@ -3573,8 +3663,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.leaveForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, leaveForm: null });
         }
       }
     }));
@@ -3589,6 +3679,7 @@
     nodes.views.plan.hidden = route.name !== 'plan';
     nodes.views.review.hidden = route.name !== 'review';
     nodes.views.calendar.hidden = route.name !== 'calendar';
+    nodes.views.leave.hidden = route.name !== 'leave';
     E.Library.configure(state.workspace.library);
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.feed.hidden = route.name !== 'feed';
@@ -3625,6 +3716,9 @@
     } else if (route.name === 'plan') {
       document.title = 'Plan · ETROM';
       renderPlan(state);
+    } else if (route.name === 'leave') {
+      document.title = 'Urlopy · ETROM';
+      renderLeave(state);
     } else if (route.name === 'calendar') {
       document.title = 'Kalendarz · ETROM';
       renderCalendar(state);
@@ -3811,6 +3905,8 @@
     nodes.planBody = D.byId('plan-body');
     nodes.calendarSummary = D.byId('calendar-summary');
     nodes.calendarBody = D.byId('calendar-body');
+    nodes.leaveSummary = D.byId('leave-summary');
+    nodes.leaveBody = D.byId('leave-body');
     nodes.reviewSummary = D.byId('review-summary');
     nodes.reviewBody = D.byId('review-body');
     nodes.libraryBody = D.byId('library-body');
@@ -3825,7 +3921,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

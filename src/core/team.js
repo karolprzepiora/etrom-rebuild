@@ -127,6 +127,7 @@
       orgRole: Object.prototype.hasOwnProperty.call(ORG_ROLES, orgRole) ? orgRole : 'member',
       cooperation: Object.prototype.hasOwnProperty.call(COOPERATION, cooperation) ? cooperation : 'internal',
       hourlyCost: Number.isFinite(Number(raw.hourlyCost)) && Number(raw.hourlyCost) > 0 && Number(raw.hourlyCost) <= 10000 ? Math.round(Number(raw.hourlyCost) * 100) / 100 : 0,
+      leaveDays: Number.isFinite(Number(raw.leaveDays)) && Number(raw.leaveDays) > 0 && Number(raw.leaveDays) <= 60 ? Math.round(Number(raw.leaveDays)) : null,
       active: raw.active !== false
     };
   }
