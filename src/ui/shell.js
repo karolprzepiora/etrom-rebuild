@@ -310,7 +310,8 @@
       D.el('nav', { class: 'sidebar__nav', attrs: { 'aria-label': 'Główna' } }, [
         navGroup('start', null, [
           li(navItem('dashboard', 'grid', 'Pulpit', '#/pulpit')),
-          li(navItem('inbox', 'mail', 'Skrzynka', '#/moja-praca', function () { if (actions.setMyView) actions.setMyView('react'); }))
+          li(navItem('inbox', 'mail', 'Skrzynka', '#/moja-praca', function () { if (actions.setMyView) actions.setMyView('react'); })),
+          li(navItem('orders', 'checklist', 'Zlecenia', '#/zlecenia', function () { if (actions.setOrders) actions.setOrders({ tab: 'mine' }); }))
         ]),
         navGroup('work', 'Moja praca', [
           li(navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')),
@@ -380,6 +381,7 @@
     if (route.name === 'plan') return [{ label: 'Plan' }];
     if (route.name === 'calendar') return [{ label: 'Kalendarz' }];
     if (route.name === 'leave') return [{ label: 'Urlopy' }];
+    if (route.name === 'orders') return [{ label: 'Zlecenia' }];
     if (route.name === 'review') return [{ label: 'Przegląd' }];
     if (route.name === 'feed') return [{ label: 'Aktualności' }];
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
@@ -391,7 +393,7 @@
 
   function render(state, project) {
     var route = state.route;
-    var screens = { dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', time: 'time', feed: 'feed', analysis: 'analysis' };
+    var screens = { orders: 'orders', dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', time: 'time', feed: 'feed', analysis: 'analysis' };
     var section = screens[route.name] || 'projects';
     var people = state.workspace.people || [];
     var meNow = E.Team.findPerson(people, state.prefs.me);
@@ -444,6 +446,12 @@
       nodes.counts.inbox.hidden = !reactN;
       nodes.counts.inbox.textContent = String(reactN);
       nodes.counts.inbox.classList.toggle('count--alarm', !!reactN);
+    }
+    if (nodes.counts.orders) {
+      var ordN = E.Orders ? E.Orders.openCount(state.workspace.orders || [], state.prefs.me) : 0;
+      nodes.counts.orders.hidden = !ordN;
+      nodes.counts.orders.textContent = String(ordN);
+      nodes.counts.orders.classList.toggle('count--alarm', !!ordN);
     }
     nodes.counts.feed.textContent = '';
     nodes.counts.analysis.textContent = '';

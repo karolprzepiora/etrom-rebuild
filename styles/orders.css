@@ -1,0 +1,62 @@
+/* ETROM — Zlecenia wewnętrzne: karty, kapsuły rodzaju, licznik czasu, formularz. */
+.zl { display: grid; gap: var(--space-4); }
+.zl-bar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.zl-spacer { flex: 1; }
+.zl-list { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+.zl-empty { padding: var(--space-6) 0; }
+
+.zl-card { background: var(--sheet); border-radius: 14px; padding: var(--space-4); display: grid; gap: var(--space-2); min-width: 0; border: 1px solid transparent; }
+.zl-card--warn { border-color: color-mix(in oklab, var(--warn) 45%, transparent); }
+.zl-card--late { border-color: color-mix(in oklab, var(--alarm) 55%, transparent); }
+.zl-card--done, .zl-card--cancelled { opacity: .85; }
+.zl-card__head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.zl-card__text { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.zl-card__meta { margin: 0; }
+
+.zl-kind { display: inline-flex; align-items: center; gap: .35rem; padding: 2px .6rem; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; background: var(--wash); color: var(--ink-2); white-space: nowrap; }
+.zl-kind svg { width: 14px; height: 14px; }
+.zl-kind--sign { background: var(--review-wash); color: var(--review); }
+.zl-kind--send { background: color-mix(in oklab, var(--accent) 14%, var(--sheet)); color: var(--accent); }
+.zl-kind--pay { background: var(--warn-wash); color: var(--warn-ink); }
+.zl-dollar { font-weight: 800; font-size: 1em; line-height: 1; }
+.zl-proj { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
+
+.zl-timer { padding: 2px .6rem; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; background: var(--wash); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.zl-timer--warn { background: var(--warn-wash); color: var(--warn-ink); }
+.zl-timer--late { background: var(--alarm-wash); color: var(--alarm-ink); }
+.zl-timer--ok { color: var(--success); }
+.zl-nudge { font-size: var(--fs-xs); color: var(--alarm-ink); font-weight: 700; }
+
+.zl-refrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.zl-ref { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; padding: 3px .6rem; border-radius: 8px; background: var(--wash); color: var(--ink); text-decoration: none; font-size: var(--fs-sm); }
+.zl-ref svg { width: 14px; height: 14px; flex: none; }
+.zl-ref__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zl-dest { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-sm); }
+.zl-dest svg { width: 14px; height: 14px; color: var(--ink-3); }
+.zl-next { font-size: var(--fs-xs); color: var(--ink-3); display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.zl-result { display: grid; gap: .25rem; }
+
+.zl-pay { display: grid; gap: 2px; background: var(--wash); border-radius: 10px; padding: var(--space-2) var(--space-3); }
+.zl-pay__row { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); min-width: 0; }
+.zl-pay__k { width: 4.5rem; color: var(--ink-3); flex: none; }
+.zl-pay__v { flex: 1; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+
+.zl-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-1); }
+.zl-panel { display: grid; gap: var(--space-2); background: var(--wash); border-radius: 10px; padding: var(--space-3); }
+.zl-panel p { margin: 0; }
+
+/* Formularz */
+.zl-kinds { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.zl-kindchip { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; padding: 6px .9rem; border-radius: 999px; background: var(--wash); color: var(--ink-2); font-weight: 700; font-size: var(--fs-sm); }
+.zl-kindchip svg { width: 15px; height: 15px; }
+.zl-kindchip[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.zl-kindchip:focus-visible { box-shadow: var(--focus-ring); }
+.zl-src { display: grid; gap: var(--space-2); }
+.zl-src__box { display: flex; align-items: center; gap: var(--space-2); }
+.zl-paygrid { display: grid; gap: var(--space-2); grid-template-columns: 1fr 1fr; }
+.zl-paygrid > :nth-child(1), .zl-paygrid > :nth-child(3) { grid-column: 1 / -1; }
+.zl-sugg { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-top: var(--space-1); }
+.zl-chip { all: unset; cursor: pointer; padding: 2px .6rem; border-radius: 999px; background: var(--wash); font-size: var(--fs-xs); }
+.zl-chip:focus-visible { box-shadow: var(--focus-ring); }
+.zl-nextbox { display: grid; gap: var(--space-2); background: var(--wash); border-radius: 12px; padding: var(--space-3); }
+.zl-nextbox__head { display: flex; align-items: center; justify-content: space-between; }

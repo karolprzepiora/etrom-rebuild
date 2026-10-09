@@ -884,6 +884,39 @@ async function main() {
     await sleep(300);
     check('Dyrekcja widzi wyjazd w „Zespół dziś”', await evaluate('return /Lipnica/.test(document.querySelector("[data-fk=db-team]").textContent);'));
     await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { trips: [] }) }); }); return true;');
+    // ---- Zlecenia wewnętrzne ----
+    await go('#/zlecenia');
+    await sleep(400);
+    check('menu ma „Zlecenia” w grupie Start, ekran pusty', await evaluate('return !!document.querySelector("[data-screen=orders]") && !document.getElementById("view-orders").hidden && !document.querySelector("#view-orders .zl-card");'));
+    await click('[data-fk="zl-new"]');
+    await sleep(400);
+    await click('[data-kind="pay"]');
+    await sleep(300);
+    check('kategoria „Do opłacenia” ma symbol $ i pola przelewu', await evaluate('return document.querySelector("[data-kind=pay] .zl-dollar").textContent === "$" && !!document.querySelector("[data-fk=zf-pay]");'));
+    await click('[data-fk="zf-add-next"]');
+    await sleep(300);
+    await evaluate('const set = (id, v) => { document.getElementById(id).value = v; }; set("zf-text", "Opłata za pełnomocnictwo"); set("zf-who", "p-1"); set("zf-payee", "Urząd Miasta"); set("zf-account", "11 2222 3333 4444"); set("zf-amount", "17,00 zł"); set("zn-text", "Wyślij potwierdzenie do RZGW"); set("zn-who", "p-2"); set("zn-kind", "send"); return true;');
+    await evaluate('document.getElementById("order-form").querySelector("button[type=submit]").click(); return true;');
+    await sleep(500);
+    check('zlecenie z krokiem „potem” trafia do danych: otwarte + czekające',
+      (await state('s.workspace.orders.map(o => o.kind + ":" + o.status + ":" + o.assigneeId).join()')) === 'pay:open:p-1,send:waiting:p-2');
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
+    await sleep(500);
+    check('wykonawca widzi czerwony licznik w menu i kartę z danymi przelewu oraz „Potem”',
+      await evaluate('const c = document.querySelector("[data-screen=orders] .count"); return !c.hidden && c.textContent === "1" && !!document.querySelector("#view-orders .zl-card [data-fk=zl-pay]") && /Potem/.test(document.querySelector("#view-orders .zl-card").textContent) && !!document.querySelector("[data-fk=zl-timer]");'));
+    await go('#/zlecenia');
+    await sleep(300);
+    await click('[data-fk="zl-done"]');
+    await sleep(300);
+    await evaluate('document.getElementById("zl-ret-note").value = "Zapłacone"; return true;');
+    await click('[data-fk="zl-confirm"]');
+    await sleep(500);
+    check('zamknięcie samym potwierdzeniem uruchamia następny krok u kolejnej osoby',
+      (await state('s.workspace.orders.map(o => o.status).join()')) === 'done,open' && (await state('s.workspace.orders[0].result')) === null);
+    await evaluate('window.ETROM.app.actions.setMe("p-2"); return true;');
+    await sleep(500);
+    check('następna osoba widzi zlecenie „Do wysłania” u siebie', await evaluate('const cs = document.querySelectorAll("#view-orders .zl-card"); return cs.length === 1 && cs[0].dataset.kind === "send";'));
+    await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { orders: [] }) }); }); return true;');
     await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
     await go('#/projekty');
     await sleep(300);

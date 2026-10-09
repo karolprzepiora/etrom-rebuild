@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="styles/accounts.css">
   <link rel="stylesheet" href="styles/capsules.css">
   <link rel="stylesheet" href="styles/dashboard.css">
+  <link rel="stylesheet" href="styles/orders.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -146,6 +147,16 @@
             <div id="calendar-body"></div>
           </section>
 
+          <section class="view" id="view-orders" hidden aria-labelledby="orders-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="orders-title">Zlecenia</h1>
+                <p class="page-header__description" id="orders-summary"></p>
+              </div>
+            </header>
+            <div id="orders-body"></div>
+          </section>
+
           <section class="view" id="view-leave" hidden aria-labelledby="leave-title">
             <header class="page-header">
               <div class="page-header__main">
@@ -213,6 +224,7 @@
   <script src="src/core/team.js"></script>
   <script src="src/core/absences.js"></script>
   <script src="src/core/trips.js"></script>
+  <script src="src/core/orders.js"></script>
   <script src="src/core/ambient.js"></script>
   <script src="src/core/cases.js"></script>
   <script src="src/core/tasks.js"></script>
@@ -282,6 +294,7 @@
   <script src="src/ui/checklist.js"></script>
   <script src="src/ui/myWork.js"></script>
   <script src="src/ui/dashboard.js"></script>
+  <script src="src/ui/ordersScreen.js"></script>
   <script src="src/ui/inboxScreen.js"></script>
   <script src="src/ui/welcome.js"></script>
   <script src="src/ui/feedScreen.js"></script>

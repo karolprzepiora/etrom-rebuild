@@ -773,3 +773,9 @@ Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagr
 - **Pulpit** (`#/pulpit`, ekran startowy): hero z datą i numerem tygodnia, powitaniem, przyciskami i chipem wyjazdu; szklana karta pogody; pięć kafli nachodzących na hero (inne dla pracownika i Dyrekcji); środek „Ten tydzień” (te same sekcje co Moja praca), u Dyrekcji macierz zespołu na 5 dni roboczych i zdrowie projektów; prawa kolumna: reakcje lub akceptacje, stany wód, zespół dziś, Finanse (zapowiedź).
 - **Dane zewnętrzne** (pogoda, stany wód) pochodzą z `core/ambient.js` i są **przykładowe** (`sample:true`), wyraźnie podpisane kapsułą „przykładowe”. Podmiana źródła nie zmienia widoku.
 - **Wyjazdy** mają kolor `--trip` (morski zielono-niebieski): chip w Kalendarzu (`.cv-ev--trip`), pasek w Planie (`.pb-trip`), kapsuła na Pulpicie.
+
+## Zlecenia wewnętrzne (`styles/orders.css`, `src/ui/ordersScreen.js`)
+
+- Menu: „Zlecenia” w grupie Start, czerwony licznik = zlecenia czekające na zalogowaną osobę. Ekran `#/zlecenia` ma zakładki „Do mnie”, „Wysłane przeze mnie”, „Zrobione” oraz przycisk „Nowe zlecenie” (także Ctrl K).
+- Karta: kapsuła rodzaju (podpis = fiolet, wysyłka = akcent, opłata = bursztyn z symbolem **$**, inne = neutralna), kod projektu, kapsuła licznika (`.zl-timer`: neutralna < doby, bursztyn ≥ doby, czerwona ≥ 3 dni, po zamknięciu „zamknięte po X”), dokument, „Dokąd”, dane przelewu z przyciskami „kopiuj”, „Potem: …”. Wykonawca: „✔ Podpisane / Wysłane / Opłacone / Zrobione” (zwrot opcjonalny: plik, link albo samo potwierdzenie) i „Przekaż dalej”; zgłaszający: „Przypomnij” (tylko wyróżnia kartę, bez maili) i „Anuluj”.
+- Formularz w panelu bocznym (wariant A): chipy rodzaju, opis, pola zależne od rodzaju, dokument (plik/link), wykonawca z podpowiedzią z historii, projekt, opcjonalny krok „potem”.

@@ -62,6 +62,9 @@
     taskForm: null,
     absenceForm: null,
     tripForm: null,
+    orderForm: null,
+    orderPanel: null,
+    ordersView: { tab: 'mine' },
     leaveForm: null,
     leave: { tab: 'mine', view: 'cards', year: 0, sel: null, monthOffset: 0 },
     caseForm: null,
@@ -97,6 +100,7 @@
     if (parts[0] === 'kalendarz') return { name: 'calendar' };
     if (parts[0] === 'urlopy') return { name: 'leave' };
     if (parts[0] === 'pulpit') return { name: 'dashboard' };
+    if (parts[0] === 'zlecenia') return { name: 'orders' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
@@ -110,7 +114,7 @@
   }
 
   function screenOf(route) {
-    return route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'orders' ? 'orders' : route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -121,6 +125,7 @@
     if (route.name === 'calendar') return '#/kalendarz';
     if (route.name === 'leave') return '#/urlopy';
     if (route.name === 'dashboard') return '#/pulpit';
+    if (route.name === 'orders') return '#/zlecenia';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
@@ -203,7 +208,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'orders' ? 'orders' : screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -1962,6 +1967,81 @@
     Toast.show({ message: 'Usunięto wyjazd', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setTrips(function () { return before; }); } });
   }
 
+  /* ---------- Zlecenia wewnętrzne ---------- */
+  function setOrders(patch) {
+    store.set({ ordersView: Object.assign({}, store.getState().ordersView || {}, patch), orderPanel: null });
+  }
+
+  function setOrderPanel(panel) { store.set({ orderPanel: panel }); }
+
+  function setOrdersList(producer) {
+    updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, orders: producer(workspace.orders || []) }); });
+  }
+
+  function openOrder(projectId) {
+    var me = currentMe();
+    if (!me) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
+    var sug = E.Orders.suggestAssignee(store.getState().workspace.orders || [], 'sign', me);
+    store.set({ orderForm: { draft: { kind: 'sign', text: '', assigneeId: sug ? sug.personId : '', projectId: projectId == null ? null : projectId, doc: null, dest: '', pay: null, next: null }, errors: {} } });
+  }
+
+  function orderSteps(values) {
+    function step(s) {
+      var out = { kind: s.kind, text: s.text, assigneeId: s.assigneeId, doc: null, dest: '', pay: null };
+      return out;
+    }
+    var first = step(values);
+    first.doc = values.doc || null;
+    first.dest = values.kind === 'send' ? values.dest : '';
+    if (values.kind === 'pay') first.pay = values.pay;
+    var steps = [first];
+    if (values.next) { var second = step(values.next); second.dest = values.next.kind === 'send' ? values.next.dest : ''; steps.push(second); }
+    return steps;
+  }
+
+  function submitOrder(values) {
+    var form = store.getState().orderForm;
+    var me = currentMe();
+    if (!form || !me) return;
+    var res = E.Orders.create(store.getState().workspace.orders || [], { createdBy: me, projectId: values.projectId, steps: orderSteps(values) }, people(), new Date());
+    if (!res.valid) { store.set({ orderForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
+    setOrdersList(function () { return res.list; });
+    store.set({ orderForm: null });
+    Toast.show({ message: res.ids.length > 1 ? 'Wysłano zlecenia (łańcuch)' : 'Wysłano zlecenie', tone: 'success', timeout: 3000 });
+  }
+
+  function completeOrder(id, result, note) {
+    var me = currentMe();
+    var res = E.Orders.complete(store.getState().workspace.orders || [], id, me, result, note, people(), new Date());
+    if (!res.ok) { Toast.show({ message: 'Tego zlecenia nie możesz zamknąć.', tone: 'danger' }); return; }
+    setOrdersList(function () { return res.list; });
+    store.set({ orderPanel: null });
+    Toast.show({ message: res.nextId ? 'Zamknięte — następny krok ruszył' : 'Zamknięte', tone: 'success', timeout: 3000 });
+  }
+
+  function passOrder(id, toId) {
+    var res = E.Orders.reassign(store.getState().workspace.orders || [], id, currentMe(), toId, people());
+    if (!res.ok) return;
+    setOrdersList(function () { return res.list; });
+    store.set({ orderPanel: null });
+    Toast.show({ message: 'Przekazano dalej', tone: 'success', timeout: 3000 });
+  }
+
+  function nudgeOrder(id) {
+    var res = E.Orders.nudge(store.getState().workspace.orders || [], id, currentMe(), people(), new Date());
+    if (!res.ok) return;
+    setOrdersList(function () { return res.list; });
+    Toast.show({ message: 'Zlecenie wyróżnione u wykonawcy', tone: 'success', timeout: 2500 });
+  }
+
+  function cancelOrder(id) {
+    var before = store.getState().workspace.orders || [];
+    var res = E.Orders.cancel(before, id, currentMe(), people(), new Date());
+    if (!res.ok) return;
+    setOrdersList(function () { return res.list; });
+    Toast.show({ message: 'Anulowano zlecenie', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setOrdersList(function () { return before; }); } });
+  }
+
   /* ---------- Urlopy: wnioski, decyzje, opinie ---------- */
   function setLeave(patch) {
     store.set({ leave: Object.assign({}, store.getState().leave || {}, patch) });
@@ -3156,6 +3236,8 @@
       { label: 'Przejdź do karty czasu', icon: 'clock', meta: now(state.route.name === 'time'), keywords: 'czas godziny tydzień miesiąc eksport csv plan obciążenia', run: function () { goTo('time'); } },
       { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
+      { label: 'Przejdź do zleceń', icon: 'checklist', meta: now(state.route.name === 'orders'), keywords: 'zlecenia do podpisu wysłania opłacenia prośba', run: function () { goTo('orders'); } },
+      { label: 'Nowe zlecenie', icon: 'plus', keywords: 'zlecenie podpis wysyłka opłata poproś', run: function () { openOrder(); } },
       { label: 'Przejdź do pulpitu', icon: 'grid', meta: now(state.route.name === 'dashboard'), keywords: 'start pulpit strona główna', run: function () { goTo('dashboard'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia pisma skrzynka reakcje dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
@@ -3342,7 +3424,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
@@ -3743,6 +3825,12 @@
     D.patch(nodes.calendarBody, [screen.body]);
   }
 
+  function renderOrders(state) {
+    var screen = E.OrdersScreen.view(state, { actions: actions });
+    nodes.ordersSummary.textContent = screen.summary;
+    D.patch(nodes.ordersBody, [screen.body]);
+  }
+
   function renderLeave(state) {
     var screen = E.LeaveScreen.view(state, { actions: actions });
     nodes.leaveSummary.textContent = screen.summary;
@@ -3820,7 +3908,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.tripForm || state.leaveForm || state.caseForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.tripForm || state.orderForm || state.leaveForm || state.caseForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -3869,6 +3957,18 @@
         onCancel: function () { store.set({ tripForm: null }); },
         onDelete: current.draft.id && !current.readOnly ? function () { deleteTrip(current.draft.id); } : null
       }, { people: E.Trips.assignable(meT, state.workspace.people || [], state.workspace.projects || []).filter(function (p) { return p.active !== false; }), projects: projT });
+    } else if (current === state.orderForm) {
+      var meO = state.prefs.me;
+      var allO = state.workspace.orders || [];
+      var sugO = E.Orders.suggestAssignee(allO, current.draft.kind || 'sign', meO);
+      var sugP = sugO ? Team.findPerson(people(), sugO.personId) : null;
+      settings.title = 'Nowe zlecenie';
+      settings.subtitle = 'Wskaż, co i komu. Wykonawca zobaczy je w „Zleceniach”, a Ty zobaczysz, ile już czeka.';
+      settings.content = E.OrdersScreen.orderForm(current.draft, current.errors, {
+        onSubmit: submitOrder,
+        onCancel: function () { store.set({ orderForm: null }); },
+        onChange: function (draft) { store.set({ orderForm: Object.assign({}, store.getState().orderForm, { draft: draft, errors: {} }) }); }
+      }, { people: people().filter(function (p) { return p.active !== false; }), projects: (state.workspace.projects || []).filter(function (p) { return p.status !== 'done'; }), dests: E.Orders.recentDest(allO, 4), suggestedName: sugP && sugP.id !== current.draft.assigneeId ? Team.fullName(sugP) : (sugP && !current.draft.assigneeId ? Team.fullName(sugP) : '') });
     } else if (current === state.leaveForm) {
       var meL = Team.findPerson(people(), state.prefs.me);
       var mgmt = !!meL && E.Budget.isManagement(meL.id, people());
@@ -3921,8 +4021,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.tripForm || live.leaveForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, tripForm: null, leaveForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.tripForm || live.orderForm || live.leaveForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, tripForm: null, orderForm: null, leaveForm: null });
         }
       }
     }));
@@ -3939,6 +4039,7 @@
     nodes.views.calendar.hidden = route.name !== 'calendar';
     nodes.views.leave.hidden = route.name !== 'leave';
     E.Library.configure(state.workspace.library);
+    nodes.views.orders.hidden = route.name !== 'orders';
     nodes.views.dashboard.hidden = route.name !== 'dashboard';
     if (route.name !== 'dashboard' && nodes.dashboardBody.firstChild) D.clear(nodes.dashboardBody);
     nodes.views.mywork.hidden = route.name !== 'mywork';
@@ -3970,6 +4071,9 @@
     } else if (route.name === 'feed') {
       document.title = 'Aktualności · ETROM';
       renderFeed(state);
+    } else if (route.name === 'orders') {
+      document.title = 'Zlecenia · ETROM';
+      renderOrders(state);
     } else if (route.name === 'dashboard') {
       document.title = 'Pulpit · ETROM';
       renderDashboard(state);
@@ -4169,6 +4273,8 @@
     nodes.planBody = D.byId('plan-body');
     nodes.calendarSummary = D.byId('calendar-summary');
     nodes.calendarBody = D.byId('calendar-body');
+    nodes.ordersSummary = D.byId('orders-summary');
+    nodes.ordersBody = D.byId('orders-body');
     nodes.leaveSummary = D.byId('leave-summary');
     nodes.leaveBody = D.byId('leave-body');
     nodes.reviewSummary = D.byId('review-summary');
@@ -4186,7 +4292,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');
