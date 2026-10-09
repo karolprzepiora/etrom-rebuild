@@ -25,9 +25,14 @@
       var items = [
         { label: 'Edytuj wpis', icon: 'edit', onSelect: function () { actions.editMail(entry.id); } }
       ];
-      if (entry.direction === 'in' && !Mail.linkedTasks(project, entry.id, [], new Date()).length) items.push({ label: entry.needsAction ? 'Zdejmij ze Skrzynki' : 'Dodaj do Skrzynki (wymaga reakcji)', icon: 'flag', onSelect: function () { actions.toggleMailAction(entry.id); } });
-      if (entry.direction === 'in') items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
-      if (entry.direction === 'in') items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
+      if (entry.direction === 'in') {
+        items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
+        items.push({ label: 'Do akt', onSelect: function () { actions.mailDecide(entry.id, 'file'); } });
+        items.push({ label: 'Wymaga odpowiedzi…', icon: 'flag', onSelect: function () { actions.mailDecide(entry.id, 'reply'); } });
+        items.push({ label: 'Dołącz do sprawy…', onSelect: function () { actions.mailDecide(entry.id, 'case'); } });
+        items.push({ label: 'Przekaż…', onSelect: function () { actions.mailDecide(entry.id, 'reassign'); } });
+        items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
+      }
       items.push({ type: 'separator' });
       items.push({ label: 'Usuń wpis', icon: 'trash', tone: 'danger', onSelect: function () { actions.deleteMail(entry.id); } });
       return { label: 'Działania pisma', align: 'end', items: items };
@@ -74,7 +79,8 @@
         ])
       ]),
       UI.badge(Mail.KINDS[entry.kind], 'neutral'),
-      entry.needsAction ? UI.badge('Wymaga reakcji', 'warning', { icon: 'flag' }) : D.el('span'),
+      incoming ? UI.badge(Mail.incomingState(entry, list, project, ctx.state.workspace.entries, now).label, Mail.incomingState(entry, list, project, ctx.state.workspace.entries, now).tone, { icon: entry.needsAction ? 'flag' : null }) : D.el('span'),
+      (entry.files || []).length ? D.el('span', { class: 'mrow2__files t-num', attrs: { 'data-tooltip': entry.files.map(function (f) { return f.name; }).join('\n') }, text: String(entry.files.length) + ' plik.' }) : D.el('span'),
       rowMenu(entry, project, ctx.actions),
       taskLine(entry, project, ctx, now)
     ]);
@@ -95,7 +101,7 @@
       ]),
       D.el('div', { class: 'section__tools' }, [
         UI.button({ label: 'Pismo wychodzące', icon: 'arrowUp', variant: 'secondary', size: 'sm', attrs: { id: 'mail-add-out' }, onClick: function () { ctx.actions.addMail(project.id, 'out'); } }),
-        UI.button({ label: 'Pismo przychodzące', icon: 'arrowDown', variant: 'primary', size: 'sm', attrs: { id: 'mail-add-in' }, onClick: function () { ctx.actions.addMail(project.id, 'in'); } })
+        UI.button({ label: 'Zarejestruj pismo', icon: 'upload', variant: 'primary', size: 'sm', attrs: { id: 'mail-add-in' }, onClick: function () { ctx.actions.addMail(project.id, 'in'); } })
       ])
     ]);
 
@@ -155,7 +161,13 @@
     var letterDate = UI.input({ id: 'ml-letter', type: 'date', value: d.letterDate, error: er.letterDate });
     var summary = UI.textarea({ id: 'ml-summary', rows: 4, value: d.summary, placeholder: 'O co chodzi, czego pismo wymaga (nieobowiązkowe)', attrs: { maxlength: '2000' } });
     var where = UI.input({ id: 'ml-where', value: d.where, maxlength: 300, placeholder: 'np. segregator 3 · folder na dysku' });
-    var needs = incoming ? UI.checkbox({ id: 'ml-needs', checked: !!d.needsAction, label: 'Wymaga reakcji', hint: 'Zwykle zostaw odznaczone. Zaznaczone pismo trafia do Skrzynki, dopóki nie zrobisz z niego zadania.' }) : null;
+    var owner = incoming ? UI.select({ id: 'ml-owner', value: d.ownerId || '', options: spec.owners || [{ value: '', label: 'Lider projektu' }] }) : null;
+    var due = incoming ? UI.input({ id: 'ml-due', type: 'date', value: d.responseDue || '', error: er.responseDue }) : null;
+    var caseRef = incoming ? UI.input({ id: 'ml-caseref', value: d.caseRef, maxlength: 120, placeholder: 'np. WP.ZUZ.1.4210.5.2026' }) : null;
+    var project = spec.projects && spec.projects.length > 1 && spec.mode === 'new' ? UI.select({ id: 'ml-project', value: String(d.projectId || spec.projectId || ''), options: spec.projects }) : null;
+    var files = (d.files || []).slice();
+    var picker = D.el('input', { attrs: { type: 'file', multiple: 'multiple', id: 'ml-files', 'data-fk': 'mail-files', hidden: 'hidden' } });
+    var split = incoming && spec.mode === 'new' && files.length > 1 ? UI.checkbox({ id: 'ml-split', checked: !!d.split, label: 'Zarejestruj każdy plik jako osobne pismo', hint: 'Domyślnie wszystkie pliki to jedno pismo z załącznikami.' }) : null;
     var replyTo = UI.select({
       id: 'ml-replyto', value: d.replyTo || '',
       options: [{ value: '', label: '— to nie jest odpowiedź —' }].concat(spec.replies || [])
@@ -167,14 +179,24 @@
         id: d.id, direction: direction.value, kind: kind.value, counterparty: counterparty.value, subject: subject.value,
         number: number.value, registeredDate: registered.value, letterDate: letterDate.value,
         summary: summary.value, where: where.value,
-        needsAction: incoming && needs ? needs.querySelector('input').checked : false,
-        replyTo: replyTo.value
+        needsAction: spec.mode === 'new' ? incoming : !!d.needsAction,
+        replyTo: replyTo.value,
+        files: files, split: split ? split.querySelector('input').checked : false,
+        ownerId: owner ? owner.value : '', responseDue: due ? due.value : '', caseRef: caseRef ? caseRef.value : '',
+        projectId: project ? project.value : d.projectId, decision: d.decision, caseId: d.caseId, history: d.history
       };
     };
+    picker.addEventListener('change', function () {
+      var picked = Array.prototype.map.call(picker.files || [], function (f) { return { name: f.name, size: f.size, location: where.value || '' }; });
+      var draft = fresh();
+      draft.files = files.concat(picked);
+      handlers.onRedraft(draft);
+    });
     direction.addEventListener('change', function () { handlers.onRedraft(fresh()); });
+    if (project) project.addEventListener('change', function () { var draft = fresh(); draft.ownerId = ''; handlers.onRedraft(draft); });
     return E.Dialog.drawerForm({
       id: 'mail-form',
-      submitLabel: spec.mode === 'edit' ? 'Zapisz zmiany' : 'Wpisz do dziennika',
+      submitLabel: spec.mode === 'edit' ? 'Zapisz zmiany' : (incoming ? 'Zapisz pismo' : 'Wpisz do dziennika'),
       onCancel: handlers.onCancel,
       onSubmit: function () { handlers.onSubmit(fresh()); },
       body: [
@@ -182,10 +204,23 @@
         UI.field({ id: 'ml-kind', label: 'Rodzaj pisma', required: true, control: kind, error: er.kind }),
         UI.field({ id: 'ml-subject', label: 'Temat', required: true, control: subject, error: er.subject }),
         UI.field({ id: 'ml-party', label: incoming ? 'Nadawca' : 'Adresat', required: true, control: counterparty, error: er.counterparty }),
-        UI.field({ id: 'ml-number', label: 'Znak pisma', optional: true, control: number, error: er.number, hint: 'Numer sprawy nadany przez urząd albo przez nas.' }),
+        UI.field({ id: 'ml-number', label: incoming ? 'Znak pisma nadawcy' : 'Znak pisma', optional: true, control: number, error: er.number, hint: 'Numer nadany przez urząd albo przez nas.' }),
+        incoming ? UI.field({ id: 'ml-caseref', label: 'Znak sprawy organu', optional: true, control: caseRef, error: er.caseRef, hint: 'Ten sam znak w kolejnych pismach pomoże dołączyć je do sprawy.' }) : null,
         UI.field({ id: 'ml-registered', label: incoming ? 'Data wpływu' : 'Data wysłania', required: true, control: registered, error: er.registeredDate }),
+        incoming ? UI.field({ id: 'ml-owner', label: 'Kto zajmie się pismem', control: owner, hint: 'Domyślnie lider projektu. Pismo trafi do Skrzynki tej osoby.' }) : null,
+        incoming ? UI.field({ id: 'ml-due', label: 'Termin odpowiedzi', optional: true, control: due, error: er.responseDue, hint: 'Termin dla organu. Termin zadania ustawisz osobno przy decyzji.' }) : null,
         UI.field({ id: 'ml-letter', label: 'Data pisma', optional: true, control: letterDate, error: er.letterDate, hint: 'Jeśli różni się od daty w dzienniku.' }),
-        needs,
+        project ? UI.field({ id: 'ml-project', label: 'Projekt', required: true, control: project }) : null,
+        incoming ? D.el('div', { class: 'mflow__drop' }, [
+          D.el('div', { class: 'mflow__drop-head' }, [
+            D.el('strong', { text: 'Pliki pisma' }),
+            UI.button({ label: files.length ? 'Dodaj kolejne pliki' : 'Wybierz pliki', icon: 'upload', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'mail-pick' }, onClick: function () { picker.click(); } })
+          ]),
+          picker,
+          E.MailFlow.fileList(files, function (i) { var draft = fresh(); draft.files = files.filter(function (_, j) { return j !== i; }); handlers.onRedraft(draft); }),
+          D.el('p', { class: 'form__note', text: files.length ? 'Wszystkie pliki to jedno pismo: pierwszy jest pismem głównym, reszta załącznikami. Program zapisuje nazwy i rozmiary; sam plik zostaje tam, gdzie go trzymasz (wspólny magazyn plików dojdzie później).' : 'Możesz dodać kilka plików naraz: pismo i jego załączniki. Zapisujemy nazwy i rozmiary, sam plik zostaje u Ciebie.' }),
+          split
+        ]) : null,
         (spec.replies && spec.replies.length) ? UI.field({ id: 'ml-replyto', label: incoming ? 'To jest odpowiedź na nasze pismo' : 'To jest odpowiedź na pismo', optional: true, control: replyTo, error: er.replyTo }) : null,
         UI.field({ id: 'ml-summary', label: 'Streszczenie', optional: true, control: summary, error: er.summary }),
         UI.field({ id: 'ml-where', label: 'Gdzie jest oryginał', optional: true, control: where, hint: 'Segregator, folder na dysku. Załączniki w programie dojdą później.' })

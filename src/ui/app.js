@@ -69,6 +69,7 @@
     leaveForm: null,
     leave: { tab: 'mine', view: 'cards', year: 0, sel: null, monthOffset: 0 },
     caseForm: null,
+    mailStep: null,
     expandedStages: {},
     showDone: {},
     stageGroup: false,
@@ -920,7 +921,7 @@
       pendingFlash = { projectId: form.projectId, taskId: created.id };
       if (form.caseId) setCases(function (list) { return Cases.addEvent(list, form.caseId, { kind: 'letter', taskId: created.id, note: created.name, by: currentMe() || '' }, dayNow()); });
       // Pismo przerobione na zadanie przestaje wymagać reakcji: sprawę prowadzi zadanie.
-      if (created.mailId) setMail(function (current) { return current.map(function (e) { return e.id === created.mailId ? Object.assign({}, e, { needsAction: false }) : e; }); });
+      if (created.mailId) setMail(function (current) { return current.map(function (e) { return e.id === created.mailId ? Object.assign({}, e, { needsAction: false, decision: e.direction === 'in' ? (e.decision && e.decision !== 'reply' ? e.decision : 'reply') : e.decision }) : e; }); });
       mapStage(form.projectId, form.stageId, function (current) {
         return Object.assign({}, current, { tasks: (current.tasks || []).concat([created]) });
       });
@@ -1007,9 +1008,29 @@
     if (!form) return;
     var list = mailList();
     var meta = { personId: currentMe() || '', now: new Date() };
+    var targetProject = values.id ? form.projectId : (findProject(values.projectId) ? findProject(values.projectId).id : form.projectId);
+    if (!values.id && values.split && (values.files || []).length > 1) {
+      // Każdy plik jako osobne pismo: te same pola, jeden plik w każdym.
+      var acc = list;
+      var firstErr = null;
+      values.files.forEach(function (file) {
+        if (firstErr) return;
+        var one = Mail.create(acc, targetProject, Object.assign({}, values, { files: [file], split: false }), meta);
+        if (!one.valid) firstErr = one.errors; else acc = one.entries.map(function (e) { return e === one.entry ? Mail.withRegistered(e, meta) : e; });
+      });
+      if (firstErr) { store.set({ mailForm: Object.assign({}, form, { draft: values, errors: firstErr }) }); return; }
+      setMail(function () { return acc; });
+      store.set({ mailForm: null });
+      Toast.show({ message: 'Zarejestrowano ' + values.files.length + ' osobne pisma.', tone: 'success', timeout: 4000 });
+      return;
+    }
     var result = values.id
       ? Mail.update(list, values.id, values, meta)
-      : Mail.create(list, form.projectId, values, meta);
+      : Mail.create(list, targetProject, values, meta);
+    if (result.valid && !values.id) {
+      result.entry = Mail.withRegistered(result.entry, meta);
+      result.entries = result.entries.map(function (e) { return e.id === result.entry.id ? result.entry : e; });
+    }
     if (!result.valid) {
       store.set({ mailForm: Object.assign({}, form, { draft: values, errors: result.errors }) });
       return;
@@ -1029,6 +1050,78 @@
     } else {
       Toast.show({ message: message, tone: 'success', timeout: 3500 });
     }
+  }
+
+  function mailOwnerOptions(projectId, plain) {
+    var project = findProject(projectId);
+    if (!project) return [{ value: '', label: 'Lider projektu' }];
+    var roster = projectRoster(project).map(function (pid) {
+      var person = Team.findPerson(people(), pid);
+      return { value: pid, label: person ? Team.fullName(person) : pid };
+    });
+    var lead = Mail.ownerOf({}, project);
+    var leadPerson = lead ? Team.findPerson(people(), lead) : null;
+    return plain ? roster : [{ value: '', label: 'Lider projektu' + (leadPerson ? ' (' + Team.fullName(leadPerson) + ')' : '') }].concat(roster);
+  }
+
+  /** Decyzja o pismie: „do akt” i „niepotrzebna” od razu, reszta przez krótki formularz. */
+  function mailDecide(id, choice) {
+    var entry = mailList().filter(function (e) { return e.id === id; })[0];
+    if (!entry || entry.direction !== 'in') return;
+    var meta = { personId: currentMe() || '', now: new Date() };
+    if (choice === 'file' || choice === 'none') {
+      var done = Mail.decide(mailList(), id, choice, {}, meta);
+      if (done.valid) setMail(function () { return done.entries; });
+      Toast.show({ message: choice === 'file' ? 'Pismo ' + entry.regNo + ' poszło do akt.' : 'Pismo ' + entry.regNo + ': odpowiedź niepotrzebna.', tone: 'success', timeout: 3500 });
+      return;
+    }
+    var draft = {};
+    var suggested = false;
+    if (choice === 'reply') draft = { responseDue: entry.responseDue || '', taskDeadline: '' };
+    if (choice === 'reassign') draft = { ownerId: Mail.ownerOf(entry, findProject(entry.projectId)) };
+    if (choice === 'case') {
+      var party = String(entry.counterparty || '').trim().toLowerCase();
+      var match = caseList().filter(function (c) { return c.projectId === entry.projectId && c.status === 'open'; })
+        .filter(function (c) { return (c.org || '').trim().toLowerCase() === party || (entry.caseRef && (c.name || '').toLowerCase().indexOf(String(entry.caseRef).toLowerCase()) >= 0); })[0];
+      if (!caseList().some(function (c) { return c.projectId === entry.projectId && c.status === 'open'; })) {
+        Toast.show({ message: 'Projekt nie ma sprawy w toku. Załóż sprawę na liście zadań albo wybierz inną decyzję.', tone: 'info', timeout: 5000 });
+        return;
+      }
+      draft = { caseId: match ? match.id : '' };
+      suggested = !!match;
+    }
+    store.set({ mailStep: { kind: choice, id: id, draft: draft, errors: {}, suggested: suggested } });
+  }
+
+  function submitMailStep(values) {
+    var step = store.getState().mailStep;
+    if (!step) return;
+    var entry = mailList().filter(function (e) { return e.id === step.id; })[0];
+    if (!entry) { store.set({ mailStep: null }); return; }
+    var meta = { personId: currentMe() || '', now: new Date() };
+    var res = Mail.decide(mailList(), step.id, step.kind, values, meta);
+    if (!res.valid) { store.set({ mailStep: Object.assign({}, step, { draft: values, errors: res.errors }) }); return; }
+    setMail(function () { return res.entries; });
+    // Przy odpowiedzi panel zamienia się od razu w formularz zadania (osobne zamknięcie panelu wyczyściłoby nowy formularz).
+    if (step.kind !== 'reply') store.set({ mailStep: null });
+    if (step.kind === 'reply') {
+      Toast.show({ message: 'Zapisano termin odpowiedzi. Uzupełnij zadanie.', tone: 'success', timeout: 3000 });
+      mailToTask(step.id, { deadline: values.taskDeadline });
+    } else if (step.kind === 'case') {
+      setCases(function (list) { return Cases.addEvent(list, values.caseId, { kind: 'letter', note: entry.regNo + ': ' + entry.subject, by: currentMe() || '' }, dayNow()); });
+      Toast.show({ message: 'Pismo ' + entry.regNo + ' dołączone do sprawy.', tone: 'success', timeout: 3500 });
+    } else {
+      Toast.show({ message: 'Pismo ' + entry.regNo + ' przekazane.', tone: 'success', timeout: 3500 });
+    }
+  }
+
+  /** Rejestracja pisma z dowolnego miejsca: projekt wybiera się w formularzu (domyślnie pierwszy aktywny). */
+  function registerMail(files) {
+    var open = store.getState().workspace.projects.filter(function (p) { return p.status !== 'done'; });
+    if (!open.length) { Toast.show({ message: 'Najpierw załóż projekt, do którego trafi pismo.', tone: 'info', timeout: 4000 }); return; }
+    var route = store.getState().route;
+    var current = route && route.name === 'project' ? open.filter(function (p) { return String(p.id) === String(route.projectId); })[0] : null;
+    openAddMail((current || open[0]).id, 'in', { files: files || [] });
   }
 
   function toggleMailAction(id) {
@@ -1079,7 +1172,7 @@
 
   /** Zadanie z terminem odpowiedzi: w pierwszym etapie w toku (albo pierwszym), przypisane do lidera. */
   /** Otwiera formularz zadania wypełniony danymi pisma; zadanie zapamięta pismo (task.mailId). */
-  function mailToTask(id) {
+  function mailToTask(id, preset) {
     var entry = mailList().filter(function (e) { return e.id === id; })[0];
     var project = entry && findProject(entry.projectId);
     if (!project) return;
@@ -1087,13 +1180,14 @@
     var stage = project.stages.filter(function (s) { return s.status === 'working'; })[0]
       || project.stages.filter(function (s) { return s.status !== 'done'; })[0] || project.stages[0];
     var allowed = projectRoster(project);
-    var assignees = project.team && project.team.leader && allowed.indexOf(project.team.leader) >= 0 ? [project.team.leader] : [];
+    var ownerId = Mail.ownerOf(entry, project);
+    var assignees = ownerId && allowed.indexOf(ownerId) >= 0 ? [ownerId] : [];
     var verb = entry.direction === 'in' ? 'Odpowiedź na pismo ' : 'Pismo ';
-    store.set({ taskForm: {
+    store.set({ mailStep: null, taskForm: {
       projectId: project.id, stageId: stage.id, fromMail: { id: entry.id, regNo: entry.regNo, subject: entry.subject, counterparty: entry.counterparty },
       draft: {
         name: verb + entry.regNo + ': ' + entry.subject,
-        deadline: '', important: entry.kind === 'summons',
+        deadline: preset && preset.deadline ? preset.deadline + 'T16:00' : '', important: entry.kind === 'summons',
         description: (entry.direction === 'in' ? 'Pismo od: ' : 'Pismo do: ') + entry.counterparty + (entry.number ? ' (' + entry.number + ')' : '') + '.',
         assignees: assignees, mailId: entry.id, stageId: stage.id
       },
@@ -3282,6 +3376,7 @@
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
       { label: 'Przejdź do zleceń', icon: 'checklist', meta: now(state.route.name === 'orders'), keywords: 'zlecenia do podpisu wysłania opłacenia prośba', run: function () { goTo('orders'); } },
       { label: 'Nowe zlecenie', icon: 'plus', keywords: 'zlecenie podpis wysyłka opłata poproś', run: function () { openOrder(); } },
+      { label: 'Zarejestruj pismo', icon: 'upload', keywords: 'pismo korespondencja wpływ e-doręczenia wgraj plik', run: function () { registerMail(); } },
       { label: 'Przejdź do pulpitu', icon: 'grid', meta: now(state.route.name === 'dashboard'), keywords: 'start pulpit strona główna', run: function () { goTo('dashboard'); } },
       { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'skrzynka czeka na mnie zatwierdzenia zlecenia wnioski urlopowe pisma reakcje decyzje', run: function () { goTo('inbox'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania dziś termin tydzień po terminie', run: function () { goTo('mywork'); } },
@@ -3473,7 +3568,9 @@
     toggleMailAction: toggleMailAction,
     setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setAbsenceVisibility: setAbsenceVisibility, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
-    mailTask: mailToTask,
+    mailTask: function (id) { mailToTask(id); },
+    mailDecide: mailDecide,
+    registerMail: registerMail,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
     cyclePart: cycleTaskPart,
     meId: currentMe,
@@ -3961,7 +4058,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.tripForm || state.orderForm || state.leaveForm || state.caseForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.tripForm || state.orderForm || state.leaveForm || state.caseForm || state.mailStep || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -4034,13 +4131,26 @@
       settings.title = 'Sprawa w toku';
       settings.subtitle = 'Wniosek złożony lub materiał zamówiony: sprawa zostaje widoczna z licznikiem dni, aż ją zakończysz.';
       settings.content = E.CaseUI.form(current.draft, current.errors, { onSubmit: submitCase, onCancel: function () { store.set({ caseForm: null }); }, onDraft: function (draft) { store.set({ caseForm: Object.assign({}, current, { draft: draft, errors: {} }) }); }, nameFromTask: caseNameFromTask }, state.workspace.projects.filter(function (p) { return p.status !== 'done'; }), Model);
+    } else if (current === state.mailStep) {
+      var stepEntry = mailList().filter(function (e) { return e.id === current.id; })[0];
+      var stepProject = stepEntry && findProject(stepEntry.projectId);
+      settings.title = current.kind === 'reply' ? 'Wymaga odpowiedzi' : (current.kind === 'case' ? 'Dołącz do sprawy' : 'Przekaż pismo');
+      settings.subtitle = stepProject ? stepProject.code + ' · ' + stepProject.name : '';
+      settings.content = stepEntry ? E.MailFlow.stepForm({
+        kind: current.kind, entry: stepEntry, draft: current.draft, errors: current.errors,
+        suggested: !!current.suggested,
+        cases: caseList().filter(function (c) { return c.projectId === stepEntry.projectId && c.status === 'open'; }),
+        people: mailOwnerOptions(stepEntry.projectId, true)
+      }, { onSubmit: submitMailStep, onCancel: function () { store.set({ mailStep: null }); } }) : D.el('div');
     } else if (current === state.mailForm) {
       var mailProject = findProject(current.projectId);
       settings.title = current.mode === 'edit' ? 'Edytuj wpis w dzienniku' : (current.draft.direction === 'out' ? 'Pismo wychodzące' : 'Pismo przychodzące');
       settings.subtitle = mailProject ? mailProject.code + ' · ' + mailProject.name : '';
       settings.content = E.MailTab.mailForm({
         mode: current.mode, draft: current.draft, errors: current.errors, locked: current.locked,
-        replies: mailReplyOptions(current.projectId, current.draft.direction, current.draft.id)
+        replies: mailReplyOptions(current.projectId, current.draft.direction, current.draft.id),
+        owners: mailOwnerOptions(current.draft.projectId || current.projectId), projectId: current.projectId,
+        projects: state.workspace.projects.filter(function (p) { return p.status !== 'done'; }).map(function (p) { return { value: String(p.id), label: p.code + ' · ' + p.name }; })
       }, {
         onSubmit: submitMail,
         onRedraft: function (draft) { store.set({ mailForm: Object.assign({}, current, { draft: draft, errors: {} }) }); },
@@ -4074,8 +4184,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.tripForm || live.orderForm || live.leaveForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, tripForm: null, orderForm: null, leaveForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.tripForm || live.orderForm || live.leaveForm || live.mailStep) {
+          store.set({ mailStep: null, form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, tripForm: null, orderForm: null, leaveForm: null });
         }
       }
     }));
@@ -4347,6 +4457,15 @@
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
     nodes.inboxSummary = D.byId('inbox-summary');
+    D.byId('inbox-register').addEventListener('click', function () { registerMail(); });
+    // Plik przeciągnięty na okno otwiera rejestrację pisma z jego nazwą.
+    window.addEventListener('dragover', function (ev) { if (ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') >= 0) ev.preventDefault(); });
+    window.addEventListener('drop', function (ev) {
+      var dropped = ev.dataTransfer && ev.dataTransfer.files;
+      if (!dropped || !dropped.length) return;
+      ev.preventDefault();
+      registerMail(Array.prototype.map.call(dropped, function (f) { return { name: f.name, size: f.size, location: '' }; }));
+    });
     nodes.inboxBody = D.byId('inbox-body');
     nodes.dashboardBody = D.byId('dashboard-body');
     nodes.feedSummary = D.byId('feed-summary');

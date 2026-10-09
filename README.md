@@ -148,7 +148,8 @@ src/ui/                 warstwa widoku
   projectDetail.js      szczegóły projektu z zakładkami
   stageList.js          etapy
   taskList.js           zadania
-  mailTab.js            zakładka Korespondencja i formularz pisma
+  mailTab.js            zakładka Korespondencja i formularz pisma (pliki, właściciel, termin odpowiedzi)
+  mailFlow.js           decyzje o piśmie ze Skrzynki: termin odpowiedzi i zadania, sprawa, przekazanie
   teamScreen.js         ekran Zespołu
   myWork.js             ekran Moja praca
   inboxScreen.js        sekcja „Wymaga reakcji” w Mojej pracy
@@ -168,8 +169,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 461 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 410 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 464 testy logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 416 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

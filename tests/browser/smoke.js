@@ -1741,7 +1741,7 @@ async function main() {
       && (await evaluate('return /P\\/\\d{4}\\/001/.test(document.querySelector(".mail-list").textContent);'))
       && (await evaluate('return !!document.querySelector(".detail__tabs") && /Korespondencja/.test(document.querySelector(".detail__tabs").textContent);')));
     check('pismo oznaczone „Wymaga reakcji” ma znaczek, a dziennik nie pokazuje terminów odpowiedzi',
-      await evaluate('return !!document.querySelector(".mrow2 .badge") && /Wymaga reakcji/.test(document.querySelector(".mail-list").textContent) && !/po terminie|czeka na odpowied/i.test(document.querySelector(".mail-list").textContent);'));
+      await evaluate('return !!document.querySelector(".mrow2 .badge") && /Nowe/.test(document.querySelector(".mail-list").textContent) && !/po terminie|czeka na odpowied/i.test(document.querySelector(".mail-list").textContent);'));
     await click('#mail-add-in');
     await sleep(450);
     check('„Pismo przychodzące” otwiera formularz w panelu bocznym',
@@ -1758,8 +1758,8 @@ async function main() {
       && !(await evaluate('return !!document.querySelector("#mail-form");')));
     await evaluate('[...document.querySelectorAll(".mail-filters .segmented__btn")].find(b => /Wymaga reakcji/.test(b.textContent)).click(); return true;');
     await sleep(300);
-    check('filtr „Wymaga reakcji” zostawia tylko oznaczone pisma',
-      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 2);
+    check('filtr „Wymaga reakcji” zostawia pisma czekające na decyzję (także świeżo zarejestrowane)',
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 3);
     await evaluate('window.ETROM.app.actions.setMailView({ waiting: false, direction: "all", query: "" }); return true;');
     await sleep(250);
     await evaluate('window.ETROM.app.actions.replyMail(' + JSON.stringify(await state('s.workspace.mail.filter(m => m.projectId === ' + mailPid + ' && m.direction === "in" && m.needsAction)[0].id')) + '); return true;');
@@ -1924,8 +1924,8 @@ async function main() {
     await sleep(500);
     check('Skrzynka: pozycje mają dymki „dlaczego to widzę”, a na ekranie nie ma tekstów objaśniających',
       await evaluate('return !document.querySelector(".ibx__intro, .ibx__why") && [...document.querySelectorAll("#view-inbox .ibx__row .ibx__info")].every(n => (n.getAttribute("data-tooltip") || "").length > 20) && !!document.querySelector("#view-inbox .ibx__row .ibx__info");'));
-    check('Skrzynka: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
-      await evaluate('const r = document.querySelector(".ibx__row[data-kind=mail]"); return !!r && !!r.querySelector("[data-fk^=inbox-mailtask-]") && !!r.querySelector("[data-fk^=inbox-reply-]");'));
+    check('Skrzynka: nowe pismo ma cztery decyzje: do akt, wymaga odpowiedzi, dołącz do sprawy, przekaż',
+      await evaluate('const r = document.querySelector(".ibx__row[data-kind=mail]"); return !!r && ["file", "needsreply", "tocase", "pass"].every(k => !!r.querySelector("[data-fk^=inbox-" + k + "-]"));'));
     const code01 = await projectId('2601');
     await go('#/projekty/' + code01 + '/korespondencja');
     await sleep(500);
@@ -1956,17 +1956,57 @@ async function main() {
     await sleep(400);
     check('po zamknięciu zadanie z pisma ma status „zakończone”',
       (await state('(s.workspace.projects.find(p => p.code === "2601").stages.flatMap(g => g.tasks).find(t => t.name.includes("smoke")) || {}).status')) === 'done');
+
+    /* 38h. Wpływ pisma: rejestracja z plikami, decyzje w Skrzynce */
+    await go('#/skrzynka');
+    await sleep(400);
+    await click('#inbox-register');
+    await sleep(450);
+    await evaluate('const p = document.getElementById("ml-project"); p.value = "' + mailPid + '"; p.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(350);
+    await evaluate('const dt = new DataTransfer(); dt.items.add(new File(["a"], "wezwanie.pdf")); dt.items.add(new File(["bb"], "zalacznik-1.pdf")); const i = document.getElementById("ml-files"); i.files = dt.files; i.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(350);
+    check('dwa pliki dodane naraz tworzą jedno pismo: pierwszy główny, drugi załącznik',
+      await evaluate('const l = [...document.querySelectorAll(".mflow__file")]; return l.length === 2 && /pismo główne/.test(l[0].textContent) && /załącznik/.test(l[1].textContent) && !!document.getElementById("ml-split");'));
+    await evaluate('const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }; set("ml-subject", "Wezwanie do uzupełnienia (smoke wpływ)"); set("ml-party", "RZGW Kraków"); set("ml-due", "2099-01-20"); document.querySelector("#mail-form").requestSubmit(); return true;');
+    await sleep(500);
+    const flowId = await state('(s.workspace.mail.find(m => m.subject.includes("smoke wpływ")) || {}).id');
+    check('pismo zapisuje 2 pliki, termin odpowiedzi, historię i trafia do Skrzynki lidera',
+      (await state('(s.workspace.mail.find(m => m.subject.includes("smoke wpływ")) || {files: []}).files.length')) === 2
+      && (await state('(s.workspace.mail.find(m => m.subject.includes("smoke wpływ")) || {}).responseDue')) === '2099-01-20'
+      && (await state('(s.workspace.mail.find(m => m.subject.includes("smoke wpływ")) || {history: []}).history.length')) >= 1
+      && (await evaluate('return !!document.querySelector("#view-inbox [data-inbox-key$=\\":' + flowId + '\\"]");')));
+    await click('[data-inbox-key$=":' + flowId + '"] [data-fk^=inbox-needsreply-]');
+    await sleep(450);
+    check('„Wymaga odpowiedzi” pyta o termin odpowiedzi i osobny termin zadania',
+      await evaluate('return !!document.getElementById("mf-due") && !!document.getElementById("mf-task") && !!document.querySelector("[data-fk=mflow-chip-task3]");'));
+    await click('[data-fk=mflow-chip-task3]');
+    await evaluate('document.querySelector("#mail-step").requestSubmit(); return true;');
+    await sleep(550);
+    check('po zapisaniu terminu otwiera się zadanie z terminem krótszym o 3 dni',
+      await evaluate('const d = document.getElementById("tk-deadline"); return !!d && d.value === "2099-01-17T16:00" && /Odpowiedź na pismo/.test(document.getElementById("tk-name").value);'));
+    await evaluate('document.getElementById("task-form").requestSubmit(); return true;');
+    await sleep(500);
+    await go('#/skrzynka');
+    await sleep(400);
+    check('pismo z zadaniem w toku znika ze Skrzynki, a jego stan to „Odpowiedź w toku”',
+      !(await evaluate('return !!document.querySelector("[data-inbox-key$=\\":' + flowId + '\\"]");'))
+      && (await evaluate('return window.ETROM.Mail.incomingState(window.ETROM.app.store.getState().workspace.mail.find(m => m.id === "' + flowId + '"), window.ETROM.app.store.getState().workspace.mail, window.ETROM.app.store.getState().workspace.projects.find(p => p.code === "2601"), [], new Date()).state;')) === 'inprogress');
+    await evaluate('window.ETROM.app.actions.mailDecide("' + flowId + '", "file"); return true;');
+    await sleep(300);
+    check('„Do akt” zapisuje decyzję w historii pisma',
+      (await state('(s.workspace.mail.find(m => m.id === "' + flowId + '") || {}).decision')) === 'filed');
     /* Formularz pisma: zwykły wpis; „Wymaga reakcji” tylko na życzenie */
     await go('#/projekty/' + code01 + '/korespondencja');
     await sleep(400);
     await click('#mail-add-in');
     await sleep(450);
-    check('pismo przychodzące domyślnie nie wymaga reakcji i nie ma pola terminu odpowiedzi',
-      await evaluate('const c = document.querySelector("#ml-needs"); return !!c && !c.checked && !document.getElementById("ml-due");'));
+    check('rejestracja pisma przychodzącego ma pliki, właściciela i termin odpowiedzi, a nie ma ręcznego „wymaga reakcji”',
+      await evaluate('return !!document.getElementById("ml-files") && !!document.getElementById("ml-owner") && !!document.getElementById("ml-due") && !document.getElementById("ml-needs");'));
     await evaluate('const k = document.getElementById("ml-kind"); k.value = "summons"; k.dispatchEvent(new Event("change", { bubbles: true })); return true;');
     await sleep(300);
-    check('wybór rodzaju „Wezwanie” nie zaznacza niczego za użytkownika',
-      await evaluate('return !document.querySelector("#ml-needs").checked && !document.getElementById("ml-due");'));
+    check('wybór rodzaju „Wezwanie” niczego nie ustawia za użytkownika (termin odpowiedzi zostaje pusty)',
+      await evaluate('return !document.getElementById("ml-due").value;'));
     await evaluate('document.querySelector("#mail-form [data-fk=cancel], #mail-form .btn--ghost") && 0; window.ETROM.app.store.set({ mailForm: null }); return true;');
     await sleep(250);
     await evaluate('window.ETROM.app.actions.setMe("' + michalId + '"); return true;');

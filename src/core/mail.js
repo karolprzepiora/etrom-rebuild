@@ -27,7 +27,27 @@
   };
   var KIND_ORDER = ['decision', 'ruling', 'summons', 'notice', 'opinion', 'application', 'inquiry', 'reply', 'contract', 'other'];
 
-  var LIMITS = { subject: 300, counterparty: 200, number: 120, summary: 2000, where: 300 };
+  var LIMITS = { subject: 300, counterparty: 200, number: 120, summary: 2000, where: 300, caseRef: 120, fileName: 200, files: 20, history: 40 };
+  // Decyzja o pismie przychodzącym. Puste = nowe (czeka w Skrzynce na decyzję).
+  var DECISIONS = { filed: 'Do akt', reply: 'Wymaga odpowiedzi', none: 'Odpowiedź niepotrzebna', case: 'W sprawie' };
+
+  /** Pliki jednego pisma: zapisujemy nazwę, rozmiar i miejsce, nie sam plik (wspólny magazyn plików dojdzie później). */
+  function cleanFiles(value) {
+    return (Array.isArray(value) ? value : []).slice(0, LIMITS.files).map(function (f) {
+      if (!f || typeof f !== 'object') return null;
+      var name = text(f.name).slice(0, LIMITS.fileName);
+      if (!name) return null;
+      var size = Number(f.size);
+      return { name: name, size: isFinite(size) && size > 0 ? Math.round(size) : 0, location: text(f.location).slice(0, LIMITS.where) };
+    }).filter(Boolean);
+  }
+
+  function cleanHistory(value) {
+    return (Array.isArray(value) ? value : []).slice(-LIMITS.history).map(function (h) {
+      if (!h || typeof h !== 'object' || !text(h.text)) return null;
+      return { at: text(h.at).slice(0, 10), by: text(h.by).slice(0, 40), text: text(h.text).slice(0, 200) };
+    }).filter(Boolean);
+  }
 
   function text(value) { return typeof value === 'string' ? value.trim() : ''; }
 
@@ -82,6 +102,7 @@
     var registeredDate = text(data.registeredDate);
     var letterDate = text(data.letterDate);
     var replyTo = text(data.replyTo);
+    var responseDue = text(data.responseDue);
 
     if (!Object.prototype.hasOwnProperty.call(DIRECTIONS, direction)) errors.direction = 'Wybierz kierunek: przychodzące albo wychodzące.';
     if (!Object.prototype.hasOwnProperty.call(KINDS, kind)) errors.kind = 'Wybierz rodzaj pisma.';
@@ -91,6 +112,8 @@
     else if (counterparty.length > LIMITS.counterparty) errors.counterparty = 'Najwyżej ' + LIMITS.counterparty + ' znaków.';
     if (!isDate(registeredDate)) errors.registeredDate = direction === 'out' ? 'Podaj datę wysłania.' : 'Podaj datę wpływu.';
     if (letterDate && !isDate(letterDate)) errors.letterDate = 'Użyj poprawnej daty.';
+    if (responseDue && !isDate(responseDue)) errors.responseDue = 'Użyj poprawnej daty.';
+    if (text(data.caseRef).length > LIMITS.caseRef) errors.caseRef = 'Najwyżej ' + LIMITS.caseRef + ' znaków.';
     if (text(data.number).length > LIMITS.number) errors.number = 'Najwyżej ' + LIMITS.number + ' znaków.';
     if (text(data.summary).length > LIMITS.summary) errors.summary = 'Najwyżej ' + LIMITS.summary + ' znaków.';
     if (replyTo) {
@@ -107,7 +130,14 @@
         registeredDate: registeredDate, letterDate: letterDate, replyTo: replyTo,
         number: text(data.number), summary: text(data.summary), where: text(data.where).slice(0, LIMITS.where),
         // Dziennik jest zwykły; pismo trafia do „Wymaga reakcji” tylko, gdy sam je tak oznaczysz.
-        needsAction: direction === 'in' && data.needsAction === true
+        needsAction: direction === 'in' && data.needsAction === true,
+        files: cleanFiles(data.files),
+        ownerId: direction === 'in' ? text(data.ownerId).slice(0, 40) : '',
+        responseDue: direction === 'in' ? responseDue : '',
+        caseRef: direction === 'in' ? text(data.caseRef).slice(0, LIMITS.caseRef) : '',
+        decision: direction === 'in' && DECISIONS[text(data.decision)] ? text(data.decision) : '',
+        caseId: direction === 'in' ? text(data.caseId).slice(0, 40) : '',
+        history: cleanHistory(data.history)
       }
     };
   }
@@ -139,6 +169,7 @@
     // Numer w dzienniku nie zmienia się przy edycji; wyjątek — zmiana kierunku albo roku.
     var keepNumber = target.direction === check.value.direction && String(target.registeredDate).slice(0, 4) === check.value.registeredDate.slice(0, 4);
     var next = Object.assign({}, target, check.value, {
+      decision: check.value.direction === 'in' ? target.decision || '' : '', caseId: check.value.direction === 'in' ? target.caseId || '' : '', history: cleanHistory(target.history),
       regNo: keepNumber ? target.regNo : registryNumber(list.filter(function (e) { return e.id !== id; }), target.projectId, check.value.direction, check.value.registeredDate),
       updatedAt: stamp
     });
@@ -223,7 +254,8 @@
         createdBy: typeof item.createdBy === 'string' ? item.createdBy : '',
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : '',
         updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : '',
-        replyTo: text(item.replyTo)
+        replyTo: text(item.replyTo),
+        decision: check.value.direction === 'in' && DECISIONS[text(item.decision)] ? text(item.decision) : ''
       }));
     });
     var byId = {};
@@ -261,7 +293,121 @@
     return 'taken';
   }
 
+  function dayDiff(from, to) {
+    var a = from.split('-').map(Number);
+    var b = to.split('-').map(Number);
+    return Math.round((new Date(b[0], b[1] - 1, b[2]) - new Date(a[0], a[1] - 1, a[2])) / 86400000);
+  }
+
+  function addDaysKey(key, n) {
+    var p = key.split('-').map(Number);
+    return todayKey(new Date(p[0], p[1] - 1, p[2] + n));
+  }
+
+  /** Kto zajmuje się pismem: wskazana osoba, a bez niej lider, koordynator i na końcu rejestrujący. */
+  function ownerOf(entry, project) {
+    if (entry && entry.ownerId) return entry.ownerId;
+    var team = (project && project.team) || {};
+    return team.leader || team.coordinator || (entry && entry.createdBy) || '';
+  }
+
+  var STATES = {
+    new: { label: 'Nowe', tone: 'accent' },
+    filed: { label: 'Do akt', tone: 'neutral' },
+    inprogress: { label: 'Odpowiedź w toku', tone: 'info' },
+    atrisk: { label: 'Odpowiedź zagrożona', tone: 'danger' },
+    finished: { label: 'Zadanie zakończone, brak odpowiedzi', tone: 'warning' },
+    case: { label: 'W sprawie', tone: 'review' },
+    answered: { label: 'Odpowiedziano', tone: 'success' },
+    out: { label: 'Wychodzące', tone: 'neutral' }
+  };
+
+  /**
+   * Stan pisma przychodzącego w obiegu: nowe → decyzja → odpowiedź.
+   * @param {Object} project projekt pisma (do zadań z pisma); bez niego liczymy tylko z samego wpisu
+   * @returns {{state: string, label: string, tone: string, due: string, days: (number|null)}}
+   */
+  function incomingState(entry, list, project, entries, now) {
+    function out(state, due, days) { return { state: state, label: STATES[state].label, tone: STATES[state].tone, due: due || '', days: days === undefined ? null : days }; }
+    if (!entry || entry.direction !== 'in') return out('out');
+    if ((list || []).some(function (e) { return e.replyTo === entry.id; })) return out('answered');
+    var today = todayKey(now);
+    var due = entry.responseDue || '';
+    var days = due ? dayDiff(today, due) : null;
+    var linked = project ? linkedTasks(project, entry.id, entries, now) : [];
+    // Pismo ze starego dziennika, z którego zrobiono zadanie, traktujemy jak „wymaga odpowiedzi”.
+    var decision = entry.decision || (entry.needsAction && linked.length ? 'reply' : '');
+    if (decision === 'case') return out('case');
+    if (decision === 'filed' || decision === 'none') return out('filed');
+    if (decision === 'reply') {
+      if (!linked.length) return out('new', due, days);
+      var open = linked.filter(function (x) { return x.task.status !== 'done'; });
+      if (!open.length) return out('finished', due, days);
+      var late = open.some(function (x) { return due && x.task.deadline && String(x.task.deadline).slice(0, 10) > due; });
+      return out(days !== null && (days <= 2 || late) ? 'atrisk' : 'inprogress', due, days);
+    }
+    if (entry.needsAction) return out('new', due, days);
+    return out('filed');
+  }
+
+  function stamp(entry, textLine, meta) {
+    var now = meta && meta.now instanceof Date ? meta.now : new Date();
+    var history = cleanHistory(entry.history).concat([{ at: todayKey(now), by: meta && meta.personId ? meta.personId : '', text: textLine }]);
+    return history.slice(-LIMITS.history);
+  }
+
+  /**
+   * Decyzja o pismie przychodzącym.
+   * choice: 'file' (do akt), 'none' (odpowiedź niepotrzebna), 'reply' (wymaga odpowiedzi; opts.responseDue),
+   * 'case' (opts.caseId), 'reassign' (opts.ownerId).
+   */
+  function decide(list, id, choice, opts, meta) {
+    var o = opts || {};
+    var target = (list || []).filter(function (e) { return e.id === id; })[0];
+    if (!target || target.direction !== 'in') return { valid: false, errors: { id: 'Nie ma takiego pisma przychodzącego.' }, entries: list };
+    var patch;
+    if (choice === 'file') patch = { decision: 'filed', needsAction: false, line: 'Do akt' };
+    else if (choice === 'none') patch = { decision: 'none', needsAction: false, line: 'Odpowiedź niepotrzebna' };
+    else if (choice === 'case') {
+      if (!text(o.caseId)) return { valid: false, errors: { caseId: 'Wybierz sprawę.' }, entries: list };
+      patch = { decision: 'case', caseId: text(o.caseId), needsAction: false, line: 'Dołączono do sprawy' };
+    } else if (choice === 'reply') {
+      if (o.responseDue && !isDate(o.responseDue)) return { valid: false, errors: { responseDue: 'Użyj poprawnej daty.' }, entries: list };
+      patch = { decision: 'reply', needsAction: true, responseDue: text(o.responseDue) || target.responseDue || '', line: 'Wymaga odpowiedzi' + (o.responseDue ? ' do ' + o.responseDue : '') };
+    } else if (choice === 'reassign') {
+      patch = { ownerId: text(o.ownerId), line: 'Przekazano' };
+    } else return { valid: false, errors: { choice: 'Nieznana decyzja.' }, entries: list };
+    var line = patch.line;
+    delete patch.line;
+    var stampIso = (meta && meta.now instanceof Date ? meta.now : new Date()).toISOString();
+    var next = Object.assign({}, target, patch, { history: stamp(target, line, meta), updatedAt: stampIso });
+    return { valid: true, errors: {}, entry: next, entries: list.map(function (e) { return e.id === id ? next : e; }) };
+  }
+
+  /** Pismo wpisane do dziennika po raz pierwszy ma wpis w historii. */
+  function withRegistered(entry, meta) {
+    return Object.assign({}, entry, { history: stamp(entry, 'Zarejestrowano', meta) });
+  }
+
+  /** Pisma przychodzące projektu czekające w Skrzynce: nowe, z zakończonym zadaniem bez odpowiedzi albo z zagrożonym terminem. */
+  function inboxEntries(list, project, entries, now) {
+    var wanted = { new: 1, finished: 1, atrisk: 1 };
+    return (list || []).filter(function (e) { return e.projectId === project.id && e.direction === 'in'; })
+      .map(function (e) { return { entry: e, flow: incomingState(e, list, project, entries, now) }; })
+      .filter(function (x) { return wanted[x.flow.state]; })
+      .sort(function (a, b) { return a.entry.registeredDate < b.entry.registeredDate ? -1 : (a.entry.registeredDate > b.entry.registeredDate ? 1 : 0); });
+  }
+
   var api = {
+    DECISIONS: DECISIONS,
+    STATES: STATES,
+    cleanFiles: cleanFiles,
+    ownerOf: ownerOf,
+    incomingState: incomingState,
+    decide: decide,
+    withRegistered: withRegistered,
+    inboxEntries: inboxEntries,
+    addDaysKey: addDaysKey,
     handling: handling,
     linkedTasks: linkedTasks,
     DIRECTIONS: DIRECTIONS,

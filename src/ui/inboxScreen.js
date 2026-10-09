@@ -73,9 +73,25 @@
       ];
     }
     if (item.kind === 'mail') {
+      var mid = item.entry.id;
+      var mb = function (label, fk, fn, variant, icon) { return UI.button({ label: label, icon: icon || null, variant: variant || 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-' + fk + '-' + mid }, onClick: fn }); };
+      if (item.handling === 'finished') {
+        return [
+          mb('Zarejestruj odpowiedź', 'reply', function () { actions.replyMail(mid); }, 'secondary', 'reply'),
+          mb('Odpowiedź niepotrzebna', 'none', function () { actions.mailDecide(mid, 'none'); })
+        ];
+      }
+      if (item.handling === 'atrisk') {
+        return [
+          mb('Napisz odpowiedź', 'reply', function () { actions.replyMail(mid); }, 'secondary', 'reply'),
+          mb('Otwórz pismo', 'open', function () { openItem(item, actions); })
+        ];
+      }
       return [
-        UI.button({ label: 'Utwórz zadanie', icon: 'plus', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-mailtask-' + item.entry.id }, onClick: function () { actions.mailTask(item.entry.id); } }),
-        UI.button({ label: 'Napisz odpowiedź', icon: 'reply', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-reply-' + item.entry.id }, onClick: function () { actions.replyMail(item.entry.id); } })
+        mb('Do akt', 'file', function () { actions.mailDecide(mid, 'file'); }, 'secondary'),
+        mb('Wymaga odpowiedzi', 'needsreply', function () { actions.mailDecide(mid, 'reply'); }, 'secondary', 'flag'),
+        mb('Dołącz do sprawy', 'tocase', function () { actions.mailDecide(mid, 'case'); }),
+        mb('Przekaż', 'pass', function () { actions.mailDecide(mid, 'reassign'); })
       ];
     }
     if (item.kind === 'order') {
@@ -111,7 +127,7 @@
   }
 
   function row(item, ctx, now) {
-    var date = item.task ? item.task.deadline : '';
+    var date = item.task ? item.task.deadline : (item.kind === 'mail' && item.entry ? item.entry.responseDue : '');
     var context = [
       item.project ? UI.projectTag(item.project, { href: E.ProjectList.projectHref(item.project), stage: item.stage ? E.Model.describeStage(item.stage).name : '' }) : null,
       item.detail ? D.el('span', { class: 'truncate ibx__detail', text: item.detail }) : null

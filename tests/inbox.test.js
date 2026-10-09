@@ -104,10 +104,15 @@ test('skrzynka: jedno pismo ma jednego właściciela — bez zadania, z otwartym
   const bare = items(project(), [])[0];
   assert.equal(bare.handling, 'new');
   assert.equal(bare.linked.length, 0);
-  assert.ok(/nikt się/i.test(bare.why));
+  assert.ok(/czeka na Twoją decyzję/i.test(bare.why));
 
   const taken = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'working', mailId: id })])] });
   assert.equal(items(taken, entries).length, 0, 'pismo z otwartym zadaniem nie dubluje zadania w reakcjach');
+
+  const finished = project({ stages: [stage('concept', [task({ id: 'z', name: 'Odpowiedź', status: 'done', mailId: id })])] });
+  const back = items(finished, entries)[0];
+  assert.ok(back, 'zadanie zakończone, a odpowiedzi brak: pismo wraca do Skrzynki');
+  assert.equal(back.handling, 'finished');
 
 });
 

@@ -110,19 +110,28 @@
       });
       (projects || []).forEach(function (project) {
         if (project.status === 'done') return;
-        var fns = Team.functionsOf(personId, project.team).map(function (fn) { return fn.key; });
-        var owner = fns.indexOf('leader') >= 0 || fns.indexOf('coordinator') >= 0;
-        if (!owner) return;
-        Mail.pending(mail || [], project.id, ref).forEach(function (x) {
-          // Tylko pisma przychodzące: na wychodzące czekamy my, to nie jest „do zrobienia” dla lidera.
-          if (x.entry.direction !== 'in') return;
-          // Jeden właściciel sprawy: dopóki trwa zadanie z pisma, pismo nie dubluje go w reakcjach.
-          var linked = Mail.linkedTasks(project, x.entry.id, entries, ref);
-          var state = Mail.handling(linked);
-          if (state === 'taken') return;
-          var why = 'Pismo oznaczono jako wymagające reakcji, a nikt się nim nie zajął. Zrób z niego zadanie (żeby przydzielić osobę i zapisywać czas) albo zdejmij oznaczenie w dzienniku korespondencji.';
-          all.push({ key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: state, project: project, entry: x.entry, title: x.entry.subject || 'Pismo bez tematu', detail: x.entry.counterparty || '', linked: linked, why: why, days: null, urgent: false });
+        Mail.inboxEntries(mail || [], project, entries, ref).forEach(function (x) {
+          if (Mail.ownerOf(x.entry, project) !== personId) return;
+          var st = x.flow.state;
+          var days = x.flow.days;
+          var files = (x.entry.files || []).length;
+          var why = st === 'new'
+            ? 'Nowe pismo czeka na Twoją decyzję: do akt, wymaga odpowiedzi, dołączyć do sprawy albo przekazać dalej.'
+            : st === 'finished'
+              ? 'Zadanie z pisma jest zakończone, a odpowiedzi nie ma w dzienniku. Zarejestruj wysłaną odpowiedź albo uznaj, że jest niepotrzebna.'
+              : 'Termin odpowiedzi dla organu jest bliski albo zadanie kończy się po nim. Sprawdź zadanie i wykonawcę.';
+          all.push({
+            key: 'mail:' + project.id + ':' + x.entry.id, kind: 'mail', handling: st, flow: x.flow, project: project, entry: x.entry,
+            title: x.entry.subject || 'Pismo bez tematu',
+            detail: (x.entry.counterparty || '') + (files ? ' · ' + files + (files === 1 ? ' plik' : ' pliki') : ''),
+            linked: Mail.linkedTasks(project, x.entry.id, entries, ref), why: why, days: days,
+            urgent: st === 'atrisk' || (days !== null && days <= 2)
+          });
         });
+      });
+      (projects || []).forEach(function (project) {
+        if (project.status === 'done') return;
+        var fns = Team.functionsOf(personId, project.team).map(function (fn) { return fn.key; });
         if (fns.indexOf('leader') >= 0 && Insight.healthOf(project, ref, mail).level === 'alarm') {
           all.push({ key: 'project:' + project.id, kind: 'project', project: project, title: project.name, detail: Insight.healthOf(project, ref, mail).label, why: 'Jesteś liderem tego projektu, a ma przekroczony termin lub budżet. Otwórz projekt i zdecyduj, co dalej.', days: null, urgent: true });
         }

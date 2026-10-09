@@ -77,3 +77,15 @@
 .ibx__filters .select { width: 100%; }
 .ibx__list--later .ibx__row { grid-template-columns: 1.5rem minmax(0, 1fr) auto; }
 .ibx__row .ibx__actions { flex-wrap: wrap; }
+
+/* Wpływ pisma: pliki jednego pisma i formularz decyzji */
+.mflow__drop { display: grid; gap: var(--space-2, 8px); padding: var(--space-3, 12px); border: 1px dashed var(--border-strong, #c9ced6); border-radius: var(--radius-md, 10px); }
+.mflow__drop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mflow__files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mflow__file { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--text-sm, 13px); }
+.mflow__file .truncate { flex: 1; min-width: 0; }
+.mflow__size { color: var(--text-muted, #6b7280); }
+.mflow__chips { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 8px; }
+.mflow__who { display: grid; gap: 2px; padding-bottom: 8px; }
+.mflow__who span { color: var(--text-muted, #6b7280); font-size: var(--text-sm, 13px); }
+.mrow2__files { color: var(--text-muted, #6b7280); font-size: var(--text-xs, 12px); white-space: nowrap; }
