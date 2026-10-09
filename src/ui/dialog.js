@@ -117,6 +117,37 @@
   }
 
   /**
+   * Pokazuje jednorazowy sekret (hasło tymczasowe) z przyciskiem kopiowania.
+   * @param {{title: string, message?: string, label?: string, secret: string, note?: string}} options
+   * @returns {Promise<void>} rozwiązuje się po zamknięciu okna
+   */
+  function reveal(options) {
+    var settings = options || {};
+    return new Promise(function (resolve) {
+      var dialog = D.el('dialog', { class: 'dialog', attrs: { 'aria-labelledby': 'dialog-title' } });
+      var copyBtn = button('Kopiuj', 'secondary', { 'data-reveal-copy': '' }, function () {
+        var done = function () { copyBtn.querySelector('span').textContent = 'Skopiowano'; };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(settings.secret).then(done, function () {});
+        else done();
+      });
+      D.append(dialog, [D.el('div', { class: 'dialog__card' }, [
+        D.el('div', { class: 'dialog__head' }, [
+          D.el('h2', { class: 'dialog__title', text: settings.title || 'Hasło tymczasowe', attrs: { id: 'dialog-title' } }),
+          settings.message ? D.el('p', { class: 'dialog__text', text: settings.message }) : null
+        ]),
+        D.el('div', { class: 'secret' }, [
+          D.el('span', { class: 'secret__label', text: settings.label || 'Hasło tymczasowe (widoczne tylko teraz)' }),
+          D.el('div', { class: 'secret__row' }, [D.el('code', { class: 'secret__value', text: settings.secret, attrs: { 'data-secret': '' } }), copyBtn])
+        ]),
+        settings.note ? D.el('p', { class: 'dialog__text', text: settings.note }) : null,
+        D.el('div', { class: 'dialog__actions' }, [button('Gotowe', 'primary', { 'data-dialog-confirm': '' }, function () { dialog.close('ok'); })])
+      ])]);
+      dialog.addEventListener('close', function () { dialog.remove(); resolve(); });
+      mount(dialog);
+    });
+  }
+
+  /**
    * Pytanie z polem tekstowym. Zwraca tekst albo null przy anulowaniu.
    * @param {{title: string, message?: string, label: string, placeholder?: string,
    *          confirm?: string, required?: boolean}} options
@@ -286,6 +317,7 @@
     confirm: confirm,
     choose: choose,
     prompt: prompt,
+    reveal: reveal,
     drawerForm: drawerForm,
     openDrawer: openDrawer,
     updateDrawer: updateDrawer,

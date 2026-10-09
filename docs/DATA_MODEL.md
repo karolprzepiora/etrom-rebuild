@@ -17,6 +17,12 @@ Dyrekcja to rola globalna konta (`profiles.role`, dziś `orgRole = managing`). L
 
 Konta zakłada, loguje (e-mail i hasło) i role nadaje dyrekcja.
 
+### Konta i hasła (decyzja: wariant A, 9 października 2026)
+
+Dyrekcja zakłada konto w kreatorze „Zespół → Konta i role”: dane i e-mail (login), rola, wymiar urlopu, stawka, potem **hasło tymczasowe pokazywane jeden raz**. Osoba zmienia je przy pierwszym logowaniu, więc dyrekcja nie zna jej hasła. Reset = nowe hasło tymczasowe. W aplikacji hasło nie jest nigdzie zapisywane: w danych osoby jest tylko stan konta (`account.status`: `invited`, `active`, `disabled`, `mustChange`, daty). Na serwerze odpowiada za to Supabase Auth (konto z `must_change_password`). Konto się wyłącza, nie usuwa. Nie da się wyłączyć ani zdegradować ostatniej aktywnej osoby z dyrekcji. Zmiany roli, stawki, e-maila, urlopu i kont trafiają do dziennika (`workspace.audit`, docelowo `audit_log`).
+
+Stawka godzinowa ma historię (`person.rates`: od kiedy, ile); `hourlyCost` to stawka obowiązująca dziś. Analiza liczy dziś koszt stawką bieżącą; liczenie wpisów czasu stawką z dnia wpisu to osobna zmiana.
+
 ## Tabele
 
 | Tabela | Dziś | Najważniejsze pola | Uwagi |
@@ -49,7 +55,7 @@ Konta zakłada, loguje (e-mail i hasło) i role nadaje dyrekcja.
 3. **Tożsamość z konta** zamiast wyboru „ja” z listy osób.
 4. **Podział ustawień** na biurowe i osobiste.
 5. **Zdarzenia i „ostatnio widziane stany”** w `social` przenieść do tabel z autorem i datą.
-6. **Dopisać brakujące rekordy**: stawki z historią, wnioski urlopowe, dziennik zmian.
+6. **Dopisać brakujące rekordy**: stawki z historią, wnioski urlopowe i dziennik zmian są już w aplikacji; zostaje przenieść je do tabel.
 
 ## Otwarte decyzje
 

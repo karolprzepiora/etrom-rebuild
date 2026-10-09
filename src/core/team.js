@@ -4,9 +4,13 @@
 (function (root) {
   'use strict';
 
+  var node = typeof module !== 'undefined' && module.exports;
+  var Accounts = node ? require('./accounts.js') : root.ETROM.Accounts;
+
+  // „managing" to dyrekcja (widzi wszystko); „member" to pracownik. Lider i koordynator to funkcje w projekcie.
   var ORG_ROLES = {
-    managing: 'Zarządzający',
-    member: 'Członek zespołu'
+    managing: 'Dyrekcja',
+    member: 'Pracownik'
   };
 
   var COOPERATION = {
@@ -61,6 +65,18 @@
     var position = text(data.position);
     var orgRole = text(data.orgRole) || 'member';
     var cooperation = text(data.cooperation) || 'internal';
+    var email = Accounts.normEmail(data.email);
+    if (email) {
+      if (!Accounts.validEmail(email)) errors.email = 'Podaj poprawny adres e-mail.';
+      else if (Accounts.emailTaken(list, email, ignoreId)) errors.email = 'Ten adres jest już przypisany do innej osoby.';
+    }
+    var leaveRaw = data.leaveDays == null ? '' : String(data.leaveDays).trim().replace(',', '.');
+    var leaveDays = null;
+    if (leaveRaw !== '') {
+      leaveDays = Number(leaveRaw);
+      if (!Number.isFinite(leaveDays) || leaveDays < 1 || leaveDays > 60) errors.leaveDays = 'Podaj liczbę dni od 1 do 60.';
+      else leaveDays = Math.round(leaveDays);
+    }
 
     if (!firstName) errors.firstName = 'Podaj imię.';
     else if (firstName.length > LIMITS.name) errors.firstName = 'Imię może mieć najwyżej ' + LIMITS.name + ' znaków.';
@@ -96,7 +112,9 @@
         position: position,
         orgRole: orgRole,
         cooperation: cooperation,
-        hourlyCost: hourlyCost
+        hourlyCost: hourlyCost,
+        email: email,
+        leaveDays: leaveDays
       }
     };
   }
@@ -128,6 +146,9 @@
       cooperation: Object.prototype.hasOwnProperty.call(COOPERATION, cooperation) ? cooperation : 'internal',
       hourlyCost: Number.isFinite(Number(raw.hourlyCost)) && Number(raw.hourlyCost) > 0 && Number(raw.hourlyCost) <= 10000 ? Math.round(Number(raw.hourlyCost) * 100) / 100 : 0,
       leaveDays: Number.isFinite(Number(raw.leaveDays)) && Number(raw.leaveDays) > 0 && Number(raw.leaveDays) <= 60 ? Math.round(Number(raw.leaveDays)) : null,
+      email: Accounts.validEmail(raw.email) ? Accounts.normEmail(raw.email) : '',
+      account: Accounts.normalizeAccount(raw.account),
+      rates: Accounts.normalizeRates(raw.rates),
       active: raw.active !== false
     };
   }

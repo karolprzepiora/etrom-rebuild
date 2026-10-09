@@ -25,7 +25,7 @@ test('validatePerson przycina spacje i uzupełnia domyślne role', () => {
   assert.equal(result.valid, true);
   assert.deepEqual(result.value, {
     firstName: 'Anna', lastName: 'Testowa', position: '',
-    orgRole: 'member', cooperation: 'internal', hourlyCost: 0
+    orgRole: 'member', cooperation: 'internal', hourlyCost: 0, email: '', leaveDays: null
   });
 });
 

@@ -31,6 +31,7 @@
     screen: 'projects',
     filters: { query: '', status: 'all', sort: 'manual', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
+    teamTab: 'people',
     prefs: E.Prefs.defaults(),
     selection: {},
     page: 0,
@@ -279,8 +280,33 @@
 
   /* ---------- osoby ---------- */
 
+  function isMgmt() { return E.Budget.isManagement(store.getState().prefs.me, people()); }
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  /** Zapisuje listę osób razem z wpisami do dziennika zmian (jedna zmiana stanu, jedno cofnięcie). */
+  function commitPeople(next, entries) {
+    var me = currentMe() || '';
+    updateWorkspace(function (workspace) {
+      var audit = workspace.audit || [];
+      (entries || []).forEach(function (entry) { audit = E.Accounts.addAudit(audit, Object.assign({ by: me }, entry)); });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, people: next, audit: audit });
+    });
+  }
+
+  function requireMgmt() {
+    if (isMgmt()) return true;
+    Toast.show({ message: 'Konta i role zmienia dyrekcja.', tone: 'danger', timeout: 4000 });
+    return false;
+  }
+
   function openNewPerson() {
-    store.set({ personForm: { draft: { orgRole: 'member', cooperation: 'internal' }, errors: {} } });
+    var draft = { orgRole: 'member', cooperation: 'internal' };
+    if (isMgmt()) store.set({ personForm: { draft: draft, errors: {}, wizard: true, step: 1, password: '' } });
+    else store.set({ personForm: { draft: draft, errors: {} } });
   }
 
   function openEditPerson(id) {
@@ -291,43 +317,193 @@
         draft: {
           id: person.id, firstName: person.firstName, lastName: person.lastName,
           position: person.position, orgRole: person.orgRole, cooperation: person.cooperation,
-          hourlyCost: person.hourlyCost ? String(person.hourlyCost) : ''
+          hourlyCost: person.hourlyCost || 0, rates: person.rates || [], email: person.email || '',
+          leaveDays: person.leaveDays || ''
         },
         errors: {}
       }
     });
   }
 
+  /** Stawka z formularza: puste pole = bez zmiany. Zwraca {person?, error?, field?}. */
+  function applyRate(person, values) {
+    var raw = String(values.newRate == null ? '' : values.newRate).trim().replace(',', '.');
+    if (raw === '') return { person: person };
+    var res = E.Accounts.addRate(person, raw, values.rateFrom || todayIso(), todayIso());
+    if (!res.ok) return { error: res.error, field: /datę/.test(res.error) ? 'rateFrom' : 'newRate' };
+    return { person: res.person, added: { rate: Number(raw), from: values.rateFrom || todayIso() } };
+  }
+
+  var WIZARD_FIELDS = { 1: ['firstName', 'lastName', 'position', 'email'], 2: ['orgRole', 'cooperation', 'leaveDays'] };
+
+  function wizardErrors(values, step) {
+    var check = Team.validatePerson(values, people());
+    var errors = {};
+    (WIZARD_FIELDS[step] || []).forEach(function (key) { if (check.errors[key]) errors[key] = check.errors[key]; });
+    if (step === 1 && !errors.email && !String(values.email || '').trim()) errors.email = 'Podaj adres e-mail, to login osoby.';
+    if (step === 2) {
+      var raw = String(values.newRate == null ? '' : values.newRate).trim().replace(',', '.');
+      if (raw !== '' && !(Number(raw) > 0 && Number(raw) <= 10000)) errors.newRate = 'Podaj stawkę od 0,01 do 10 000 zł.';
+    }
+    return errors;
+  }
+
+  function wizardMove(values, dir) {
+    var form = store.getState().personForm;
+    if (!form || !form.wizard) return;
+    var step = form.step || 1;
+    if (dir > 0) {
+      var errors = wizardErrors(values, step);
+      if (Object.keys(errors).length) { store.set({ personForm: Object.assign({}, form, { draft: values, errors: errors }) }); return; }
+    }
+    var target = Math.min(3, Math.max(1, step + dir));
+    store.set({ personForm: Object.assign({}, form, { draft: values, errors: {}, step: target, password: target === 3 && !form.password ? E.Accounts.generatePassword() : form.password }) });
+  }
+
+  function wizardRegenerate() {
+    var form = store.getState().personForm;
+    if (!form) return;
+    store.set({ personForm: Object.assign({}, form, { password: E.Accounts.generatePassword() }) });
+  }
+
+  function wizardCreate(values) {
+    var form = store.getState().personForm;
+    if (!form || !requireMgmt()) return;
+    var errors = Object.assign({}, wizardErrors(values, 1), wizardErrors(values, 2));
+    if (Object.keys(errors).length) {
+      var back = errors.firstName || errors.lastName || errors.position || errors.email ? 1 : 2;
+      store.set({ personForm: Object.assign({}, form, { draft: values, errors: errors, step: back }) });
+      return;
+    }
+    var list = people();
+    var check = Team.validatePerson(values, list);
+    var person = Team.createPerson(check.value, list);
+    var rated = applyRate(person, { newRate: values.newRate, rateFrom: todayIso() });
+    if (rated.person) person = rated.person;
+    person = E.Accounts.createAccount(person, currentMe() || '', new Date());
+    var entries = [{ action: 'account.create', target: person.id, detail: person.email }];
+    if (rated.added) entries.push({ action: 'rate.change', target: person.id, detail: String(rated.added.rate).replace('.', ',') + ' zł/h' });
+    commitPeople(list.concat([person]), entries);
+    store.set({ personForm: null });
+    Toast.show({ message: 'Założono konto: ' + Team.fullName(person) + '. Przekaż hasło tymczasowe osobie.', tone: 'success', timeout: 6000 });
+  }
+
   function submitPerson(values) {
     var list = people();
     var editing = values.id != null;
+    var mgmt = isMgmt();
     var check = Team.validatePerson(values, list, editing ? values.id : undefined);
-    if (!check.valid) {
-      store.set({ personForm: { draft: values, errors: check.errors } });
+    var prev = editing ? findPerson(values.id) : null;
+    var errors = Object.assign({}, check.errors);
+    var next = Object.assign({}, prev || {}, check.value);
+    var entries = [];
+    var rated = { person: next };
+
+    if (editing && prev) {
+      next.hourlyCost = prev.hourlyCost || 0;
+      next.rates = prev.rates || [];
+      if (!mgmt) {
+        next.orgRole = prev.orgRole; next.email = prev.email || ''; next.leaveDays = prev.leaveDays || null;
+      } else {
+        rated = applyRate(next, values);
+        if (rated.error) errors[rated.field] = rated.error;
+        if (prev.orgRole !== next.orgRole) {
+          var sim = E.Accounts.setRole(list, prev.id, next.orgRole);
+          if (!sim.ok) errors.orgRole = sim.error;
+          else entries.push({ action: 'role.change', target: prev.id, detail: Team.ORG_ROLES[prev.orgRole] + ' → ' + Team.ORG_ROLES[next.orgRole] });
+        }
+        if ((prev.email || '') !== (next.email || '')) entries.push({ action: 'email.change', target: prev.id, detail: next.email || 'usunięto' });
+        if ((prev.leaveDays || null) !== (next.leaveDays || null)) entries.push({ action: 'leave.change', target: prev.id, detail: (next.leaveDays || 26) + ' dni' });
+      }
+    } else if (!mgmt) {
+      next.orgRole = 'member'; next.hourlyCost = 0; next.email = ''; next.leaveDays = null;
+    }
+    if (Object.keys(errors).length) {
+      store.set({ personForm: { draft: values, errors: errors } });
       return;
     }
-    // Stawkę godzinową ustawia tylko zarząd; inni nie nadpisują jej przy edycji osoby.
-    if (!E.Budget.isManagement(store.getState().prefs.me, list)) {
-      var kept = editing ? findPerson(values.id) : null;
-      check.value.hourlyCost = kept && kept.hourlyCost ? kept.hourlyCost : 0;
+    if (rated.added) {
+      next = rated.person;
+      entries.push({ action: 'rate.change', target: next.id || '', detail: String(rated.added.rate).replace('.', ',') + ' zł/h od ' + rated.added.from });
     }
     if (editing) {
-      setPeople(function (current) {
-        return current.map(function (person) {
-          return person.id === values.id ? Object.assign({}, person, check.value) : person;
-        });
-      });
+      commitPeople(list.map(function (person) { return person.id === values.id ? next : person; }), entries);
       Toast.show({ message: 'Zapisano zmiany: ' + check.value.firstName + ' ' + check.value.lastName, tone: 'success', timeout: 4000 });
     } else {
-      setPeople(function (current) { return current.concat([Team.createPerson(check.value, current)]); });
+      var created = Team.createPerson(check.value, list);
+      created.orgRole = 'member';
+      setPeople(function (current) { return current.concat([created]); });
       Toast.show({ message: 'Dodano do katalogu: ' + check.value.firstName + ' ' + check.value.lastName, tone: 'success', timeout: 4000 });
     }
     store.set({ personForm: null });
   }
 
+  /* ---------- konta: hasła tymczasowe, wyłączanie ---------- */
+
+  function revealTemp(person, title, message) {
+    var password = E.Accounts.generatePassword();
+    return { password: password, show: function () {
+      return Dialog.reveal({ title: title, message: message, secret: password, note: Team.fullName(person) + ' zmieni hasło przy pierwszym logowaniu. Po zamknięciu tego okna hasło znika. W razie potrzeby ustaw nowe tymczasowe.' });
+    } };
+  }
+
+  function createAccountFor(id) {
+    if (!requireMgmt()) return;
+    var person = findPerson(id);
+    if (!person) return;
+    if (!person.email) {
+      Toast.show({ message: 'Najpierw dodaj adres e-mail osoby, to jej login.', tone: 'info', timeout: 5000 });
+      openEditPerson(id);
+      return;
+    }
+    var temp = revealTemp(person, 'Konto założone: ' + Team.fullName(person), 'Login: ' + person.email);
+    commitPeople(people().map(function (p) { return p.id === id ? E.Accounts.createAccount(p, currentMe() || '', new Date()) : p; }), [{ action: 'account.create', target: id, detail: person.email }]);
+    temp.show();
+  }
+
+  function resetPasswordFor(id) {
+    if (!requireMgmt()) return;
+    var person = findPerson(id);
+    if (!person) return;
+    var temp = revealTemp(person, 'Nowe hasło tymczasowe: ' + Team.fullName(person), 'Login: ' + (person.email || ''));
+    commitPeople(people().map(function (p) { return p.id === id ? E.Accounts.resetPassword(p, new Date()) : p; }), [{ action: 'account.reset', target: id }]);
+    temp.show();
+  }
+
+  function disableAccountFor(id) {
+    if (!requireMgmt()) return;
+    var person = findPerson(id);
+    if (!person) return;
+    var res = E.Accounts.disable(people(), id);
+    if (!res.ok) { Toast.show({ message: res.error, tone: 'danger', timeout: 7000 }); return; }
+    var check = Team.canDeactivate(id, store.getState().workspace.projects);
+    if (!check.allowed) { Toast.show({ message: check.reason, tone: 'danger', timeout: 9000 }); return; }
+    Dialog.confirm({ title: 'Wyłączyć konto?', message: Team.fullName(person) + ' nie zaloguje się do aplikacji. Wpisy czasu i historia zostają. Konto możesz przywrócić.', confirm: 'Wyłącz konto', tone: 'danger' }).then(function (ok) {
+      if (!ok) return;
+      commitPeople(res.people, [{ action: 'account.disable', target: id }]);
+      Toast.show({ message: 'Wyłączono konto: ' + Team.fullName(person), tone: 'success', timeout: 4000 });
+    });
+  }
+
+  function enableAccountFor(id) {
+    if (!requireMgmt()) return;
+    var person = findPerson(id);
+    if (!person) return;
+    commitPeople(E.Accounts.enable(people(), id), [{ action: 'account.enable', target: id }]);
+    Toast.show({ message: 'Przywrócono konto: ' + Team.fullName(person), tone: 'success', timeout: 4000 });
+  }
+
+  function setTeamTab(tab) { store.set({ teamTab: tab === 'accounts' ? 'accounts' : 'people' }); }
+
   function setPersonActive(id, active) {
     setPeople(function (current) {
-      return current.map(function (item) { return item.id === id ? Object.assign({}, item, { active: active }) : item; });
+      return current.map(function (item) {
+        if (item.id !== id) return item;
+        var next = Object.assign({}, item, { active: active });
+        // Konto idzie za obiegiem: wyłączona osoba nie loguje się, przywrócona wraca do poprzedniego stanu.
+        if (item.account) next.account = Object.assign({}, item.account, { status: !active ? 'disabled' : (item.account.lastLoginAt ? 'active' : 'invited') });
+        return next;
+      });
     });
   }
 
@@ -2152,6 +2328,15 @@
     { firstName: 'Tomasz', lastName: 'Testowy', position: 'Geodeta', orgRole: 'member', cooperation: 'external' }
   ];
 
+  var DEMO_ACCOUNTS = {
+    'Anna Testowa': { email: 'a.testowa@etrom.pl', status: 'active', login: 1 },
+    'Michał Testowy': { email: 'm.testowy@etrom.pl', status: 'active', login: 26 },
+    'Ewa Testowa': { email: 'e.testowa@etrom.pl', status: 'active', login: 2 },
+    'Jan Testowy': { email: 'j.testowy@etrom.pl', status: 'invited' },
+    'Olga Testowa': { email: 'o.testowa@biuro-zew.pl', status: 'active', login: 72 },
+    'Piotr Testowy': { email: 'p.testowy@etrom.pl', status: null }
+  };
+
   // Indeksy odnoszą się do DEMO_PEOPLE powyżej.
   var DEMO_TEAMS = {
     '2601': { leader: 0, coordinator: 2, proxyLead: 4, members: [3, 5] },
@@ -2303,7 +2488,13 @@
     });
     roster = roster.map(function (person) {
       var rate = DEMO_RATES[Team.fullName(person)];
-      return rate && !person.hourlyCost ? Object.assign({}, person, { hourlyCost: rate }) : person;
+      var next = rate && !person.hourlyCost ? Object.assign({}, person, { hourlyCost: rate }) : person;
+      var acct = DEMO_ACCOUNTS[Team.fullName(next)];
+      if (acct && !next.email) {
+        var logged = acct.login == null ? '' : new Date(Date.now() - acct.login * 3600000).toISOString();
+        next = Object.assign({}, next, { email: acct.email, account: acct.status ? { status: acct.status, mustChange: acct.status === 'invited', createdAt: new Date(Date.now() - 86400000 * 30).toISOString(), createdBy: '', lastLoginAt: logged, passwordSetAt: '' } : null });
+      }
+      return next;
     });
 
     /** Zdjęcie przykładowe rysowane na płótnie (krajobraz z rzeką), żeby galeria miała co pokazać. */
@@ -3124,6 +3315,11 @@
     setKanban: function (patch) { store.update(function (state) { return Object.assign({}, state, { kanban: Object.assign({}, state.kanban, patch) }); }); },
     editPerson: openEditPerson,
     togglePerson: togglePerson,
+    setTeamTab: setTeamTab,
+    createAccount: createAccountFor,
+    resetPassword: resetPasswordFor,
+    disableAccount: disableAccountFor,
+    enableAccount: enableAccountFor,
     deletePerson: deletePerson,
     newPerson: openNewPerson,
     openCreate: openCreate,
@@ -3483,7 +3679,17 @@
     nodes.teamFilters.hidden = !roster.length;
     nodes.newPerson.hidden = !roster.length;
 
-    D.patch(nodes.teamList, [E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state))]);
+    var mgmt = E.Budget.isManagement(state.prefs.me, roster);
+    var accounts = mgmt && state.teamTab === 'accounts';
+    nodes.teamFilters.hidden = accounts || !roster.length;
+    var tabs = mgmt && roster.length ? D.el('div', { class: 'ac-tabs' }, [UI.segmented({
+      label: 'Widok zespołu', value: accounts ? 'accounts' : 'people',
+      items: [{ value: 'people', label: 'Osoby' }, { value: 'accounts', label: 'Konta i role' }],
+      onChange: setTeamTab
+    }).node]) : null;
+    var body = accounts ? E.AccountsScreen.view(state, actions) : E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state));
+    D.render(nodes.teamTabs, tabs ? [tabs] : []);
+    D.patch(nodes.teamList, [body]);
   }
 
   function renderPlan(state) {
@@ -3585,8 +3791,9 @@
     var settings = {};
     if (current === state.personForm) {
       settings.title = current.draft.id != null ? 'Edytuj osobę' : 'Nowa osoba';
-      settings.subtitle = current.draft.id != null ? 'Zmiany widać od razu we wszystkich projektach.' : 'Osoba trafi do katalogu biura.';
-      settings.content = E.PersonForm.personForm(current.draft, current.errors, { onSubmit: submitPerson, onCancel: function () { store.set({ personForm: null }); } }, { management: E.Budget.isManagement(state.prefs.me, state.workspace.people || []) });
+      settings.subtitle = current.draft.id != null ? 'Zmiany widać od razu we wszystkich projektach.' : (current.wizard ? ['Dane i adres e-mail, na który zakładamy konto.', 'Rola decyduje o tym, co osoba widzi w aplikacji.', 'Hasło tymczasowe pokazujemy tylko raz.'][(current.step || 1) - 1] : 'Osoba trafi do katalogu biura.');
+      if (current.wizard) settings.content = E.PersonForm.wizard(current.draft, { step: current.step || 1, password: current.password || '', errors: current.errors }, { onBack: function (v) { wizardMove(v, -1); }, onNext: function (v) { wizardMove(v, 1); }, onRegenerate: wizardRegenerate, onSubmit: wizardCreate, onCancel: function () { store.set({ personForm: null }); } });
+      else settings.content = E.PersonForm.personForm(current.draft, current.errors, { onSubmit: submitPerson, onCancel: function () { store.set({ personForm: null }); } }, { management: E.Budget.isManagement(state.prefs.me, state.workspace.people || []) });
     } else if (current === state.taskForm) {
       var project = findProject(current.projectId);
       var stage = stageOf(current.projectId, current.stageId);
@@ -3896,6 +4103,7 @@
     nodes.projectsSummary = D.byId('projects-summary');
     nodes.projectView = D.byId('project-view');
     nodes.teamFilters = D.byId('team-filters');
+    nodes.teamTabs = D.byId('team-tabs');
     nodes.teamList = D.byId('team-list');
     nodes.teamSummary = D.byId('team-summary');
     nodes.timerSlot = D.byId('timer-slot');

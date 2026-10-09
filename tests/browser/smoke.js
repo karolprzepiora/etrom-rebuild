@@ -1297,27 +1297,32 @@ async function main() {
     /* 26. Dodawanie i walidacja osoby */
     await evaluate('document.activeElement && document.activeElement.blur(); return true;');
     await pressKey('n');
-    check('na ekranie Zespołu klawisz N otwiera formularz osoby', await evaluate('return !!document.querySelector("dialog.drawer[open] #person-form");'));
-    check('formularz osoby ma pole kosztu godziny dla zarządu', await evaluate('return !!document.getElementById("pe-cost");'));
+    check('na ekranie Zespołu klawisz N otwiera kreator osoby z kontem (dyrekcja)', await evaluate('return !!document.querySelector("dialog.drawer[open] #person-wizard") && !!document.getElementById("pw-email");'));
     await evaluate(
-      'document.getElementById("pe-first").value = "Zofia";' +
-      'document.getElementById("pe-last").value = "Nowakowa";' +
-      'document.getElementById("pe-position").value = "Geodetka";' +
-      'document.getElementById("pe-role").value = "member";' +
-      'document.getElementById("person-form").requestSubmit(); return true;'
+      'document.getElementById("pw-first").value = "Zofia";' +
+      'document.getElementById("pw-last").value = "Nowakowa";' +
+      'document.getElementById("pw-pos").value = "Geodetka";' +
+      'document.getElementById("pw-email").value = "z.nowakowa@etrom.pl";' +
+      'document.querySelector("[data-wiz-next]").click(); return true;'
     );
+    await sleep(250);
+    check('kreator: krok 2 ma rolę, wymiar urlopu i stawkę', await evaluate('return !!document.getElementById("pw-rate") && !!document.getElementById("pw-leave") && document.querySelectorAll(".ac-role").length === 2;'));
+    await evaluate('document.querySelector("[data-wiz-next]").click(); return true;');
+    await sleep(250);
+    await evaluate('document.querySelector("[data-wiz-create]").click(); return true;');
     await sleep(300);
     check('nowa osoba trafia do katalogu', (await state('s.workspace.people.length')) === 9);
 
     await pressKey('n');
     await evaluate(
-      'document.getElementById("pe-first").value = "zofia";' +
-      'document.getElementById("pe-last").value = "NOWAKOWA";' +
-      'document.getElementById("person-form").requestSubmit(); return true;'
+      'document.getElementById("pw-first").value = "zofia";' +
+      'document.getElementById("pw-last").value = "NOWAKOWA";' +
+      'document.getElementById("pw-email").value = "inna@etrom.pl";' +
+      'document.querySelector("[data-wiz-next]").click(); return true;'
     );
     await sleep(250);
     check('druga osoba o tym samym imieniu i nazwisku nie przechodzi',
-      await evaluate('const err = document.querySelector("#person-form .field__error"); return !!err && /już jest/i.test(err.textContent);'));
+      await evaluate('const err = document.querySelector("#person-wizard .field__error"); return !!err && /już jest/i.test(err.textContent);'));
     await pressKey('escape');
     await sleep(250);
 
@@ -2050,6 +2055,44 @@ async function main() {
     await sleep(300);
     check('urlopy: kalendarz zespołu dla pracownika nie zdradza rodzaju cudzej nieobecności',
       await evaluate('const cells = [...document.querySelectorAll(".lv-t__c.is-away")]; return cells.length > 0 && cells.every(c => !/Urlop|Zwolnienie|Szkolenie/.test(c.getAttribute("data-tooltip") || ""));'));
+    /* 38k. Zespół → Konta i role: tylko dyrekcja, kreator, hasło tymczasowe, stawki z historią */
+    await evaluate('location.hash = "#/zespol"; return true;');
+    await sleep(300);
+    check('konta: pracownik nie widzi zakładki „Konta i role”',
+      await evaluate('return !document.querySelector("#team-tabs [data-value=accounts]");'));
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTeamTab("accounts"); return true;');
+    await sleep(350);
+    check('konta: dyrekcja widzi tabelę kont z rolą, stanem konta, stawką i funkcjami',
+      await evaluate('const n = window.ETROM.app.store.getState().workspace.people.length; return !!document.querySelector("#team-tabs [data-value=accounts]") && document.querySelectorAll(".ac-table tbody tr").length === n && !!document.querySelector("[data-account-status=invited]") && !!document.querySelector("[data-account-status=active]") && !!document.querySelector(".ac-matrix");'));
+    await evaluate('document.getElementById("ac-new").click(); return true;');
+    await sleep(350);
+    await evaluate('const set = (id, v) => { const e = document.getElementById(id); e.value = v; }; set("pw-first", "Kamil"); set("pw-last", "Zieliński"); set("pw-email", "zle"); document.querySelector("[data-wiz-next]").click(); return true;');
+    await sleep(250);
+    check('konta: kreator nie przechodzi dalej z błędnym adresem e-mail',
+      await evaluate('return !!document.getElementById("pw-email") && /e-mail/i.test(document.getElementById("person-wizard").textContent) && !document.getElementById("pw-rate");'));
+    await evaluate('document.getElementById("pw-email").value = "k.zielinski@etrom.pl"; document.querySelector("[data-wiz-next]").click(); return true;');
+    await sleep(250);
+    await evaluate('document.getElementById("pw-rate").value = "120"; document.querySelector("[data-wiz-next]").click(); return true;');
+    await sleep(250);
+    const secret = await evaluate('return document.querySelector("[data-secret]").textContent;');
+    check('konta: krok 3 pokazuje hasło tymczasowe w formacie Xxx-xxx-xxx', /^[A-Za-z2-9]{3}-[A-Za-z2-9]{3}-[A-Za-z2-9]{3}$/.test(secret));
+    await evaluate('document.querySelector("[data-wiz-create]").click(); return true;');
+    await sleep(350);
+    check('konta: nowa osoba ma konto „czeka na pierwsze logowanie”, wymóg zmiany hasła, stawkę z historii i wpis w dzienniku, a hasła nie ma w danych',
+      await evaluate('const st = window.ETROM.app.store.getState(); const p = st.workspace.people.find(x => x.email === "k.zielinski@etrom.pl"); const dump = JSON.stringify(st.workspace); return !!p && p.account.status === "invited" && p.account.mustChange === true && p.hourlyCost === 120 && p.rates.length === 1 && st.workspace.audit.some(a => a.action === "account.create" && a.target === p.id) && dump.indexOf(' + JSON.stringify(secret) + ') < 0;'));
+    await evaluate('window.ETROM.app.actions.resetPassword("p-4"); return true;');
+    await sleep(350);
+    check('konta: reset hasła pokazuje nowe hasło jednorazowo i zapisuje wpis w dzienniku',
+      await evaluate('const el = document.querySelector("dialog [data-secret]"); return !!el && el.textContent.length === 11 && window.ETROM.app.store.getState().workspace.audit.some(a => a.action === "account.reset" && a.target === "p-4");'));
+    await evaluate('document.querySelector("dialog [data-dialog-confirm]").click(); return true;');
+    await sleep(250);
+    await evaluate('window.ETROM.app.actions.editPerson("p-3"); return true;');
+    await sleep(350);
+    await evaluate('document.getElementById("pe-rate").value = "160"; document.getElementById("pe-rate-from").value = "2026-11-01"; document.getElementById("person-form").requestSubmit(); return true;');
+    await sleep(350);
+    check('konta: nowa stawka z datą trafia do historii, a bieżąca zostaje do dnia wejścia w życie',
+      await evaluate('const p = window.ETROM.app.store.getState().workspace.people.find(x => x.id === "p-3"); return p.rates.length === 2 && p.rates[1].rate === 160 && p.hourlyCost === 150;'));
+    await evaluate('window.ETROM.app.actions.setTeamTab("people"); return true;');
     await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/moja-praca"; return true;');
     await sleep(200);
 

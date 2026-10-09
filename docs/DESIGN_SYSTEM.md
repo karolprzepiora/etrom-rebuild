@@ -750,3 +750,8 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - **Akceptacja (wariant A)**: wniosek pracownika czeka na zarząd; zarząd zapisuje własny urlop od razu jako zaakceptowany. Lider projektu widzi wnioski swojego zespołu i dopisuje opinię („Bez zastrzeżeń” / „Mam zastrzeżenia”). Do planu, kalendarza i karty czasu trafiają tylko zaakceptowane nieobecności.
 - **Wpływ na plan** przy wniosku: kolidujące terminy zadań osoby i obłożenie zespołów jej projektów.
 - **Widoczność**: pracownik widzi swoje saldo i wnioski oraz to, kto z zespołu jest nieobecny, bez rodzaju nieobecności i bez cudzego salda. Egzekwowanie po stronie serwera wejdzie razem z kontami (patrz `DATA_MODEL.md`).
+
+
+## Zespół → Konta i role (`styles/accounts.css`)
+
+Zakładka widoczna tylko dla dyrekcji (przełącznik „Osoby / Konta i role” nad listą). Tabela kont: osoba z e-mailem, rola (plakietka), stan konta (`badge--success` aktywne, `--warning` czeka na pierwsze logowanie, `--outline` bez konta lub wyłączone), urlop, stawka, funkcje w projektach, menu ⋯. Pod tabelą macierz „Kto co widzi” i dziennik zmian. Kreator osoby to panel boczny z trzema krokami (`.ac-steps`); hasło tymczasowe w ciemnym polu `.secret` z kopiowaniem, pokazywane jeden raz (`Dialog.reveal`). Kolory z motywu aplikacji (`--success`, `--warn`, `--accent`, `--flow-wash`).
