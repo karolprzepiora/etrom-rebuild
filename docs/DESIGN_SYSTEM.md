@@ -763,3 +763,6 @@ Zakładka widoczna tylko dla dyrekcji (przełącznik „Osoby / Konta i role” 
 - **Godziny i postęp w jednej kapsule z wypełnieniem** (`.pb-cap--fill`, zmienna `--p`). W Mojej pracy kapsuła z terminem ma wypełnienie upływu czasu.
 - **Obciążenie tygodnia to jedna kapsuła** (`+35 h` w bursztynie lub czerwieni, `34 / 40 h` neutralna). Drugiej linii „43 / 8 h” nie ma, pełne liczby są w podpowiedzi.
 - **Urlop**: kolor `--leave` (morski błękit, osobny od fioletu „do przeglądu”), ikona słońca, kolumna dni przez cały blok osoby bez prążków, kapsuła „Urlop 12–13 paź” w wierszu osoby. Ten sam kolor w ekranie Urlopy i w Kalendarzu. Zmiana barwy urlopu to trzy tokeny w `tokens.css` (`--leave`, `--leave-ink`, `--leave-wash`).
+
+### Plan — terminy (PL2)
+Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagrożenie to okrągły „!” na końcu (bursztyn / czerwień, „po terminie” bez liczby dni). Data jest w dymku po najechaniu (z podświetleniem dnia końca). Przełącznik „Terminy na paskach” włącza kapsuły z datą. Dni „spraw w toku” to kapsuły (neutralne, od 14 dni bursztyn, od 30 czerwień).

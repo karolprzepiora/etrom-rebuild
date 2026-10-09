@@ -922,7 +922,7 @@ async function main() {
     await evaluate('ETROM.app.actions.setTime({ planCell: null }); return true;');
     await sleep(250);
     check('Plan: nie ma już paska priorytetów, jest przełącznik widoków i termin na pasku, a słupki dni są schowane',
-      await evaluate('return !document.querySelector(".pb-prio") && !!document.querySelector(".pb-toolbar .segmented") && !!document.querySelector(".pb-bar .pb-bar__due") && !document.querySelector(".pb-dbars");'));
+      await evaluate('return !document.querySelector(".pb-prio") && !!document.querySelector(".pb-toolbar .segmented") && !document.querySelector(".pb-bar .pb-bar__due") && !!document.querySelector("[data-fk=pb-due]") && !document.querySelector(".pb-dbars");'));
     await evaluate('document.querySelector(".pb-load[data-fk^=pl-cell-]").click(); return true;');
     await sleep(300);
     check('klik w obłożenie tygodnia rozwija słupki godzin dnia tej osoby (5 dni), drugi klik je chowa',

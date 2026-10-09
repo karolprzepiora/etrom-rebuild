@@ -140,6 +140,7 @@
     var projects = state.workspace.projects || [];
     var me = Team.findPerson(people, state.prefs.me);
     var management = Budget.isManagement(me.id, people) && !solo;
+    var showDue = !!(solo ? state.myPlanDue : state.planDue);
     var weeksN = RANGES.indexOf(state[K.weeks]) >= 0 ? state[K.weeks] : 6;
     var offset = state[K.offset] == null ? DEFAULT_OFFSET : (Number(state[K.offset]) || 0);
     // Zarząd widzi wszystkich, lider osoby ze swoich projektów, pozostali tylko siebie.
@@ -207,8 +208,10 @@
     function barTip(b, span) {
       var s0 = span ? new Date(span.start + 'T00:00') : dayStart(b.start);
       var e0 = span ? new Date(span.deadline.slice(0, 10) + 'T00:00') : dayStart(b.end);
+      var left = Plan.workdayDiff(new Date(plan.today), new Date(b.end));
+      var due = ' · termin ' + shortDate(e0) + (b.overdue ? '' : (left <= 0 ? ' (dziś)' : ' (za ' + left + ' ' + (left === 1 ? 'dzień roboczy' : 'dni roboczych') + ')'));
       var late = b.overdue ? ' · po terminie' : (!solo && b.squeezed ? ' · za mało czasu' : (!solo && b.mustStartNow ? ' · musi ruszyć teraz' : ''));
-      if (solo) return b.code + ' · ' + b.name + ' · ' + shortDate(s0) + ' – ' + shortDate(e0) + ' · ' + timeText(b) + late;
+      if (solo) return b.code + ' · ' + b.name + ' · ' + shortDate(s0) + ' – ' + shortDate(e0) + due.replace(' · termin ' + shortDate(e0), '') + ' · ' + timeText(b) + late;
       var perDay = b.days ? ' · ok. ' + hh(b.hours / b.days) + ' h dziennie' : '';
       return b.code + ' · ' + b.name + ' · zaplanowano ' + hh(b.planned) + ' h (' + (b.fromPool ? 'z puli etapu' : 'szacunek zadania') + '), przepracowano ' + hh(b.logged) + ' h, zostało ' + hh(b.hours * b.workers) + ' h · ' + shortDate(s0) + ' – ' + shortDate(e0) + perDay + late;
     }
@@ -237,17 +240,15 @@
     function dueShort(b) {
       var d = new Date(b.end);
       var left = Plan.workdayDiff(new Date(plan.today), d);
+      var cal = Math.round((dayStart(d).getTime() - dayStart(plan.today).getTime()) / 86400000);
       if (left <= 0) return 'dziś';
-      if (left === 1) return 'jutro';
+      if (cal === 1) return 'jutro';
       return DOWS_SHORT[d.getDay()] + ' ' + d.getDate();
     }
 
     /** Termin w kolumnie zadania pracownika: „dziś”, „jutro”, „pn 12”, „po terminie 2 dni”. */
     function termText(b) {
-      if (b.overdue) {
-        var late = Math.max(1, Plan.workdayDiff(new Date(b.end), new Date(plan.today)));
-        return 'po terminie ' + late + ' ' + (late === 1 ? 'dzień' : 'dni');
-      }
+      if (b.overdue) return 'po terminie';
       return dueShort(b);
     }
     /** Godziny, które zalogowała na zadaniu sama osoba (tylko jej wpisy). */
@@ -295,12 +296,22 @@
         D.el('span', { class: 'pb-bar__clip', attrs: { 'aria-hidden': 'true' } }),
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--l', attrs: { 'data-h': 'start', 'data-tooltip': 'Zmień start' } }) : null,
         editable ? D.el('span', { class: 'pb-bar__h pb-bar__h--r', attrs: { 'data-h': 'end', 'data-tooltip': 'Zmień termin' } }) : null,
-        item.e >= N ? null : D.el('span', { class: 'pb-bar__due' + (b.overdue ? ' is-late is-long' : (dueWarn ? ' is-warn' : '')), attrs: { 'aria-hidden': 'true' } }, [
-          b.overdue || dueWarn ? D.el('i', { class: 'pb-bang', text: '!' }) : null,
-          D.el('span', { text: b.overdue ? 'po terminie' : dueShort(b) })
-        ])
+        item.e >= N ? null : (showDue
+          ? D.el('span', { class: 'pb-bar__due' + (b.overdue ? ' is-late is-long' : (dueWarn ? ' is-warn' : '')), attrs: { 'aria-hidden': 'true' } }, [
+            b.overdue || dueWarn ? D.el('i', { class: 'pb-bang', text: '!' }) : null,
+            D.el('span', { text: b.overdue ? 'po terminie' : dueShort(b) })
+          ])
+          : (b.overdue || dueWarn ? D.el('i', { class: 'pb-bang pb-bang--end' + (b.overdue ? ' is-late' : ''), attrs: { 'aria-hidden': 'true' }, text: '!' }) : null))
       ]);
       paintBar(el, item.s, item.e);
+      var endCol = null;
+      el.addEventListener('mouseenter', function () {
+        var track = el.closest('.pb-track');
+        if (!track || item.e >= N || el.classList.contains('is-drag')) return;
+        endCol = D.el('span', { class: 'pb-endcol', style: { left: (item.e / N * 100) + '%', width: (100 / N) + '%' }, attrs: { 'aria-hidden': 'true' } });
+        track.insertBefore(endCol, track.firstChild);
+      });
+      el.addEventListener('mouseleave', function () { if (endCol) { endCol.remove(); endCol = null; } });
       if (pendingFocus === key) { pendingFocus = null; window.setTimeout(function () { el.focus({ preventScroll: true }); }, 30); }
       attachBar(el, b, person, item, editable, key);
       return el;
@@ -319,6 +330,8 @@
       return cs ? E.CaseUI.chip(cs, caseCtx) : null;
     }
     /** Wiersze „Sprawy w toku” osoby: kropka = złożono, linia = dni od złożenia, ◇ pismo, ✆ dopytano. */
+    /** Kolor kapsuły dni sprawy: od 14 dni bursztyn, od 30 czerwień. */
+    function caseTone(days) { return days >= 30 ? 'late' : (days >= 14 ? 'warn' : 'ok'); }
     function caseRows(personId, trackOf) {
       var list = E.Cases.visible(state.workspace.cases || [], projects).filter(function (c) { return c.ownerId === personId && (!wantProject || c.projectId === wantProject); })
         .sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
@@ -354,13 +367,14 @@
           }
           marks.push(D.el('span', { class: 'pb-case__m pb-case__m--' + e.kind + (done ? ' is-filled' : ''), style: { left: pos(sl) }, attrs: { 'data-tooltip': tip, 'data-fk': 'pb-case-mark-' + c.id + '-' + e.id }, text: e.kind === 'call' ? '✆' : '' }));
         });
+        if (todaySlot >= 0 && todaySlot < N && s0 < N) marks.push(D.el('span', { class: 'pb-cap pb-cap--case t-num pb-cap--' + caseTone(days), style: { left: pos(todaySlot) }, text: String(days) + ' dni', attrs: { 'aria-hidden': 'true' } }));
         var open = D.el('button', { class: 'pb-case__name', attrs: { type: 'button', 'data-fk': 'pb-case-' + c.id, title: c.name }, text: c.name });
         open.addEventListener('click', function () { E.CaseUI.openDetail(open, c, caseCtx); });
         out.push(D.el('div', { class: 'pb-row pb-row--case', style: Identity.hueStyle(code), dataset: { caseId: c.id } }, [
           D.el('div', { class: 'pb-label pb-label--case' }, [
             D.el('span', { class: 'mrow__project', style: Identity.hueStyle(code), text: code }),
             D.el('span', { class: 'pb-case__txt' }, [open, D.el('small', { class: 't-muted truncate', text: c.org || 'sprawa w toku' })]),
-            D.el('span', { class: 'pb-case__days' }, [D.el('b', { class: 't-num', text: String(days) + ' dni' })])
+            D.el('span', { class: 'pb-case__days' }, [D.el('b', { class: 'pb-cap t-num pb-cap--' + caseTone(days), text: String(days) + ' dni' })])
           ]),
           D.el('div', { class: 'pb-cell' }, [trackOf([D.el('div', { class: 'pb-case__track' }, marks)])])
         ]));
@@ -1228,6 +1242,7 @@
         items: RANGES.map(function (n) { return { value: n, label: n === 12 ? 'Kwartał' : n + ' tyg.' }; }),
         onChange: function (v) { ctx.actions.setTime(Object.fromEntries([[K.weeks, Number(v)]])); }
       }).node,
+      UI.switchControl({ id: solo ? 'pb-due-my' : 'pb-due', label: 'Terminy na paskach', checked: showDue, attrs: { 'data-fk': 'pb-due' }, onChange: function (v) { ctx.actions.setTime(solo ? { myPlanDue: v } : { planDue: v }); } }).node,
       solo ? null : D.el('div', { class: 'pl-legend pb-legend', attrs: { 'aria-hidden': 'true' } }, [
         D.el('span', { class: 'pl-legend__i pl-legend__i--ok', text: 'do 85% pojemności' }),
         D.el('span', { class: 'pl-legend__i pl-legend__i--tight', text: 'napięty' }),

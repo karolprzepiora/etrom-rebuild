@@ -48,3 +48,12 @@
 .pb-absent__cap { position: absolute; left: 3px; bottom: 3px; display: inline-flex; align-items: center; gap: 4px; height: 1.15rem; padding: 0 .55rem; border-radius: 999px; background: var(--leave); color: #fff; font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
 .pb-absent__cap svg { width: 12px; height: 12px; flex: none; }
 .cv-ev--absence { background: var(--leave-wash); color: var(--leave-ink); }
+
+/* Plan 2: terminy domyślnie ukryte — sam wykrzyknik na końcu paska, data w dymku */
+.pb-bang--end { position: absolute; right: .3rem; top: 50%; transform: translateY(-50%); margin: 0; width: .95rem; height: .95rem; font-size: .7rem; box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 30%, transparent); }
+.pb-bang--end.is-late { background: var(--alarm); box-shadow: 0 0 0 2px color-mix(in srgb, var(--alarm) 30%, transparent); }
+.pb-endcol { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent, #3b82f6) 14%, transparent); pointer-events: none; z-index: 0; }
+.pb-case__track .pb-cap--case { position: absolute; top: 50%; transform: translate(.45rem, -50%); }
+.pb-cap--ok { }
+.pb-cap--warn { background: var(--warn-wash, color-mix(in srgb, var(--warn) 20%, transparent)); color: var(--warn-ink, inherit); }
+.pb-cap--late { background: var(--alarm-wash, color-mix(in srgb, var(--alarm) 18%, transparent)); color: var(--alarm-ink, inherit); }
