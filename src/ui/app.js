@@ -2426,6 +2426,13 @@
     el.style.setProperty('--ctr', String((contrast - 50) / 50));
   }
 
+  /** Otwiera jeden panel paska (reszta ekranu zwinięta); null zwija wszystkie. */
+  function openRail(ids, id) {
+    var list = (store.getState().prefs.collapsedRails || []).filter(function (x) { return ids.indexOf(x) < 0; });
+    ids.forEach(function (x) { if (x !== id) list.push(x); });
+    setPref({ collapsedRails: list });
+  }
+
   function toggleRail(id) {
     var list = store.getState().prefs.collapsedRails || [];
     setPref({ collapsedRails: list.indexOf(id) >= 0 ? list.filter(function (x) { return x !== id; }) : list.concat([id]) });
@@ -3355,6 +3362,7 @@
     resumeLast: resumeLast,
     openMyWork: function () { goTo('mywork'); },
     toggleRail: toggleRail,
+    openRail: openRail,
     setTime: function (patch) { store.set(patch); },
     toggleTimeProject: function (id) {
       var open = Object.assign({}, store.getState().timeOpen || {});

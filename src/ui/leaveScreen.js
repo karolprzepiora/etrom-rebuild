@@ -117,10 +117,7 @@
     var rows = mine.length
       ? D.el('ul', { class: 'lv-reqs' }, mine.map(function (a) { return requestRow(a, { people: ctx.people, actions: ctx.actions, mine: true }, now); }))
       : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' });
-    return D.el('div', { class: 'lv-grid' }, [
-      balanceCard(bal),
-      D.el('div', { class: 'lv-col' }, [card('Moje wnioski', [rows]), card('Rok w skrócie', [yearBars(list, me, bal.year)])])
-    ]);
+    return D.el('div', { class: 'lv-col' }, [card('Moje wnioski', [rows]), card('Rok w skrócie', [yearBars(list, me, bal.year)])]);
   }
 
   /* ---------- Mój urlop: kalendarz roczny ---------- */
@@ -364,6 +361,40 @@
   }
 
   /* ---------- Ekran ---------- */
+  /* ---------- Pasek boczny: Saldo, Do akceptacji, Nieobecni dziś ---------- */
+  var RAIL_IDS = ['lv-saldo', 'lv-inbox', 'lv-today'];
+  function sideRail(state, ctx, me, now, bal, canInbox, pendingN, tab, content) {
+    var people = state.workspace.people || [];
+    var projects = state.workspace.projects || [];
+    var mode = (state.workspace.settings || {}).absenceVisibility;
+    var today = Cal.isoOf(now);
+    var items = [{ id: 'lv-saldo', title: 'Saldo i limity urlopu', icon: 'sun', tone: 'accent', badge: String(bal.left), side: [balanceCard(bal)] }];
+    if (canInbox) {
+      var waiting = (state.workspace.absences || []).filter(function (a) { return a.status === 'pending' && a.personId !== me.id && A.canSee(me.id, a, projects, people); }).sort(function (a, b) { return a.from < b.from ? -1 : 1; });
+      var list = waiting.length
+        ? D.el('ul', { class: 'lv-side-list' }, waiting.slice(0, 6).map(function (a) {
+          var p = Team.findPerson(people, a.personId);
+          return D.el('li', null, [D.el('b', { text: p ? Team.fullName(p) : '' }), D.el('span', { class: 't-meta', text: kindLabel(a) + ' · ' + range(a.from, a.to, now) })]);
+        }))
+        : D.el('p', { class: 't-meta', text: 'Nic nie czeka na decyzję.' });
+      items.push({ id: 'lv-inbox', title: 'Do akceptacji', icon: 'history', tone: 'warn', badge: pendingN ? String(pendingN) : '', late: pendingN > 0, side: [list, tab === 'inbox' ? null : UI.button({ label: 'Otwórz skrzynkę akceptacji', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-open-inbox' }, onClick: function () { ctx.actions.setLeave({ tab: 'inbox' }); } })] });
+    }
+    var away = [];
+    (state.workspace.absences || []).forEach(function (a) {
+      if (a.status === 'pending' || a.status === 'rejected' || a.from > today || a.to < today) return;
+      var seen = A.peek(me.id, a, projects, people, mode);
+      if (!seen) return;
+      var p = Team.findPerson(people, a.personId);
+      if (p) away.push({ name: Team.fullName(p), what: seen === 'full' ? kindLabel(a) : 'Nieobecność', to: a.to });
+    });
+    var awayList = away.length
+      ? D.el('ul', { class: 'lv-side-list' }, away.map(function (x) { return D.el('li', null, [D.el('b', { text: x.name }), D.el('span', { class: 't-meta', text: x.what + ' · do ' + range(x.to, x.to, now) })]); }))
+      : D.el('p', { class: 't-meta', text: 'Dziś wszyscy są w pracy.' });
+    items.push({ id: 'lv-today', title: 'Nieobecni dziś', icon: 'calendar', tone: 'violet', badge: away.length ? String(away.length) : '', side: [awayList] });
+    var ids = items.map(function (it) { return it.id; });
+    return UI.railLayout({ id: 'leave', cls: 'lv-rl', items: items, active: UI.railActive(state.prefs, ids), main: [content], onSelect: function (id) { ctx.actions.openRail(ids, id); } });
+  }
+
   function view(state, ctx) {
     var people = state.workspace.people || [];
     var me = Team.findPerson(people, state.prefs.me);
@@ -394,7 +425,7 @@
       : tab === 'inbox' ? inbox(state, vctx, me, now)
       : (lv.view === 'year' ? yearCalendar(state, vctx, me, now) : mineCards(state, vctx, me, now));
     var bal = A.balance(state.workspace.absences || [], me, now);
-    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv' }, [toolbar, content]) };
+    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv' }, [toolbar, sideRail(state, ctx, me, now, bal, canInbox, pendingN, tab, content)]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */

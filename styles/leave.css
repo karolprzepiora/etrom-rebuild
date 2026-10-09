@@ -105,3 +105,8 @@
 .lv-t__name--sum { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 700; }
 .lv-t__row--sum { height: 1.7rem; }
 .lv-t__c--sum { display: grid; place-items: center; font-size: .6rem; font-weight: 700; color: var(--ink-2); }
+
+/* Pasek boczny Urlopów */
+.lv-side-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); font-size: var(--fs-sm); }
+.lv-side-list li { display: grid; gap: 1px; }
+.lv-rl .lv-card--balance { background: none; padding: 0; }

@@ -790,3 +790,11 @@ Jeden kalendarz w czterech widokach: **Miesiąc · Tydzień · Rok · Zespół**
 - Paski wielodniowe: nieobecności, wyjazdy i zadania ze startem (tekst na początku paska i w poniedziałki).
 - Skróty: M / W / R / Z (widoki), D (dziś), strzałki (dzień). Eksport `.ics` działa bez serwera i obejmuje widoczny zakres.
 - Widoczność cudzych nieobecności: `workspace.settings.absenceVisibility` (patrz DATA_MODEL), logika w `Absences.peek`.
+
+## Panele boczne: jeden system (`UI.railLayout`, audyt w `AUDYT_PANELI_BOCZNYCH.md`)
+
+- Panel boczny jest dodatkiem do treści: filtry, kontekst, podgląd. Rozwija się z przycisku na pasku po prawej, jeden panel naraz, ponowne kliknięcie zwija.
+- Kolory przycisków: turkus (`accent`) filtry i kontekst, fiolet (`violet`) dzień i terminy, bursztyn (`warn`) uwaga i oczekujące decyzje; licznik tylko gdy jest o czym informować.
+- Stan otwarcia: `prefs.collapsedRails` przez `UI.railActive(prefs, ids)` i `actions.openRail(ids, id)`; Kalendarz trzyma własny wybór w `prefs.cal.rail`.
+- Ekrany z paskiem: Moja praca, Czas, Plan, Kalendarz, Aktualności (Projekty, Wyróżnienia, Zespół), Urlopy (Saldo, Do akceptacji, Nieobecni dziś), Projekty (Najbliższe terminy, własny układ o tych samych przyciskach).
+- Ekrany bez paska (jedna funkcja): Przegląd, Zespół, Biblioteka, Analiza.

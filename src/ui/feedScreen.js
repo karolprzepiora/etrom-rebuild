@@ -315,7 +315,7 @@
     function widget(title, body, extra) {
       return D.el('section', { class: 'fd__widget' }, [D.el('header', { class: 'fd__whead' }, [D.el('h2', { text: title }), extra || null]), body]);
     }
-    return D.el('aside', { class: 'fd__side', attrs: { 'aria-label': 'Boczny panel aktualności' } }, [
+    return [
       projects.length ? widget('Projekty w toku', D.el('ul', { class: 'fd__plist' }, projects.map(function (p) {
         var level = E.Insight.health(p, now).level;
         return D.el('li', null, [D.el('button', { class: 'fd__prow', attrs: { type: 'button', 'data-fk': 'fd-story-' + p.id, 'data-tooltip': p.name }, on: { click: function () { ctx.actions.openProject(p.id, 'etapy'); } } }, [
@@ -331,7 +331,7 @@
       active.length ? widget('Zespół', D.el('div', { class: 'fd__team' }, active.slice(0, 12).map(function (p) {
         return D.el('span', { class: 'fd__tm', attrs: { 'data-tooltip': Team.fullName(p) } }, [E.Avatar.avatar(p, { size: 'md' })]);
       }).concat([D.el('a', { class: 'fd__all', text: 'Cały zespół', attrs: { href: '#/zespol' } })])), D.el('span', { class: 't-meta t-num', text: String(active.length) })) : null
-    ]);
+    ];
   }
 
   /* ---------- Zdjęcia: zmniejszenie w przeglądarce, żeby wpisy zmieściły się w pamięci ---------- */
@@ -560,11 +560,15 @@
     var more = result.hasMore
       ? D.el('div', { class: 'fd__more' }, [UI.button({ label: 'Pokaż starsze (' + (result.total - result.items.length) + ')', variant: 'secondary', onClick: function () { ctx.actions.loadMoreFeed(); }, attrs: { 'data-fk': 'fd-more' } })])
       : null;
+    var sw = sidebar(state, ctx, now, people);
+    var sideItems = [];
+    if (sw[0]) sideItems.push({ id: 'fd-projects', title: 'Projekty w toku', icon: 'folder', tone: 'accent', side: [sw[0]] });
+    if (sw[1]) sideItems.push({ id: 'fd-kudos', title: 'Wyróżnienia', icon: 'award', tone: 'violet', side: [sw[1]] });
+    if (sw[2]) sideItems.push({ id: 'fd-team', title: 'Zespół', icon: 'people', tone: 'accent', side: [sw[2]] });
     return {
       summary: me ? 'Firmowe media społecznościowe: wpisy, zdjęcia, ankiety, ogłoszenia i zdarzenia z projektów.' : 'Wybierz w „Mojej pracy”, kim jesteś, aby reagować i pisać.',
       body: D.el('div', { class: 'fd' }, [
-        D.el('div', { class: 'fd__main' }, [me ? null : E.Welcome.card(state, ctx, 'Aktualności to firmowa tablica: wpisy, zdjęcia, ankiety i zdarzenia z projektów. Żeby pisać i reagować, system musi wiedzieć, kim jesteś.'), me ? composer(state, ctx, me) : null, pinned, filterBar(result, filter, ctx.actions), list, more]),
-        sidebar(state, ctx, now, people)
+        UI.railLayout({ id: 'feed', cls: 'fd-rl', mainCls: 'fd__main', items: sideItems, active: UI.railActive(state.prefs, sideItems.map(function (it) { return it.id; })), onSelect: function (id) { ctx.actions.openRail(sideItems.map(function (it) { return it.id; }), id); }, main: [me ? null : E.Welcome.card(state, ctx, 'Aktualności to firmowa tablica: wpisy, zdjęcia, ankiety i zdarzenia z projektów. Żeby pisać i reagować, system musi wiedzieć, kim jesteś.'), me ? composer(state, ctx, me) : null, pinned, filterBar(result, filter, ctx.actions), list, more] })
       ]),
       result: result
     };

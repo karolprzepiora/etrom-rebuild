@@ -625,8 +625,17 @@
     ]);
   }
 
+  /** Który panel paska jest otwarty (zwinięte ids są w prefs.collapsedRails). Bez zapisu otwarty jest `def` (domyślnie pierwszy). */
+  function railActive(prefs, ids, def) {
+    var collapsed = (prefs && prefs.collapsedRails) || [];
+    var open = ids.filter(function (id) { return collapsed.indexOf(id) < 0; });
+    if (open.length === ids.length) return def === undefined ? ids[0] : def;
+    return open[0] || null;
+  }
+
   root.ETROM.UI = {
     railLayout: railLayout,
+    railActive: railActive,
     cx: cx,
     button: button,
     iconButton: iconButton,

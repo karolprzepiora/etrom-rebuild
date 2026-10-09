@@ -1,7 +1,7 @@
 /* ETROM — „Aktualności”: strumień w stylu mediów społecznościowych.
    Jedna wąska kolumna, karty z awatarem, reakcje jak chipy, komentarze rozwijane w karcie.
    Kolor tylko dla stanu projektu (pierścień) i własnych reakcji. */
-.fd { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: var(--space-5, 1.5rem); align-items: start; margin-top: var(--space-4); }
+.fd { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5, 1.5rem); align-items: start; margin-top: var(--space-4); }
 .fd__main { display: grid; gap: var(--space-4); min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .fd__pinned { display: grid; gap: var(--space-3); }
 
@@ -195,3 +195,7 @@ a.fd__chip:hover { color: var(--ink); background: var(--canvas); }
 .fd__sysicon--warning { color: var(--warn-ink); background: var(--warn-wash); }
 .fd__sysicon--alarm { color: var(--alarm-ink); background: var(--alarm-wash); }
 .fd__sysicon--normal { color: var(--flow-ink, var(--ink-2)); }
+
+/* Boczny pasek Aktualności (wspólny railLayout) */
+.fd-rl .fd__widget { padding: 0; background: none; box-shadow: none; }
+.fd-rl .fd__whead h2 { display: none; }

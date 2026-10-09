@@ -1745,7 +1745,7 @@ async function main() {
     await go('#/aktualnosci');
     await sleep(300);
     check('aktualności: ekran ze strumieniem kart, paskiem projektów i kompozytorem',
-      (await evaluate('return location.hash === "#/aktualnosci" && !document.getElementById("view-feed").hidden && document.querySelectorAll(".fd__card").length > 3 && document.querySelectorAll(".fd__prow").length > 2 && !!document.querySelector(".fd__side") && !!document.querySelector(".fd__textarea");')));
+      (await evaluate('return location.hash === "#/aktualnosci" && !document.getElementById("view-feed").hidden && document.querySelectorAll(".fd__card").length > 3 && document.querySelectorAll(".fd__prow").length > 2 && !!document.querySelector("#view-feed .rl__side") && !!document.querySelector(".fd__textarea");')));
     const feedKey = await evaluate('return document.querySelector(".fd__card[data-kind=task], .fd__card[data-kind=time], .fd__card[data-kind=mail]").dataset.feedKey;');
     await evaluate('window.ETROM.app.actions.toggleReaction(' + JSON.stringify(feedKey) + ', "heart"); return true;');
     await sleep(250);
@@ -1812,7 +1812,7 @@ async function main() {
     await go('#/aktualnosci');
     await sleep(300);
     check('aktualności: układ na pełną szerokość z prawym panelem',
-      await evaluate('const m = document.querySelector(".fd__main").getBoundingClientRect(); const a = document.querySelector(".fd__side").getBoundingClientRect(); const v = document.getElementById("view-feed").getBoundingClientRect(); return a.right > v.right - 40 && m.width > 500 && a.left > m.right - 1;'));
+      await evaluate('const m = document.querySelector(".fd__main").getBoundingClientRect(); const a = document.querySelector("#view-feed .rl__dock").getBoundingClientRect(); const v = document.getElementById("view-feed").getBoundingClientRect(); return a.right > v.right - 40 && m.width > 500 && a.left > m.right - 1;'));
     check('kafelki projektów w panelu mają czytelny skrót numeru (bez ucięcia)',
       await evaluate('return [...document.querySelectorAll(".fd__pcode")].every(n => n.scrollWidth <= n.clientWidth + 1 && n.textContent.length <= 4);'));
     await evaluate('window.__att = null; const c = document.createElement("canvas"); c.width = 1800; c.height = 1200; const g = c.getContext("2d"); g.fillStyle = "#3a7"; g.fillRect(0,0,1800,1200); c.toBlob(b => { const f = new File([b], "plac.png", { type: "image/png" }); window.ETROM.FeedScreen.attach([f, f]).then(n => { window.__att = n; }); }); return true;');
