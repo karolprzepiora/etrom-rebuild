@@ -71,12 +71,19 @@
     };
   }
 
+  /** Pulpit: wybrane kafle (puste = domyślne dla roli) i zwinięte karty. Walidacja listy wobec puli jest w DashTiles. */
+  function cleanDash(raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    function ids(v, max) { return (Array.isArray(v) ? v : []).filter(function (x, i, a) { return typeof x === 'string' && /^[a-z0-9-]{1,24}$/.test(x) && a.indexOf(x) === i; }).slice(0, max); }
+    return { tiles: ids(src.tiles, 5), collapsed: ids(src.collapsed, 20) };
+  }
+
   function defaults() {
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
       groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
-      cal: cleanCal(null)
+      cal: cleanCal(null), dash: cleanDash(null)
     };
   }
 
@@ -142,6 +149,7 @@
       reservePct: clampInt(source.reservePct, 0, 50, 15),
       minProgress: clampInt(source.minProgress, 0, 90, 10),
       cal: cleanCal(source.cal),
+      dash: cleanDash(source.dash),
       hourlyCost: Number.isFinite(Number(source.hourlyCost)) && Number(source.hourlyCost) >= 0 && Number(source.hourlyCost) <= 10000 ? Math.round(Number(source.hourlyCost) * 100) / 100 : 0
     };
   }

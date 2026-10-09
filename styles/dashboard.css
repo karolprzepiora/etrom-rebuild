@@ -47,7 +47,7 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .db-wx__days i { font-style: normal; opacity: .7; font-size: var(--fs-xs); }
 .db-sample { display: inline-block; padding: 0 .4rem; border-radius: 999px; font-size: .625rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: color-mix(in oklab, currentColor 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, currentColor 35%, transparent); }
 
-.db-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); margin-top: -3.75rem; padding: 0 var(--space-4); position: relative; z-index: 1; }
+.db-tiles { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: var(--space-3); margin-top: -3.75rem; padding: 0 var(--space-4); position: relative; z-index: 1; }
 .db-tile { display: grid; gap: 2px; align-content: start; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--sheet); color: var(--ink); box-shadow: var(--elev-lift); text-align: left; text-decoration: none; cursor: pointer; border: 0; font: inherit; }
 .db-tile:hover { box-shadow: var(--elev-hover); }
 .db-tile:focus-visible { outline: none; box-shadow: var(--focus-ring); }
@@ -160,3 +160,24 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .cv-rl .cv-grid { grid-template-columns: 2rem repeat(7, minmax(4.4rem, 1fr)); min-width: 0; }
 .cv-rl .rl__side .segmented__btn { padding-inline: 8px; white-space: nowrap; font-size: 12px; }
 .cv-wcols { grid-template-columns: repeat(7, minmax(6rem, 1fr)); }
+
+/* Zwijanie kart pulpitu */
+.db-card__fold { margin-left: calc(var(--space-1) * -1); flex: none; }
+.db-card__sum { display: none; font-size: var(--fs-sm); color: var(--ink-3); }
+.db-card.is-collapsed > :not(.db-card__head) { display: none; }
+.db-card.is-collapsed .db-card__head { margin-bottom: 0; }
+.db-card.is-collapsed .db-card__sum { display: inline; }
+.db-card.is-collapsed .db-link { display: none; }
+
+/* Okno „Dostosuj pulpit” */
+.dbset { display: grid; gap: var(--space-2); padding: var(--space-3); max-height: min(36rem, 80vh); overflow-y: auto; }
+.dbset__t { font-size: var(--fs-sm); }
+.dbset__s { margin: 0; font-size: var(--fs-xs); }
+.dbset__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dbset__row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); }
+.dbset__row.is-on { background: var(--wash); }
+.dbset__lbl { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; cursor: pointer; }
+.dbset__lbl span { display: grid; min-width: 0; }
+.dbset__lbl small { color: var(--ink-3); font-size: var(--fs-xs); }
+.dbset__move { display: flex; flex: none; }
+.dbset__acts { display: flex; gap: var(--space-2); flex-wrap: wrap; }

@@ -891,6 +891,26 @@ async function main() {
       await evaluate('const v = document.getElementById("view-dashboard"); return !v.hidden && !!v.querySelector(".db-hero__date") && v.querySelectorAll(".db-tile").length === 5 && /przykładowe/i.test(v.querySelector("[data-fk=db-weather]").textContent) && /przykładowe/i.test(v.querySelector("[data-fk=db-water]").textContent) && !!v.querySelector("[data-fk=db-matrix]") && !!v.querySelector("[data-fk=db-newproject]") && !!v.querySelector("[data-fk=db-finance]");'));
     check('menu Dyrekcji: bloki Finanse (3× WKRÓTCE), Administracja i Urlopy zespołu',
       await evaluate('const g = document.querySelector("[data-group=finance]"); return !g.hidden && g.querySelectorAll(".nav__soon").length === 3 && !document.querySelector("[data-group=admin]").hidden && !document.querySelector("[data-screen=leaveteam]").parentNode.hidden;'));
+    await evaluate('document.querySelector("[data-fk=db-customize]").click(); return true;');
+    await sleep(300);
+    check('Dostosuj pulpit: okno z pulą 8 kafli, komplet blokuje kolejne, strzałki kolejności',
+      await evaluate('const b = document.querySelector(".dbset"); return !!b && b.querySelectorAll(".dbset__row").length === 8 && b.querySelectorAll(".dbset__row input:checked").length === 5 && b.querySelector("#dbset-react").disabled && b.querySelectorAll(".dbset__move").length === 5;'));
+    await evaluate('document.getElementById("dbset-soon").click(); return true;');
+    await sleep(250);
+    await evaluate('document.getElementById("dbset-absent").click(); return true;');
+    await sleep(350);
+    check('wybór kafli: zamiana „Terminy w 7 dni” na „Nieobecni dziś” zmienia kafle, okno zostaje otwarte i zakotwiczone',
+      await evaluate('const t = Array.from(document.querySelectorAll("#view-dashboard .db-tile")).map(function (n) { return n.getAttribute("data-fk"); }); const p = document.querySelector(".dbset").closest(".popover").getBoundingClientRect(); const a = document.querySelector("[data-fk=db-customize]").getBoundingClientRect(); return t.join() === "db-t-risk,db-t-load,db-t-approve,db-t-late,db-t-absent" && Math.abs(p.right - a.right) < 60;'));
+    await evaluate('document.querySelector("[data-fk=dbset-fold]").click(); return true;');
+    await sleep(350);
+    check('zwiń wszystkie: karty chowają treść, zostaje nagłówek i podsumowanie, stan zapisany w ustawieniach',
+      await evaluate('const c = document.querySelector("#view-dashboard [data-card=health]"); const body = c.querySelector(".db-list, .db-empty"); return c.classList.contains("is-collapsed") && getComputedStyle(body).display === "none" && c.querySelector(".db-card__fold").getAttribute("aria-expanded") === "false" && window.ETROM.app.actions.dashPrefs().collapsed.indexOf("health") >= 0;'));
+    await evaluate('document.querySelector("[data-fk=dbset-reset]").click(); return true;');
+    await sleep(300);
+    check('przywróć domyślne: kafle i karty wracają do stanu początkowego',
+      await evaluate('const d = window.ETROM.app.actions.dashPrefs(); return d.tiles.length === 0 && d.collapsed.length === 0 && document.querySelectorAll("#view-dashboard .db-tile").length === 5 && !document.querySelector("#view-dashboard .is-collapsed");'));
+    await evaluate('document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); const m = document.querySelector(".popover"); if (m) m.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return true;');
+    await sleep(200);
     await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
     await sleep(400);
     check('Pulpit pracownika: 5 kafli bez macierzy zespołu i bez Finansów, menu bez Finansów i Administracji',

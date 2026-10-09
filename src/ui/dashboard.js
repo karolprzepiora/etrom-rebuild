@@ -59,7 +59,76 @@
     ]);
   }
 
-  function hero(state, ctx, me, management, now) {
+  /** Karta z przyciskiem zwijania w nagłówku. Zwinięta pokazuje tylko nagłówek i krótkie podsumowanie. */
+  function collapsible(state, ctx, reg, id, el, summary) {
+    if (!el) return el;
+    reg.push(id);
+    var head = el.querySelector('.db-card__head');
+    if (!head) return el;
+    var collapsed = ((state.prefs.dash || {}).collapsed || []).indexOf(id) >= 0;
+    var title = head.querySelector('.db-card__t');
+    var name = title ? title.textContent : 'kartę';
+    el.setAttribute('data-card', id);
+    if (collapsed) el.classList.add('is-collapsed');
+    var btn = UI.iconButton({ label: (collapsed ? 'Rozwiń: ' : 'Zwiń: ') + name, icon: collapsed ? 'chevronRight' : 'chevronDown', size: 'sm', class: 'db-card__fold', attrs: { 'aria-expanded': collapsed ? 'false' : 'true', 'data-fk': 'db-fold-' + id }, onClick: function () { ctx.actions.toggleDashCard(id); } });
+    head.insertBefore(btn, head.firstChild);
+    if (summary) {
+      var sum = D.el('span', { class: 'db-card__sum', text: summary });
+      if (title && title.nextSibling) head.insertBefore(sum, title.nextSibling); else head.appendChild(sum);
+    }
+    return el;
+  }
+
+  // Ten sam przycisk przeżywa odświeżenie widoku, żeby otwarte okno nie traciło zakotwiczenia.
+  var cust = { btn: null, state: null, ctx: null, role: 'worker', cards: [] };
+  function customizeButton(state, ctx, role, cardIds) {
+    cust.state = state; cust.ctx = ctx; cust.role = role; cust.cards = cardIds;
+    if (!cust.btn) {
+      cust.btn = UI.button({ label: 'Dostosuj pulpit', icon: 'settings', variant: 'ghost', attrs: { 'data-fk': 'db-customize' }, onClick: function (ev) { customize(ev.currentTarget, cust.state, cust.ctx, cust.role, cust.cards); } });
+    }
+    return cust.btn;
+  }
+
+  /** Okno „Dostosuj pulpit”: wybór i kolejność kafli oraz zwijanie wszystkich kart. */
+  function customize(anchor, state, ctx, role, cardIds) {
+    var DT = E.DashTiles;
+    var box = D.el('div', { class: 'dbset' });
+    function current() { return ctx.actions.dashPrefs(); }
+    function paint() {
+      var chosen = DT.resolve(current().tiles, role);
+      var full = chosen.length >= DT.MAX;
+      var rows = DT.pool(role).map(function (t) {
+        var at = chosen.indexOf(t.id);
+        var on = at >= 0;
+        var lock = (on && chosen.length <= DT.MIN) || (!on && full);
+        var input = D.el('input', { class: 'checkbox', attrs: { type: 'checkbox', id: 'dbset-' + t.id, checked: on, disabled: lock, 'data-fk': 'dbset-' + t.id } });
+        input.addEventListener('change', function () { ctx.actions.setDash({ tiles: DT.toggle(current().tiles, role, t.id) }); paint(); });
+        return D.el('li', { class: 'dbset__row' + (on ? ' is-on' : '') }, [
+          D.el('label', { class: 'dbset__lbl', attrs: { for: 'dbset-' + t.id } }, [input, D.el('span', null, [D.el('b', { text: t.label }), D.el('small', { text: t.hint })])]),
+          on ? D.el('span', { class: 'dbset__move' }, [
+            UI.iconButton({ label: 'Przesuń w lewo: ' + t.label, icon: 'chevronLeft', size: 'sm', disabled: at === 0, onClick: function () { ctx.actions.setDash({ tiles: DT.move(current().tiles, role, t.id, -1) }); paint(); } }),
+            UI.iconButton({ label: 'Przesuń w prawo: ' + t.label, icon: 'chevronRight', size: 'sm', disabled: at === chosen.length - 1, onClick: function () { ctx.actions.setDash({ tiles: DT.move(current().tiles, role, t.id, 1) }); paint(); } })
+          ]) : null
+        ]);
+      });
+      var collapsed = current().collapsed || [];
+      var allFolded = cardIds.length > 0 && cardIds.every(function (id) { return collapsed.indexOf(id) >= 0; });
+      D.render(box, [
+        D.el('b', { class: 'dbset__t', text: 'Kafle na górze' }),
+        D.el('p', { class: 'dbset__s t-muted', text: full ? 'Komplet (' + DT.MAX + '). Wyłącz któryś, żeby dodać inny.' : 'Od ' + DT.MIN + ' do ' + DT.MAX + ' kafli. Kolejność strzałkami.' }),
+        D.el('ul', { class: 'dbset__list' }, rows),
+        D.el('b', { class: 'dbset__t', text: 'Karty poniżej' }),
+        D.el('div', { class: 'dbset__acts' }, [
+          UI.button({ label: allFolded ? 'Rozwiń wszystkie' : 'Zwiń wszystkie', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'dbset-fold' }, onClick: function () { ctx.actions.setDash({ collapsed: allFolded ? [] : cardIds.slice() }); paint(); } }),
+          UI.button({ label: 'Przywróć domyślne', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'dbset-reset' }, onClick: function () { ctx.actions.setDash({ tiles: [], collapsed: [] }); paint(); } })
+        ])
+      ]);
+    }
+    paint();
+    E.Menu.open({ anchor: anchor, content: box, label: 'Dostosuj pulpit', align: 'end', minWidth: '22rem' });
+  }
+
+  function hero(state, ctx, me, management, now, cardIds) {
     var todayIso = Cal.isoOf(now);
     var chip = tripChip(state, me.id, todayIso);
     var wk = Cal.weekNumber(todayIso);
@@ -72,6 +141,7 @@
           UI.button({ label: 'Zacznij pracę', icon: 'play', variant: 'primary', attrs: { 'data-fk': 'db-start' }, onClick: function () { ctx.actions.openMyWork(); } }),
           UI.button({ label: 'Wpis czasu', icon: 'plus', variant: 'secondary', attrs: { 'data-fk': 'db-time' }, onClick: function () { ctx.actions.addTimeEntry(); } }),
           management ? UI.button({ label: 'Nowy projekt', icon: 'plus', variant: 'secondary', attrs: { 'data-fk': 'db-newproject' }, onClick: function () { ctx.actions.openCreate(); } }) : null,
+          customizeButton(state, ctx, management ? 'manager' : 'worker', cardIds),
           chip
         ])
       ]),
@@ -116,13 +186,33 @@
       .sort(function (a, b) { return String(a.task.deadline) < String(b.task.deadline) ? -1 : 1; });
     var nxt = all[0];
     var nd = nxt ? String(nxt.task.deadline).slice(0, 10) : '';
-    return [
-      tile({ fk: 'db-t-today', label: 'Dziś', value: todayMin >= 60 ? hh(todayMin / 60) + ' h' : todayMin + ' min', sub: 'z ' + hh(target) + ' h', onClick: function () { ctx.actions.addTimeEntry(); } }),
-      tile({ fk: 'db-t-week', label: 'Ten tydzień', value: hh(reg) + ' / ' + hh(wk.planned) + ' h', sub: 'zarejestrowano · plan z ' + hh(wk.capacity) + ' h', href: '#/czas' }),
-      tile({ fk: 'db-t-late', label: 'Po terminie', value: String(m.overdue), sub: m.overdue ? 'zadania do nadrobienia' : 'wszystko w terminie', tone: m.overdue ? 'alarm' : '', href: '#/moja-praca' }),
-      tile({ fk: 'db-t-react', label: 'Wymaga reakcji', value: String(m.react.length), sub: m.react.length ? 'zatwierdzenia i pisma' : 'nic nie czeka', tone: m.react.length ? 'warn' : '', onClick: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } }),
-      tile({ fk: 'db-t-next', label: 'Najbliższy termin', value: nd ? DOW_SHORT[Cal.parse(nd).getDay()] + ' ' + nd.slice(8) + '.' + nd.slice(5, 7) : '—', sub: nxt ? nxt.task.name : 'brak terminów', href: '#/moja-praca' })
-    ];
+    var soonN = all.filter(function (r) { var d = String(r.task.deadline).slice(0, 10); return d >= Cal.isoOf(now) && d <= Cal.addDays(Cal.isoOf(now), 7); }).length;
+    var bal = E.Absences.balance(state.workspace.absences || [], me, now);
+    return {
+      today: tile({ fk: 'db-t-today', label: 'Dziś', value: todayMin >= 60 ? hh(todayMin / 60) + ' h' : todayMin + ' min', sub: 'z ' + hh(target) + ' h', onClick: function () { ctx.actions.addTimeEntry(); } }),
+      week: tile({ fk: 'db-t-week', label: 'Ten tydzień', value: hh(reg) + ' / ' + hh(wk.planned) + ' h', sub: 'zarejestrowano · plan z ' + hh(wk.capacity) + ' h', href: '#/czas' }),
+      late: tile({ fk: 'db-t-late', label: 'Po terminie', value: String(m.overdue), sub: m.overdue ? 'zadania do nadrobienia' : 'wszystko w terminie', tone: m.overdue ? 'alarm' : '', href: '#/moja-praca' }),
+      react: tile({ fk: 'db-t-react', label: 'Wymaga reakcji', value: String(m.react.length), sub: m.react.length ? 'zatwierdzenia i pisma' : 'nic nie czeka', tone: m.react.length ? 'warn' : '', onClick: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } }),
+      next: tile({ fk: 'db-t-next', label: 'Najbliższy termin', value: nd ? DOW_SHORT[Cal.parse(nd).getDay()] + ' ' + nd.slice(8) + '.' + nd.slice(5, 7) : '—', sub: nxt ? nxt.task.name : 'brak terminów', href: '#/moja-praca' }),
+      soon: tile({ fk: 'db-t-soon', label: 'Terminy w 7 dni', value: String(soonN), sub: soonN ? 'moich zadań do zamknięcia' : 'brak terminów w tym tygodniu', href: '#/moja-praca' }),
+      leave: tile({ fk: 'db-t-leave', label: 'Urlop do wykorzystania', value: bal.left + ' dni', sub: 'z ' + bal.total + ' w ' + bal.year + (bal.pending ? ' · ' + bal.pending + ' czeka na decyzję' : ''), href: '#/urlopy' })
+    };
+  }
+
+  /** Zadania aktywnych projektów po terminie i z terminem w najbliższych 7 dniach. */
+  function taskCounts(projects, now) {
+    var today = Cal.isoOf(now);
+    var limit = Cal.addDays(today, 7);
+    var out = { late: 0, soon: 0 };
+    projects.forEach(function (p) {
+      if (p.status === 'done') return;
+      (p.stages || []).forEach(function (st) { (st.tasks || []).forEach(function (t) {
+        if (t.status === 'done' || !t.deadline) return;
+        var d = String(t.deadline).slice(0, 10);
+        if (d < today) out.late += 1; else if (d <= limit) out.soon += 1;
+      }); });
+    });
+    return out;
   }
 
   function terminowosc(projects, now) {
@@ -147,13 +237,18 @@
     var load = cap ? Math.round(planned / cap * 100) : 0;
     var pend = E.LeaveScreen.pendingFor(state, m.me);
     var tm = terminowosc(state.workspace.projects || [], now);
-    return [
-      tile({ fk: 'db-t-risk', label: 'Projekty w ryzyku', value: risky + ' / ' + projects.length, sub: 'ostrzeżenia i alarmy', tone: risky ? 'warn' : '', href: '#/przeglad' }),
-      tile({ fk: 'db-t-load', label: 'Obciążenie zespołu', value: load + '%', sub: 'plan tygodnia / dostępne godziny', tone: load > 100 ? 'alarm' : '', href: '#/plan' }),
-      tile({ fk: 'db-t-approve', label: 'Do akceptacji', value: String(pend), sub: pend ? 'wnioski urlopowe' : 'nic nie czeka', tone: pend ? 'warn' : '', onClick: function () { ctx.actions.setLeave({ tab: 'inbox' }); location.hash = '#/urlopy'; } }),
-      tile({ fk: 'db-t-ontime', label: 'Terminowość 90 dni', value: tm === null ? '—' : tm + '%', sub: tm === null ? 'za mało zakończonych zadań' : 'zadań zamkniętych w terminie', href: '#/analiza' }),
-      tile({ fk: 'db-t-cost', label: 'Koszt vs budżet', value: '—', sub: 'moduł Finanse — wkrótce', soon: true })
-    ];
+    var counts = taskCounts(state.workspace.projects || [], now);
+    var absent = teamToday(state, now).length;
+    return {
+      risk: tile({ fk: 'db-t-risk', label: 'Projekty w ryzyku', value: risky + ' / ' + projects.length, sub: 'ostrzeżenia i alarmy', tone: risky ? 'warn' : '', href: '#/przeglad' }),
+      load: tile({ fk: 'db-t-load', label: 'Obciążenie zespołu', value: load + '%', sub: 'plan tygodnia / dostępne godziny', tone: load > 100 ? 'alarm' : '', href: '#/plan' }),
+      approve: tile({ fk: 'db-t-approve', label: 'Do akceptacji', value: String(pend), sub: pend ? 'wnioski urlopowe' : 'nic nie czeka', tone: pend ? 'warn' : '', onClick: function () { ctx.actions.setLeave({ tab: 'inbox' }); location.hash = '#/urlopy'; } }),
+      react: tile({ fk: 'db-t-react', label: 'Wymaga reakcji', value: String(m.react.length), sub: m.react.length ? 'zatwierdzenia i pisma' : 'nic nie czeka', tone: m.react.length ? 'warn' : '', onClick: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } }),
+      late: tile({ fk: 'db-t-late', label: 'Zadania po terminie', value: String(counts.late), sub: counts.late ? 'w aktywnych projektach' : 'wszystko w terminie', tone: counts.late ? 'alarm' : '', href: '#/przeglad' }),
+      soon: tile({ fk: 'db-t-soon', label: 'Terminy w 7 dni', value: String(counts.soon), sub: counts.soon ? 'zadań do zamknięcia' : 'brak terminów w tym tygodniu', href: '#/kalendarz' }),
+      absent: tile({ fk: 'db-t-absent', label: 'Nieobecni dziś', value: String(absent), sub: absent ? 'urlopy i wyjazdy' : 'wszyscy w biurze', href: '#/kalendarz' }),
+      ontime: tile({ fk: 'db-t-ontime', label: 'Terminowość 90 dni', value: tm === null ? '—' : tm + '%', sub: tm === null ? 'za mało zakończonych zadań' : 'zadań zamkniętych w terminie', href: '#/analiza' })
+    };
   }
 
   function weekCard(state, ctx, now, seg) {
@@ -293,12 +388,19 @@
     var management = E.Budget.isManagement(me.id, people);
     var c = Object.assign({}, ctx, { people: people, meId: me.id, state: state });
     var seg = ['today', 'week', 'react'].indexOf(state.dashSeg) >= 0 ? state.dashSeg : 'week';
-    var tiles = management ? managerTiles(state, ctx, m, now) : workerTiles(state, ctx, m, now);
+    var role = E.DashTiles.roleOf(management);
+    var pool = management ? managerTiles(state, ctx, m, now) : workerTiles(state, ctx, m, now);
+    var tiles = E.DashTiles.resolve((state.prefs.dash || {}).tiles, role).map(function (id) { return pool[id]; }).filter(Boolean);
+    var reg = [];
+    function fold(id, el, summary) { return collapsible(state, ctx, reg, id, el, summary); }
 
     var caseEl = E.CaseUI.section(state, c, 'all');
-    var center = [weekCard(state, ctx, now, seg)];
-    if (management) center.push(matrixCard(state, ctx, now), healthCard(state, ctx, now));
-    center.push(D.el('div', { class: 'db-pair' }, [caseEl ? D.el('div', { class: 'db-card db-card--cases' }, [caseEl]) : null, feedCard(state, ctx, me, now)].filter(Boolean)));
+    var center = [fold('week', weekCard(state, ctx, now, seg))];
+    if (management) {
+      var risky = (state.workspace.projects || []).filter(function (p) { if (p.status === 'done') return false; var l = E.Insight.health(p, now).level; return l === 'alarm' || l === 'warning'; }).length;
+      center.push(fold('matrix', matrixCard(state, ctx, now)), fold('health', healthCard(state, ctx, now), risky ? risky + ' w ryzyku' : 'brak ryzyk'));
+    }
+    center.push(D.el('div', { class: 'db-pair' }, [caseEl ? D.el('div', { class: 'db-card db-card--cases' }, [caseEl]) : null, fold('feed', feedCard(state, ctx, me, now))].filter(Boolean)));
 
     var react = m.react.length ? D.el('section', { class: 'db-card db-card--side', attrs: { 'aria-label': 'Wymaga reakcji', 'data-fk': 'db-react' } }, [
       D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' }), D.el('span', { class: 'db-cap db-cap--warn', text: String(m.react.length) }), D.el('a', { class: 'db-link', attrs: { href: '#/moja-praca' }, text: 'Skrzynka →', on: null })]),
@@ -309,18 +411,20 @@
       }))
     ]) : null;
     var side = [];
-    if (management) side.push(approveCard(state, ctx, me));
-    else side.push(react ? react : D.el('section', { class: 'db-card db-card--side' }, [D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' })]), D.el('p', { class: 'db-empty', text: 'Nic nie czeka.' })]));
+    var pendN = (state.workspace.absences || []).filter(function (a) { return a.status === 'pending' && a.personId !== me.id; }).length;
+    if (management) side.push(fold('approve', approveCard(state, ctx, me), pendN ? pendN + ' do decyzji' : 'nic nie czeka'));
+    else side.push(react ? fold('react', react, m.react.length + ' do reakcji') : D.el('section', { class: 'db-card db-card--side' }, [D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' })]), D.el('p', { class: 'db-empty', text: 'Nic nie czeka.' })]));
     var ordersCard = E.OrdersScreen.strip(state, ctx, 'card');
-    if (ordersCard) side.push(ordersCard);
-    side.push(waterCard(now), teamCard(state, ctx, now));
-    if (management) side.push(financeCard());
+    if (ordersCard) side.push(fold('orders', ordersCard));
+    var away = teamToday(state, now).length;
+    side.push(fold('water', waterCard(now)), fold('team', teamCard(state, ctx, now), away ? away + ' poza biurem' : 'wszyscy w biurze'));
+    if (management) side.push(fold('finance', financeCard()));
 
     return {
       summary: '',
       body: D.el('div', { class: 'db' }, [
-        hero(state, ctx, me, management, now),
-        D.el('div', { class: 'db-tiles', attrs: { 'aria-label': 'Najważniejsze liczby' } }, tiles),
+        hero(state, ctx, me, management, now, reg),
+        D.el('div', { class: 'db-tiles', style: { '--n': String(tiles.length) }, attrs: { 'aria-label': 'Najważniejsze liczby' } }, tiles),
         D.el('div', { class: 'db-cols' }, [D.el('div', { class: 'db-center' }, center), D.el('div', { class: 'db-side' }, side)])
       ])
     };

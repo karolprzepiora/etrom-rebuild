@@ -2048,6 +2048,13 @@
     setPref({ cal: cal });
   }
 
+  function dashPrefs() { return store.getState().prefs.dash || { tiles: [], collapsed: [] }; }
+  function setDash(patch) { setPref({ dash: Object.assign({}, dashPrefs(), patch) }); }
+  function toggleDashCard(id) {
+    var list = dashPrefs().collapsed || [];
+    setDash({ collapsed: list.indexOf(id) >= 0 ? list.filter(function (x) { return x !== id; }) : list.concat([id]) });
+  }
+
   function exportIcs(items, name) {
     var text = E.CalView.toIcs(items, new Date(), name || 'ETROM');
     var url = URL.createObjectURL(new Blob([text], { type: 'text/calendar' }));
@@ -3459,7 +3466,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, exportIcs: exportIcs, setAbsenceVisibility: setAbsenceVisibility, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setAbsenceVisibility: setAbsenceVisibility, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
