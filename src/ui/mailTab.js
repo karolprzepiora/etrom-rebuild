@@ -71,7 +71,7 @@
       D.el('span', { class: 'mrow2__no t-num', text: entry.regNo }),
       D.el('span', { class: 'mrow2__date t-num', text: F.date(entry.registeredDate, { year: 'always' }) }),
       D.el('span', { class: 'mrow2__main' }, [
-        D.el('span', { class: 'mrow2__subject truncate', text: entry.subject }),
+        D.el('button', { class: 'mrow2__subject truncate', attrs: { type: 'button', 'data-fk': 'mail-open-' + entry.id }, text: entry.subject, on: { click: function () { ctx.actions.openMailCard(entry.id); } } }),
         D.el('span', { class: 'mrow2__meta truncate' }, [
           D.el('span', { text: (incoming ? 'Od: ' : 'Do: ') + entry.counterparty }),
           entry.number ? D.el('span', { class: 't-num', text: ' · ' + entry.number }) : null,

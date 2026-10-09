@@ -1996,6 +1996,16 @@ async function main() {
     await sleep(300);
     check('„Do akt” zapisuje decyzję w historii pisma',
       (await state('(s.workspace.mail.find(m => m.id === "' + flowId + '") || {}).decision')) === 'filed');
+    await evaluate('window.ETROM.app.actions.openMailCard("' + flowId + '"); return true;');
+    await sleep(450);
+    check('karta pisma pokazuje stan, 2 pliki, zadanie z pisma i historię decyzji',
+      await evaluate('const c = document.querySelector("[data-mcard]"); return !!c && /Do akt/.test(c.querySelector(".badge").textContent) && c.querySelectorAll(".mflow__file").length === 2 && !!c.querySelector("[data-fk^=mcard-task-]") && c.querySelectorAll(".mcard__hist li").length >= 3 && !!c.querySelector("[data-fk=mcard-pass]");'));
+    await click('[data-fk=mcard-pass]');
+    await sleep(450);
+    check('„Przekaż” z karty zamienia ją w formularz przekazania',
+      await evaluate('return !!document.getElementById("mf-owner") && !document.querySelector("[data-mcard]");'));
+    await evaluate('window.ETROM.app.store.set({ mailStep: null }); return true;');
+    await sleep(300);
     /* Formularz pisma: zwykły wpis; „Wymaga reakcji” tylko na życzenie */
     await go('#/projekty/' + code01 + '/korespondencja');
     await sleep(400);

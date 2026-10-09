@@ -89,3 +89,22 @@
 .mflow__who { display: grid; gap: 2px; padding-bottom: 8px; }
 .mflow__who span { color: var(--text-muted, #6b7280); font-size: var(--text-sm, 13px); }
 .mrow2__files { color: var(--text-muted, #6b7280); font-size: var(--text-xs, 12px); white-space: nowrap; }
+
+/* Karta pisma */
+.mcard { display: grid; gap: var(--space-3, 12px); }
+.mcard__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mcard__subject { flex-basis: 100%; font-size: var(--text-lg, 17px); }
+.mcard__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.mcard__f { display: grid; gap: 2px; min-width: 0; }
+.mcard__k { color: var(--text-muted, #6b7280); font-size: var(--text-xs, 12px); }
+.mcard__v { overflow-wrap: anywhere; }
+.mcard__summary { margin: 0; color: var(--text-muted, #6b7280); }
+.mcard__h { margin: 4px 0 0; font-size: var(--text-sm, 13px); text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #6b7280); }
+.mcard__links { display: grid; gap: 6px; }
+.mcard__link { font-size: var(--text-sm, 13px); }
+.mcard__hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mcard__hist li { display: flex; gap: 10px; font-size: var(--text-sm, 13px); }
+.mcard__when { color: var(--text-muted, #6b7280); flex: none; }
+.mcard__actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--border, #e5e7eb); }
+button.mrow2__subject { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+button.mrow2__subject:hover { text-decoration: underline; }

@@ -111,5 +111,74 @@
     return (Math.round(bytes / 104857.6) / 10) + ' MB';
   }
 
-  E.MailFlow = { stepForm: stepForm, fileList: fileList, size: size };
+
+  function field(label, value) {
+    return D.el('div', { class: 'mcard__f' }, [D.el('span', { class: 'mcard__k', text: label }), D.el('span', { class: 'mcard__v', text: value || '—' })]);
+  }
+
+  /**
+   * Karta pisma: stan, pliki, daty, właściciel, powiązania i historia decyzji w jednym miejscu.
+   * @param {{entry:Object, project:Object, flow:Object, ownerName:string, tasks:Array, caseItem:Object, replies:Array, history:Array}} spec
+   * history: [{at, who, text}] ze zdekodowanymi nazwiskami
+   */
+  function card(spec, h) {
+    var e = spec.entry;
+    var F = E.Format;
+    var incoming = e.direction === 'in';
+    var links = [];
+    (spec.tasks || []).forEach(function (row) {
+      links.push(D.el('button', { class: 'mrow2__task', attrs: { type: 'button', 'data-fk': 'mcard-task-' + row.task.id }, on: { click: function () { h.onTask(row); } } }, [
+        E.Icons.icon('checklist', 13), D.el('span', { class: 'truncate', text: 'Zadanie: ' + row.task.name }),
+        D.el('span', { class: 'mrow2__task-meta t-num', text: E.Tasks.TASK_STATUS[row.task.status] + ' · ' + F.hours(row.hours) })
+      ]));
+    });
+    if (spec.caseItem) links.push(D.el('span', { class: 'mcard__link', attrs: { 'data-fk': 'mcard-case' }, text: 'Sprawa: ' + spec.caseItem.name + (spec.caseItem.org ? ' · ' + spec.caseItem.org : '') }));
+    (spec.replies || []).forEach(function (r) {
+      links.push(D.el('span', { class: 'mcard__link', attrs: { 'data-fk': 'mcard-reply-' + r.id }, text: 'Odpowiedź: ' + r.regNo + ' · ' + F.date(r.registeredDate, { year: 'always' }) }));
+    });
+    var buttons = [];
+    if (incoming) {
+      var b = function (label, fk, fn, variant) { return UI.button({ label: label, variant: variant || 'ghost', size: 'sm', attrs: { 'data-fk': 'mcard-' + fk }, onClick: fn }); };
+      if (spec.flow.state !== 'answered') {
+        buttons.push(b('Do akt', 'file', function () { h.onDecide('file'); }, 'secondary'));
+        buttons.push(b('Wymaga odpowiedzi', 'reply', function () { h.onDecide('reply'); }, 'secondary'));
+        buttons.push(b('Dołącz do sprawy', 'case', function () { h.onDecide('case'); }));
+        buttons.push(b('Odpowiedź niepotrzebna', 'none', function () { h.onDecide('none'); }));
+      }
+      buttons.push(b('Przekaż', 'pass', function () { h.onDecide('reassign'); }));
+      buttons.push(b('Napisz odpowiedź', 'answer', function () { h.onAnswer(); }));
+    }
+    buttons.push(UI.button({ label: 'Edytuj wpis', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'mcard-edit' }, onClick: h.onEdit }));
+    return D.el('div', { class: 'mcard', attrs: { 'data-mcard': e.id } }, [
+      D.el('div', { class: 'mcard__head' }, [
+        UI.badge(spec.flow.label, spec.flow.tone),
+        UI.badge(Mail.KINDS[e.kind], 'neutral'),
+        D.el('strong', { class: 'mcard__subject', text: e.subject })
+      ]),
+      D.el('div', { class: 'mcard__grid' }, [
+        field(incoming ? 'Nadawca' : 'Adresat', e.counterparty),
+        field('Numer w dzienniku', e.regNo),
+        field(incoming ? 'Data wpływu' : 'Data wysłania', F.date(e.registeredDate, { year: 'always' })),
+        field('Data pisma', e.letterDate ? F.date(e.letterDate, { year: 'always' }) : ''),
+        field('Znak pisma', e.number),
+        incoming ? field('Znak sprawy organu', e.caseRef) : null,
+        incoming ? field('Zajmuje się', spec.ownerName) : null,
+        incoming ? field('Termin odpowiedzi', e.responseDue ? F.date(e.responseDue, { year: 'always' }) + (spec.flow.days !== null ? ' · ' + (spec.flow.days < 0 ? 'po terminie o ' + (-spec.flow.days) + ' dni' : spec.flow.days === 0 ? 'dziś' : 'za ' + spec.flow.days + ' dni') : '') : '') : null
+      ].filter(Boolean)),
+      e.summary ? D.el('p', { class: 'mcard__summary', text: e.summary }) : null,
+      D.el('h3', { class: 'mcard__h', text: 'Pliki' }),
+      (e.files || []).length ? fileList(e.files, null) : D.el('p', { class: 't-meta', text: 'Bez plików.' + (e.where ? ' Oryginał: ' + e.where + '.' : '') }),
+      D.el('h3', { class: 'mcard__h', text: 'Powiązania' }),
+      links.length ? D.el('div', { class: 'mcard__links' }, links) : D.el('p', { class: 't-meta', text: 'Brak zadania, sprawy i odpowiedzi.' }),
+      D.el('h3', { class: 'mcard__h', text: 'Historia' }),
+      (spec.history || []).length
+        ? D.el('ol', { class: 'mcard__hist' }, spec.history.map(function (x) {
+          return D.el('li', {}, [D.el('span', { class: 't-num mcard__when', text: x.at ? F.date(x.at, { year: 'always' }) : '' }), D.el('span', { text: x.text + (x.who ? ' · ' + x.who : '') })]);
+        }))
+        : D.el('p', { class: 't-meta', text: 'Brak zapisanej historii.' }),
+      D.el('div', { class: 'mcard__actions' }, buttons)
+    ]);
+  }
+
+  E.MailFlow = { card: card, stepForm: stepForm, fileList: fileList, size: size };
 })(window);
