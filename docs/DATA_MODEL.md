@@ -42,6 +42,7 @@ Stawka godzinowa ma historię (`person.rates`: od kiedy, ile); `hourlyCost` to s
 | `cases` | `cases[]` | id, project_id, stage_id, nazwa, urząd, właściciel, data złożenia, status, zamknięcie, zadanie źródłowe | widzą wszyscy |
 | `case_events` | `case.events[]` | id, case_id, rodzaj, data, notatka, zadanie, kto | |
 | `absences` | `absences[]` | id, person_id, od, do, rodzaj, notatka, **status** (oczekuje, zaakceptowany, odrzucony), na żądanie, kto i kiedy złożył, kto i kiedy zdecydował, powód, opinie liderów | wniosek urlopowy z akceptacją dyrekcji (wdrożone w aplikacji); pracownik widzi własne i obecność innych bez rodzaju |
+| `trips` | `trips[]` | id, osoby (lista), rodzaj (**Teren**, **Spotkanie**), od, do, miejsce, projekt (opcjonalny), notatka, powiadom Lidera, kto i kiedy dodał | wyjazd nie zmienia godzin planu ani licznika czasu; każdy dodaje sobie, Lider swojego zespołu i Dyrekcja także innym; widoczny w Kalendarzu, Planie, na Pulpicie i w „Zespół dziś” (wdrożone) |
 | `task_library` | `library.tasks` | id, stage_katalogowy, nazwa | wspólna lista, rośnie |
 | `posts`, `comments`, `reactions`, `events` | `social.*` | autor, treść, kiedy, klucz obiektu | aktualności i komentarze |
 | `settings_org` | część `prefs` i reguły | próg +10 i +25, godzin dziennie, rezerwa, wagi, kolory rodzajów | wspólne dla biura, edytuje dyrekcja |

@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="styles/leave.css">
   <link rel="stylesheet" href="styles/accounts.css">
   <link rel="stylesheet" href="styles/capsules.css">
+  <link rel="stylesheet" href="styles/dashboard.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -108,6 +109,10 @@
               <div class="page-header__actions" id="time-tools"></div>
             </header>
             <div id="time-body"></div>
+          </section>
+
+          <section class="view" id="view-dashboard" hidden aria-label="Pulpit">
+            <div id="dashboard-body"></div>
           </section>
 
           <section class="view" id="view-mywork" hidden aria-labelledby="mywork-title">
@@ -207,6 +212,8 @@
   <script src="src/core/accounts.js"></script>
   <script src="src/core/team.js"></script>
   <script src="src/core/absences.js"></script>
+  <script src="src/core/trips.js"></script>
+  <script src="src/core/ambient.js"></script>
   <script src="src/core/cases.js"></script>
   <script src="src/core/tasks.js"></script>
   <script src="src/core/timelog.js"></script>
@@ -264,6 +271,7 @@
   <script src="src/ui/personForm.js"></script>
   <script src="src/ui/taskForm.js"></script>
   <script src="src/ui/absenceForm.js"></script>
+  <script src="src/ui/tripForm.js"></script>
   <script src="src/ui/daySummary.js"></script>
   <script src="src/ui/reviewScreen.js"></script>
   <script src="src/ui/calendarScreen.js"></script>
@@ -273,6 +281,7 @@
   <script src="src/ui/teamScreen.js"></script>
   <script src="src/ui/checklist.js"></script>
   <script src="src/ui/myWork.js"></script>
+  <script src="src/ui/dashboard.js"></script>
   <script src="src/ui/inboxScreen.js"></script>
   <script src="src/ui/welcome.js"></script>
   <script src="src/ui/feedScreen.js"></script>

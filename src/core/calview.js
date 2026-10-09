@@ -74,10 +74,20 @@
       }
     });
 
+    // Wyjazdy widzą wszyscy (to informacja „gdzie kto będzie”).
+    (input.trips || []).forEach(function (t) {
+      var proj = t.projectId ? projects.filter(function (p) { return p.id === t.projectId; })[0] : null;
+      var who = t.personIds.map(personName).filter(Boolean).join(', ');
+      for (var d = t.from; d <= t.to; d = Cal.addDays(d, 1)) {
+        add(d, { kind: 'trip', tripId: t.id, tripKind: t.kind, personIds: t.personIds, code: proj ? proj.code : '', projectId: proj ? proj.id : '', title: (t.kind === 'meeting' ? 'Spotkanie' : 'Teren') + ' · ' + t.place, sub: who });
+        if (d > '9999') break;
+      }
+    });
+
     var cells = Cal.monthGrid(input.year, input.month).map(function (key) {
       var d = Cal.parse(key);
       var list = (events[key] || []).slice().sort(function (a, b) {
-        var order = { project: 0, stage: 1, task: 2, absence: 3 };
+        var order = { project: 0, stage: 1, task: 2, trip: 3, absence: 4 };
         return order[a.kind] - order[b.kind];
       });
       return {
@@ -89,7 +99,7 @@
     var upcoming = [];
     Object.keys(events).sort().forEach(function (k) {
       if (k < today) return;
-      events[k].forEach(function (e) { if (e.kind !== 'absence') upcoming.push(Object.assign({ key: k }, e)); });
+      events[k].forEach(function (e) { if (e.kind !== 'absence' && e.kind !== 'trip') upcoming.push(Object.assign({ key: k }, e)); });
     });
 
     return { title: MONTHS[input.month] + ' ' + input.year, cells: cells, upcoming: upcoming.slice(0, 8), projects: Object.keys(legend).map(function (k) { return legend[k]; }) };

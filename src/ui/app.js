@@ -61,6 +61,7 @@
     myView: 'all',
     taskForm: null,
     absenceForm: null,
+    tripForm: null,
     leaveForm: null,
     leave: { tab: 'mine', view: 'cards', year: 0, sel: null, monthOffset: 0 },
     caseForm: null,
@@ -95,6 +96,7 @@
     if (parts[0] === 'przeglad') return { name: 'review' };
     if (parts[0] === 'kalendarz') return { name: 'calendar' };
     if (parts[0] === 'urlopy') return { name: 'leave' };
+    if (parts[0] === 'pulpit') return { name: 'dashboard' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
     if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
@@ -104,11 +106,11 @@
       return { name: 'project', projectId: Number(parts[1]), tab: TABS.indexOf(parts[2]) >= 0 ? parts[2] : 'etapy' };
     }
     if (parts[0] === 'projekty') return { name: 'projects' };
-    return { name: 'mywork' };
+    return { name: 'dashboard' };
   }
 
   function screenOf(route) {
-    return route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -118,6 +120,7 @@
     if (route.name === 'review') return '#/przeglad';
     if (route.name === 'calendar') return '#/kalendarz';
     if (route.name === 'leave') return '#/urlopy';
+    if (route.name === 'dashboard') return '#/pulpit';
     if (route.name === 'mywork') return '#/moja-praca';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
@@ -200,7 +203,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -1924,6 +1927,41 @@
     Toast.show({ message: values.id ? 'Zmieniono nieobecność' : 'Dodano nieobecność', tone: 'success', timeout: 3000 });
   }
 
+  /* ---------- Wyjazdy (teren, spotkanie) ---------- */
+  function setTrips(producer) {
+    updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, trips: producer(workspace.trips || []) }); });
+  }
+
+  function openTrip(id, day) {
+    var me = currentMe();
+    if (!me) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
+    var found = id ? (store.getState().workspace.trips || []).filter(function (t) { return t.id === id; })[0] : null;
+    var iso = day || E.Absences.isoOf(new Date());
+    store.set({ tripForm: { draft: found ? Object.assign({}, found) : { personIds: [me], kind: 'field', from: iso, to: iso, place: '', projectId: null, note: '', notify: false }, errors: {},
+      readOnly: !!found && !E.Trips.canEdit(me, found, people(), store.getState().workspace.projects || []) } });
+  }
+
+  function submitTrip(values) {
+    var form = store.getState().tripForm;
+    if (!form) return;
+    var me = currentMe();
+    var ws = store.getState().workspace;
+    var allowed = values.personIds.every(function (id) { return E.Trips.canAddFor(me, id, people(), ws.projects || []); });
+    if (!allowed) { store.set({ tripForm: Object.assign({}, form, { draft: values, errors: { personIds: 'Wyjazd innym osobom dodaje Lider ich projektu lub Dyrekcja.' } }) }); return; }
+    var res = E.Trips.save(ws.trips || [], values, people(), me, new Date());
+    if (!res.valid) { store.set({ tripForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
+    setTrips(function () { return res.list; });
+    store.set({ tripForm: null });
+    Toast.show({ message: values.id ? 'Zmieniono wyjazd' : 'Dodano wyjazd', tone: 'success', timeout: 3000 });
+  }
+
+  function deleteTrip(id) {
+    var before = store.getState().workspace.trips || [];
+    setTrips(function (list) { return E.Trips.remove(list, id); });
+    store.set({ tripForm: null });
+    Toast.show({ message: 'Usunięto wyjazd', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setTrips(function () { return before; }); } });
+  }
+
   /* ---------- Urlopy: wnioski, decyzje, opinie ---------- */
   function setLeave(patch) {
     store.set({ leave: Object.assign({}, store.getState().leave || {}, patch) });
@@ -3118,6 +3156,7 @@
       { label: 'Przejdź do karty czasu', icon: 'clock', meta: now(state.route.name === 'time'), keywords: 'czas godziny tydzień miesiąc eksport csv plan obciążenia', run: function () { goTo('time'); } },
       { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
+      { label: 'Przejdź do pulpitu', icon: 'grid', meta: now(state.route.name === 'dashboard'), keywords: 'start pulpit strona główna', run: function () { goTo('dashboard'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia pisma skrzynka reakcje dziś', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
@@ -3303,7 +3342,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
@@ -3724,13 +3763,15 @@
 
   function renderMyWork(state) {
     var screen = E.MyWork.view(state, { actions: actions, find: locateEntry });
-    var meNow = Team.findPerson(people(), state.prefs.me);
-    var hour = new Date().getHours();
-    var hello = hour >= 5 && hour < 18 ? 'Dzień dobry' : 'Dobry wieczór';
-    document.getElementById('mywork-title').textContent = meNow ? hello + ', ' + (meNow.firstName || Team.fullName(meNow)) : 'Moja praca';
+    document.getElementById('mywork-title').textContent = 'Moja praca';
     nodes.myworkSummary.textContent = screen.summary;
     D.render(nodes.myworkWho, screen.who ? [screen.who] : []);
     D.patch(nodes.myworkBody, [screen.body]);
+  }
+
+  function renderDashboard(state) {
+    var screen = E.Dashboard.view(state, { actions: actions, find: locateEntry });
+    D.patch(nodes.dashboardBody, [screen.body]);
   }
 
   function renderFeed(state) {
@@ -3779,7 +3820,7 @@
   }
 
   function renderDrawer(state) {
-    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.leaveForm || state.caseForm || null;
+    var current = state.form || state.personForm || state.taskForm || state.stageForm || state.timeForm || state.mailForm || state.absenceForm || state.tripForm || state.leaveForm || state.caseForm || null;
     if (current === lastForm) return;
     lastForm = current;
 
@@ -3818,6 +3859,16 @@
         onCancel: function () { store.set({ absenceForm: null }); },
         onDelete: current.draft.id ? function () { deleteAbsence(current.draft.id); } : null
       }, (state.workspace.people || []).filter(function (p) { return p.active !== false; }));
+    } else if (current === state.tripForm) {
+      var meT = state.prefs.me;
+      var projT = (state.workspace.projects || []).filter(function (p) { return p.status !== 'done'; });
+      settings.title = current.draft.id ? 'Wyjazd' : 'Nowy wyjazd';
+      settings.subtitle = 'Teren lub spotkanie poza biurem. Licznik czasu działa normalnie.';
+      settings.content = E.TripForm.tripForm(current.draft, current.errors, {
+        onSubmit: submitTrip,
+        onCancel: function () { store.set({ tripForm: null }); },
+        onDelete: current.draft.id && !current.readOnly ? function () { deleteTrip(current.draft.id); } : null
+      }, { people: E.Trips.assignable(meT, state.workspace.people || [], state.workspace.projects || []).filter(function (p) { return p.active !== false; }), projects: projT });
     } else if (current === state.leaveForm) {
       var meL = Team.findPerson(people(), state.prefs.me);
       var mgmt = !!meL && E.Budget.isManagement(meL.id, people());
@@ -3870,8 +3921,8 @@
         drawerEl = null;
         lastForm = null;
         var live = store.getState();
-        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.leaveForm) {
-          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, leaveForm: null });
+        if (live.form || live.personForm || live.taskForm || live.stageForm || live.timeForm || live.mailForm || live.absenceForm || live.tripForm || live.leaveForm) {
+          store.set({ form: null, personForm: null, taskForm: null, stageForm: null, timeForm: null, mailForm: null, absenceForm: null, tripForm: null, leaveForm: null });
         }
       }
     }));
@@ -3888,6 +3939,8 @@
     nodes.views.calendar.hidden = route.name !== 'calendar';
     nodes.views.leave.hidden = route.name !== 'leave';
     E.Library.configure(state.workspace.library);
+    nodes.views.dashboard.hidden = route.name !== 'dashboard';
+    if (route.name !== 'dashboard' && nodes.dashboardBody.firstChild) D.clear(nodes.dashboardBody);
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.feed.hidden = route.name !== 'feed';
     nodes.views.analysis.hidden = route.name !== 'analysis';
@@ -3917,6 +3970,9 @@
     } else if (route.name === 'feed') {
       document.title = 'Aktualności · ETROM';
       renderFeed(state);
+    } else if (route.name === 'dashboard') {
+      document.title = 'Pulpit · ETROM';
+      renderDashboard(state);
     } else if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
       renderMyWork(state);
@@ -4120,6 +4176,7 @@
     nodes.libraryBody = D.byId('library-body');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
+    nodes.dashboardBody = D.byId('dashboard-body');
     nodes.feedSummary = D.byId('feed-summary');
     nodes.feedBody = D.byId('feed-body');
     nodes.analysisSummary = D.byId('analysis-summary');
@@ -4129,7 +4186,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');
@@ -4148,6 +4205,9 @@
       getState: store.getState,
       actions: {
         openPalette: openPalette,
+        setMyView: function (v) { store.set({ myView: v }); },
+        setLeave: setLeave,
+        setTeamTab: setTeamTab,
         newProject: function () { if (store.getState().route.name === 'team') goTo('projects'); openCreate(); },
         newPerson: function () { goTo('team'); openNewPerson(); },
         showShortcuts: showShortcuts,

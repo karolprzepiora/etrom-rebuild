@@ -370,5 +370,17 @@
     };
   }
 
-  root.ETROM.MyWork = { view: view, count: count, model: model, VIEWS: VIEWS };
+  /** Sekcje list zadań (po terminie, dziś, kolejne dni; opcjonalnie „Wymaga reakcji”) dla Pulpitu. */
+  function listSections(state, ctx, key, now) {
+    var m = model(state, now);
+    if (!m) return { m: null, nodes: [] };
+    var c = Object.assign({}, ctx, { people: state.workspace.people || [], meId: m.me.id, state: state });
+    var shown = pick(key, m);
+    var out = [];
+    if (key === 'react') out.push(E.InboxScreen.section(shown.react, c, now));
+    GROUPS.forEach(function (g) { var rows = shown.groups[g.key] || []; out.push(section(g.label, rows.length, g.tone, rows, c)); });
+    return { m: m, nodes: out.filter(Boolean) };
+  }
+
+  root.ETROM.MyWork = { view: view, count: count, model: model, VIEWS: VIEWS, listSections: listSections };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -25,7 +25,7 @@
     var offset = Number(state.calOffset) || 0;
     var base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
     var data = E.CalView.build({
-      projects: state.workspace.projects || [], people: people, absences: state.workspace.absences || [],
+      projects: state.workspace.projects || [], people: people, absences: state.workspace.absences || [], trips: state.workspace.trips || [],
       meId: me.id, now: now, year: base.getFullYear(), month: base.getMonth()
     });
     var management = E.Budget.isManagement(me.id, people);
@@ -34,18 +34,21 @@
 
     function openEvent(ev) {
       if (ev.kind === 'task') ctx.actions.inspect({ kind: 'task', projectId: ev.projectId, stageId: ev.stageId, taskId: ev.taskId });
+      else if (ev.kind === 'trip') ctx.actions.openTrip(ev.tripId);
       else if (ev.kind === 'absence') { if (management) ctx.actions.openAbsence(ev.personId, ev.absenceId); }
       else ctx.actions.openProject(ev.projectId, 'etapy');
     }
 
     function chip(ev) {
       var cls = 'cv-ev cv-ev--' + ev.kind;
-      var tip = (ev.kind === 'absence' ? ev.sub + ' · ' + ev.title : ev.code + ' · ' + ev.title + ' · ' + ev.sub);
-      var kids = ev.kind === 'absence'
+      var tip = (ev.kind === 'trip' ? ev.title + ' · ' + ev.sub : ev.kind === 'absence' ? ev.sub + ' · ' + ev.title : ev.code + ' · ' + ev.title + ' · ' + ev.sub);
+      var kids = ev.kind === 'trip'
+        ? [D.el('span', { class: 'truncate', text: ev.title })]
+        : ev.kind === 'absence'
         ? [D.el('span', { class: 'truncate', text: ev.title + ' · ' + ev.sub.toLowerCase() })]
         : [D.el('span', { class: 'cv-ev__code', text: ev.code }), D.el('span', { class: 'truncate', text: ev.title })];
       return D.el('button', {
-        class: cls, style: ev.kind === 'absence' ? null : E.Identity.hueStyle(ev.code),
+        class: cls, style: ev.kind === 'absence' || ev.kind === 'trip' ? null : E.Identity.hueStyle(ev.code),
         attrs: { type: 'button', 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-' + ev.kind },
         on: { click: function (e) { e.stopPropagation(); openEvent(ev); } }
       }, kids);
@@ -87,11 +90,14 @@
       UI.iconButton({ icon: 'chevronRight', label: 'Następny miesiąc', size: 'sm', attrs: { 'data-fk': 'cv-next' }, onClick: function () { ctx.actions.setTime({ calOffset: offset + 1, calDay: null }); } }),
       D.el('h2', { class: 'cv-title', text: data.title }),
       UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'cv-today' }, onClick: function () { ctx.actions.setTime({ calOffset: 0, calDay: null }); } }),
+      D.el('span', { class: 'cv-bar__fill' }),
+      UI.button({ label: 'Wyjazd', variant: 'secondary', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-trip' }, onClick: function () { ctx.actions.openTrip(null, selected); } }),
+      UI.button({ label: 'Urlop', variant: 'secondary', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-leave' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } }),
       data.projects.length ? D.el('div', { class: 'cv-legend', attrs: { 'aria-hidden': 'true' } }, data.projects.slice(0, 8).map(function (p) { return D.el('span', { class: 'cv-legend__i', style: E.Identity.hueStyle(p.code), text: p.code, attrs: { 'data-tooltip': p.name } }); })) : null
     ]);
 
     function sideRow(ev) {
-      return D.el('li', null, [D.el('button', { class: 'cv-row' + (ev.kind === 'absence' ? ' is-abs' : ''), style: ev.kind === 'absence' ? null : E.Identity.hueStyle(ev.code), attrs: { type: 'button' }, on: { click: function () { openEvent(ev); } } }, [
+      return D.el('li', null, [D.el('button', { class: 'cv-row' + (ev.kind === 'absence' ? ' is-abs' : ev.kind === 'trip' ? ' is-trip' : ''), style: ev.kind === 'absence' || ev.kind === 'trip' ? null : E.Identity.hueStyle(ev.code), attrs: { type: 'button' }, on: { click: function () { openEvent(ev); } } }, [
         D.el('i', { class: 'cv-row__bar', attrs: { 'aria-hidden': 'true' } }),
         D.el('span', { class: 'cv-row__txt' }, [D.el('b', { class: 'truncate', text: ev.title }), D.el('small', { class: 'truncate', text: (ev.code ? ev.code + ' · ' : '') + (ev.project ? ev.project + ' · ' : '') + ev.sub })])
       ])]);
@@ -111,7 +117,7 @@
       D.el('div', { class: 'cv-side__sec' }, [D.el('span', { class: 'cv-side__k', text: 'Najbliższe terminy' }), upcoming])
     ]);
 
-    var total = data.cells.reduce(function (n, c) { return n + (c.out ? 0 : c.events.filter(function (e) { return e.kind !== 'absence'; }).length); }, 0);
+    var total = data.cells.reduce(function (n, c) { return n + (c.out ? 0 : c.events.filter(function (e) { return e.kind !== 'absence' && e.kind !== 'trip'; }).length); }, 0);
     return {
       summary: management ? 'Terminy projektów i etapów oraz nieobecności zespołu.' : 'Twoje terminy i nieobecności.',
       body: D.el('div', { class: 'cv' }, [toolbar, D.el('div', { class: 'cv-body' }, [D.el('div', { class: 'cv-wrap' }, [grid]), side]), D.el('p', { class: 'sr-only', text: total + ' terminów w miesiącu', attrs: { 'aria-live': 'polite' } })])

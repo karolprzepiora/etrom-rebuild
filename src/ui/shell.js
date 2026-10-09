@@ -47,17 +47,53 @@
     ]);
   }
 
-  function navItem(screen, icon, label, href) {
+  function navItem(screen, icon, label, href, onClick) {
     var count = D.el('span', { class: 'count nav__count', text: '0' });
     var link = D.el('a', {
       class: 'nav__item',
       attrs: { href: href, 'data-tooltip': label },
-      dataset: { screen: screen }
+      dataset: { screen: screen },
+      on: onClick ? { click: onClick } : null
     }, [Icons.icon(icon), D.el('span', { class: 'nav__label', text: label }), count]);
     nodes.nav[screen] = link;
     nodes.counts[screen] = count;
     return link;
   }
+
+  /** Pozycja zapowiedzianego modułu: widoczna dla Dyrekcji, nieaktywna. */
+  function soonItem(screen, icon, label) {
+    var el = D.el('span', { class: 'nav__item is-soon', attrs: { 'aria-disabled': 'true', 'data-tooltip': label + ' — wkrótce', tabindex: '-1' }, dataset: { screen: screen } }, [
+      Icons.icon(icon), D.el('span', { class: 'nav__label', text: label }), D.el('span', { class: 'nav__soon', text: 'WKRÓTCE' })
+    ]);
+    nodes.nav[screen] = el;
+    return el;
+  }
+
+  var COLLAPSE_KEY = 'etrom.nav.collapsed.v1';
+  function loadCollapsed() { try { return JSON.parse(root.localStorage.getItem(COLLAPSE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveCollapsed(map) { try { root.localStorage.setItem(COLLAPSE_KEY, JSON.stringify(map)); } catch (e) { /* bez zapisu też działa */ } }
+
+  /** Blok menu ze zwijanym nagłówkiem. `items` to elementy <li> w kolejności. */
+  function navGroup(key, label, items) {
+    var collapsed = loadCollapsed();
+    var list = D.el('ul', { class: 'nav', attrs: { id: 'navg-' + key } }, items);
+    var head = label ? D.el('button', { class: 'sidebar__label nav__group', attrs: { type: 'button', 'aria-expanded': String(!collapsed[key]), 'aria-controls': 'navg-' + key, 'data-fk': 'navg-' + key } }, [
+      D.el('span', { text: label }), Icons.icon('chevronDown', 12)
+    ]) : null;
+    var box = D.el('div', { class: 'sidebar__section nav__block' + (collapsed[key] ? ' is-collapsed' : ''), dataset: { group: key } }, [head, list]);
+    if (head) head.addEventListener('click', function () {
+      var map = loadCollapsed();
+      var closed = !box.classList.contains('is-collapsed');
+      box.classList.toggle('is-collapsed', closed);
+      head.setAttribute('aria-expanded', String(!closed));
+      map[key] = closed;
+      saveCollapsed(map);
+    });
+    nodes.groups[key] = box;
+    return box;
+  }
+
+  function li(node, cls) { return D.el('li', cls ? { class: cls } : null, [node]); }
 
   function settingsPanel(state) {
     var prefs = state.prefs;
@@ -227,6 +263,7 @@
     nodes.crumb = options.crumb;
     nodes.nav = {};
     nodes.counts = {};
+    nodes.groups = {};
     nodes.alarm = D.el('span', { class: 'nav__alert', attrs: { hidden: true } });
 
     nodes.pinned = D.el('ul', { class: 'nav', attrs: { 'aria-label': 'Przypięte projekty' } });
@@ -271,21 +308,45 @@
       workspace,
       D.el('div', { class: 'sidebar__tools' }, [search, create]),
       D.el('nav', { class: 'sidebar__nav', attrs: { 'aria-label': 'Główna' } }, [
-        D.el('ul', { class: 'nav' }, [
-          D.el('li', null, [navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')]),
-          D.el('li', null, [navItem('time', 'clock', 'Czas', '#/czas')]),
-          D.el('li', null, [navItem('calendar', 'calendar', 'Kalendarz', '#/kalendarz')]),
-          D.el('li', null, [navItem('leave', 'leave', 'Urlopy', '#/urlopy')]),
-          D.el('li', { class: 'nav__plan' }, [navItem('plan', 'columns', 'Plan', '#/plan')]),
-          D.el('li', { class: 'nav__review' }, [navItem('review', 'flag', 'Przegląd', '#/przeglad')]),
-          D.el('li', null, [navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')]),
-          D.el('li', null, [navItem('analysis', 'chart', 'Analiza', '#/analiza')]),
-          D.el('li', null, [(function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()]),
-          D.el('li', null, [navItem('team', 'people', 'Zespół', '#/zespol')]),
-          D.el('li', null, [navItem('library', 'layers', 'Biblioteka', '#/biblioteka')])
+        navGroup('start', null, [
+          li(navItem('dashboard', 'grid', 'Pulpit', '#/pulpit')),
+          li(navItem('inbox', 'mail', 'Skrzynka', '#/moja-praca', function () { if (actions.setMyView) actions.setMyView('react'); }))
+        ]),
+        navGroup('work', 'Moja praca', [
+          li(navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')),
+          li(navItem('time', 'clock', 'Czas', '#/czas')),
+          li(navItem('calendar', 'calendar', 'Kalendarz', '#/kalendarz')),
+          li(navItem('leave', 'leave', 'Urlopy', '#/urlopy', function () { if (actions.setLeave) actions.setLeave({ tab: 'mine' }); }))
+        ]),
+        navGroup('projects', 'Projekty', [
+          li((function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()),
+          li(navItem('plan', 'columns', 'Plan', '#/plan'), 'nav__plan'),
+          li(navItem('review', 'flag', 'Przegląd', '#/przeglad'), 'nav__review')
+        ]),
+        navGroup('finance', 'Finanse', [
+          li(soonItem('fin-budgets', 'database', 'Budżety')),
+          li(soonItem('fin-costs', 'hours', 'Koszty')),
+          li(soonItem('fin-profit', 'award', 'Rentowność')),
+          li(navItem('analysis', 'chart', 'Analiza', '#/analiza'))
+        ]),
+        navGroup('team', 'Zespół', [
+          li(navItem('team', 'people', 'Zespół', '#/zespol', function () { if (actions.setTeamTab) actions.setTeamTab('people'); })),
+          li(navItem('leaveteam', 'leave', 'Urlopy zespołu', '#/urlopy', function () { if (actions.setLeave) actions.setLeave({ tab: 'team' }); }))
+        ]),
+        navGroup('comms', 'Komunikacja', [
+          li(navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')),
+          li(soonItem('messages', 'mail', 'Wiadomości'))
+        ]),
+        navGroup('resources', 'Zasoby', [
+          li(navItem('library', 'layers', 'Biblioteka', '#/biblioteka')),
+          li(soonItem('documents', 'list', 'Dokumenty')),
+          li(soonItem('offices', 'pin', 'Urzędy i kontrahenci'))
         ]),
         nodes.pinnedSection,
-        nodes.recentSection
+        nodes.recentSection,
+        navGroup('admin', null, [
+          li(navItem('admin', 'settings', 'Administracja', '#/zespol', function () { if (actions.setTeamTab) actions.setTeamTab('accounts'); }))
+        ])
       ]),
       D.el('div', { class: 'sidebar__foot' }, [
         nodes.save,
@@ -313,6 +374,7 @@
 
   function crumbs(state, project) {
     var route = state.route;
+    if (route.name === 'dashboard') return [{ label: 'Pulpit' }];
     if (route.name === 'team') return [{ label: 'Zespół' }];
     if (route.name === 'library') return [{ label: 'Biblioteka' }];
     if (route.name === 'plan') return [{ label: 'Plan' }];
@@ -329,35 +391,60 @@
 
   function render(state, project) {
     var route = state.route;
-    var section = route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : ((route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects')))));
+    var screens = { dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', time: 'time', feed: 'feed', analysis: 'analysis' };
+    var section = screens[route.name] || 'projects';
+    var people = state.workspace.people || [];
+    var meNow = E.Team.findPerson(people, state.prefs.me);
+    var projects = state.workspace.projects;
+    var management = !!meNow && E.Budget.isManagement(meNow.id, people);
+    var leads = !!meNow && projects.some(function (p) { return p.team && p.team.leader === meNow.id && p.status !== 'done'; });
+    var may = management || leads;
+    var teamTab = section === 'leave' && (state.leave || {}).tab === 'team';
     Object.keys(nodes.nav).forEach(function (key) {
-      var current = key === section ? (route.name === 'project' ? 'true' : 'page') : null;
+      var here = key === section || (key === 'leave' && section === 'leave' && !teamTab) || (key === 'leaveteam' && teamTab) || (key === 'admin' && section === 'team' && management && state.teamTab === 'accounts');
+      if (section === 'leave') here = key === 'leaveteam' ? teamTab : (key === 'leave' ? !teamTab : false);
+      if (section === 'team' && key === 'team') here = !(management && state.teamTab === 'accounts');
+      if (key === 'admin' && section !== 'team') here = false;
+      var current = here ? (route.name === 'project' ? 'true' : 'page') : null;
       if (current) nodes.nav[key].setAttribute('aria-current', current);
       else nodes.nav[key].removeAttribute('aria-current');
     });
-    var projects = state.workspace.projects;
+    function show(key, on) { var n = nodes.nav[key]; if (n && n.parentNode) n.parentNode.hidden = !on; }
+    ['fin-budgets', 'fin-costs', 'fin-profit', 'messages', 'documents', 'offices'].forEach(function (k) { show(k, management); });
+    show('analysis', management);
+    show('plan', may);
+    show('review', may);
+    show('leaveteam', may);
+    show('admin', management);
+    Object.keys(nodes.groups).forEach(function (k) {
+      var box = nodes.groups[k];
+      var visible = Array.prototype.some.call(box.querySelectorAll('ul > li'), function (x) { return !x.hidden; });
+      box.hidden = !visible;
+    });
     nodes.counts.projects.textContent = String(projects.length);
     if (nodes.counts.library) nodes.counts.library.hidden = true;
     if (nodes.counts.plan) nodes.counts.plan.hidden = true;
     if (nodes.counts.calendar) nodes.counts.calendar.hidden = true;
-    if (nodes.counts.leave) {
-      var pendingLeave = E.LeaveScreen ? E.LeaveScreen.pendingFor(state, E.Team.findPerson(state.workspace.people || [], state.prefs.me)) : 0;
-      nodes.counts.leave.hidden = !pendingLeave;
-      nodes.counts.leave.textContent = String(pendingLeave);
+    var pendingLeave = E.LeaveScreen ? E.LeaveScreen.pendingFor(state, meNow) : 0;
+    if (nodes.counts.leave) nodes.counts.leave.hidden = true;
+    if (nodes.counts.leaveteam) {
+      nodes.counts.leaveteam.hidden = !pendingLeave;
+      nodes.counts.leaveteam.textContent = String(pendingLeave);
+      nodes.counts.leaveteam.classList.toggle('count--alarm', !!pendingLeave);
     }
-    if (nodes.counts.review) nodes.counts.review.hidden = true;
-    (function () {
-      var meNow = E.Team.findPerson(state.workspace.people || [], state.prefs.me);
-      var may = !!meNow && (E.Budget.isManagement(meNow.id, state.workspace.people || []) || projects.some(function (p) { return p.team && p.team.leader === meNow.id && p.status !== 'done'; }));
-      if (nodes.nav.plan && nodes.nav.plan.parentNode) nodes.nav.plan.parentNode.hidden = !may;
-      if (nodes.nav.review && nodes.nav.review.parentNode) nodes.nav.review.parentNode.hidden = !may;
-    })();
+    ['dashboard', 'admin', 'review'].forEach(function (k) { if (nodes.counts[k]) nodes.counts[k].hidden = true; });
     nodes.counts.team.textContent = String((state.workspace.people || []).filter(function (p) { return p.active !== false; }).length);
 
     var now = new Date();
     var box = E.MyWork.count(state, now);
     nodes.counts.mywork.textContent = box ? String(box.total) : '';
     nodes.counts.mywork.classList.toggle('count--alarm', !!(box && (box.overdue || box.urgent)));
+    if (nodes.counts.inbox) {
+      var reactN = box ? (E.MyWork.model(state, now) || { react: [] }).react.length : 0;
+      nodes.counts.inbox.hidden = !reactN;
+      nodes.counts.inbox.textContent = String(reactN);
+      nodes.counts.inbox.classList.toggle('count--alarm', !!reactN);
+    }
     nodes.counts.feed.textContent = '';
     nodes.counts.analysis.textContent = '';
     nodes.counts.time.textContent = '';

@@ -766,3 +766,10 @@ Zakładka widoczna tylko dla dyrekcji (przełącznik „Osoby / Konta i role” 
 
 ### Plan — terminy (PL2)
 Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagrożenie to okrągły „!” na końcu (bursztyn / czerwień, „po terminie” bez liczby dni). Data jest w dymku po najechaniu (z podświetleniem dnia końca). Przełącznik „Terminy na paskach” włącza kapsuły z datą. Dni „spraw w toku” to kapsuły (neutralne, od 14 dni bursztyn, od 30 czerwień).
+
+## Menu grupowe i Pulpit (`styles/dashboard.css`, makiety NV1 / DB8 / DB9)
+
+- **Menu** to bloki ze zwijanymi nagłówkami (stan w `localStorage`, klucz `etrom.nav.collapsed.v1`): Start (Pulpit, Skrzynka), Moja praca, Projekty, Finanse, Zespół, Komunikacja, Zasoby i Administracja na dole. Pozycje nieuruchomionych modułów (`soonItem`, plakietka „WKRÓTCE”) widzi tylko Dyrekcja. Czerwony licznik (`.count--alarm`) tylko przy sprawach czekających na zalogowaną osobę: Skrzynka (reakcje) i Urlopy zespołu (wnioski).
+- **Pulpit** (`#/pulpit`, ekran startowy): hero z datą i numerem tygodnia, powitaniem, przyciskami i chipem wyjazdu; szklana karta pogody; pięć kafli nachodzących na hero (inne dla pracownika i Dyrekcji); środek „Ten tydzień” (te same sekcje co Moja praca), u Dyrekcji macierz zespołu na 5 dni roboczych i zdrowie projektów; prawa kolumna: reakcje lub akceptacje, stany wód, zespół dziś, Finanse (zapowiedź).
+- **Dane zewnętrzne** (pogoda, stany wód) pochodzą z `core/ambient.js` i są **przykładowe** (`sample:true`), wyraźnie podpisane kapsułą „przykładowe”. Podmiana źródła nie zmienia widoku.
+- **Wyjazdy** mają kolor `--trip` (morski zielono-niebieski): chip w Kalendarzu (`.cv-ev--trip`), pasek w Planie (`.pb-trip`), kapsuła na Pulpicie.

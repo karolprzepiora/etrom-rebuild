@@ -176,6 +176,7 @@
           return { start: wk.start, capacity: (wk.dayKeys.length - gone) * targetH * pct, absentDays: gone, planned: 0, ratio: 0, state: 'ok', tasks: [] };
         }),
         absences: absenceBands(input.absences, p.id),
+        trips: (input.trips || []).filter(function (t) { return t.personIds.indexOf(p.id) >= 0; }).map(function (t) { return { id: t.id, from: t.from, to: t.to, kind: t.kind, place: t.place, note: t.note || '' }; }),
         bars: [],
         days: {},
         unscheduled: { hours: 0, tasks: [] }, total: 0

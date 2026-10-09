@@ -158,7 +158,7 @@
     var baseInput = {
       projects: projects, people: people, entries: state.workspace.entries || [], now: now,
       target: state.prefs.dayTarget, weeks: weeksN, offsetWeeks: offset,
-      personIds: visibleIds, absences: state.workspace.absences || []
+      personIds: visibleIds, absences: state.workspace.absences || [], trips: state.workspace.trips || []
     };
     var plan = Plan.build(baseInput);
     var allRows = plan.rows;
@@ -813,6 +813,23 @@
           return el;
         }).filter(Boolean);
       }
+      function tripEls(interactive) {
+        return (row.trips || []).map(function (t) {
+          var bs = slotOf(plan.first, new Date(t.from + 'T00:00').getTime(), 1);
+          var be = slotOf(plan.first, new Date(t.to + 'T00:00').getTime(), -1);
+          if (be < 0 || bs >= N || be < bs) return null;
+          var s0 = Math.max(0, bs), e0 = Math.min(N - 1, be);
+          var label = (E.Trips.KINDS[t.kind] || 'Wyjazd') + ' · ' + t.place;
+          var tip = label + ' · ' + t.from.slice(8) + '.' + t.from.slice(5, 7) + (t.to !== t.from ? ' – ' + t.to.slice(8) + '.' + t.to.slice(5, 7) : '') + (t.note ? ' · ' + t.note : '');
+          var el = D.el(interactive ? 'button' : 'span', {
+            class: 'pb-trip' + (interactive ? ' is-head' : ''), dataset: { kind: t.kind },
+            style: { left: (s0 / N * 100) + '%', width: ((e0 - s0 + 1) / N * 100) + '%' },
+            attrs: interactive ? { type: 'button', 'data-tooltip': tip, 'data-fk': 'pb-trip-' + t.id, 'aria-label': tip } : { 'aria-hidden': 'true' }
+          }, interactive ? [D.el('span', { class: 'pb-trip__cap' }, [D.el('span', { class: 'truncate', text: label })])] : []);
+          if (interactive) el.addEventListener('click', function () { ctx.actions.openTrip(t.id); });
+          return el;
+        }).filter(Boolean);
+      }
       function trackOf(inner, bands) { return trackBase(inner, bands === undefined ? bandEls(false) : bands); }
       var rows = [];
       if (!solo) {
@@ -850,7 +867,11 @@
           }
           return out;
         })());
-        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf(dayBars ? [loads, dayBars] : [loads], bandEls(true))])]));
+        rows.push(D.el('div', { class: 'pb-row pb-row--who' }, [label, D.el('div', { class: 'pb-cell' }, [trackOf(dayBars ? [loads, dayBars] : [loads], bandEls(true).concat(tripEls(true)))])]));
+      }
+      if (solo && (row.trips || []).length) {
+        var tripBands = tripEls(true);
+        if (tripBands.length) rows.push(D.el('div', { class: 'pb-row pb-row--leave' }, [D.el('div', { class: 'pb-label pb-label--task' }, [D.el('span', { class: 't-muted', text: 'Wyjazd' })]), D.el('div', { class: 'pb-cell' }, [trackOf([], tripBands)])]));
       }
       if (solo && (row.absences || []).length) {
         var leaveBands = bandEls(true);

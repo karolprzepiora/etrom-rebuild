@@ -144,7 +144,7 @@ async function main() {
         if (ready) {
           if (!/^#\/projekty/.test(await evaluate('return location.hash;')) && !waitForApp.startChecked) {
             waitForApp.startChecked = true;
-            check('start aplikacji to „Moja praca”', !(await evaluate('return document.getElementById("view-mywork").hidden;')));
+            check('start aplikacji to „Pulpit”', !(await evaluate('return document.getElementById("view-dashboard").hidden;')));
             await go('#/projekty');
           }
           return;
@@ -663,8 +663,8 @@ async function main() {
     await pressKey('j');
     check('J w Mojej pracy ustawia fokus na pierwszym zadaniu',
       await evaluate('return document.activeElement && document.activeElement.classList.contains("trow__name");'));
-    check('w menu nie ma już osobnej Skrzynki, a stary link #/skrzynka otwiera Moją pracę',
-      !(await evaluate('return !!document.querySelector("[data-screen=inbox]");')) && await (async () => { await go('#/skrzynka'); await sleep(300); return evaluate('return !document.getElementById("view-mywork").hidden && !document.getElementById("view-inbox");'); })());
+    check('Skrzynka w menu prowadzi do Mojej pracy, a stary link #/skrzynka też otwiera Moją pracę',
+      (await evaluate('const a = document.querySelector("[data-screen=inbox]"); return !!a && a.getAttribute("href") === "#/moja-praca";')) && await (async () => { await go('#/skrzynka'); await sleep(300); return evaluate('return !document.getElementById("view-mywork").hidden && !document.getElementById("view-inbox");'); })());
     check('Moja praca ma sekcję „Wymaga reakcji”: pozycje mają projekt i akcje, a objaśnienia są w dymkach (bez tekstów na ekranie)',
       await evaluate('const sec = document.querySelector("#view-mywork [data-group=react]"); return !!sec && sec.querySelectorAll(".ibx__row").length > 0 && !!sec.querySelector(".ibx__row .mrow__project") && !!sec.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!sec.querySelector(".ibx__info[data-tooltip]") && !document.querySelector(".ibx__intro, .ibx__why, .ibx__group-text");'));
     check('każdy wiersz zadań i reakcji ma ten sam znacznik projektu: numer + nazwa projektu',
@@ -856,6 +856,34 @@ async function main() {
     await click('[data-fk="cv-today"]');
     await sleep(250);
     check('„Dziś” w kalendarzu wraca do bieżącego miesiąca', (await evaluate('return document.querySelector(".cv-title").textContent;')) === calTitle);
+    // ---- Pulpit, menu grupowe, wyjazdy ----
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
+    await go('#/pulpit');
+    await sleep(500);
+    check('Pulpit Dyrekcji: hero z datą, 5 kafli, pogoda i stany wód oznaczone jako przykładowe, macierz zespołu',
+      await evaluate('const v = document.getElementById("view-dashboard"); return !v.hidden && !!v.querySelector(".db-hero__date") && v.querySelectorAll(".db-tile").length === 5 && /przykładowe/i.test(v.querySelector("[data-fk=db-weather]").textContent) && /przykładowe/i.test(v.querySelector("[data-fk=db-water]").textContent) && !!v.querySelector("[data-fk=db-matrix]") && !!v.querySelector("[data-fk=db-newproject]") && !!v.querySelector("[data-fk=db-finance]");'));
+    check('menu Dyrekcji: bloki Finanse (3× WKRÓTCE), Administracja i Urlopy zespołu',
+      await evaluate('const g = document.querySelector("[data-group=finance]"); return !g.hidden && g.querySelectorAll(".nav__soon").length === 3 && !document.querySelector("[data-group=admin]").hidden && !document.querySelector("[data-screen=leaveteam]").parentNode.hidden;'));
+    await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
+    await sleep(400);
+    check('Pulpit pracownika: 5 kafli bez macierzy zespołu i bez Finansów, menu bez Finansów i Administracji',
+      await evaluate('const v = document.getElementById("view-dashboard"); return v.querySelectorAll(".db-tile").length === 5 && !v.querySelector("[data-fk=db-matrix]") && !v.querySelector("[data-fk=db-finance]") && !v.querySelector("[data-fk=db-newproject]") && document.querySelector("[data-group=finance]").hidden && document.querySelector("[data-group=admin]").hidden;'));
+    await go('#/moja-praca');
+    await sleep(300);
+    check('Moja praca ma tytuł bez powitania', await evaluate('return document.getElementById("mywork-title").textContent === "Moja praca";'));
+    await go('#/kalendarz');
+    await sleep(300);
+    await click('[data-fk="cv-trip"]');
+    await sleep(300);
+    await evaluate('const todayIso = (() => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })(); for (const [id, v] of [["tr-place", "Lipnica"], ["tr-from", todayIso], ["tr-to", todayIso]]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); } return true;');
+    await evaluate('const f = document.getElementById("trip-form"); (f.querySelector("button[type=submit]") || document.querySelector("button[type=submit][form=trip-form]")).click(); return true;');
+    await sleep(400);
+    check('wyjazd dodany przez pracownika trafia do danych, kalendarza i chipa na Pulpicie',
+      (await state('s.workspace.trips.length')) === 1 && (await state('s.workspace.trips[0].personIds.join()')) === 'p-3' && await evaluate('return !!document.querySelector(".cv-ev--trip");') && await (async () => { await go('#/pulpit'); await sleep(400); return evaluate('const c = document.querySelector("[data-fk=db-trip]"); return !!c && /Dziś: teren/.test(c.textContent);'); })());
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
+    await sleep(300);
+    check('Dyrekcja widzi wyjazd w „Zespół dziś”', await evaluate('return /Lipnica/.test(document.querySelector("[data-fk=db-team]").textContent);'));
+    await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { trips: [] }) }); }); return true;');
     await evaluate('window.ETROM.app.actions.setMe("p-3"); return true;');
     await go('#/projekty');
     await sleep(300);
@@ -2031,7 +2059,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/urlopy"; return true;');
     await sleep(400);
     check('urlopy: ekran widoczny, w menu licznik wniosków do akceptacji dla zarządu',
-      await evaluate('const n = document.querySelector("[data-screen=leave] .nav__count"); return !document.getElementById("view-leave").hidden && !!n && !n.hidden && Number(n.textContent) >= 1;'));
+      await evaluate('const n = document.querySelector("[data-screen=leaveteam] .nav__count"); return !document.getElementById("view-leave").hidden && !!n && !n.hidden && Number(n.textContent) >= 1;'));
     await evaluate('window.ETROM.app.actions.setLeave({ tab: "inbox" }); return true;');
     await sleep(300);
     check('urlopy: skrzynka pokazuje wnioski z wpływem na plan i przyciskami decyzji',
