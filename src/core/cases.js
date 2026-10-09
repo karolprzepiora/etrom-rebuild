@@ -21,7 +21,7 @@
 
   function normalizeEvent(e, i) {
     if (!e || !KINDS[e.kind] || !isDay(e.at)) return null;
-    return { id: str(e.id, 20) || 'e-' + (i + 1), kind: e.kind, at: e.at, note: str(e.note, 300), taskId: str(e.taskId, 40), by: str(e.by, 40) };
+    return { id: str(e.id, 20) || 'e-' + (i + 1), kind: e.kind, at: e.at, note: str(e.note, 300), taskId: str(e.taskId, 40), stageId: str(e.stageId, 60), by: str(e.by, 40) };
   }
 
   function normalize(list, projectIds) {
@@ -98,10 +98,14 @@
   function lastCall(c) { var calls = c.events.filter(function (e) { return e.kind === 'call'; }); return calls.length ? calls[calls.length - 1] : null; }
 
   /** Sprawa związana z zadaniem (źródło albo pismo dodane jako zadanie). */
-  function byTask(list, taskId) {
+  // Identyfikator zadania jest unikalny tylko w etapie (t-1 jest w wielu), więc sprawę dopasowujemy też po projekcie i etapie.
+  function byTask(list, taskId, projectId, stageId) {
     if (!taskId) return null;
     return (list || []).filter(function (c) {
-      return c.status === 'open' && (c.sourceTaskId === taskId || c.events.some(function (e) { return e.kind === 'letter' && e.taskId === taskId; }));
+      return c.status === 'open' && (projectId == null || c.projectId === projectId) && (function () {
+        function sameStage(sid) { return !stageId || !sid || sid === stageId; }
+        return (c.sourceTaskId === taskId && sameStage(c.stageId)) || c.events.some(function (e) { return e.kind === 'letter' && e.taskId === taskId && sameStage(e.stageId || c.stageId); });
+      })();
     })[0] || null;
   }
 

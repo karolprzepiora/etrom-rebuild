@@ -920,7 +920,7 @@
     } else {
       var created = Tasks.createTask(values, stage.tasks || [], allowed);
       pendingFlash = { projectId: form.projectId, taskId: created.id };
-      if (form.caseId) setCases(function (list) { return Cases.addEvent(list, form.caseId, { kind: 'letter', taskId: created.id, note: created.name, by: currentMe() || '' }, dayNow()); });
+      if (form.caseId) setCases(function (list) { return Cases.addEvent(list, form.caseId, { kind: 'letter', taskId: created.id, stageId: form.stageId || '', note: created.name, by: currentMe() || '' }, dayNow()); });
       // Pismo przerobione na zadanie przestaje wymagać reakcji: sprawę prowadzi zadanie.
       if (created.mailId) setMail(function (current) { return current.map(function (e) { return e.id === created.mailId ? Object.assign({}, e, { needsAction: false, decision: e.direction === 'in' ? (e.decision && e.decision !== 'reply' ? e.decision : 'reply') : e.decision }) : e; }); });
       mapStage(form.projectId, form.stageId, function (current) {
@@ -949,7 +949,7 @@
     // Zamknięcie zadania „złożyć / wysłać / zamówić…”: pytamy od razu, a gdy się to pominie, zadanie czeka na liście „Do rozstrzygnięcia”.
     // Pytanie o sprawę tylko w etapach „Decyzje” (postępowania); w pozostałych sprawę dodaje się ręcznie.
     var asked = (function () { var pr = store.getState().workspace.projects.filter(function (x) { return x.id === projectId; })[0]; var st = pr && pr.stages.filter(function (x) { return x.id === stageId; })[0]; return !!st && Model.describeStage(st).decision; })();
-    if (next === 'done' && asked && Cases.looksLikeFiling(task.name) && !caseList().some(function (c) { return c.sourceTaskId === taskId; })) {
+    if (next === 'done' && asked && Cases.looksLikeFiling(task.name) && !caseList().some(function (c) { return c.sourceTaskId === taskId && c.projectId === projectId; })) {
       Toast.show({
         message: 'Zamknięto „' + task.name + '”. Czekasz na odpowiedź?', actionLabel: 'Śledź jako sprawę', timeout: 15000,
         onAction: function () { openCaseFromTask(projectId, stageId, taskId); }
@@ -2298,7 +2298,7 @@
   }
 
   /** Sprawa przypięta do zadania (do znacznika w listach zadań). */
-  function caseOfTask(taskId) { return Cases.byTask(caseList(), taskId); }
+  function caseOfTask(taskId, projectId, stageId) { return Cases.byTask(caseList(), taskId, projectId, stageId); }
 
   function closeCase(id, note) {
     var before = caseList();

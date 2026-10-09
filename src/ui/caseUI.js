@@ -12,10 +12,12 @@
   function shortDay(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : ''; }
   function plural(n) { return n === 1 ? 'dzień' : 'dni'; }
 
-  function findTask(projects, taskId) {
+  function findTask(projects, taskId, projectId, stageId) {
     for (var i = 0; i < (projects || []).length; i += 1) {
       var p = projects[i];
+      if (projectId != null && p.id !== projectId) continue;
       for (var j = 0; j < (p.stages || []).length; j += 1) {
+        if (stageId && p.stages[j].id !== stageId) continue;
         var t = (p.stages[j].tasks || []).filter(function (x) { return x.id === taskId; })[0];
         if (t) return { project: p, stage: p.stages[j], task: t };
       }
@@ -72,7 +74,7 @@
   }
   function history(c, ctx) {
     var items = c.events.map(function (e) {
-      var linked = e.taskId ? findTask(ctx.projects, e.taskId) : null;
+      var linked = e.taskId ? (findTask(ctx.projects, e.taskId, c.projectId, e.stageId || c.stageId) || findTask(ctx.projects, e.taskId, c.projectId)) : null;
       var filled = e.kind === 'letter' && linked && linked.task.status === 'done';
       var title = e.kind === 'filed' ? 'Złożono' : e.kind === 'call' ? 'Dopytano' : e.kind === 'note' ? 'Notatka' : e.kind === 'filled' ? 'Uzupełniono' : (filled ? 'Uzupełniono: ' : 'Pismo od organu: ') + (e.note || '');
       if (e.kind === 'filed') title = 'Złożono' + (c.org ? ' · ' + c.org : '');

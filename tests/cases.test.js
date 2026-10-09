@@ -44,6 +44,12 @@ test('pismo dodane jako zadanie wiąże zadanie ze sprawą', () => {
   assert.equal(C.byTask(list, 't-2'), null);
 });
 
+test('zadanie o tym samym identyfikatorze w innym projekcie nie dostaje cudzej sprawy', () => {
+  const list = C.create([], { ...data, sourceTaskId: 't-1' }, ids).list;
+  assert.equal(C.byTask(list, 't-1', data.projectId).id, 'c-1');
+  assert.equal(C.byTask(list, 't-1', 'inny-projekt'), null);
+});
+
 test('wykrywanie zadań typu „złożyć / wysłać / zamówić”', () => {
   ['Złożyć wniosek o decyzję', 'Wysłać pismo do RDOŚ', 'Zamówić mapę do celów projektowych', 'Wystąpić o wypis z rejestru', 'Złożenie wniosku', 'Uzyskać uzgodnienie z zarządcą drogi'].forEach((n) => assert.equal(C.looksLikeFiling(n), true, n));
   ['Opracować rysunki wykonawcze', 'Obliczenia hydrauliczne', 'Skompletować załączniki do wniosku', 'Przekazanie dokumentacji zamawiającemu', 'Przekazać do klienta', 'Wysłać rysunki do druku', 'Sporządzić operat wodnoprawny', ''].forEach((n) => assert.equal(C.looksLikeFiling(n), false, n));
@@ -84,4 +90,11 @@ test('widoczne są tylko sprawy istniejących projektów, a zadania projektu tra
   assert.deepEqual(C.visible(list, [{ id: 1 }]).map((c) => c.id), ['c-1']);
   const tasks = C.projectTasks({ stages: [{ id: 's1', tasks: [{ id: 't1', name: 'Zadanie' }] }] }, () => 'Etap');
   assert.deepEqual(tasks, [{ taskId: 't1', stageId: 's1', label: 'Etap · Zadanie' }]);
+});
+
+test('byTask: to samo t-1 w innym etapie nie łączy się ze sprawą', () => {
+  const list = [{ id: 'c-1', projectId: 1, stageId: 's2', status: 'open', sourceTaskId: '', events: [{ id: 'e-1', kind: 'letter', taskId: 't-1', stageId: 's2' }] }];
+  assert.equal(C.byTask(list, 't-1', 1, 's2').id, 'c-1');
+  assert.equal(C.byTask(list, 't-1', 1, 's1'), null);
+  assert.equal(C.byTask(list, 't-1', 1).id, 'c-1');
 });

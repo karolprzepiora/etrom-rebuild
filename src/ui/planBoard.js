@@ -326,7 +326,7 @@
     var chkCtx = Object.assign({}, ctx, { people: people, meId: me.id });
     var caseCtx = { actions: ctx.actions, projects: projects };
     function taskCaseChip(b) {
-      var cs = E.Cases.byTask(state.workspace.cases || [], b.taskId);
+      var cs = E.Cases.byTask(state.workspace.cases || [], b.taskId, b.projectId, b.stageId);
       return cs ? E.CaseUI.chip(cs, caseCtx) : null;
     }
     /** Wiersze „Sprawy w toku” osoby: kropka = złożono, linia = dni od złożenia, ◇ pismo, ✆ dopytano. */
@@ -358,7 +358,7 @@
         c.events.forEach(function (e) {
           var sl = slotIso(e.at);
           if (sl < 0 || sl >= N) return;
-          var linked = e.taskId ? E.CaseUI.findTask(projects, e.taskId) : null;
+          var linked = e.taskId ? (E.CaseUI.findTask(projects, e.taskId, c.projectId, e.stageId || c.stageId) || E.CaseUI.findTask(projects, e.taskId, c.projectId)) : null;
           var done = e.kind === 'letter' && linked && linked.task.status === 'done';
           var tip = (e.kind === 'filed' ? 'Złożono' : e.kind === 'call' ? 'Dopytano' : done ? 'Uzupełniono' : 'Pismo od organu') + ' · ' + e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + (e.note ? ' · ' + e.note : '');
           if (e.kind === 'letter' && linked && linked.task.status !== 'done' && linked.task.deadline) {

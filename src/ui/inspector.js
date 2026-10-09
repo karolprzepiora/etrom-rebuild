@@ -105,7 +105,7 @@
           Tasks.effortLevel(task).level ? prop('Czas na zadanie', D.el('span', { class: 'eff-row' }, [E.UI.effortMark(task), D.el('span', { text: F.count(Tasks.effortLevel(task).days, 'dzień', 'dni', 'dni') })])) : null,
           task.important ? prop('Priorytet', UI.badge('Ważne', 'warning', { icon: 'flag' })) : null,
           (function () {
-            var cs = E.Cases.byTask(ctx.cases || [], task.id);
+            var cs = E.Cases.byTask(ctx.cases || [], task.id, project.id, stage.id);
             if (cs) return prop('Sprawa', E.CaseUI.chip(cs, { actions: actions, projects: ctx.projects }));
             return prop('Sprawa', UI.button({ label: 'Śledź jako sprawę', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'insp-case' }, onClick: function () { actions.openCaseFromTask(project.id, stage.id, task.id); } }));
           })(),
