@@ -852,10 +852,35 @@ async function main() {
     await click('[data-fk="cv-next"]');
     await sleep(250);
     check('strzałka „Następny miesiąc” zmienia miesiąc w kalendarzu, a „Dziś” wraca do bieżącego',
-      (await evaluate('return document.querySelector(".cv-title").textContent;')) !== calTitle && (await state('s.calOffset')) === 1);
+      (await evaluate('return document.querySelector(".cv-title").textContent;')) !== calTitle && (await state('!!s.calAnchor')) === true);
     await click('[data-fk="cv-today"]');
     await sleep(250);
     check('„Dziś” w kalendarzu wraca do bieżącego miesiąca', (await evaluate('return document.querySelector(".cv-title").textContent;')) === calTitle);
+    // ---- Kalendarz: widoki, filtry, ustawienie widoczności ----
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ calAnchor: null, calDay: null }); return true;');
+    await sleep(300);
+    check('kalendarz: panel warstw z zakresem, osobami, projektami i rodzajami oraz przełącznik 4 widoków',
+      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".cv-panel .lv-month") && v.querySelectorAll(".cv-panel__sec").length === 4 && v.querySelectorAll(".cv-bar .segmented__btn").length === 4 && v.querySelectorAll(".cv-opt").length >= 4;'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "week" }); return true;');
+    await sleep(300);
+    check('kalendarz: widok Tydzień ma 7 kolumn i macierz „Kto gdzie pracuje”',
+      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cv-wcol").length === 7 && !!v.querySelector(".lv-t__row--wk");'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "year" }); return true;');
+    await sleep(300);
+    check('kalendarz: widok Rok używa tych samych miesięcy co Urlopy (12 × lv-month)',
+      await evaluate('return document.querySelectorAll("#view-calendar .lv-month").length >= 12;'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "team" }); return true;');
+    await sleep(300);
+    check('kalendarz: widok Zespół używa tabeli Urlopów z wierszem obsady',
+      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".lv-t") && !!v.querySelector(".lv-t__row--sum");'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "month", hiddenKinds: ["absence", "trip", "deadline", "task"] }); return true;');
+    await sleep(300);
+    check('kalendarz: ukrycie wszystkich rodzajów czyści siatkę, a filtr jest zapamiętany w ustawieniach urządzenia',
+      await evaluate('return document.querySelectorAll("#view-calendar .cv-ev").length === 0;') && (await state('s.prefs.cal.hiddenKinds.length')) === 4);
+    await evaluate('window.ETROM.app.actions.setCal({ hiddenKinds: [] }); return true;');
+    await evaluate('window.ETROM.app.actions.setAbsenceVisibility("own"); return true;');
+    check('ustawienie widoczności nieobecności zapisuje się w danych (tylko Dyrekcja)', (await state('s.workspace.settings.absenceVisibility')) === 'own');
+    await evaluate('window.ETROM.app.actions.setAbsenceVisibility("who"); return true;');
     // ---- Pulpit, menu grupowe, wyjazdy ----
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
     await go('#/pulpit');

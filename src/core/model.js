@@ -48,7 +48,7 @@
     ? require('./orders.js')
     : root.ETROM.Orders;
 
-  var WORKSPACE_VERSION = 10;
+  var WORKSPACE_VERSION = 11;
 
   var PROJECT_STATUS = {
     planned: 'Przygotowanie',
@@ -532,11 +532,11 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences), trips: Trips.normalize(source.trips), orders: Orders.normalize(source.orders), audit: Accounts.normalizeAudit(source.audit), cases: Cases.normalize(source.cases, projects.map(function (project) { return project.id; })) };
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences), trips: Trips.normalize(source.trips), orders: Orders.normalize(source.orders), settings: Absences.normalizeSettings(source.settings), audit: Accounts.normalizeAudit(source.audit), cases: Cases.normalize(source.cases, projects.map(function (project) { return project.id; })) };
   }
 
   function emptyWorkspace() {
-    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null), absences: [], trips: [], orders: [], audit: [], cases: [] };
+    return { version: WORKSPACE_VERSION, projects: [], people: [], entries: [], mail: [], social: Social.empty(), library: Library.normalize(null), absences: [], trips: [], orders: [], settings: Absences.normalizeSettings(null), audit: [], cases: [] };
   }
 
   var api = {

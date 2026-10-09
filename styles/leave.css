@@ -102,3 +102,6 @@
 
 @media (max-width: 64rem) { .lv-grid { grid-template-columns: 1fr; } .lv-months { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 40rem) { .lv-months { grid-template-columns: 1fr; } .lv-balance { flex-direction: column; align-items: flex-start; } }
+.lv-t__name--sum { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 700; }
+.lv-t__row--sum { height: 1.7rem; }
+.lv-t__c--sum { display: grid; place-items: center; font-size: .6rem; font-weight: 700; color: var(--ink-2); }

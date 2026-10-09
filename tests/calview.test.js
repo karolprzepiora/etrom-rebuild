@@ -35,8 +35,8 @@ test('zarząd widzi terminy projektów, etapów i wszystkie nieobecności; zada�
   assert.equal(cell(r, '2026-10-19').events[0].sub, 'Zwolnienie');
 });
 
-test('pracownik widzi własne zadania, terminy swoich projektów i tylko własne nieobecności', () => {
-  const r = CV.build(Object.assign({ meId: 'p-3' }, base));
+test('pracownik widzi własne zadania, terminy swoich projektów i (przy ustawieniu „own”) tylko własne nieobecności', () => {
+  const r = CV.build(Object.assign({ meId: 'p-3', visibility: 'own' }, base));
   assert.deepEqual(cell(r, '2026-10-06').events.map((e) => e.kind), ['task']);
   assert.equal(cell(r, '2026-10-07').events.length, 0, 'cudze zadanie');
   assert.deepEqual(cell(r, '2026-10-16').events.map((e) => e.kind), ['project']);
@@ -51,4 +51,45 @@ test('lider widzi swój zespół i etapy swoich projektów', () => {
   assert.deepEqual(cell(r, '2026-10-09').events.map((e) => e.kind), ['stage']);
   assert.equal(cell(r, '2026-10-13').events[0].personId, 'p-3');
   assert.deepEqual(cell(r, '2026-10-07').events.map((e) => e.kind), ['task']);
+});
+
+test('ustawienie zarządu: domyślnie „kto” bez rodzaju, „kind” z rodzajem, „own” ukrywa', () => {
+  const who = CV.build(Object.assign({ meId: 'p-3' }, base));
+  const e = cell(who, '2026-10-19').events[0];
+  assert.equal(e.sub, 'Nieobecność');
+  assert.equal(e.personId, 'p-2');
+  const kind = CV.build(Object.assign({ meId: 'p-3', visibility: 'kind' }, base));
+  assert.equal(cell(kind, '2026-10-19').events[0].sub, 'Zwolnienie');
+});
+
+test('filtry: zakres „mine”, ukryte osoby i rodzaje', () => {
+  const mine = CV.build(Object.assign({ meId: 'p-1', filters: { scope: 'mine' } }, base));
+  assert.equal(cell(mine, '2026-10-13').events.length, 0);
+  const noP = CV.build(Object.assign({ meId: 'p-1', filters: { hiddenPeople: ['p-3'] } }, base));
+  assert.equal(cell(noP, '2026-10-13').events.length, 0);
+  const noK = CV.build(Object.assign({ meId: 'p-1', filters: { hiddenKinds: ['absence', 'deadline'] } }, base));
+  assert.equal(cell(noK, '2026-10-13').events.length, 0);
+  assert.equal(cell(noK, '2026-10-16').events.length, 0);
+});
+
+test('obsada i konflikty: termin przy nieobecnym liderze, próg 3 nieobecnych', () => {
+  const ab = absences.concat([{ id: 'a3', personId: 'p-2', from: '2026-10-16', to: '2026-10-16', kind: 'leave' }]);
+  const r = CV.build(Object.assign({ meId: 'p-1' }, base, { absences: ab }));
+  assert.equal(cell(r, '2026-10-13').awayCount, 1);
+  assert.equal(cell(r, '2026-10-13').present, 2);
+  assert.ok(r.conflicts.some((c) => c.type === 'leader' && c.day === '2026-10-16'));
+  const many = ['p-1', 'p-2', 'p-3'].map((id, i) => ({ id: 'm' + i, personId: id, from: '2026-10-21', to: '2026-10-21', kind: 'leave' }));
+  const r2 = CV.build(Object.assign({ meId: 'p-1' }, base, { absences: many }));
+  assert.ok(r2.conflicts.some((c) => c.type === 'thin'));
+  const w = CV.build(Object.assign({ meId: 'p-3' }, base, { absences: ab }));
+  assert.equal(w.conflicts.length, 0);
+});
+
+test('zakres range i eksport .ics', () => {
+  const r = CV.build(Object.assign({ meId: 'p-1', range: { from: '2026-10-12', to: '2026-10-18' } }, base));
+  assert.equal(r.cells.length, 7);
+  const ics = CV.toIcs(r.items, base.now, 'Test');
+  assert.match(ics, /BEGIN:VCALENDAR/);
+  assert.match(ics, /DTSTART;VALUE=DATE:20261012/);
+  assert.match(ics, /DTEND;VALUE=DATE:20261015/);
 });

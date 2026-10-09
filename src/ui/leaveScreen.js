@@ -124,7 +124,8 @@
   }
 
   /* ---------- Mój urlop: kalendarz roczny ---------- */
-  function monthCard(year, m, ctx, mine, sel, today) {
+  /** Miesiąc w siatce 7 kolumn. dayFn(key) zwraca { cls, tip, disabled, pressed, onClick } — wspólny wygląd Urlopów i Kalendarza. */
+  function miniMonth(year, m, dayFn, today, titleExtra) {
     var first = new Date(year, m, 1);
     var count = new Date(year, m + 1, 0).getDate();
     var cells = [];
@@ -134,24 +135,31 @@
         var key = iso(year, m, day);
         var wk = Cal.isWeekend(key);
         var hol = Cal.holidayName(key);
-        var rec = mine.filter(function (a) { return a.from <= key && a.to >= key && a.status !== 'rejected'; })[0];
-        var inSel = sel && sel.from && key >= sel.from && key <= (sel.to || sel.from);
-        var cls = 'lv-day' + (wk ? ' is-weekend' : '') + (hol ? ' is-holiday' : '') + (key === today ? ' is-today' : '');
-        if (rec && !wk && !hol) cls += rec.status === 'pending' ? ' is-pending' : (rec.kind === 'leave' ? ' is-leave' : ' is-other');
-        if (inSel && !wk && !hol) cls += ' is-selected';
-        var tip = hol || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() : '');
+        var info = dayFn(key, wk, hol) || {};
+        var cls = 'lv-day' + (wk ? ' is-weekend' : '') + (hol ? ' is-holiday' : '') + (key === today ? ' is-today' : '') + (info.cls ? ' ' + info.cls : '');
         cells.push(D.el('button', {
-          class: cls, text: String(day),
-          attrs: { type: 'button', 'data-day': key, 'data-tooltip': tip || null, 'aria-pressed': inSel ? 'true' : 'false', disabled: wk || !!hol || (!!rec) },
-          on: { click: function () { ctx.actions.pickLeaveDay(key); } }
+          class: cls, text: String(day), style: info.style || null,
+          attrs: { type: 'button', 'data-day': key, 'data-tooltip': info.tip || hol || null, 'aria-pressed': info.pressed ? 'true' : 'false', disabled: !!info.disabled },
+          on: { click: function () { if (info.onClick) info.onClick(key); } }
         }));
       })(d);
     }
     return D.el('section', { class: 'lv-month' }, [
-      D.el('h3', { text: MONTHS[m][0].toUpperCase() + MONTHS[m].slice(1) }),
+      D.el('h3', null, [MONTHS[m][0].toUpperCase() + MONTHS[m].slice(1), titleExtra || null]),
       D.el('div', { class: 'lv-dow' }, DOW1.map(function (x) { return D.el('span', { text: x }); })),
       D.el('div', { class: 'lv-days' }, cells)
     ]);
+  }
+
+  function monthCard(year, m, ctx, mine, sel, today) {
+    return miniMonth(year, m, function (key, wk, hol) {
+      var rec = mine.filter(function (a) { return a.from <= key && a.to >= key && a.status !== 'rejected'; })[0];
+      var inSel = sel && sel.from && key >= sel.from && key <= (sel.to || sel.from);
+      var cls = '';
+      if (rec && !wk && !hol) cls += rec.status === 'pending' ? ' is-pending' : (rec.kind === 'leave' ? ' is-leave' : ' is-other');
+      if (inSel && !wk && !hol) cls += ' is-selected';
+      return { cls: cls.trim(), tip: hol || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() : ''), pressed: inSel, disabled: wk || !!hol || !!rec, onClick: function (k) { ctx.actions.pickLeaveDay(k); } };
+    }, today);
   }
 
   function yearCalendar(state, ctx, me, now) {
@@ -192,48 +200,65 @@
   }
 
   /* ---------- Kalendarz zespołu: miesiąc, osoby w wierszach ---------- */
+  /** Tabela osoby × dni. cellFn(person, key, off) zwraca { cls, tip }; extraRows: [{ label, cellFn(key, off) -> { cls, tip, text, style } }]. */
+  function teamTable(year, m, people, cellFn, now, extraRows) {
+    var count = new Date(year, m + 1, 0).getDate();
+    var today = Cal.isoOf(now);
+    var head = [D.el('span', { class: 'lv-t__name' })];
+    for (var d = 1; d <= count; d += 1) {
+      var key = iso(year, m, d);
+      head.push(D.el('span', { class: 'lv-t__d' + (Cal.isWeekend(key) ? ' is-weekend' : '') + (Cal.isHoliday(key) ? ' is-holiday' : '') + (key === today ? ' is-today' : ''), text: String(d) }));
+    }
+    var rows = people.map(function (p) {
+      var cells = [D.el('span', { class: 'lv-t__name' }, [E.Avatar.avatar(p, { size: 'sm' }), D.el('span', { class: 'truncate', text: Team.fullName(p) })])];
+      for (var day = 1; day <= count; day += 1) {
+        var k = iso(year, m, day);
+        var off = Cal.isWeekend(k) || Cal.isHoliday(k);
+        var info = cellFn(p, k, off) || {};
+        cells.push(D.el('span', { class: 'lv-t__c' + (off ? ' is-weekend' : '') + (info.cls ? ' ' + info.cls : ''), attrs: { 'data-tooltip': info.tip || null } }));
+      }
+      return D.el('div', { class: 'lv-t__row' }, cells);
+    });
+    (extraRows || []).forEach(function (row) {
+      var cells = [D.el('span', { class: 'lv-t__name lv-t__name--sum', text: row.label })];
+      for (var day = 1; day <= count; day += 1) {
+        var k = iso(year, m, day);
+        var off = Cal.isWeekend(k) || Cal.isHoliday(k);
+        var info = row.cellFn(k, off) || {};
+        cells.push(D.el('span', { class: 'lv-t__c lv-t__c--sum' + (off ? ' is-weekend' : '') + (info.cls ? ' ' + info.cls : ''), style: info.style || null, text: info.text || '', attrs: { 'data-tooltip': info.tip || null } }));
+      }
+      rows.push(D.el('div', { class: 'lv-t__row lv-t__row--sum' }, cells));
+    });
+    return D.el('div', { class: 'lv-t', style: { '--days': String(count) } }, [D.el('div', { class: 'lv-t__row lv-t__row--head' }, head)].concat(rows));
+  }
+
   function teamCalendar(state, ctx, me, now) {
     var lv = state.leave || {};
     var off = Number(lv.monthOffset) || 0;
     var base = new Date(now.getFullYear(), now.getMonth() + off, 1);
     var year = base.getFullYear();
     var m = base.getMonth();
-    var count = new Date(year, m + 1, 0).getDate();
     var people = ctx.people.filter(function (p) { return p.active !== false; });
     var all = state.workspace.absences || [];
     var projects = state.workspace.projects || [];
+    var mode = (state.workspace.settings || {}).absenceVisibility;
     var management = E.Budget.isManagement(me.id, ctx.people);
-    var head = [D.el('span', { class: 'lv-t__name' })];
-    for (var d = 1; d <= count; d += 1) {
-      var key = iso(year, m, d);
-      head.push(D.el('span', { class: 'lv-t__d' + (Cal.isWeekend(key) ? ' is-weekend' : '') + (Cal.isHoliday(key) ? ' is-holiday' : '') + (key === Cal.isoOf(now) ? ' is-today' : ''), text: String(d) }));
-    }
-    var rows = people.map(function (p) {
-      var cells = [D.el('span', { class: 'lv-t__name' }, [E.Avatar.avatar(p, { size: 'sm' }), D.el('span', { class: 'truncate', text: Team.fullName(p) })])];
-      for (var day = 1; day <= count; day += 1) {
-        var k = iso(year, m, day);
-        var rec = all.filter(function (a) { return a.personId === p.id && a.from <= k && a.to >= k && a.status !== 'rejected'; })[0];
-        var visible = rec && (rec.status === 'approved' || A.canSee(me.id, rec, projects, ctx.people));
-        var wk = Cal.isWeekend(k) || Cal.isHoliday(k);
-        var cls = 'lv-t__c' + (wk ? ' is-weekend' : '');
-        var tip = null;
-        if (visible && !wk) {
-          cls += rec.status === 'pending' ? ' is-pending' : ' is-away';
-          var detail = (management || A.canSee(me.id, rec, projects, ctx.people)) ? kindLabel(rec) + (rec.status === 'pending' ? ' (czeka na decyzję)' : '') : 'Nieobecność';
-          tip = Team.fullName(p) + ' · ' + detail;
-        }
-        cells.push(D.el('span', { class: cls, attrs: { 'data-tooltip': tip } }));
-      }
-      return D.el('div', { class: 'lv-t__row' }, cells);
-    });
+    var table = teamTable(year, m, people, function (p, k, wk) {
+      var rec = all.filter(function (a) { return a.personId === p.id && a.from <= k && a.to >= k && a.status !== 'rejected'; })[0];
+      if (!rec || wk) return null;
+      var seen = rec.status === 'pending' ? (A.canSee(me.id, rec, projects, ctx.people) ? 'full' : null) : A.peek(me.id, rec, projects, ctx.people, mode);
+      if (!seen) return null;
+      var detail = seen === 'full' ? kindLabel(rec) + (rec.status === 'pending' ? ' (czeka na decyzję)' : '') : 'Nieobecność';
+      return { cls: rec.status === 'pending' ? 'is-pending' : 'is-away', tip: Team.fullName(p) + ' · ' + detail };
+    }, now);
     var nav = D.el('div', { class: 'lv-yearnav' }, [
       UI.iconButton ? UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni miesiąc', onClick: function () { ctx.actions.setLeave({ monthOffset: off - 1 }); } }) : null,
       D.el('b', { text: MONTHS[m][0].toUpperCase() + MONTHS[m].slice(1) + ' ' + year }),
       UI.iconButton ? UI.iconButton({ icon: 'chevronRight', label: 'Następny miesiąc', onClick: function () { ctx.actions.setLeave({ monthOffset: off + 1 }); } }) : null,
       off ? UI.button({ label: 'Ten miesiąc', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0 }); } }) : null
     ]);
-    return D.el('div', { class: 'lv-team' }, [nav, D.el('div', { class: 'lv-t', style: { '--days': String(count) } }, [D.el('div', { class: 'lv-t__row lv-t__row--head' }, head)].concat(rows)),
-      D.el('p', { class: 't-meta', text: management ? 'Widzisz rodzaj nieobecności i wnioski oczekujące.' : 'Widzisz, kto jest nieobecny, bez rodzaju nieobecności.' })]);
+    return D.el('div', { class: 'lv-team' }, [nav, table,
+      D.el('p', { class: 't-meta', text: management || mode === 'kind' ? 'Widzisz rodzaj nieobecności' + (management ? ' i wnioski oczekujące.' : '.') : (mode === 'own' ? 'Widzisz tylko własne nieobecności.' : 'Widzisz, kto jest nieobecny, bez rodzaju nieobecności.') })]);
   }
 
   /* ---------- Skrzynka akceptacji ---------- */
@@ -385,5 +410,5 @@
     }).length;
   }
 
-  E.LeaveScreen = { view: view, requestForm: requestForm, pendingFor: pendingFor, range: range };
+  E.LeaveScreen = { miniMonth: miniMonth, teamTable: teamTable, kindLabel: kindLabel, view: view, requestForm: requestForm, pendingFor: pendingFor, range: range };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

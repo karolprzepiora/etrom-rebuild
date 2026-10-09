@@ -202,6 +202,10 @@
     for (var m = 15 * 60; m <= 21 * 60; m += 30) endOptions.push({ value: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), label: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') });
     var dayEnd = UI.select({ id: 'work-end', value: prefs.dayEnd || '17:00', options: endOptions, on: { change: function () { actions.setPref({ dayEnd: dayEnd.value }); } }, attrs: { 'data-fk': 'work-end', 'aria-label': 'Koniec dnia pracy' } });
 
+    var meNow = E.Team.findPerson(state.workspace.people || [], prefs.me);
+    var isBoss = !!meNow && E.Budget.isManagement(meNow.id, state.workspace.people || []);
+    var visLabels = { who: 'Kto jest nieobecny (bez rodzaju)', kind: 'Kto i jakiego rodzaju nieobecność', own: 'Tylko własne nieobecności' };
+    var visSelect = isBoss ? UI.select({ id: 'abs-visibility', value: (state.workspace.settings || {}).absenceVisibility || 'who', options: Object.keys(visLabels).map(function (k) { return { value: k, label: visLabels[k] }; }), on: { change: function () { actions.setAbsenceVisibility(visSelect.value); } }, attrs: { 'data-fk': 'abs-visibility', 'aria-label': 'Co pracownicy widzą o cudzych nieobecnościach' } }) : null;
     function item(label, icon, run, tone, kbd) {
       return D.el('button', {
         class: 'menu__item' + (tone === 'danger' ? ' menu__item--danger' : ''),
@@ -233,6 +237,9 @@
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-alarm' }, text: 'Alarm od przekroczenia' }), forecastAlarm]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-reserve' }, text: 'Rezerwa postępowań' }), reservePct, D.el('span', { class: 'settings__hint', text: 'część budżetu etapu-postępowania na uzupełnienia; dzień roboczy = Cel dnia' })]),
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-min' }, text: 'Prognoza od postępu' }), minProgress, D.el('span', { class: 'settings__hint', text: 'wcześniej wynik byłby zgadywaniem' })]),
+      isBoss ? D.el('div', { class: 'menu__separator' }) : null,
+      isBoss ? D.el('p', { class: 'settings__group', text: 'Kalendarz i urlopy' }) : null,
+      isBoss ? D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'abs-visibility' }, text: 'Cudze nieobecności' }), visSelect, D.el('span', { class: 'settings__hint', text: 'co widzą pracownicy w Kalendarzu i Urlopach; Dyrekcja i lider projektu widzą wszystko' })]) : null,
       D.el('div', { class: 'menu__separator' }),
       D.el('p', { class: 'settings__group', text: 'Wygląd' }),
       D.el('div', { class: 'settings__row' }, [

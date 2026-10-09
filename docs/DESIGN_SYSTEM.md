@@ -780,3 +780,13 @@ Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagr
 - Karta: kapsuła rodzaju (podpis = fiolet, wysyłka = akcent, opłata = bursztyn z symbolem **$**, inne = neutralna), kod projektu, kapsuła licznika (`.zl-timer`: neutralna < doby, bursztyn ≥ doby, czerwona ≥ 3 dni, po zamknięciu „zamknięte po X”), dokument, „Dokąd”, dane przelewu z przyciskami „kopiuj”, „Potem: …”. Wykonawca: „✔ Podpisane / Wysłane / Opłacone / Zrobione” (zwrot opcjonalny: plik, link albo samo potwierdzenie) i „Przekaż dalej”; zgłaszający: „Przypomnij” (tylko wyróżnia kartę, bez maili) i „Anuluj”.
 - Formularz w panelu bocznym (wariant A): chipy rodzaju, opis, pola zależne od rodzaju, dokument (plik/link), wykonawca z podpowiedzią z historii, projekt, opcjonalny krok „potem”.
 - Zlecenia w innych miejscach: karta „Zlecenia do mnie” na Pulpicie (prawa kolumna), pasek `.zl-strip` nad listą w „Mojej pracy” (widoki Wszystko, Dziś) i w Skrzynce, zakładka „Zlecenia” w projekcie (z licznikiem otwartych, „Nowe zlecenie” z wybranym projektem) oraz pozycja „Zleć…” w menu zadania (opis = nazwa zadania).
+
+## Kalendarz (`#/kalendarz`, `src/ui/calendarScreen.js`, wariant B)
+
+Jeden kalendarz w czterech widokach: **Miesiąc · Tydzień · Rok · Zespół** (przełącznik jak w Urlopach), pasek: ‹ › Dziś, tytuł okresu, Filtry, `.ics`, „Dodaj ▾” (wyjazd, urlop, zlecenie).
+- Lewy panel warstw: mini-miesiąc, zakres (Moje / Mój zespół / Wszyscy), osoby, projekty, rodzaje (terminy, zadania, nieobecności, wyjazdy). Ukryte pozycje pamiętane w `prefs.cal` na urządzeniu.
+- **Spójność z Urlopami:** Rok to te same `lv-month` (`LeaveScreen.miniMonth`), Zespół to ta sama tabela `lv-t` (`LeaveScreen.teamTable`); dochodzi tylko ciepło obsady (`is-heat1–3`), kropka terminu i wiersze „Obsada” i „Terminy”.
+- Obsada „7/9” przy dniu roboczym z nieobecnościami; od `THIN` (3) nieobecnych bursztyn. Konflikty (termin przy nieobecnym liderze, termin w dniu wolnym, ≥3 nieobecnych) widzą tylko Dyrekcja i Liderzy; oznaczone obwódką dnia i listą „Uwaga w tym zakresie”.
+- Paski wielodniowe: nieobecności, wyjazdy i zadania ze startem (tekst na początku paska i w poniedziałki).
+- Skróty: M / W / R / Z (widoki), D (dziś), strzałki (dzień). Eksport `.ics` działa bez serwera i obejmuje widoczny zakres.
+- Widoczność cudzych nieobecności: `workspace.settings.absenceVisibility` (patrz DATA_MODEL), logika w `Absences.peek`.

@@ -46,7 +46,7 @@
     mailView: { direction: 'all', waiting: false, query: '' },
     analysisProject: null,
     timeTab: 'sheet',
-    calOffset: 0,
+    calAnchor: null,
     calDay: null,
     timeMode: 'week',
     timeOffset: 0,
@@ -2042,6 +2042,33 @@
     Toast.show({ message: 'Anulowano zlecenie', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setOrdersList(function () { return before; }); } });
   }
 
+  /* ---------- Kalendarz: widok, filtry, eksport, widoczność nieobecności ---------- */
+  function setCal(patch) {
+    var cal = Object.assign({}, store.getState().prefs.cal || {}, patch);
+    setPref({ cal: cal });
+  }
+
+  function exportIcs(items, name) {
+    var text = E.CalView.toIcs(items, new Date(), name || 'ETROM');
+    var url = URL.createObjectURL(new Blob([text], { type: 'text/calendar' }));
+    var link = D.el('a', { attrs: { href: url, download: 'etrom-kalendarz-' + new Date().toISOString().slice(0, 10) + '.ics' } });
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    Toast.show({ message: 'Pobrano plik .ics (' + items.length + ' wpisów)', tone: 'success', timeout: 4000 });
+  }
+
+  /** Dyrekcja ustawia, co pozostali widzą o cudzych nieobecnościach. */
+  function setAbsenceVisibility(mode) {
+    var state = store.getState();
+    var me = E.Team.findPerson(state.workspace.people || [], state.prefs.me);
+    if (!me || !E.Budget.isManagement(me.id, state.workspace.people || [])) return;
+    updateWorkspace(function (workspace) {
+      return Object.assign({}, workspace, { settings: E.Absences.normalizeSettings(Object.assign({}, workspace.settings, { absenceVisibility: mode })) });
+    });
+  }
+
   /* ---------- Urlopy: wnioski, decyzje, opinie ---------- */
   function setLeave(patch) {
     store.set({ leave: Object.assign({}, store.getState().leave || {}, patch) });
@@ -3424,7 +3451,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, exportIcs: exportIcs, setAbsenceVisibility: setAbsenceVisibility, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: mailToTask,
     setMailView: function (patch) { store.update(function (state) { return Object.assign({}, state, { mailView: Object.assign({}, state.mailView, patch) }); }); },
@@ -4181,6 +4208,12 @@
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
       if (event.key === 'a' || event.key === 'A') { event.preventDefault(); goTo('feed'); return; }
       if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
+    }
+    if (route === 'calendar' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      var calKeys = { m: 'month', w: 'week', r: 'year', z: 'team' };
+      var ck = String(event.key).toLowerCase();
+      if (calKeys[ck]) { event.preventDefault(); setCal({ view: calKeys[ck] }); return; }
+      if (ck === 'd') { event.preventDefault(); store.set({ calAnchor: null, calDay: null }); return; }
     }
     if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {

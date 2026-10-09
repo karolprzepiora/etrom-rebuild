@@ -237,7 +237,28 @@
     return (projects || []).some(function (p) { return p.team && p.team.leader === viewerId && Team.projectPeople(p.team).indexOf(absence.personId) >= 0; });
   }
 
-  var api = { STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, isoOf: isoOf };
+  /* Ustawienie zarządu: co pracownicy widzą z cudzych nieobecności (Ustawienia → Kalendarz i urlopy).
+     'who' = kto jest nieobecny (bez rodzaju), 'kind' = kto i jakiego rodzaju, 'own' = tylko własne. */
+  var VISIBILITY = { who: 'Kto jest nieobecny (bez rodzaju)', kind: 'Kto i jakiego rodzaju nieobecność', own: 'Tylko własne nieobecności' };
+
+  function normalizeSettings(raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    return { absenceVisibility: VISIBILITY[src.absenceVisibility] ? src.absenceVisibility : 'who' };
+  }
+
+  /**
+   * Ile widzi `viewerId` z nieobecności: null (nic), 'who' (osoba bez rodzaju), 'full' (osoba, rodzaj i status).
+   * Właściciel, zarząd i lider osoby widzą wszystko; pozostali tylko zaakceptowane, wg ustawienia zarządu.
+   */
+  function peek(viewerId, absence, projects, people, mode) {
+    if (!viewerId || !absence) return null;
+    if (canSee(viewerId, absence, projects, people)) return 'full';
+    if (absence.status === 'pending' || absence.status === 'rejected') return null;
+    var m = VISIBILITY[mode] ? mode : 'who';
+    return m === 'own' ? null : (m === 'kind' ? 'full' : 'who');
+  }
+
+  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -57,11 +57,26 @@
     return out;
   }
 
+  /** Ustawienia Kalendarza zapamiętywane na urządzeniu: widok, zakres, ukryte osoby/projekty/rodzaje, panel warstw. */
+  function cleanCal(raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    function list(v, test) { return (Array.isArray(v) ? v : []).filter(function (x, i, a) { return test(x) && a.indexOf(x) === i; }).slice(0, 200); }
+    return {
+      view: ['month', 'week', 'year', 'team'].indexOf(src.view) >= 0 ? src.view : 'month',
+      scope: ['mine', 'team', 'all'].indexOf(src.scope) >= 0 ? src.scope : '',
+      hiddenPeople: list(src.hiddenPeople, function (x) { return typeof x === 'string' && /^p-\d+$/.test(x); }),
+      hiddenProjects: list(src.hiddenProjects, function (x) { return Number.isSafeInteger(x) && x > 0; }),
+      hiddenKinds: list(src.hiddenKinds, function (x) { return ['deadline', 'task', 'absence', 'trip'].indexOf(x) >= 0; }),
+      panel: src.panel !== false
+    };
+  }
+
   function defaults() {
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
+      cal: cleanCal(null)
     };
   }
 
@@ -126,6 +141,7 @@
       forecastAlarm: clampInt(source.forecastAlarm, 0, 200, 25),
       reservePct: clampInt(source.reservePct, 0, 50, 15),
       minProgress: clampInt(source.minProgress, 0, 90, 10),
+      cal: cleanCal(source.cal),
       hourlyCost: Number.isFinite(Number(source.hourlyCost)) && Number(source.hourlyCost) >= 0 && Number(source.hourlyCost) <= 10000 ? Math.round(Number(source.hourlyCost) * 100) / 100 : 0
     };
   }

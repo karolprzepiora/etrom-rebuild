@@ -167,8 +167,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 446 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 397 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 451 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 403 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 
