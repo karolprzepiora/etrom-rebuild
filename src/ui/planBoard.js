@@ -336,7 +336,7 @@
       var list = E.Cases.visible(state.workspace.cases || [], projects).filter(function (c) { return c.ownerId === personId && (!wantProject || c.projectId === wantProject); })
         .sort(function (a, b) { return a.startedAt < b.startedAt ? -1 : 1; });
       if (!list.length) return [];
-      function slotIso(iso, dir) { return slotOf(plan.first, new Date(iso + 'T00:00:00').getTime(), dir || 1); }
+      function slotIso(iso, dir) { return slotOf(plan.first, new Date(String(iso).slice(0, 10) + 'T00:00:00').getTime(), dir || 1); }
       function pos(slot) { return ((Math.max(0, Math.min(N - 1, slot)) + 0.5) / N * 100) + '%'; }
       var nowIso = Plan.isoDay(new Date(plan.today));
       var out = [D.el('div', { class: 'pb-row pb-row--casehead' }, [
