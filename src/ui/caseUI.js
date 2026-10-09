@@ -12,17 +12,23 @@
   function shortDay(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : ''; }
   function plural(n) { return n === 1 ? 'dzień' : 'dni'; }
 
-  function findTask(projects, taskId, projectId, stageId) {
-    for (var i = 0; i < (projects || []).length; i += 1) {
-      var p = projects[i];
-      if (projectId != null && p.id !== projectId) continue;
-      for (var j = 0; j < (p.stages || []).length; j += 1) {
-        if (stageId && p.stages[j].id !== stageId) continue;
-        var t = (p.stages[j].tasks || []).filter(function (x) { return x.id === taskId; })[0];
-        if (t) return { project: p, stage: p.stages[j], task: t };
-      }
-    }
-    return null;
+  /* Identyfikator zadania jest unikalny tylko w etapie. Bez znanego etapu wybieramy kandydata po nazwie
+     (podpowiedź z wpisu sprawy), potem po tym, że jest jeszcze otwarty. */
+  function findTask(projects, taskId, projectId, stageId, hint) {
+    var found = [];
+    (projects || []).forEach(function (p) {
+      if (projectId != null && p.id !== projectId) return;
+      (p.stages || []).forEach(function (st) {
+        if (stageId && st.id !== stageId) return;
+        (st.tasks || []).forEach(function (t) { if (t.id === taskId) found.push({ project: p, stage: st, task: t }); });
+      });
+    });
+    if (!found.length && stageId) return findTask(projects, taskId, projectId, '', hint);
+    if (found.length < 2) return found[0] || null;
+    var h = String(hint || '').toLowerCase();
+    var byName = h ? found.filter(function (f) { return h.indexOf(String(f.task.name || '').toLowerCase()) >= 0 || String(f.task.name || '').toLowerCase().indexOf(h) >= 0; }) : [];
+    var pool = byName.length ? byName : found;
+    return pool.filter(function (f) { return f.task.status !== 'done'; })[0] || pool[0];
   }
 
   /* ---------- formularz nowej sprawy ---------- */
@@ -74,7 +80,7 @@
   }
   function history(c, ctx) {
     var items = c.events.map(function (e) {
-      var linked = e.taskId ? (findTask(ctx.projects, e.taskId, c.projectId, e.stageId || c.stageId) || findTask(ctx.projects, e.taskId, c.projectId)) : null;
+      var linked = e.taskId ? findTask(ctx.projects, e.taskId, c.projectId, e.stageId || c.stageId, e.note) : null;
       var filled = e.kind === 'letter' && linked && linked.task.status === 'done';
       var title = e.kind === 'filed' ? 'Złożono' : e.kind === 'call' ? 'Dopytano' : e.kind === 'note' ? 'Notatka' : e.kind === 'filled' ? 'Uzupełniono' : (filled ? 'Uzupełniono: ' : 'Pismo od organu: ') + (e.note || '');
       if (e.kind === 'filed') title = 'Złożono' + (c.org ? ' · ' + c.org : '');
