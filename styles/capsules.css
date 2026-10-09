@@ -57,3 +57,10 @@
 .pb-cap--ok { }
 .pb-cap--warn { background: var(--warn-wash, color-mix(in srgb, var(--warn) 20%, transparent)); color: var(--warn-ink, inherit); }
 .pb-cap--late { background: var(--alarm-wash, color-mix(in srgb, var(--alarm) 18%, transparent)); color: var(--alarm-ink, inherit); }
+
+/* Plan: kolumna z kapsułą godzin ma stałą szerokość, więc „+ lista” zawsze ląduje w tym samym miejscu */
+.pb-row--task .pb-tn { grid-template-columns: auto minmax(0, 1fr) 9.8rem; }
+.pb-row--task .pb-tn__side { justify-self: end; }
+.pb-tn__sub .pb-tn__chk { margin-left: auto; }
+.pb-row--task .pb-tn__txt { grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+.pb-row--task .pb-tn__txt > * { min-width: 0; }
