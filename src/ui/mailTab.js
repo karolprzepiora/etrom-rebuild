@@ -25,7 +25,7 @@
       var items = [
         { label: 'Edytuj wpis', icon: 'edit', onSelect: function () { actions.editMail(entry.id); } }
       ];
-      if (entry.direction === 'in' && !Mail.linkedTasks(project, entry.id, [], new Date()).length) items.push({ label: entry.needsAction ? 'Zdejmij z „Wymaga reakcji”' : 'Oznacz jako wymaga reakcji', icon: 'flag', onSelect: function () { actions.toggleMailAction(entry.id); } });
+      if (entry.direction === 'in' && !Mail.linkedTasks(project, entry.id, [], new Date()).length) items.push({ label: entry.needsAction ? 'Zdejmij ze Skrzynki' : 'Dodaj do Skrzynki (wymaga reakcji)', icon: 'flag', onSelect: function () { actions.toggleMailAction(entry.id); } });
       if (entry.direction === 'in') items.unshift({ label: 'Napisz odpowiedź…', icon: 'reply', onSelect: function () { actions.replyMail(entry.id); } });
       if (entry.direction === 'in') items.push({ label: 'Utwórz zadanie z pisma…', icon: 'checklist', onSelect: function () { actions.mailTask(entry.id); } });
       items.push({ type: 'separator' });
@@ -155,7 +155,7 @@
     var letterDate = UI.input({ id: 'ml-letter', type: 'date', value: d.letterDate, error: er.letterDate });
     var summary = UI.textarea({ id: 'ml-summary', rows: 4, value: d.summary, placeholder: 'O co chodzi, czego pismo wymaga (nieobowiązkowe)', attrs: { maxlength: '2000' } });
     var where = UI.input({ id: 'ml-where', value: d.where, maxlength: 300, placeholder: 'np. segregator 3 · folder na dysku' });
-    var needs = incoming ? UI.checkbox({ id: 'ml-needs', checked: !!d.needsAction, label: 'Wymaga reakcji', hint: 'Zwykle zostaw odznaczone. Zaznaczone pismo trafia do „Wymaga reakcji”, dopóki nie zrobisz z niego zadania.' }) : null;
+    var needs = incoming ? UI.checkbox({ id: 'ml-needs', checked: !!d.needsAction, label: 'Wymaga reakcji', hint: 'Zwykle zostaw odznaczone. Zaznaczone pismo trafia do Skrzynki, dopóki nie zrobisz z niego zadania.' }) : null;
     var replyTo = UI.select({
       id: 'ml-replyto', value: d.replyTo || '',
       options: [{ value: '', label: '— to nie jest odpowiedź —' }].concat(spec.replies || [])

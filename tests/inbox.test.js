@@ -115,3 +115,55 @@ test('skrzynka: pismo wychodzące czekające na cudzą odpowiedź nie jest zadan
   const mail = [{ id: 'o1', projectId: 1, direction: 'out', subject: 'Wniosek', counterparty: 'Gmina', needsAction: true, registeredDate: '2026-09-20' }];
   assert.equal(Inbox.build('p-1', [project()], mail, NOW, {}).items.filter((i) => i.kind === 'mail').length, 0);
 });
+
+const PEOPLE = [
+  { id: 'p-1', firstName: 'Anna', lastName: 'Lider', active: true, orgRole: 'managing' },
+  { id: 'p-2', firstName: 'Jan', lastName: 'Koord', active: true, orgRole: 'employee' },
+  { id: 'p-3', firstName: 'Ewa', lastName: 'Prac', active: true, orgRole: 'employee' }
+];
+const ORDER = (extra) => Object.assign({ id: 'z-1', kind: 'sign', text: 'Podpisać umowę', assigneeId: 'p-2', createdBy: 'p-3', status: 'open', createdAt: new Date(NOW.getTime() - 4 * 86400000).toISOString() }, extra || {});
+const LEAVE = (extra) => Object.assign({ id: 'a-1', personId: 'p-3', from: '2026-10-05', to: '2026-10-06', kind: 'leave', status: 'pending', opinions: [] }, extra || {});
+
+test('skrzynka: zlecenia do mnie wchodzą do listy, stare są pilne, cudze i zamknięte nie', () => {
+  const extra = { orders: [ORDER(), ORDER({ id: 'z-2', assigneeId: 'p-3' }), ORDER({ id: 'z-3', status: 'done' })], people: PEOPLE, absences: [] };
+  const r = Inbox.build('p-2', [project()], [], NOW, {}, [], extra);
+  const orders = r.items.filter((i) => i.kind === 'order');
+  assert.deepEqual(orders.map((i) => i.key), ['order:z-1']);
+  assert.equal(orders[0].urgent, true, 'od 3 dni to alarm');
+  assert.match(orders[0].detail, /Ewa Prac/);
+});
+
+test('skrzynka: wniosek urlopowy czeka na zarząd, a lider projektu dostaje go raz do opinii', () => {
+  const p = project();
+  const extra = { orders: [], people: PEOPLE, absences: [LEAVE()] };
+  assert.equal(Inbox.build('p-1', [p], [], NOW, {}, [], extra).counts.leave, 1, 'zarząd decyduje');
+  assert.equal(Inbox.build('p-2', [p], [], NOW, {}, [], extra).counts.leave, 0, 'koordynator nie jest liderem');
+  const lead = project({ team: { leader: 'p-2', coordinator: '', proxyLead: '', proxyExtra: '', members: ['p-3'] } });
+  assert.equal(Inbox.build('p-2', [lead], [], NOW, {}, [], extra).counts.leave, 1, 'lider dopisuje opinię');
+  const done = { orders: [], people: PEOPLE, absences: [LEAVE({ opinions: [{ by: 'p-2', verdict: 'ok', note: '', at: '' }] })] };
+  assert.equal(Inbox.build('p-2', [lead], [], NOW, {}, [], done).counts.leave, 0, 'po opinii znika');
+  assert.equal(Inbox.build('p-3', [p], [], NOW, {}, [], extra).counts.leave, 0, 'własny wniosek nie trafia do autora');
+  const decided = { orders: [], people: PEOPLE, absences: [LEAVE({ status: 'approved' })] };
+  assert.equal(Inbox.build('p-1', [p], [], NOW, {}, [], decided).counts.leave, 0, 'rozpatrzony znika');
+});
+
+test('skrzynka: bez dodatkowych źródeł działa jak dawniej, a ekran pomija zadania zwrócone do poprawy', () => {
+  const p = project({ stages: [stage('concept', [task({ id: 'a', status: 'changes', assignees: ['p-3'] }), task({ id: 'b', status: 'review', assignees: ['p-3'] })])] });
+  const all = Inbox.build('p-1', [p], [], NOW, {});
+  assert.equal(all.items.filter((i) => i.kind === 'order' || i.kind === 'leave').length, 0);
+  const back = Inbox.build('p-3', [p], [], NOW, {}, [], { orders: [], people: PEOPLE, absences: [] });
+  assert.equal(back.total, 1);
+  const screen = Inbox.forScreen(back);
+  assert.equal(screen.total, 0, 'praca własna nie liczy się do Skrzynki');
+  const lead = Inbox.forScreen(Inbox.build('p-1', [p], [], NOW, {}, [], { orders: [], people: PEOPLE, absences: [] }));
+  assert.equal(lead.total, 1);
+  assert.deepEqual(Object.keys(lead.counts).sort(), ['approve', 'leave', 'mail', 'order', 'project']);
+});
+
+test('skrzynka: odłożona pozycja ukrywa się także dla zleceń i wniosków', () => {
+  const extra = { orders: [ORDER()], people: PEOPLE, absences: [] };
+  const hidden = Inbox.snooze({}, 'order:z-1', NOW, 1);
+  const r = Inbox.build('p-2', [project()], [], NOW, hidden, [], extra);
+  assert.equal(r.items.filter((i) => i.kind === 'order').length, 0);
+  assert.equal(Inbox.forScreen(r).snoozed.length, 1);
+});

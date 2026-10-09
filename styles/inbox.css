@@ -68,3 +68,12 @@
 .ibx__alarm:hover { box-shadow: inset 0 0 0 1px var(--alarm); }
 .ibx__alarm:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ibx__alarm .code { font-weight: 650; }
+
+/* Ekran Skrzynki */
+.ibx__main { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
+.ibx__main .ibx__title { font-size: .9375rem; }
+.ibx__views { margin-bottom: var(--space-1); }
+.ibx__filters { display: grid; gap: var(--space-3); }
+.ibx__filters .select { width: 100%; }
+.ibx__list--later .ibx__row { grid-template-columns: 1.5rem minmax(0, 1fr) auto; }
+.ibx__row .ibx__actions { flex-wrap: wrap; }

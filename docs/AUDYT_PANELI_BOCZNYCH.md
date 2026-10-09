@@ -6,8 +6,9 @@ Wspólny wzorzec to **pasek przycisków po prawej** (`UI.railLayout`, makieta RL
 
 | Ekran | Dziś | Ocena |
 |---|---|---|
-| Pulpit | prawa kolumna kart (`db-side`): Do akceptacji, Wymaga reakcji, Stany wód, Zespół dziś, Zlecenia | to dashboard, nie panel; karty zostają, ale bez przycisków bocznych |
-| Skrzynka (aktualności) | stała prawa kolumna `fd__side`: Projekty w toku, Wyróżnienia, Zespół | **do przepięcia** na pasek (ikony: Projekty, Wyróżnienia, Zespół), domyślnie zwinięty |
+| Pulpit | prawa kolumna kart (`db-side`): Skrzynka, Stany wód, Zespół dziś, Finanse | to dashboard, nie panel; karty zostają, ale bez przycisków bocznych |
+| Aktualności | stała prawa kolumna `fd__side`: Projekty w toku, Wyróżnienia, Zespół | **do przepięcia** na pasek (ikony: Projekty, Wyróżnienia, Zespół), domyślnie zwinięty |
+| Skrzynka | pasek: Filtry (projekt, tylko pilne), Odłożone do jutra (licznik) | wzorzec (osobny ekran od 9.10.2026) |
 | Zlecenia | brak panelu; formularz w szufladzie | **dodać** panel „Książka adresowa” dopiero gdy powstanie; teraz nic |
 | Moja praca | pasek: Sprawy w toku, Zegar i projekty | wzorzec |
 | Czas | pasek: panel czasu | wzorzec, ale tylko jedna funkcja |
@@ -33,7 +34,8 @@ Wspólny wzorzec to **pasek przycisków po prawej** (`UI.railLayout`, makieta RL
 ## Kolejność wdrożenia (propozycja)
 
 1. Projekty: `pf-dock` → `railLayout` (usunięcie duplikatu kodu), plus przycisk Filtry.
-2. Skrzynka: stała kolumna → pasek.
-3. Urlopy: pasek Saldo / Do akceptacji / Nieobecni dziś.
-4. Analiza: dopiero gdy pojawi się więcej filtrów.
-5. Czas: sprawdzić, czy drugi przycisk (np. „Tydzień zespołu” dla Dyrekcji) ma sens.
+2. Aktualności: stała kolumna → pasek (zrobione).
+3. Skrzynka (osobny ekran, 9.10.2026): pasek z Filtrami i Odłożonymi (zrobione).
+4. Urlopy: pasek Saldo / Do akceptacji / Nieobecni dziś.
+5. Analiza: dopiero gdy pojawi się więcej filtrów.
+6. Czas: sprawdzić, czy drugi przycisk (np. „Tydzień zespołu” dla Dyrekcji) ma sens.

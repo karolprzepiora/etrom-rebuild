@@ -324,11 +324,16 @@ formularze na całą szerokość.
   opis profilu przebiegu dla czytnika ekranu.
 - `prefers-reduced-motion` respektowane, ruch ciągły kończy się sam.
 
-## Moja praca (z dawną Skrzynką)
+## Skrzynka i Moja praca (podział ról)
 
-- Jedno miejsce na „co mam zrobić”: sekcja „Wymaga reakcji” (zatwierdzenia, pisma) nad zadaniami według czasu; pasek alarmów projektów dla liderów. Objaśnienia nie zajmują ekranu — są w dymkach (`.ibx__info[data-tooltip]`). Reakcje to lista „do reakcji”, nie archiwum: bez „przeczytane”, pozycja znika, gdy sprawa jest załatwiona. Jedyny zapis to odłożenie do jutra (`prefs.snoozed`).
+Zasada: **Moja praca to to, co robię ja; Skrzynka to to, czego czekają ode mnie inni.**
+
+- **Skrzynka** (`#/skrzynka`, `G S`, `src/ui/inboxScreen.js`, logika `core/inbox.js`): zatwierdzenia zadań, zlecenia do mnie, wnioski urlopowe (Dyrekcja decyduje, lider projektu dopisuje opinię), pisma czekające na odpowiedź i projekty w alarmie dla lidera. Wiersz da się załatwić od razu (Zatwierdź / Zwróć, Zaakceptuj / Odrzuć, Bez zastrzeżeń / Mam zastrzeżenia, Utwórz zadanie / Napisz odpowiedź, Otwórz zlecenie), a „Wpływ na plan” prowadzi do pełnego widoku Urlopów. Zakładki rodzajów z licznikami (`pf-view`), sekcje „Pilne” i „Do załatwienia”, pusty stan „Skrzynka jest pusta”. Pasek boczny: Filtry (projekt, tylko pilne) i Odłożone do jutra. Liczba w menu, kafel „W Skrzynce” i karta na Pulpicie biorą dane z tego samego modelu (`InboxScreen.model`).
+- **Poza Skrzynką**: zadania zwrócone do poprawy to praca własna, więc zostają w Mojej pracy (zakładka „Do poprawy”). Skrzynka nie ma pozycji „przeczytane”: pozycja znika, gdy sprawa jest załatwiona. Jedyny zapis to odłożenie do jutra (`prefs.snoozed`).
+- **Moja praca** (`#/moja-praca`, `G M`): tylko własne zadania według czasu, zakładki Wszystko / Dziś / Ten tydzień / Tygodnie / Do poprawy, pasek boczny Sprawy w toku i Zegar z projektami. Bez sekcji reakcji, pasków zleceń i alarmów.
+- Objaśnienia nie zajmują ekranu: są w dymkach (`.ibx__info[data-tooltip]`).
 - Kolor tylko dla pilnych: lewa kreska i ikona w tonie alarmu przy pozycji po terminie, reszta neutralna.
-- Obie listy używają zakładek z licznikami (`pf-view`), płaskich wierszy z linią zamiast kart z cieniem i gęstości `--row-h`; `J`/`K` przechodzą po wierszach.
+- Obie listy (Skrzynka i Moja praca) używają zakładek z licznikami (`pf-view`), płaskich wierszy z linią zamiast kart z cieniem i gęstości `--row-h`; `J`/`K` przechodzą po wierszach.
 
 ## Aktualności
 
@@ -408,7 +413,7 @@ Pismo przychodzące oczekujące na odpowiedź ma w danej chwili jednego „wła�
 Pismo zamyka dopiero zarejestrowana odpowiedź (`replyTo`); po jej wpisaniu toast proponuje „Zamknij zadanie/zadania” z pisma. Pisma wychodzące nie trafiają do reakcji (czekamy na cudzą odpowiedź).
 - **Korespondencja to zwykły dziennik** pism przychodzących i wychodzących: numer, rodzaj, strona, daty. Bez terminów odpowiedzi i bez „czeka na odpowiedź”. Pismo przychodzące ma jedno opcjonalne oznaczenie „Wymaga reakcji” (domyślnie wyłączone; też z menu pisma). Takie pismo widać w „Wymaga reakcji” w Mojej pracy, dopóki nie zrobisz z niego zadania („Zrób z tego zadanie”) — wtedy oznaczenie znika i pismo prowadzi zadanie. Biblioteka zadań nie zawiera „Uzupełnień na wezwanie”.
 
-(Poniżej opis wcześniejszej wersji — Skrzynka została scalona z „Moją pracą”, patrz sekcja wyżej.)
+(Poniżej opis wcześniejszej wersji; obecny podział Skrzynki i Mojej pracy opisuje sekcja „Skrzynka i Moja praca”.)
 - **Zadanie z pisma** (opcjonalne): w Korespondencji przycisk „Utwórz zadanie z pisma” (pod pismem oraz w menu wiersza) otwiera zwykły formularz zadania z wybieralnym etapem, nazwą z numeru pisma, terminem odpowiedzi i zespołem. Zadanie zapamiętuje pismo w `task.mailId`. Czas rejestruje się na zadaniu, więc liczy się do budżetu etapu i Analizy; kilkadziesiąt godzin nad jednym wezwaniem to zwykłe godziny zadania.
 - Pismo pokazuje powiązane zadania (status i suma godzin, `Mail.linkedTasks`), zadanie w panelu ma pole „Z pisma”. Pismo kończy się jak dotąd: zarejestrowaną odpowiedzią.
 - **Moja praca** nie ma wprowadzeń ani zdań wyjaśniających na ekranie: „dlaczego to widzę” (`item.why`) i opis sekcji są w dymkach po najechaniu lub fokusie. Pismo z zadaniem to jeden wiersz (zadanie nie powtarza się na liście). Akcje wg rodzaju: pismo — Utwórz zadanie / Otwórz zadanie + Napisz odpowiedź.
@@ -770,7 +775,7 @@ Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagr
 ## Menu grupowe i Pulpit (`styles/dashboard.css`, makiety NV1 / DB8 / DB9)
 
 - **Menu** to bloki ze zwijanymi nagłówkami (stan w `localStorage`, klucz `etrom.nav.collapsed.v1`): Start (Pulpit, Skrzynka), Moja praca, Projekty, Finanse, Zespół, Komunikacja, Zasoby i Administracja na dole. Pozycje nieuruchomionych modułów (`soonItem`, plakietka „WKRÓTCE”) widzi tylko Dyrekcja. Czerwony licznik (`.count--alarm`) tylko przy sprawach czekających na zalogowaną osobę: Skrzynka (reakcje) i Urlopy zespołu (wnioski).
-- **Pulpit** (`#/pulpit`, ekran startowy): hero z datą i numerem tygodnia, powitaniem, przyciskami i chipem wyjazdu; szklana karta pogody; pięć kafli nachodzących na hero (inne dla pracownika i Dyrekcji); środek „Ten tydzień” (te same sekcje co Moja praca), u Dyrekcji macierz zespołu na 5 dni roboczych i zdrowie projektów; prawa kolumna: reakcje lub akceptacje, stany wód, zespół dziś, Finanse (zapowiedź).
+- **Pulpit** (`#/pulpit`, ekran startowy): hero z datą i numerem tygodnia, powitaniem, przyciskami i chipem wyjazdu; szklana karta pogody; pięć kafli nachodzących na hero (inne dla pracownika i Dyrekcji); środek „Ten tydzień” (te same sekcje co Moja praca), u Dyrekcji macierz zespołu na 5 dni roboczych i zdrowie projektów; prawa kolumna: Skrzynka (najpilniejsze pozycje, link do ekranu), stany wód, zespół dziś, Finanse (zapowiedź).
 - **Dostosowanie Pulpitu** (przycisk „Dostosuj pulpit” w hero, `prefs.dash`, logika w `src/core/dashtiles.js`): kafle wybiera się z puli, od 2 do 5, z kolejnością strzałkami. Pula Dyrekcji (8): projekty w ryzyku, obciążenie zespołu, do akceptacji, wymaga reakcji, zadania po terminie, terminy w 7 dni, nieobecni dziś, terminowość 90 dni. Pula pracownika (7): dziś, ten tydzień, po terminie, wymaga reakcji, najbliższy termin, terminy w 7 dni, urlop do wykorzystania. Do puli trafiają tylko najważniejsze informacje; statystyki motywacyjne i rankingi mają osobne miejsce (jeszcze nie wdrożone). Puste ustawienie = kafle domyślne roli.
 - **Zwijanie kart Pulpitu**: strzałka w nagłówku karty (`.db-card__fold`), zwinięta karta zostawia nagłówek i krótkie podsumowanie (`.db-card__sum`), np. „3 do decyzji”. Stan w `prefs.dash.collapsed` na urządzeniu. „Zwiń wszystkie” i „Przywróć domyślne” są w oknie dostosowania. Karty Spraw (bez nagłówka) nie zwijają się.
 - **Dane zewnętrzne** (pogoda, stany wód) pochodzą z `core/ambient.js` i są **przykładowe** (`sample:true`), wyraźnie podpisane kapsułą „przykładowe”. Podmiana źródła nie zmienia widoku.

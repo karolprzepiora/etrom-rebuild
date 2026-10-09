@@ -663,12 +663,10 @@ async function main() {
     await pressKey('j');
     check('J w Mojej pracy ustawia fokus na pierwszym zadaniu',
       await evaluate('return document.activeElement && document.activeElement.classList.contains("trow__name");'));
-    check('Skrzynka w menu prowadzi do Mojej pracy, a stary link #/skrzynka też otwiera Moją pracę',
-      (await evaluate('const a = document.querySelector("[data-screen=inbox]"); return !!a && a.getAttribute("href") === "#/moja-praca";')) && await (async () => { await go('#/skrzynka'); await sleep(300); return evaluate('return !document.getElementById("view-mywork").hidden && !document.getElementById("view-inbox");'); })());
-    check('Moja praca ma sekcję „Wymaga reakcji”: pozycje mają projekt i akcje, a objaśnienia są w dymkach (bez tekstów na ekranie)',
-      await evaluate('const sec = document.querySelector("#view-mywork [data-group=react]"); return !!sec && sec.querySelectorAll(".ibx__row").length > 0 && !!sec.querySelector(".ibx__row .mrow__project") && !!sec.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!sec.querySelector(".ibx__info[data-tooltip]") && !document.querySelector(".ibx__intro, .ibx__why, .ibx__group-text");'));
-    check('każdy wiersz zadań i reakcji ma ten sam znacznik projektu: numer + nazwa projektu',
-      await evaluate('const rows = [...document.querySelectorAll("#view-mywork .mrow, #view-mywork .ibx__row")]; return rows.length > 3 && rows.every(r => { const t = r.querySelector(".ptag"); return t && t.querySelector(".mrow__project") && t.querySelector(".ptag__name").textContent.length > 2; });'));
+    check('Moja praca to tylko własne zadania: bez sekcji „Wymaga reakcji”, bez zakładki reakcji, bez pasków zleceń i alarmów',
+      await evaluate('const v = document.getElementById("view-mywork"); return !v.querySelector("[data-group=react]") && !v.querySelector(".ibx__row") && !v.querySelector("[data-fk=mywork-view-react]") && !v.querySelector("[data-fk=zl-strip]") && !v.querySelector(".ibx__alarms");'));
+    check('każdy wiersz zadania ma ten sam znacznik projektu: numer + nazwa projektu',
+      await evaluate('const rows = [...document.querySelectorAll("#view-mywork .mrow")]; return rows.length >= 1 && rows.every(r => { const t = r.querySelector(".ptag"); return t && t.querySelector(".mrow__project") && t.querySelector(".ptag__name").textContent.length > 2; });'));
     await evaluate('document.querySelector("#view-mywork .mrow[data-task-id] .chk-ind").click(); return true;');
     await sleep(250);
     await evaluate('const i = document.querySelector("#view-mywork .chk__input"); i.value = "Przekrój A-A"; i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
@@ -681,28 +679,40 @@ async function main() {
     await sleep(350);
     check('odhaczenie punktu zmienia kropkę w wierszu, nie ruszając statusu zadania',
       await evaluate('const li = document.querySelector("#view-mywork .chk").closest("li"); return li.querySelectorAll(".chk-ind__dots i.is-done").length === 1 && li.querySelector(".chk-ind__dots").children.length === 2;'));
-    check('licznik w menu = zadania na liście + pozycje „Wymaga reakcji”',
-      await evaluate('const n = document.querySelectorAll("#view-mywork .mrow").length + document.querySelectorAll("#view-mywork [data-group=react] .ibx__row").length; return document.querySelector("[data-screen=mywork] .nav__count").textContent === String(n);'));
-    await click('[data-fk="mywork-view-react"]');
-    await sleep(150);
-    check('widok „Wymaga reakcji” zostawia tylko zatwierdzenia i pisma',
-      await evaluate('const r = [...document.querySelectorAll("#view-mywork .ibx__list .ibx__row")]; return r.length > 0 && r.every(x => ["approve", "mail"].includes(x.dataset.kind)) && !document.querySelector("#view-mywork .mrow");'));
-    const reactSel = '#view-mywork [data-group=react] .ibx__row';
+    check('licznik „Mojej pracy” w menu = zadania na liście (bez pozycji Skrzynki)',
+      await evaluate('const n = document.querySelectorAll("#view-mywork .mrow").length; return document.querySelector("[data-screen=mywork] .nav__count").textContent === String(n);'));
+    /* Skrzynka: osobny ekran z tym, czego czekają inni */
+    check('Skrzynka w menu prowadzi do własnego ekranu, a licznik menu = pozycje ekranu',
+      (await evaluate('const a = document.querySelector("[data-screen=inbox]"); return !!a && a.getAttribute("href") === "#/skrzynka";')) && await (async () => { await go('#/skrzynka'); await sleep(350); return evaluate('const v = document.getElementById("view-inbox"); return !v.hidden && document.getElementById("view-mywork").hidden && v.querySelectorAll(".ibx__row").length > 0 && document.querySelector("[data-screen=inbox] .nav__count").textContent === String(v.querySelectorAll(".ibx__row").length);'); })());
+    check('Skrzynka zbiera różne rodzaje: zatwierdzenia i wnioski urlopowe, z akcjami w wierszu i objaśnieniem w dymku',
+      await evaluate('const v = document.getElementById("view-inbox"); const k = new Set([...v.querySelectorAll(".ibx__row")].map(r => r.dataset.kind)); return k.has("approve") && k.has("leave") && !!v.querySelector("[data-kind=leave] [data-fk^=inbox-leave-ok-]") && !!v.querySelector("[data-kind=leave] [data-fk^=inbox-leave-no-]") && !!v.querySelector("[data-kind=approve] [data-fk^=inbox-approve-]") && !!v.querySelector(".ibx__row [data-fk^=inbox-snooze]") && !!v.querySelector(".ibx__info[data-tooltip]");'));
+    await click('[data-fk="inbox-view-leave"]');
+    await sleep(200);
+    check('zakładka „Urlopy” zostawia tylko wnioski, a „Wszystko” wraca do pełnej listy',
+      (await evaluate('const r = [...document.querySelectorAll("#view-inbox .ibx__row")]; return r.length > 0 && r.every(x => x.dataset.kind === "leave");')) && await (async () => { await click('[data-fk="inbox-view-all"]'); await sleep(200); return evaluate('return new Set([...document.querySelectorAll("#view-inbox .ibx__row")].map(r => r.dataset.kind)).size > 1;'); })());
+    await click('[data-fk^="inbox-leave-view-"]');
+    await sleep(350);
+    check('„Wpływ na plan” przy wniosku otwiera Urlopy na zakładce akceptacji',
+      await evaluate('return !document.getElementById("view-leave").hidden && !!document.querySelector("#view-leave .lv-inbox");'));
+    await go('#/skrzynka');
+    await sleep(300);
+    const reactSel = '#view-inbox .ibx__list > .ibx__row';
     const inboxBefore = await evaluate('return document.querySelectorAll("' + reactSel + '").length;');
-    await click('.ibx__row [data-fk^="inbox-snooze"]');
+    await click('#view-inbox .ibx__row [data-fk^="inbox-snooze"]');
     await sleep(250);
-    check('„Odłóż do jutra” chowa pozycję i przenosi ją do odłożonych, zapis trafia do preferencji',
-      await evaluate('return document.querySelectorAll("' + reactSel + '").length === ' + (inboxBefore - 1) + ' && !!document.querySelector(".ibx__later") && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
-    await click('.ibx__later > summary');
-    await click('.ibx__row--later button');
+    check('„Odłóż do jutra” chowa pozycję, licznik na pasku bocznym rośnie, zapis trafia do preferencji',
+      await evaluate('return document.querySelectorAll("' + reactSel + '").length === ' + (inboxBefore - 1) + ' && document.querySelector("[data-fk=rail-ib-later] .rl__vcount").textContent === "1" && Object.keys(JSON.parse(localStorage.getItem(window.ETROM.Prefs.KEY)).snoozed).length === 1;'));
+    await click('[data-fk="rail-ib-later"]');
+    await sleep(200);
+    await click('#view-inbox [data-fk^="inbox-restore-"]');
     await sleep(250);
-    check('„Przywróć” oddaje pozycję do sekcji „Wymaga reakcji”',
+    check('„Przywróć” oddaje pozycję na listę',
       await evaluate('return document.querySelectorAll("' + reactSel + '").length === ' + inboxBefore + ';'));
-    const approveBefore = await evaluate('return document.querySelectorAll("#view-mywork [data-kind=approve]").length;');
+    const approveBefore = await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;');
     await click('[data-fk^="inbox-approve-"]');
     await sleep(300);
-    check('„Zatwierdź” zamyka zadanie i pozycja znika z sekcji reakcji',
-      (await evaluate('return document.querySelectorAll("#view-mywork [data-kind=approve]").length;')) === approveBefore - 1);
+    check('„Zatwierdź” zamyka zadanie i pozycja znika ze Skrzynki',
+      (await evaluate('return document.querySelectorAll("#view-inbox [data-kind=approve]").length;')) === approveBefore - 1);
     await click('[data-fk="mywork-view-all"]');
     // Przywracamy zadanie do zatwierdzenia — dalsze kroki scenariusza na nim polegają.
     await evaluate('window.ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { projects: st.workspace.projects.map(function (p) { return Object.assign({}, p, { stages: p.stages.map(function (g) { return Object.assign({}, g, { tasks: (g.tasks || []).map(function (t) { return t.name.indexOf("Uzgodnić kolizję") >= 0 ? Object.assign({}, t, { status: "review" }) : t; }) }); }) }); }) }) }); }); return true;');
@@ -967,10 +977,13 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setMe("p-2"); return true;');
     await go('#/pulpit');
     await sleep(500);
-    check('Pulpit: karta „Zlecenia do mnie” z jednym zleceniem', await evaluate('const c = document.querySelector("#view-dashboard [data-fk=zl-strip]"); return !!c && c.querySelectorAll("[data-fk=zl-strip-row]").length === 1;'));
+    check('Pulpit: karta „Skrzynka” pokazuje najpilniejsze pozycje i prowadzi do ekranu Skrzynki', await evaluate('const c = document.querySelector("#view-dashboard [data-fk=db-inbox]"); return !!c && c.querySelectorAll("[data-fk=db-inbox-row]").length > 0 && c.querySelector(".db-link").getAttribute("href") === "#/skrzynka";'));
     await go('#/moja-praca');
     await sleep(500);
-    check('Moja praca: pasek zleceń nad listą', await evaluate('return !!document.querySelector("#view-mywork [data-fk=zl-strip]");'));
+    await go('#/skrzynka');
+    await sleep(300);
+    check('Skrzynka: zlecenie do mnie ma wiersz z przyciskiem „Otwórz zlecenie”, który prowadzi do Zleceń',
+      (await evaluate('return !!document.querySelector("#view-inbox [data-kind=order] [data-fk^=inbox-order-]");')) && await (async () => { await click('#view-inbox [data-kind=order] [data-fk^="inbox-order-"]'); await sleep(300); return evaluate('return !document.getElementById("view-orders").hidden;'); })());
     const zlPid = await state('s.workspace.projects[0].id');
     await go('#/projekty/' + zlPid + '/zlecenia');
     await sleep(500);
@@ -1907,11 +1920,11 @@ async function main() {
     /* 38f. Pismo → zadanie → czas; Skrzynka z objaśnieniami i grupami */
     const annaId = await state('s.workspace.people.find(p => p.firstName === "Anna").id');
     await evaluate('window.ETROM.app.actions.setMe("' + annaId + '"); return true;');
-    await go('#/moja-praca');
+    await go('#/skrzynka');
     await sleep(500);
-    check('Moja praca: pozycje reakcji mają dymki „dlaczego to widzę”, a na ekranie nie ma tekstów objaśniających',
-      await evaluate('return !document.querySelector(".ibx__intro, .ibx__why") && [...document.querySelectorAll("#view-mywork .ibx__row .ibx__info")].every(n => (n.getAttribute("data-tooltip") || "").length > 20) && !!document.querySelector("#view-mywork .ibx__row .ibx__info");'));
-    check('Moja praca: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
+    check('Skrzynka: pozycje mają dymki „dlaczego to widzę”, a na ekranie nie ma tekstów objaśniających',
+      await evaluate('return !document.querySelector(".ibx__intro, .ibx__why") && [...document.querySelectorAll("#view-inbox .ibx__row .ibx__info")].every(n => (n.getAttribute("data-tooltip") || "").length > 20) && !!document.querySelector("#view-inbox .ibx__row .ibx__info");'));
+    check('Skrzynka: pismo bez zadania ma przyciski „Utwórz zadanie” i „Napisz odpowiedź”',
       await evaluate('const r = document.querySelector(".ibx__row[data-kind=mail]"); return !!r && !!r.querySelector("[data-fk^=inbox-mailtask-]") && !!r.querySelector("[data-fk^=inbox-reply-]");'));
     const code01 = await projectId('2601');
     await go('#/projekty/' + code01 + '/korespondencja');
@@ -1929,10 +1942,10 @@ async function main() {
       && await evaluate('return [...document.querySelectorAll(".mrow2__task")].some(c => c.textContent.includes("smoke"));'));
     /* 38g. Jeden właściciel sprawy: pismo z otwartym zadaniem znika z reakcji; odpowiedź proponuje zamknięcie zadania */
     const mailIdOfTask = await state('(s.workspace.projects.find(p => p.code === "2601").stages.flatMap(g => g.tasks).find(t => t.name.includes("smoke")) || {}).mailId');
-    await go('#/moja-praca');
+    await go('#/skrzynka');
     await sleep(400);
-    check('pismo z otwartym zadaniem nie jest już w „Wymaga reakcji” (prowadzi je zadanie)',
-      await evaluate('return ![...document.querySelectorAll("#view-mywork [data-inbox-key]")].some(n => n.dataset.inboxKey.endsWith(":' + mailIdOfTask + '"));'));
+    check('pismo z otwartym zadaniem nie jest już w Skrzynce (prowadzi je zadanie)',
+      await evaluate('return ![...document.querySelectorAll("#view-inbox [data-inbox-key]")].some(n => n.dataset.inboxKey.endsWith(":' + mailIdOfTask + '"));'));
     await evaluate('window.ETROM.app.actions.replyMail("' + mailIdOfTask + '"); return true;');
     await sleep(500);
     await evaluate('document.querySelector("#mail-form").requestSubmit(); return true;');

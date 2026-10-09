@@ -59,6 +59,7 @@
     feedLimit: 20,
     feedOpen: [],
     myView: 'all',
+    inbox: { kind: 'all', project: 'all', urgent: false },
     taskForm: null,
     absenceForm: null,
     tripForm: null,
@@ -102,7 +103,7 @@
     if (parts[0] === 'pulpit') return { name: 'dashboard' };
     if (parts[0] === 'zlecenia') return { name: 'orders' };
     if (parts[0] === 'moja-praca') return { name: 'mywork' };
-    if (parts[0] === 'skrzynka') return { name: 'mywork' }; // stare linki: Skrzynka jest teraz częścią „Mojej pracy”
+    if (parts[0] === 'skrzynka') return { name: 'inbox' };
     if (parts[0] === 'aktualnosci') return { name: 'feed' };
     if (parts[0] === 'analiza') return { name: 'analysis' };
     if (parts[0] === 'czas') return { name: 'time' };
@@ -114,7 +115,7 @@
   }
 
   function screenOf(route) {
-    return route.name === 'orders' ? 'orders' : route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'orders' ? 'orders' : route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'inbox' ? 'inbox' : route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
@@ -127,6 +128,7 @@
     if (route.name === 'dashboard') return '#/pulpit';
     if (route.name === 'orders') return '#/zlecenia';
     if (route.name === 'mywork') return '#/moja-praca';
+    if (route.name === 'inbox') return '#/skrzynka';
     if (route.name === 'feed') return '#/aktualnosci';
     if (route.name === 'analysis') return '#/analiza';
     if (route.name === 'time') return '#/czas';
@@ -208,7 +210,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'orders' ? 'orders' : screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'orders' ? 'orders' : screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'inbox' ? 'inbox' : screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -1632,6 +1634,7 @@
     ['G P', 'Przejdź do projektów'],
     ['G Z', 'Przejdź do zespołu'],
     ['G M', 'Przejdź do mojej pracy'],
+    ['G S', 'Przejdź do skrzynki'],
     ['J K', 'Następny / poprzedni wiersz (projekty, moja praca)'],
     ['V', 'Zmień widok: tabela ↔ karty (na zadaniach: lista ↔ kanban)'],
     ['T', 'Zegar: zatrzymaj albo wznów ostatnie zadanie'],
@@ -3280,7 +3283,8 @@
       { label: 'Przejdź do zleceń', icon: 'checklist', meta: now(state.route.name === 'orders'), keywords: 'zlecenia do podpisu wysłania opłacenia prośba', run: function () { goTo('orders'); } },
       { label: 'Nowe zlecenie', icon: 'plus', keywords: 'zlecenie podpis wysyłka opłata poproś', run: function () { openOrder(); } },
       { label: 'Przejdź do pulpitu', icon: 'grid', meta: now(state.route.name === 'dashboard'), keywords: 'start pulpit strona główna', run: function () { goTo('dashboard'); } },
-      { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania zatwierdzenia pisma skrzynka reakcje dziś', run: function () { goTo('mywork'); } },
+      { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'skrzynka czeka na mnie zatwierdzenia zlecenia wnioski urlopowe pisma reakcje decyzje', run: function () { goTo('inbox'); } },
+      { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania dziś termin tydzień po terminie', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
       { label: 'Widok: karty', icon: 'grid', meta: now(prefs.view === 'cards'), keywords: 'kafelki', run: function () { goTo('projects'); setView('cards'); } },
@@ -3433,6 +3437,7 @@
       updateWorkspace(function (ws) { return Object.assign({}, ws, { social: E.Social.removePost(ws.social, id) }); });
     },
     setMyView: function (value) { store.set({ myView: value }); },
+    setInbox: function (patch) { store.set({ inbox: Object.assign({}, store.getState().inbox || {}, patch) }); },
     snoozeInbox: snoozeInbox,
     unsnoozeInbox: unsnoozeInbox,
     lastTimedTask: lastTimedTask,
@@ -3891,6 +3896,12 @@
     D.patch(nodes.libraryBody, [screen.body]);
   }
 
+  function renderInbox(state) {
+    var screen = E.InboxScreen.view(state, { actions: actions, find: locateEntry });
+    nodes.inboxSummary.textContent = screen.summary;
+    D.patch(nodes.inboxBody, [screen.body]);
+  }
+
   function renderMyWork(state) {
     var screen = E.MyWork.view(state, { actions: actions, find: locateEntry });
     document.getElementById('mywork-title').textContent = 'Moja praca';
@@ -4085,6 +4096,7 @@
     nodes.views.dashboard.hidden = route.name !== 'dashboard';
     if (route.name !== 'dashboard' && nodes.dashboardBody.firstChild) D.clear(nodes.dashboardBody);
     nodes.views.mywork.hidden = route.name !== 'mywork';
+    nodes.views.inbox.hidden = route.name !== 'inbox';
     nodes.views.feed.hidden = route.name !== 'feed';
     nodes.views.analysis.hidden = route.name !== 'analysis';
     nodes.views.time.hidden = route.name !== 'time';
@@ -4119,6 +4131,9 @@
     } else if (route.name === 'dashboard') {
       document.title = 'Pulpit · ETROM';
       renderDashboard(state);
+    } else if (route.name === 'inbox') {
+      document.title = 'Skrzynka · ETROM';
+      renderInbox(state);
     } else if (route.name === 'mywork') {
       document.title = 'Moja praca · ETROM';
       renderMyWork(state);
@@ -4221,6 +4236,7 @@
       if (event.key === 'p' || event.key === 'P') { event.preventDefault(); goTo('projects'); return; }
       if (event.key === 'z' || event.key === 'Z') { event.preventDefault(); goTo('team'); return; }
       if (event.key === 'm' || event.key === 'M') { event.preventDefault(); goTo('mywork'); return; }
+      if (event.key === 's' || event.key === 'S') { event.preventDefault(); goTo('inbox'); return; }
       if (event.key === 'a' || event.key === 'A') { event.preventDefault(); goTo('feed'); return; }
       if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
     }
@@ -4330,6 +4346,8 @@
     nodes.libraryBody = D.byId('library-body');
     nodes.myworkWho = D.byId('mywork-who');
     nodes.myworkBody = D.byId('mywork-body');
+    nodes.inboxSummary = D.byId('inbox-summary');
+    nodes.inboxBody = D.byId('inbox-body');
     nodes.dashboardBody = D.byId('dashboard-body');
     nodes.feedSummary = D.byId('feed-summary');
     nodes.feedBody = D.byId('feed-body');
@@ -4340,7 +4358,7 @@
     nodes.timeTools = D.byId('time-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');
@@ -4360,6 +4378,7 @@
       actions: {
         openPalette: openPalette,
         setMyView: function (v) { store.set({ myView: v }); },
+        setInbox: function (patch) { store.set({ inbox: Object.assign({}, store.getState().inbox || {}, patch) }); },
         setLeave: setLeave,
         setTeamTab: setTeamTab,
         newProject: function () { if (store.getState().route.name === 'team') goTo('projects'); openCreate(); },

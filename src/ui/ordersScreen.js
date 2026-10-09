@@ -283,7 +283,7 @@
     return form;
   }
 
-  /** Zbite zlecenia do mnie (Pulpit, Moja praca, Skrzynka): do 3 najstarszych + link do ekranu. */
+  /** Zbite zlecenia do mnie (karta na Pulpicie): do 3 najstarszych + link do ekranu. */
   function strip(state, ctx, variant) {
     var me = state.prefs.me;
     var now = new Date();

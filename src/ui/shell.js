@@ -317,7 +317,7 @@
       D.el('nav', { class: 'sidebar__nav', attrs: { 'aria-label': 'Główna' } }, [
         navGroup('start', null, [
           li(navItem('dashboard', 'grid', 'Pulpit', '#/pulpit')),
-          li(navItem('inbox', 'mail', 'Skrzynka', '#/moja-praca', function () { if (actions.setMyView) actions.setMyView('react'); })),
+          li(navItem('inbox', 'mail', 'Skrzynka', '#/skrzynka', function () { if (actions.setInbox) actions.setInbox({ kind: 'all', project: 'all', urgent: false }); })),
           li(navItem('orders', 'checklist', 'Zlecenia', '#/zlecenia', function () { if (actions.setOrders) actions.setOrders({ tab: 'mine' }); }))
         ]),
         navGroup('work', 'Moja praca', [
@@ -394,13 +394,14 @@
     if (route.name === 'analysis') return [{ label: 'Analiza' }];
     if (route.name === 'time') return [{ label: 'Czas' }];
     if (route.name === 'mywork') return [{ label: 'Moja praca' }];
+    if (route.name === 'inbox') return [{ label: 'Skrzynka' }];
     if (route.name === 'project') return [{ label: 'Projekty', href: '#/projekty' }, { label: project ? project.name : 'Nie znaleziono' }];
     return [{ label: 'Projekty' }];
   }
 
   function render(state, project) {
     var route = state.route;
-    var screens = { orders: 'orders', dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', time: 'time', feed: 'feed', analysis: 'analysis' };
+    var screens = { orders: 'orders', dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', inbox: 'inbox', time: 'time', feed: 'feed', analysis: 'analysis' };
     var section = screens[route.name] || 'projects';
     var people = state.workspace.people || [];
     var meNow = E.Team.findPerson(people, state.prefs.me);
@@ -447,9 +448,10 @@
     var now = new Date();
     var box = E.MyWork.count(state, now);
     nodes.counts.mywork.textContent = box ? String(box.total) : '';
-    nodes.counts.mywork.classList.toggle('count--alarm', !!(box && (box.overdue || box.urgent)));
+    nodes.counts.mywork.classList.toggle('count--alarm', !!(box && box.overdue));
     if (nodes.counts.inbox) {
-      var reactN = box ? (E.MyWork.model(state, now) || { react: [] }).react.length : 0;
+      var inboxBox = E.InboxScreen.count(state, now);
+      var reactN = inboxBox ? inboxBox.total : 0;
       nodes.counts.inbox.hidden = !reactN;
       nodes.counts.inbox.textContent = String(reactN);
       nodes.counts.inbox.classList.toggle('count--alarm', !!reactN);

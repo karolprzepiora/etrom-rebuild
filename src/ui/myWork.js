@@ -1,8 +1,8 @@
 /* ETROM — „Moja praca”: ekran, który otwiera się rano.
-   Jedno miejsce na „co mam zrobić”: to, co wymaga reakcji (zatwierdzenia, pisma),
-   zadania jednej osoby według czasu (po terminie, dziś, ten tydzień, później)
-   oraz projekty, w których ma funkcję. Dawna Skrzynka jest teraz sekcją tego ekranu. Kim jest osoba przy tym urządzeniu,
-   zapisuje preferencja „ja” — bez logowania, do czasu wspólnych kont. */
+   Jedno miejsce na „co sam mam zrobić”: zadania jednej osoby według czasu (po terminie, dziś,
+   ten tydzień, później), sprawy w toku oraz projekty, w których ma funkcję.
+   To, czego czekają ode mnie inni (zatwierdzenia, zlecenia, wnioski, pisma), jest w osobnej Skrzynce.
+   Kim jest osoba przy tym urządzeniu, zapisuje preferencja „ja” — bez logowania, do czasu wspólnych kont. */
 (function (root) {
   'use strict';
 
@@ -168,10 +168,10 @@
   function picker(people, actions, state) {
     var active = (people || []).filter(function (p) { return p.active !== false; })
       .sort(function (a, b) { return Team.fullName(a).localeCompare(Team.fullName(b), 'pl', { sensitivity: 'base' }); });
-    if (!active.length) return E.Welcome.card(state, { actions: actions }, 'Moja praca pokazuje zadania przypisane do jednej osoby oraz to, co czeka na Twoją decyzję.');
+    if (!active.length) return E.Welcome.card(state, { actions: actions }, 'Moja praca pokazuje zadania przypisane do jednej osoby.');
     return D.el('div', { class: 'mpick' }, [
       D.el('h2', { class: 'mpick__title', text: 'Kim jesteś?' }),
-      D.el('p', { class: 'mpick__text', text: 'Wybierz siebie — ekran pokaże Twoje zadania i to, co czeka na Twoją decyzję. Wybór zapamiętuje się na tym urządzeniu i można go zmienić w każdej chwili.' }),
+      D.el('p', { class: 'mpick__text', text: 'Wybierz siebie — ekran pokaże Twoje zadania. Wybór zapamiętuje się na tym urządzeniu i można go zmienić w każdej chwili.' }),
       D.el('ul', { class: 'mpick__list' }, active.map(function (person) {
         return D.el('li', null, [D.el('button', {
           class: 'mpick__item',
@@ -204,64 +204,54 @@
     return btn;
   }
 
-  // Widoki listy: które przedziały czasu i co wymaga reakcji.
+  // Widoki listy: które przedziały czasu i zadania do poprawy.
   var VIEWS = [
     { value: 'all', label: 'Wszystko' },
     { value: 'today', label: 'Dziś' },
     { value: 'week', label: 'Ten tydzień' },
     { value: 'weeks', label: 'Tygodnie' },
-    { value: 'react', label: 'Wymaga reakcji' },
     { value: 'returned', label: 'Do poprawy' }
   ];
 
   /**
-   * Jeden model dla ekranu i licznika w menu: zadania osoby, to, co wymaga jej reakcji
-   * (zatwierdzenia, pisma), alarmy projektów. Zadanie utworzone z pisma, które jest
-   * w sekcji reakcji, nie powtarza się na liście zadań — widać je przy piśmie.
+   * Jeden model dla ekranu i licznika w menu: zadania osoby (po terminie, dziś, tydzień, później),
+   * zadania zwrócone do poprawy i projekty, w których ma funkcję.
    */
   function model(state, now) {
     var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
     if (!me) return null;
     var work = Insight.myWork(me.id, state.workspace.projects, now);
-    var result = E.Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed, state.workspace.entries);
-    var parts = E.InboxScreen.split(result);
-    var buckets = work.buckets;
-    var open = work.open;
     return {
-      me: me, work: work, result: result, parts: parts, buckets: buckets, open: open,
-      overdue: buckets.overdue.length,
-      returned: work.returned,
-      react: parts.react, alarms: parts.alarms, snoozed: parts.snoozed
+      me: me, work: work, buckets: work.buckets, open: work.open,
+      overdue: work.buckets.overdue.length,
+      returned: work.returned
     };
   }
 
-  /** Liczba w menu: otwarte zadania + to, co wymaga reakcji. */
+  /** Liczba w menu: otwarte zadania. Sprawy do załatwienia dla innych liczy Skrzynka. */
   function count(state, now) {
     var m = model(state, now || new Date());
     if (!m) return null;
-    return { total: m.open + m.react.length, overdue: m.overdue, urgent: m.parts.urgent };
+    return { total: m.open, overdue: m.overdue };
   }
 
   function viewCount(key, m) {
     var b = m.buckets;
-    if (key === 'all') return m.open + m.react.length;
+    if (key === 'all') return m.open;
     if (key === 'today') return b.overdue.length + b.today.length;
     if (key === 'week') return b.overdue.length + b.today.length + b.week.length;
     if (key === 'weeks') return m.open;
-    if (key === 'react') return m.react.length;
     return m.returned.length;
   }
 
   /** Które sekcje i które wiersze pokazuje wybrany widok. */
   function pick(key, m) {
     var b = m.buckets;
-    var out = { react: m.react, alarms: m.alarms, snoozed: m.snoozed, groups: {} };
+    var out = { groups: {} };
     GROUPS.forEach(function (g) { out.groups[g.key] = b[g.key]; });
-    if (key === 'today') { out.react = []; out.alarms = []; out.snoozed = []; out.groups = { overdue: b.overdue, today: b.today }; }
-    else if (key === 'week') { out.react = []; out.alarms = []; out.snoozed = []; out.groups = { overdue: b.overdue, today: b.today, week: b.week }; }
-    else if (key === 'react') { out.groups = {}; }
+    if (key === 'today') out.groups = { overdue: b.overdue, today: b.today };
+    else if (key === 'week') out.groups = { overdue: b.overdue, today: b.today, week: b.week };
     else if (key === 'returned') {
-      out.react = []; out.alarms = []; out.snoozed = [];
       GROUPS.forEach(function (g) { out.groups[g.key] = b[g.key].filter(function (r) { return r.task.status === 'changes'; }); });
     }
     return out;
@@ -280,11 +270,10 @@
 
   function summaryText(m) {
     var person = m.me;
-    if (!m.open && !m.react.length) return 'Nic nie czeka na ' + (person.firstName || Team.fullName(person)) + '. Czysty stół.';
+    if (!m.open) return 'Nic nie czeka na ' + (person.firstName || Team.fullName(person)) + '. Czysty stół.';
     var parts = [F.count(m.open, 'otwarte zadanie', 'otwarte zadania', 'otwartych zadań')];
     if (m.overdue) parts.push(m.overdue + ' po terminie');
     if (m.returned.length) parts.push(m.returned.length + ' do poprawy');
-    if (m.react.length) parts.push(m.react.length + ' wymaga reakcji');
     return parts.join(' · ');
   }
 
@@ -295,10 +284,10 @@
     var people = state.workspace.people || [];
     var now = new Date();
     var m = model(state, now);
-    if (!m) return { summary: 'Twoje zadania, zatwierdzenia i pisma w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
+    if (!m) return { summary: 'Twoje zadania w jednym miejscu.', who: null, body: picker(people, ctx.actions, state) };
     var me = m.me;
     ctx = Object.assign({}, ctx, { people: people, meId: me.id, state: state });
-    var nothing = !m.open && !m.react.length && !m.work.projects.length;
+    var nothing = !m.open && !m.work.projects.length;
 
     var current = VIEWS.some(function (v) { return v.value === state.myView; }) ? state.myView : 'all';
     var shown = pick(current, m);
@@ -314,19 +303,14 @@
         counter('', wb.later.length, 'później')
       ]));
       main = main.concat(board.body.filter(Boolean));
-      shown = { react: [], alarms: [], snoozed: [], groups: {} };
+      shown = { groups: {} };
     }
     var caseEl = (current === 'all' || current === 'today' || current === 'week') ? E.CaseUI.section(state, ctx, current) : null;
-    var rest = current === 'weeks' ? [] : [
-      (current === 'all' || current === 'react' || current === 'today') ? E.OrdersScreen.strip(state, ctx, 'strip') : null,
-      E.InboxScreen.alarmStrip(shown.alarms, ctx),
-      E.InboxScreen.section(shown.react, ctx, now)
-    ];
+    var rest = [];
     GROUPS.forEach(function (g) {
       var rows = shown.groups[g.key] || [];
       rest.push(section(g.label, rows.length, g.tone, rows, ctx));
     });
-    rest.push(E.InboxScreen.snoozedBlock(shown.snoozed, ctx.actions));
     var visible = rest.filter(Boolean);
     var dock = dockState(state.prefs, !!caseEl);
     if (caseEl) {
@@ -334,7 +318,7 @@
       main = main.concat(visible);
     } else main = main.concat(visible);
     if (current !== 'all' && current !== 'weeks' && !visible.length && !caseEl) main.push(D.el('p', { class: 'ibx__empty', text: 'Nic w tym widoku.' }));
-    if (current === 'all' && !m.open && !m.react.length) {
+    if (current === 'all' && !m.open) {
       main.push(UI.emptyState({
         icon: 'checkCircle',
         title: 'Brak otwartych zadań',
@@ -371,14 +355,13 @@
     };
   }
 
-  /** Sekcje list zadań (po terminie, dziś, kolejne dni; opcjonalnie „Wymaga reakcji”) dla Pulpitu. */
+  /** Sekcje list zadań (po terminie, dziś, kolejne dni) dla Pulpitu. */
   function listSections(state, ctx, key, now) {
     var m = model(state, now);
     if (!m) return { m: null, nodes: [] };
     var c = Object.assign({}, ctx, { people: state.workspace.people || [], meId: m.me.id, state: state });
     var shown = pick(key, m);
     var out = [];
-    if (key === 'react') out.push(E.InboxScreen.section(shown.react, c, now));
     GROUPS.forEach(function (g) { var rows = shown.groups[g.key] || []; out.push(section(g.label, rows.length, g.tone, rows, c)); });
     return { m: m, nodes: out.filter(Boolean) };
   }

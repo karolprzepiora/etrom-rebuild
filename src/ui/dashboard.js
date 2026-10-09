@@ -84,7 +84,7 @@
   function customizeButton(state, ctx, role, cardIds) {
     cust.state = state; cust.ctx = ctx; cust.role = role; cust.cards = cardIds;
     if (!cust.btn) {
-      cust.btn = UI.button({ label: 'Dostosuj pulpit', icon: 'settings', variant: 'ghost', attrs: { 'data-fk': 'db-customize' }, onClick: function (ev) { customize(ev.currentTarget, cust.state, cust.ctx, cust.role, cust.cards); } });
+      cust.btn = UI.button({ label: 'Dostosuj pulpit', icon: 'settings', variant: 'secondary', attrs: { 'data-fk': 'db-customize' }, onClick: function (ev) { customize(ev.currentTarget, cust.state, cust.ctx, cust.role, cust.cards); } });
     }
     return cust.btn;
   }
@@ -175,6 +175,7 @@
 
   function workerTiles(state, ctx, m, now) {
     var me = m.me;
+    var box = E.InboxScreen.count(state, now) || { total: 0, urgent: 0 };
     var target = Number(state.prefs.dayTarget) || 8;
     if (target > 24) target = target / 60;
     var todayMin = TL.sum(TL.forDay(state.workspace.entries || [], me.id, now), now);
@@ -192,7 +193,7 @@
       today: tile({ fk: 'db-t-today', label: 'Dziś', value: todayMin >= 60 ? hh(todayMin / 60) + ' h' : todayMin + ' min', sub: 'z ' + hh(target) + ' h', onClick: function () { ctx.actions.addTimeEntry(); } }),
       week: tile({ fk: 'db-t-week', label: 'Ten tydzień', value: hh(reg) + ' / ' + hh(wk.planned) + ' h', sub: 'zarejestrowano · plan z ' + hh(wk.capacity) + ' h', href: '#/czas' }),
       late: tile({ fk: 'db-t-late', label: 'Po terminie', value: String(m.overdue), sub: m.overdue ? 'zadania do nadrobienia' : 'wszystko w terminie', tone: m.overdue ? 'alarm' : '', href: '#/moja-praca' }),
-      react: tile({ fk: 'db-t-react', label: 'Wymaga reakcji', value: String(m.react.length), sub: m.react.length ? 'zatwierdzenia i pisma' : 'nic nie czeka', tone: m.react.length ? 'warn' : '', onClick: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } }),
+      react: tile({ fk: 'db-t-react', label: 'W Skrzynce', value: String(box.total), sub: box.total ? (box.urgent ? box.urgent + ' pilne · czeka na Ciebie' : 'czeka na Ciebie') : 'nic nie czeka', tone: box.urgent ? 'alarm' : (box.total ? 'warn' : ''), href: '#/skrzynka' }),
       next: tile({ fk: 'db-t-next', label: 'Najbliższy termin', value: nd ? DOW_SHORT[Cal.parse(nd).getDay()] + ' ' + nd.slice(8) + '.' + nd.slice(5, 7) : '—', sub: nxt ? nxt.task.name : 'brak terminów', href: '#/moja-praca' }),
       soon: tile({ fk: 'db-t-soon', label: 'Terminy w 7 dni', value: String(soonN), sub: soonN ? 'moich zadań do zamknięcia' : 'brak terminów w tym tygodniu', href: '#/moja-praca' }),
       leave: tile({ fk: 'db-t-leave', label: 'Urlop do wykorzystania', value: bal.left + ' dni', sub: 'z ' + bal.total + ' w ' + bal.year + (bal.pending ? ' · ' + bal.pending + ' czeka na decyzję' : ''), href: '#/urlopy' })
@@ -229,6 +230,7 @@
   }
 
   function managerTiles(state, ctx, m, now) {
+    var box = E.InboxScreen.count(state, now) || { total: 0, urgent: 0 };
     var projects = (state.workspace.projects || []).filter(function (p) { return p.status !== 'done'; });
     var risky = projects.filter(function (p) { var l = E.Insight.health(p, now).level; return l === 'alarm' || l === 'warning'; }).length;
     var plan = planFor(state, now, 1);
@@ -243,7 +245,7 @@
       risk: tile({ fk: 'db-t-risk', label: 'Projekty w ryzyku', value: risky + ' / ' + projects.length, sub: 'ostrzeżenia i alarmy', tone: risky ? 'warn' : '', href: '#/przeglad' }),
       load: tile({ fk: 'db-t-load', label: 'Obciążenie zespołu', value: load + '%', sub: 'plan tygodnia / dostępne godziny', tone: load > 100 ? 'alarm' : '', href: '#/plan' }),
       approve: tile({ fk: 'db-t-approve', label: 'Do akceptacji', value: String(pend), sub: pend ? 'wnioski urlopowe' : 'nic nie czeka', tone: pend ? 'warn' : '', onClick: function () { ctx.actions.setLeave({ tab: 'inbox' }); location.hash = '#/urlopy'; } }),
-      react: tile({ fk: 'db-t-react', label: 'Wymaga reakcji', value: String(m.react.length), sub: m.react.length ? 'zatwierdzenia i pisma' : 'nic nie czeka', tone: m.react.length ? 'warn' : '', onClick: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } }),
+      react: tile({ fk: 'db-t-react', label: 'W Skrzynce', value: String(box.total), sub: box.total ? (box.urgent ? box.urgent + ' pilne · czeka na Ciebie' : 'czeka na Ciebie') : 'nic nie czeka', tone: box.urgent ? 'alarm' : (box.total ? 'warn' : ''), href: '#/skrzynka' }),
       late: tile({ fk: 'db-t-late', label: 'Zadania po terminie', value: String(counts.late), sub: counts.late ? 'w aktywnych projektach' : 'wszystko w terminie', tone: counts.late ? 'alarm' : '', href: '#/przeglad' }),
       soon: tile({ fk: 'db-t-soon', label: 'Terminy w 7 dni', value: String(counts.soon), sub: counts.soon ? 'zadań do zamknięcia' : 'brak terminów w tym tygodniu', href: '#/kalendarz' }),
       absent: tile({ fk: 'db-t-absent', label: 'Nieobecni dziś', value: String(absent), sub: absent ? 'urlopy i wyjazdy' : 'wszyscy w biurze', href: '#/kalendarz' }),
@@ -252,10 +254,10 @@
   }
 
   function weekCard(state, ctx, now, seg) {
-    var res = E.MyWork.listSections(state, ctx, seg === 'react' ? 'react' : (seg === 'today' ? 'today' : 'week'), now);
+    var res = E.MyWork.listSections(state, ctx, seg === 'today' ? 'today' : 'week', now);
     var tabs = UI.segmented({
       label: 'Zakres listy', value: seg,
-      items: [{ value: 'today', label: 'Dziś' }, { value: 'week', label: 'Ten tydzień' }, { value: 'react', label: 'Wymaga reakcji' }],
+      items: [{ value: 'today', label: 'Dziś' }, { value: 'week', label: 'Ten tydzień' }],
       onChange: function (value) { ctx.actions.setTime({ dashSeg: value }); }
     });
     return D.el('section', { class: 'db-card', attrs: { 'aria-label': 'Ten tydzień', 'data-fk': 'db-week' } }, [
@@ -361,14 +363,25 @@
     ]);
   }
 
-  function approveCard(state, ctx, me) {
-    var pend = (state.workspace.absences || []).filter(function (a) { return a.status === 'pending' && a.personId !== me.id; }).slice(0, 4);
-    return D.el('section', { class: 'db-card db-card--side', attrs: { 'aria-label': 'Do akceptacji', 'data-fk': 'db-approve' } }, [
-      D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Do akceptacji' }), D.el('a', { class: 'db-link', attrs: { href: '#/urlopy' }, text: 'Urlopy →' })]),
-      pend.length ? D.el('ul', { class: 'db-list' }, pend.map(function (a) {
-        var p = Team.findPerson(state.workspace.people || [], a.personId);
-        return D.el('li', null, [D.el('b', { class: 'db-list__k', text: p ? (p.firstName || Team.fullName(p)) : '—' }), D.el('span', { class: 'truncate', text: (E.Absences.KINDS[a.kind] || 'Urlop') + ' ' + a.from.slice(8) + '.' + a.from.slice(5, 7) + (a.to !== a.from ? '–' + a.to.slice(8) + '.' + a.to.slice(5, 7) : '') })]);
-      })) : D.el('p', { class: 'db-empty', text: 'Nic nie czeka na decyzję.' })
+  var KIND_SHORT = { approve: 'Zatwierdź', order: 'Zlecenie', leave: 'Wniosek', mail: 'Pismo', project: 'Alarm' };
+
+  /** Skrzynka na Pulpicie: najpilniejsze pozycje; załatwia się je w Skrzynce, tu tylko podgląd i przejście. */
+  function inboxCard(inbox) {
+    var items = inbox ? inbox.items.slice(0, 4) : [];
+    var total = inbox ? inbox.total : 0;
+    return D.el('section', { class: 'db-card db-card--side', attrs: { 'aria-label': 'Skrzynka', 'data-fk': 'db-inbox' } }, [
+      D.el('div', { class: 'db-card__head' }, [
+        D.el('h2', { class: 'db-card__t', text: 'Skrzynka' }),
+        total ? D.el('span', { class: 'db-cap db-cap--' + (inbox.urgent ? 'alarm' : 'warn'), text: String(total) }) : null,
+        D.el('a', { class: 'db-link', attrs: { href: '#/skrzynka' }, text: 'Skrzynka →' })
+      ]),
+      items.length ? D.el('ul', { class: 'db-list' }, items.map(function (i) {
+        return D.el('li', null, [D.el('a', { class: 'db-list__btn', attrs: { href: '#/skrzynka', 'data-fk': 'db-inbox-row' } }, [
+          D.el('b', { class: 'db-list__k', text: KIND_SHORT[i.kind] || '' }),
+          D.el('span', { class: 'truncate', text: i.title }),
+          i.urgent ? D.el('span', { class: 'db-cap db-cap--alarm', text: 'pilne' }) : null
+        ])]);
+      })) : D.el('p', { class: 'db-empty', text: 'Nic nie czeka na Ciebie.' })
     ]);
   }
 
@@ -387,7 +400,7 @@
     var me = m.me;
     var management = E.Budget.isManagement(me.id, people);
     var c = Object.assign({}, ctx, { people: people, meId: me.id, state: state });
-    var seg = ['today', 'week', 'react'].indexOf(state.dashSeg) >= 0 ? state.dashSeg : 'week';
+    var seg = ['today', 'week'].indexOf(state.dashSeg) >= 0 ? state.dashSeg : 'week';
     var role = E.DashTiles.roleOf(management);
     var pool = management ? managerTiles(state, ctx, m, now) : workerTiles(state, ctx, m, now);
     var tiles = E.DashTiles.resolve((state.prefs.dash || {}).tiles, role).map(function (id) { return pool[id]; }).filter(Boolean);
@@ -402,20 +415,9 @@
     }
     center.push(D.el('div', { class: 'db-pair' }, [caseEl ? D.el('div', { class: 'db-card db-card--cases' }, [caseEl]) : null, fold('feed', feedCard(state, ctx, me, now))].filter(Boolean)));
 
-    var react = m.react.length ? D.el('section', { class: 'db-card db-card--side', attrs: { 'aria-label': 'Wymaga reakcji', 'data-fk': 'db-react' } }, [
-      D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' }), D.el('span', { class: 'db-cap db-cap--warn', text: String(m.react.length) }), D.el('a', { class: 'db-link', attrs: { href: '#/moja-praca' }, text: 'Skrzynka →', on: null })]),
-      D.el('ul', { class: 'db-list' }, m.react.slice(0, 4).map(function (i) {
-        return D.el('li', null, [D.el('button', { class: 'db-list__btn', attrs: { type: 'button' }, on: { click: function () { ctx.actions.setMyView('react'); location.hash = '#/moja-praca'; } } }, [
-          D.el('b', { class: 'db-list__k', text: i.project ? i.project.code : '' }), D.el('span', { class: 'truncate', text: i.title || i.detail || 'Do reakcji' }), i.urgent ? D.el('span', { class: 'db-cap db-cap--alarm', text: 'pilne' }) : null
-        ])]);
-      }))
-    ]) : null;
     var side = [];
-    var pendN = (state.workspace.absences || []).filter(function (a) { return a.status === 'pending' && a.personId !== me.id; }).length;
-    if (management) side.push(fold('approve', approveCard(state, ctx, me), pendN ? pendN + ' do decyzji' : 'nic nie czeka'));
-    else side.push(react ? fold('react', react, m.react.length + ' do reakcji') : D.el('section', { class: 'db-card db-card--side' }, [D.el('div', { class: 'db-card__head' }, [D.el('h2', { class: 'db-card__t', text: 'Wymaga reakcji' })]), D.el('p', { class: 'db-empty', text: 'Nic nie czeka.' })]));
-    var ordersCard = E.OrdersScreen.strip(state, ctx, 'card');
-    if (ordersCard) side.push(fold('orders', ordersCard));
+    var inbox = E.InboxScreen.model(state, now);
+    side.push(fold('inbox', inboxCard(inbox), inbox && inbox.total ? inbox.total + ' czeka' : 'nic nie czeka'));
     var away = teamToday(state, now).length;
     side.push(fold('water', waterCard(now)), fold('team', teamCard(state, ctx, now), away ? away + ' poza biurem' : 'wszyscy w biurze'));
     if (management) side.push(fold('finance', financeCard()));

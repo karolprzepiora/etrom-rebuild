@@ -12,7 +12,7 @@
       { id: 'risk', label: 'Projekty w ryzyku', hint: 'ostrzeżenia i alarmy' },
       { id: 'load', label: 'Obciążenie zespołu', hint: 'plan tygodnia do dostępnych godzin' },
       { id: 'approve', label: 'Do akceptacji', hint: 'wnioski urlopowe' },
-      { id: 'react', label: 'Wymaga reakcji', hint: 'zatwierdzenia i pisma' },
+      { id: 'react', label: 'W Skrzynce', hint: 'wszystko, co czeka na Ciebie' },
       { id: 'late', label: 'Zadania po terminie', hint: 'w całej firmie' },
       { id: 'soon', label: 'Terminy w 7 dni', hint: 'zadania do zamknięcia' },
       { id: 'absent', label: 'Nieobecni dziś', hint: 'urlopy i wyjazdy' },
@@ -22,7 +22,7 @@
       { id: 'today', label: 'Dziś', hint: 'godziny zarejestrowane dzisiaj' },
       { id: 'week', label: 'Ten tydzień', hint: 'zarejestrowane do planu' },
       { id: 'late', label: 'Po terminie', hint: 'moje zadania do nadrobienia' },
-      { id: 'react', label: 'Wymaga reakcji', hint: 'zatwierdzenia i pisma' },
+      { id: 'react', label: 'W Skrzynce', hint: 'wszystko, co czeka na Ciebie' },
       { id: 'next', label: 'Najbliższy termin', hint: 'moje najbliższe zadanie' },
       { id: 'soon', label: 'Terminy w 7 dni', hint: 'moje zadania do zamknięcia' },
       { id: 'leave', label: 'Urlop do wykorzystania', hint: 'dni roboczych w tym roku' }
