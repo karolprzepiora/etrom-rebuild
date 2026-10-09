@@ -26,11 +26,13 @@ test('siatka miesiąca: 42 dni, numery tygodni w poniedziałki, święta i dziś
   assert.equal(cell(r, '2026-11-01').holiday, 'Wszystkich Świętych');
 });
 
-test('zarząd widzi terminy projektów, etapów i wszystkie nieobecności; zadań cudzych nie', () => {
+test('zarząd widzi terminy projektów, etapów, zadania osób w zakresie i wszystkie nieobecności', () => {
   const r = CV.build(Object.assign({ meId: 'p-1' }, base));
   assert.deepEqual(cell(r, '2026-10-16').events.map((e) => e.kind), ['project']);
   assert.deepEqual(cell(r, '2026-10-09').events.map((e) => e.kind), ['stage']);
-  assert.equal(cell(r, '2026-10-06').events.length, 0);
+  assert.equal(cell(r, '2026-10-06').events.length, 1, 'zarząd widzi zadania osób w zakresie');
+  assert.equal(cell(r, '2026-10-06').events[0].kind, 'task');
+  assert.deepEqual(cell(r, '2026-10-06').events[0].assigneeIds, ['p-3']);
   assert.equal(cell(r, '2026-10-13').events[0].kind, 'absence');
   assert.equal(cell(r, '2026-10-19').events[0].sub, 'Zwolnienie');
 });

@@ -102,10 +102,6 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 @media (max-width: 760px) { .db-hero { grid-template-columns: 1fr; } .db-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -2.5rem; padding: 0 var(--space-2); } }
 
 /* Kalendarz — wariant B: panel warstw, obsada, widoki Tydzień / Rok / Zespół */
-.cv-body { grid-template-columns: minmax(0, 1fr); }
-.cv-body.has-panel { grid-template-columns: 15rem minmax(0, 1fr); }
-.cv-body.has-side { grid-template-columns: minmax(0, 1fr) 17rem; }
-.cv-body.has-panel.has-side { grid-template-columns: 15rem minmax(0, 1fr) 17rem; }
 .cv-main { min-width: 0; }
 .cv-panel { display: grid; gap: var(--space-4); align-content: start; background: var(--sheet); border-radius: 16px; padding: var(--space-3); }
 .cv-panel__sec { display: grid; gap: 6px; }
@@ -122,7 +118,7 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .cv-swatch--trip { background: var(--trip); }
 .cv-swatch--task { background: color-mix(in srgb, var(--accent) 40%, var(--sheet)); }
 .cv-swatch--deadline { background: var(--accent); }
-.cv-panel .lv-month { padding: 0; background: none; }
+.cv-rl .lv-month { padding: 0; background: none; }
 .cv-ev--cont { min-height: 1.1rem; }
 .cv-ev.is-warn { box-shadow: inset 0 0 0 1.5px var(--alarm); }
 .cv-occ { margin-left: auto; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink-2); white-space: nowrap; }
@@ -160,11 +156,7 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .lv-t__row--wk { grid-template-columns: 11rem repeat(7, minmax(5.5rem, 1fr)); min-width: calc(11rem + 7 * 5.5rem); }
 .lv-t__c--wide { height: 1.6rem; display: flex; align-items: center; padding: 0 6px; font-size: 10px; font-weight: 700; color: var(--ink-2); min-width: 0; }
 @media (max-width: 960px) {
-  .cv-body.has-panel, .cv-body.has-side, .cv-body.has-panel.has-side { grid-template-columns: 1fr; }
-  .cv-year .lv-months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.cv-body.has-panel { grid-template-columns: 14rem minmax(0, 1fr); }
-.cv-body.has-panel.has-side { grid-template-columns: 14rem minmax(0, 1fr) 16rem; }
-.cv-body .cv-grid { grid-template-columns: 2rem repeat(7, minmax(4.4rem, 1fr)); min-width: 0; }
-.cv-panel .segmented__btn { padding-inline: 8px; white-space: nowrap; font-size: 12px; }
+.cv-rl .cv-grid { grid-template-columns: 2rem repeat(7, minmax(4.4rem, 1fr)); min-width: 0; }
+.cv-rl .rl__side .segmented__btn { padding-inline: 8px; white-space: nowrap; font-size: 12px; }
 .cv-wcols { grid-template-columns: repeat(7, minmax(6rem, 1fr)); }

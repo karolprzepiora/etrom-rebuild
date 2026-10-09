@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], panel: true } };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'day' } };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -179,6 +179,6 @@ test('colorBy: zawsze według numeru (barwy rozstawione po kole), także gdy zap
 });
 
 test('ustawienia kalendarza są czyszczone ze śmieci', () => {
-  const p = Prefs.normalize({ cal: { view: 'x', scope: 'all', hiddenPeople: ['p-2', 'zły', 'p-2'], hiddenProjects: [3, 'a', -1], hiddenKinds: ['trip', 'foo'], panel: false } });
-  assert.deepEqual(p.cal, { view: 'month', scope: 'all', hiddenPeople: ['p-2'], hiddenProjects: [3], hiddenKinds: ['trip'], panel: false });
+  const p = Prefs.normalize({ cal: { view: 'x', scope: 'all', hiddenPeople: ['p-2', 'zły', 'p-2'], hiddenProjects: [3, 'a', -1], hiddenKinds: ['trip', 'foo'], rail: 'filters' } });
+  assert.deepEqual(p.cal, { view: 'month', scope: 'all', hiddenPeople: ['p-2'], hiddenProjects: [3], hiddenKinds: ['trip'], rail: 'filters' });
 });

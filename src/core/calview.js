@@ -107,15 +107,17 @@
         if (seeAll && s.status !== 'done' && dayOf(s.deadline)) deadline({ kind: 'stage', projectId: p.id, stageId: s.id, code: p.code, project: p.name, title: stageLabel(s), sub: 'Termin etapu' }, dayOf(s.deadline));
         (s.tasks || []).forEach(function (t) {
           if (t.status === 'done' || !dayOf(t.deadline) || hideKind.task) return;
-          if ((t.assignees || []).indexOf(me) < 0) return;
+          var who = (t.assignees || []).filter(function (id) { return scopeIds[id] && (seeAll || id === me); });
+          if (!who.length) return;
+          var onlyMe = who.length === 1 && who[0] === me;
           var end = dayOf(t.deadline);
           var start = dayOf(t.start);
-          var base = { kind: 'task', projectId: p.id, stageId: s.id, taskId: t.id, code: p.code, project: p.name, title: t.name, sub: 'Twoje zadanie' };
-          if (start && start < end) {
+          var base = { kind: 'task', projectId: p.id, stageId: s.id, taskId: t.id, code: p.code, project: p.name, title: t.name, assigneeIds: who, sub: onlyMe ? 'Twoje zadanie' : who.map(personName).filter(Boolean).join(', ') };
+          if (start && start < end && onlyMe) {
             spans.push(Object.assign({ spanKind: 'task', from: start, to: end }, base));
             for (var d = start; d <= end; d = Cal.addDays(d, 1)) add(d, Object.assign({ bar: true, edge: d === end, from: start, to: end }, base));
           } else add(end, base);
-          items.push({ uid: 't-' + t.id, kind: 'task', from: start && start < end ? start : end, to: end, title: p.code + ' · ' + t.name, sub: 'Zadanie' });
+          items.push({ uid: 't-' + t.id, kind: 'task', from: start && start < end ? start : end, to: end, title: p.code + ' · ' + t.name, sub: onlyMe ? 'Zadanie' : 'Zadanie: ' + who.map(personName).filter(Boolean).join(', ') });
         });
       });
     });

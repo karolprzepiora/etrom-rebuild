@@ -103,7 +103,6 @@
       UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'cv-today', 'data-tooltip': 'D' }, onClick: function () { ctx.actions.setTime({ calAnchor: null, calDay: null }); } }),
       D.el('h2', { class: 'cv-title', text: title }),
       D.el('span', { class: 'cv-bar__fill' }),
-      UI.button({ label: cal.panel === false ? 'Filtry' + (hiddenCount ? ' · ' + hiddenCount : '') : 'Ukryj filtry', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'cv-panel', 'aria-pressed': String(cal.panel !== false) }, onClick: function () { ctx.actions.setCal({ panel: cal.panel === false }); } }),
       UI.button({ label: '.ics', variant: 'secondary', size: 'sm', icon: 'download', attrs: { 'data-fk': 'cv-ics', 'data-tooltip': 'Pobierz widoczny zakres do kalendarza w telefonie lub Outlooku' }, onClick: function () { ctx.actions.exportIcs(data.items, 'ETROM'); } }),
       addBtn
     ]);
@@ -137,13 +136,13 @@
       var cls = (key === selected ? 'is-selected ' : '') + (c && c.events.some(function (e) { return e.kind === 'project' || e.kind === 'stage'; }) ? 'has-dl' : '');
       return { cls: cls.trim(), pressed: key === selected, onClick: function (k) { ctx.actions.setTime({ calAnchor: k, calDay: k }); } };
     }, today);
-    var panel = cal.panel === false ? null : D.el('aside', { class: 'cv-panel', attrs: { 'aria-label': 'Filtry kalendarza' } }, [
+    var filtersSide = [
       mini,
       section('Zakres', [scopeSeg.node]),
       section('Osoby', peopleOpts.length ? [D.el('div', { class: 'cv-opts' }, peopleOpts)] : [D.el('p', { class: 'cv-empty', text: 'Brak osób w tym zakresie.' })], resetPeople),
       section('Projekty', projOpts.length ? [D.el('div', { class: 'cv-opts' }, projOpts)] : [D.el('p', { class: 'cv-empty', text: 'Brak projektów.' })]),
       section('Rodzaje', [D.el('div', { class: 'cv-opts' }, kindOpts)])
-    ]);
+    ];
 
     /* ---------- elementy wspólne ---------- */
     function chip(ev, showText) {
@@ -283,7 +282,7 @@
         D.el('span', { class: 'cv-row__txt' }, [D.el('b', { class: 'truncate', text: ev.title }), D.el('small', { class: 'truncate', text: (ev.code ? ev.code + ' · ' : '') + (ev.project ? ev.project + ' · ' : '') + ev.sub })])
       ])]);
     }
-    function sidePanel() {
+    function daySide() {
       var dayList = selCell && selCell.events.length
         ? D.el('ul', { class: 'cv-list' }, selCell.events.map(sideRow))
         : D.el('p', { class: 'cv-empty', text: selCell && selCell.holiday ? selCell.holiday : 'Nic nie jest zaplanowane.' });
@@ -298,24 +297,29 @@
         row.querySelector('small').textContent = (ev.code ? ev.code + ' · ' : '') + (ev.project ? ev.project + ' · ' : '') + ev.sub + ' · ' + (days === 0 ? 'dziś' : (days === 1 ? 'jutro' : 'za ' + days + ' dni'));
         return row;
       })) : D.el('p', { class: 'cv-empty', text: 'Brak nadchodzących terminów.' });
-      var otherConf = data.conflicts.filter(function (x) { return dayConf.indexOf(x) < 0; }).slice(0, 4);
-      return D.el('aside', { class: 'cv-side', attrs: { 'aria-label': 'Wybrany dzień' } }, [
-        D.el('div', { class: 'cv-side__sec' }, [D.el('span', { class: 'cv-side__k', text: 'Wybrany dzień' }), D.el('h3', { class: 'cv-side__t', text: selected ? longDay(selected) : '' }), occLine, confBox, dayList,
+      return [
+        D.el('div', { class: 'cv-side__sec' }, [D.el('h3', { class: 'cv-side__t', text: selected ? longDay(selected) : '' }), occLine, confBox, dayList,
           UI.button({ label: 'Wyjazd tego dnia', variant: 'ghost', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-trip' }, onClick: function () { ctx.actions.openTrip(null, selected); } })]),
-        otherConf.length ? D.el('div', { class: 'cv-side__sec' }, [D.el('span', { class: 'cv-side__k', text: 'Uwaga w tym zakresie' }), D.el('ul', { class: 'cv-conf' }, otherConf.map(function (x) {
-          return D.el('li', null, [D.el('button', { class: 'cv-conf__b', attrs: { type: 'button' }, on: { click: function () { ctx.actions.setTime({ calDay: x.day, calAnchor: x.day }); } } }, [D.el('b', { text: longDay(x.day) + ' · ' }), D.el('span', { text: x.text })])]);
-        }))]) : null,
         D.el('div', { class: 'cv-side__sec' }, [D.el('span', { class: 'cv-side__k', text: 'Najbliższe terminy' }), upcoming])
-      ]);
+      ];
+    }
+    function warnSide() {
+      return [D.el('ul', { class: 'cv-conf' }, data.conflicts.slice(0, 12).map(function (x) {
+        return D.el('li', null, [D.el('button', { class: 'cv-conf__b', attrs: { type: 'button' }, on: { click: function () { ctx.actions.setTime({ calDay: x.day, calAnchor: x.day }); } } }, [D.el('b', { text: longDay(x.day) + ' · ' }), D.el('span', { text: x.text })])]);
+      }))];
     }
 
     var main = mode === 'month' ? monthGrid() : mode === 'week' ? weekView() : mode === 'year' ? yearView() : teamView();
-    var hasSide = mode === 'month';
+    var items = [{ id: 'filters', title: 'Filtry i warstwy', icon: 'filter', tone: 'accent', badge: hiddenCount ? String(hiddenCount) : '', side: filtersSide }];
+    if (mode === 'month' || mode === 'week') items.push({ id: 'day', title: 'Wybrany dzień i najbliższe terminy', label: 'Dzień', icon: 'calendar', tone: 'violet', side: daySide() });
+    if (data.conflicts.length) items.push({ id: 'warn', title: 'Uwaga w tym zakresie', icon: 'alert', tone: 'warn', badge: String(data.conflicts.length), late: true, side: warnSide() });
+    var railPref = cal.rail || 'day';
+    var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
     var total = data.cells.reduce(function (n, c) { return n + (c.out ? 0 : c.events.filter(function (e) { return e.kind !== 'absence' && e.kind !== 'trip'; }).length); }, 0);
     return {
       summary: management ? 'Terminy projektów i etapów oraz nieobecności zespołu.' : 'Twoje terminy i nieobecności.',
       body: D.el('div', { class: 'cv' }, [toolbar,
-        D.el('div', { class: 'cv-body' + (panel ? ' has-panel' : '') + (hasSide ? ' has-side' : '') }, [panel, D.el('div', { class: 'cv-main' }, [main]), hasSide ? sidePanel() : null]),
+        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [main], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
         D.el('p', { class: 'sr-only', text: total + ' terminów w zakresie', attrs: { 'aria-live': 'polite' } })])
     };
   }
