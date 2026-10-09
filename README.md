@@ -23,11 +23,14 @@ To wszystko. Nie trzeba Node.js, npm ani niczego instalować.
 Jeśli wolisz adres `http://`, działa też przez dowolny serwer statyczny,
 na przykład `python -m http.server 8000`.
 
-Pierwsze uruchomienie jest puste. Przycisk **Dodaj dane przykładowe** dopisuje siedem
-projektów z etapami, ponad 30 zadaniami (po terminie, na dziś, do poprawy, ukończone), ośmioma
-osobami ze stawkami godzinowymi, ok. 450 wpisami czasu pracy, korektami godzin zarządu,
-korespondencją i wpisami w Aktualnościach (ankiety, wyróżnienia, zdjęcia, komentarze, reakcje).
-Ponowne wczytanie niczego nie dubluje — dopisuje tylko brakujące rzeczy.
+Pierwsze uruchomienie jest puste. Przycisk **Dodaj dane przykładowe** wczytuje dwanaście
+projektów rozłożonych od ok. dziesięciu miesięcy wstecz do pół roku w przód (zakończone, w toku,
+wstrzymane i planowane), z etapami i zadaniami, ośmioma osobami ze stawkami godzinowymi,
+ok. 1,5 tys. wpisów czasu pracy, korektami godzin zarządu, korespondencją we wszystkich stanach
+obiegu (z plikami, terminami odpowiedzi i historią decyzji), sprawami w toku i zakończonymi,
+urlopami, zleceniami i wpisami w Aktualnościach (ankiety, wyróżnienia, zdjęcia, komentarze, reakcje).
+Ponowne wczytanie niczego nie dubluje. Starszy zestaw przykładowy zostaje zastąpiony nowym
+(po kodzie i nazwie projektu), a Twoje własne projekty i dane zostają.
 Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
 **Ustawienia i dane** na dole panelu bocznego.
 
@@ -170,7 +173,7 @@ Widok tylko czyta stan i rysuje.
 
 ```bash
 node --test tests/*.test.js     # 464 testy logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 418 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node tests/browser/smoke.js     # 419 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

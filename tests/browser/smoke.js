@@ -237,44 +237,44 @@ async function main() {
     /* 2. Dane przykładowe */
     await click('#empty-demo');
     await sleep(200);
-    check('dane przykładowe dodają 7 projektów', (await cardCount()) === 7, 'było ' + (await cardCount()));
-    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 7);
+    check('dane przykładowe dodają 12 projektów', (await cardCount()) === 12, 'było ' + (await cardCount()));
+    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 12);
 
     check('każdy projekt przykładowy ma komplet etapów ze standardu w katalogowej kolejności',
       await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.stagesFor("full", window.ETROM.Catalog.defaultProcedures("full")).length)'));
 
     /* 3. Zapis lokalny */
     const stored = await evaluate('const raw = localStorage.getItem("etrom.v3"); return raw ? JSON.parse(raw).projects.length : -1;');
-    check('dane trafiają do localStorage na file://', stored === 7, 'zapisano: ' + stored);
+    check('dane trafiają do localStorage na file://', stored === 12, 'zapisano: ' + stored);
 
     /* 4. Trwałość po przeładowaniu — od tego momentu liczymy błędy strony */
     pageErrors = [];
     await evaluate('location.reload(); return true;');
     await sleep(600);
     await waitForApp();
-    check('po przeładowaniu projekty nadal są', (await cardCount()) === 7, 'było ' + (await cardCount()));
+    check('po przeładowaniu projekty nadal są', (await cardCount()) === 12, 'było ' + (await cardCount()));
 
     /* 5. Wyszukiwanie */
     await evaluate('const input = document.getElementById("tb-search"); input.value = "Lipnica"; input.dispatchEvent(new Event("input", { bubbles: true })); return true;');
     check('szukanie po nazwie zawęża listę do jednego projektu', (await cardCount()) === 1, 'było ' + (await cardCount()));
     check('przy aktywnym filtrze widać licznik i przycisk czyszczenia',
-      await evaluate('return /^1 z 7$/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
+      await evaluate('return /^1 z 12$/.test(document.querySelector("#filters .toolbar__count").textContent) && !document.getElementById("tb-clear").hidden;'));
     await click('#tb-clear');
     await sleep(150);
-    check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 7 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
+    check('„Wyczyść filtry” przywraca pełną listę i czyści pole', (await cardCount()) === 12 && (await evaluate('return document.getElementById("tb-search").value;')) === '');
 
     /* 6. Filtr statusu przez menu */
     await openMenu('#tb-status', 'done');
-    check('filtr statusu „Zakończony” pokazuje 1 projekt', (await cardCount()) === 1, 'było ' + (await cardCount()));
+    check('filtr statusu „Zakończony” pokazuje 3 projekty', (await cardCount()) === 3, 'było ' + (await cardCount()));
     check('przycisk filtra pokazuje wybraną wartość',
       await evaluate('const b = document.getElementById("tb-status"); return b.classList.contains("filter-btn--active") && /Zakończony/.test(b.textContent);'));
     await openMenu('#tb-status', 'all');
-    check('powrót do wszystkich statusów', (await cardCount()) === 7);
+    check('powrót do wszystkich statusów', (await cardCount()) === 12);
 
     /* 7. Sortowanie: domyślnie wg ręcznej kolejności zarządu (priorytet), bez grup; po numerze i w obu kierunkach na żądanie */
     const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
     check('lista domyślnie stoi w ręcznej kolejności zarządu (pilniejsze wyżej), bez grup',
-      order === '2602,2601,2606,2607,2603,2604,2605' && (await state('s.filters.sort')) === 'manual' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
+      order === '2602,2601,2606,2607,2610,2603,2604,2609,2612,2605,2608,2611' && (await state('s.filters.sort')) === 'manual' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
     const gripFirst = await evaluate('const g = document.querySelector(".rowgrip"); return g ? g.getAttribute("data-fk") : "";');
     if (gripFirst) {
       await evaluate('document.querySelector(".rowgrip").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); return true;');
@@ -289,18 +289,18 @@ async function main() {
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(150);
     check('klik w „Nr” sortuje po numerze rosnąco',
-      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2601,2602,2603,2604,2605,2606,2607');
+      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2601,2602,2603,2604,2605,2606,2607,2608,2609,2610,2611,2612');
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(150);
     check('drugi klik w „Nr” odwraca kolejność, nagłówek ogłasza kierunek',
-      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2607,2606,2605,2604,2603,2602,2601'
+      (await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");')) === '2612,2611,2610,2609,2608,2607,2606,2605,2604,2603,2602,2601'
       && (await evaluate('return document.querySelector(\'th[aria-sort]\').getAttribute("aria-sort");')) === 'descending');
     await evaluate('document.querySelector(\'.table__sort[data-sort="code"]\').click(); return true;');
     await sleep(100);
     await openMenu('#tb-sort', 'deadline');
     const byDeadline = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
     check('sortowanie po terminie: czynny projekt po terminie na czele, zakończony na końcu',
-      byDeadline.split(',')[0] === '2602' && byDeadline.split(',').pop() === '2605', 'kolejność: ' + byDeadline);
+      byDeadline.split(',')[0] === '2602' && byDeadline.split(',').pop() === '2611', 'kolejność: ' + byDeadline);
 
     check('sortowanie z nagłówka kolumny',
       await evaluate('document.querySelector(\'.table__sort[data-sort="name"]\').click(); return true;')
@@ -337,7 +337,7 @@ async function main() {
       && (await state('s.prefs.projectView')) === 'attention');
     await click('[data-fk="view-done"]');
     await sleep(200);
-    check('zakładka „Zakończone” pokazuje tylko zakończone', (await cardCount()) === 1 && (await state('s.filters.health')) === 'closed');
+    check('zakładka „Zakończone” pokazuje tylko zakończone', (await cardCount()) === 3 && (await state('s.filters.health')) === 'closed');
     await click('[data-fk="view-overdue"]');
     await sleep(200);
     check('zakładka „Po terminie” pokazuje projekty z zaległością (umowa, zadanie albo pismo)',
@@ -345,7 +345,7 @@ async function main() {
       && (await state('s.workspace.projects.filter(p => window.ETROM.Insight.hasOverdue(p, new Date(), s.workspace.mail)).length')) === (await cardCount()));
     await click('[data-fk="view-all"]');
     await sleep(200);
-    check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 7 && (await state('s.filters.health')) === 'all');
+    check('zakładka „Wszystkie” przywraca pełną listę', (await cardCount()) === 12 && (await state('s.filters.health')) === 'all');
 
     /* 7b. Edycja w komórce: lider zmieniany bez wchodzenia w projekt */
     const idLead = await projectId('2603');
@@ -462,7 +462,7 @@ async function main() {
     await sleep(150);
     const duplicateError = await evaluate('const node = document.querySelector("#project-form .field__error"); return node ? node.textContent : "";');
     check('formularz blokuje powtórzony kod projektu',
-      /już istnieje/i.test(duplicateError) && (await cardCount()) === 7, 'komunikat: "' + duplicateError + '"');
+      /już istnieje/i.test(duplicateError) && (await cardCount()) === 12, 'komunikat: "' + duplicateError + '"');
     check('pole z błędem jest oznaczone i opisane dla czytnika ekranu',
       await evaluate('const i = document.getElementById("pf-code"); return i.getAttribute("aria-invalid") === "true" && (i.getAttribute("aria-describedby") || "").indexOf("pf-code-error") >= 0;'));
 
@@ -475,7 +475,7 @@ async function main() {
     );
     await sleep(200);
     check('poprawny formularz dodaje projekt i zamyka panel',
-      (await cardCount()) === 8 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
+      (await cardCount()) === 13 && (await evaluate('return document.querySelectorAll("#project-form").length;')) === 0,
       'pozycji: ' + (await cardCount()));
 
     /* 13. Dane użytkownika nie są wykonywane jako HTML */
@@ -526,11 +526,11 @@ async function main() {
     check('pole „zaznacz wszystkie” jest w stanie pośrednim', await evaluate('return document.getElementById("select-all").indeterminate;'));
     await click('#bulk-delete');
     await sleep(300);
-    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 6 && !(await evaluate('return !!document.querySelector(".bulkbar");')),
+    check('usunięcie zbiorcze zdejmuje oba projekty', (await cardCount()) === 11 && !(await evaluate('return !!document.querySelector(".bulkbar");')),
       'pozycji: ' + (await cardCount()) + ', pasek: ' + (await evaluate('return !!document.querySelector(".bulkbar");')) + ', w danych: ' + (await state('s.workspace.projects.length')));
     await click('[data-toast-action]');
     await sleep(300);
-    check('cofnięcie przywraca oba projekty', (await cardCount()) === 8);
+    check('cofnięcie przywraca oba projekty', (await cardCount()) === 13);
 
     /* 16. Wybór kolumn (zapamiętany) */
     await click('#tb-columns');
@@ -942,6 +942,7 @@ async function main() {
     check('Dyrekcja widzi wyjazd w „Zespół dziś”', await evaluate('return /Lipnica/.test(document.querySelector("[data-fk=db-team]").textContent);'));
     await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { trips: [] }) }); }); return true;');
     // ---- Zlecenia wewnętrzne ----
+    await evaluate('ETROM.app.store.update(function (st) { return Object.assign({}, st, { workspace: Object.assign({}, st.workspace, { orders: [] }) }); }); return true;');
     await go('#/zlecenia');
     await sleep(400);
     check('menu ma „Zlecenia” w grupie Start, ekran pusty', await evaluate('return !!document.querySelector("[data-screen=orders]") && !document.getElementById("view-orders").hidden && !document.querySelector("#view-orders .zl-card");'));
@@ -1284,7 +1285,9 @@ async function main() {
     check('Na żywo: bez powielonego wykresu planu (tylko karty i oś dnia)',
       await evaluate('return !document.querySelector(".pb-grid");'));
     // Bieżąca praca: zielony wiersz w Planie, przełączanie zegara z oknem na cofnięcie.
-    await evaluate('ETROM.app.actions.setTime({ planView: "plan", planOffset: 0, planPerson: "", planProject: "" }); return true;');
+    await evaluate('ETROM.app.actions.setTime({ planView: "plan", planOffset: 0, planPerson: ETROM.app.store.getState().prefs.me, planProject: "" }); return true;');
+    // Zegary innych osób z danych przykładowych kończymy, żeby w Planie był tylko ten, który uruchamiamy w teście.
+    await evaluate('ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { entries: s.workspace.entries.map(e => e.end ? e : Object.assign({}, e, { end: new Date().toISOString() })) }) })); return true;');
     await evaluate(
       'const me = ETROM.app.store.getState().prefs.me; const run = ETROM.app.store.getState().workspace.entries.filter(e => !e.end && e.personId === me)[0]; if (run) ETROM.app.actions.stopTimer();' +
       'window.__sw = ETROM.app.actions.openTasks().slice(0, 2).map(c => c.ref);' +
@@ -1293,7 +1296,7 @@ async function main() {
       'ETROM.app.store.update(s => Object.assign({}, s, { workspace: Object.assign({}, s.workspace, { projects: s.workspace.projects.map(p => Object.assign({}, p, { stages: p.stages.map(st => Object.assign({}, st, { tasks: (st.tasks || []).map(t => window.__sw.some(r => r.projectId === p.id && r.stageId === st.id && r.taskId === t.id) ? Object.assign({}, t, { start: iso(d0, "00:00"), deadline: iso(d1, "18:00") }) : t) })) })) }) }));' +
       'ETROM.app.actions.toggleTimer(window.__sw[0].projectId, window.__sw[0].stageId, window.__sw[0].taskId); return true;'
     );
-    await sleep(500);
+    await sleep(1500);
     check('zadanie, przy którym chodzi zegar, jest zielonym wierszem ze znaczkiem TERAZ (godzina startu i czas), a przy nazwisku jest zielona linia „teraz”',
       await evaluate('return document.querySelectorAll(".pb-row--now").length === 1 && /TERAZ/.test(document.querySelector(".pb-row--now .pb-now").textContent) && !!document.querySelector(".pb-row--who .pb-live-line.is-on");'),
       await evaluate('return JSON.stringify({ now: document.querySelectorAll(".pb-row--now").length, live: document.querySelectorAll(".pb-live-line.is-on").length, run: window.ETROM.app.store.getState().workspace.entries.filter(e => !e.end).length, me: window.ETROM.app.store.getState().prefs.me, hash: location.hash, h: new Date().getHours() });'));
@@ -1500,6 +1503,8 @@ async function main() {
 
     /* 30. Zadania w etapach */
     check('dane przykładowe zawierają zadania w etapach', (await state('s.workspace.projects.flatMap(p => p.stages).flatMap(st => st.tasks || []).length')) >= 6);
+    check('dane przykładowe: 12 projektów w różnych stanach, czas pracy z ~dziesięciu miesięcy, pisma we wszystkich stanach obiegu, sprawy zakończone, urlopy w przód i w tył',
+      await state('(() => { const w = s.workspace; const st = new Set(w.projects.map(p => p.status)); const days = w.entries.map(e => Date.parse(e.start)); const span = (Math.max(...days) - Math.min(...days)) / 86400000; const states = new Set(w.mail.map(m => window.ETROM.Mail.incomingState(m, w.mail, w.projects.find(p => p.id === m.projectId), w.entries, new Date()).state)); const now = Date.now(); return w.projects.filter(p => /^26(0[1-9]|1[0-2])$/.test(p.code)).length === 12 && ["active", "planned", "paused", "done"].every(x => st.has(x)) && span > 250 && ["new", "filed", "inprogress", "atrisk", "finished", "case", "answered"].every(x => states.has(x)) && w.cases.filter(c => c.status === "closed").length >= 5 && w.absences.some(a => Date.parse(a.from) < now - 60 * 86400000) && w.absences.some(a => Date.parse(a.from) > now + 60 * 86400000); })()'));
     await go('#/projekty/' + id2);
     check('wiersz etapu pokazuje pod nazwą, ile zadań jest otwartych',
       await evaluate('return [...document.querySelectorAll(".plan-row__sub")].some(c => /Otwarte \\d+ z \\d+/.test(c.textContent));'));
@@ -1737,7 +1742,7 @@ async function main() {
     await go('#/projekty/' + mailPid + '/korespondencja');
     await sleep(300);
     check('zakładka Korespondencja pokazuje wpisy dziennika z numerami i licznik oczekujących',
-      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 3
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 7
       && (await evaluate('return /P\\/\\d{4}\\/001/.test(document.querySelector(".mail-list").textContent);'))
       && (await evaluate('return !!document.querySelector(".detail__tabs") && /Korespondencja/.test(document.querySelector(".detail__tabs").textContent);')));
     check('pismo oznaczone „Wymaga reakcji” ma znaczek, a dziennik nie pokazuje terminów odpowiedzi',
@@ -1753,7 +1758,7 @@ async function main() {
     await evaluate('const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }; set("ml-subject", "Zawiadomienie o wszczęciu postępowania"); set("ml-party", "Starostwo Powiatowe"); document.querySelector("#mail-form").requestSubmit(); return true;');
     await sleep(450);
     check('zapisane pismo dostaje kolejny numer w dzienniku i trafia na listę',
-      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 4
+      (await evaluate('return document.querySelectorAll(".mrow2").length;')) === 8
       && (await evaluate('return /Zawiadomienie o wszczęciu postępowania/.test(document.querySelector(".mail-list").textContent) && /P\\/\\d{4}\\/00[2-9]/.test(document.querySelector(".mail-list").textContent);'))
       && !(await evaluate('return !!document.querySelector("#mail-form");')));
     await evaluate('[...document.querySelectorAll(".mail-filters .segmented__btn")].find(b => /Wymaga reakcji/.test(b.textContent)).click(); return true;');

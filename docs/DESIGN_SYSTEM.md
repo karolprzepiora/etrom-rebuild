@@ -670,8 +670,10 @@ W Tygodniach (Moja praca) lewa kolumna pokazuje „NN% czasu” (ile czasu od st
 - Dane: `Plan.realization` (czysta funkcja: godziny dzień po dniu, bieżące zadanie z licznika, ostatnia aktywność, wpisy z dziś).
 
 ## Dane przykładowe
-- Archiwalne wpisy czasu (`e-demo-arch-*`): praca nad projektami 2601, 2602, 2604, 2605 i 2606 sprzed okna 10 tygodni, do ok. roku wstecz. Widać je w Czasie, Analizie i w Planie po cofnięciu okna.
-- Archiwalne nieobecności (urlopy, zwolnienie, szkolenia) z ostatnich 4 miesięcy oprócz tych w nadchodzących tygodniach.
+- Dwanaście projektów (2601–2612) rozłożonych w czasie: wiersz `DEMO` ma `start` (dzień założenia względem dziś) i `step` (dni na etap). Z nich liczą się terminy etapów, data założenia i oś czasu pracy. Zakończone: 2605, 2608, 2611; w toku: 2601, 2602, 2606, 2607, 2610, 2612; wstrzymany 2604; planowane 2603 i 2609.
+- Czas pracy (`e-demo-*`) powstaje etap po etapie od założenia projektu do dziś (do ok. 330 dni wstecz), deterministycznie, z dziennym limitem 8,25 h na osobę. Godziny przypięte do zadania nie przekraczają 80% jego oszacowania.
+- Pisma w każdym stanie obiegu (Nowe, Do akt, Odpowiedź w toku, zagrożona, zakończone zadanie bez odpowiedzi, W sprawie, Odpowiedziano), z plikami, właścicielem, terminem odpowiedzi i historią; trzy zlecenia; sprawy w toku i zakończone; urlopy, szkolenia i zwolnienia od ok. pół roku wstecz do pół roku w przód.
+- Wczytanie zastępuje starszy zestaw przykładowy (po kodzie i nazwie projektu, wpisach `e-demo-*` i notatkach nieobecności), jeśli nie ma kompletu nowych projektów. Gdy komplet jest, nic się nie zmienia.
 - „Na żywo”: pięć osób ma uruchomiony licznik na własnym zadaniu, część miała też wpis z rana (wpisy `e-demo-live-*`, tylko gdy jest po 8:30).
 
 ## Plan i realizacja: układ zakładek (aktualizacja)

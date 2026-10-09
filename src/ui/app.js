@@ -2607,7 +2607,12 @@
     '2604': { leader: 1, coordinator: 2, members: [3, 4] },
     '2605': { leader: 0, coordinator: 5, members: [1, 2, 3, 4] },
     '2606': { leader: 1, coordinator: 6, members: [2, 3, 7] },
-    '2607': { leader: 0, coordinator: 6, members: [3, 4, 7] }
+    '2607': { leader: 0, coordinator: 6, members: [3, 4, 7] },
+    '2608': { leader: 1, coordinator: 2, members: [3, 5] },
+    '2609': { leader: 0, coordinator: 6, members: [2] },
+    '2610': { leader: 1, coordinator: 6, proxyLead: 4, members: [2, 3, 7] },
+    '2611': { leader: 0, coordinator: 2, members: [6, 3] },
+    '2612': { leader: 0, coordinator: 3, members: [4, 6, 7] }
   };
 
   // Indeksy etapów odnoszą się do katalogu, indeksy osób do DEMO_PEOPLE.
@@ -2663,6 +2668,31 @@
       { stage: 4, name: 'Pomiary geodezyjne dojazdu', status: 'working', est: 14, startDays: -2, work: 4, workload: 'small', hours: 36, people: [7] },
       { stage: 6, name: 'Obliczenia hydrauliczne', status: 'todo', est: 30, startDays: 3, workload: 'medium', hours: 96, people: [6] },
       { stage: 7, name: 'Złożyć wniosek o pozwolenie wodnoprawne', status: 'todo', est: 6, workload: 'small', hours: 400, people: [4] }
+    ],
+    '2608': [
+      { stage: 12, name: 'Kosztorys inwestorski jazu', status: 'done', workload: 'medium', hours: -2300, people: [5] },
+      { stage: 13, name: 'Przekazanie dokumentacji inwestorowi', status: 'done', workload: 'small', hours: -1950, people: [1] }
+    ],
+    '2609': [
+      { stage: 0, name: 'Ustalić zakres z Wodami Polskimi', status: 'todo', est: 6, workload: 'small', hours: 1100, people: [0] }
+    ],
+    '2610': [
+      { stage: 1, name: 'Koncepcja lokalizacji polderu', status: 'done', workload: 'large', hours: -1500, people: [1, 3] },
+      { stage: 4, name: 'Pomiary geodezyjne obwałowania', status: 'done', workload: 'medium', hours: -700, people: [7] },
+      { stage: 5, name: 'Wniosek o decyzję lokalizacyjną polderu', status: 'working', est: 30, startDays: -12, work: 0, workload: 'large', hours: 40, people: [1, 2] },
+      { stage: 6, name: 'Operat wodnoprawny polderu', status: 'working', est: 70, startDays: -8, workload: 'veryLarge', hours: 160, people: [2, 6], important: true },
+      { stage: 6, name: 'Obliczenia przepływów miarodajnych', status: 'review', est: 24, startDays: -6, work: 20, workload: 'medium', hours: 14, people: [6] },
+      { stage: 9, name: 'Projekt budowlany obwałowania', status: 'todo', est: 90, startDays: 10, workload: 'veryLarge', hours: 400, people: [2, 3] }
+    ],
+    '2611': [
+      { stage: 11, name: 'Ekspertyza stanu technicznego zapory', status: 'done', workload: 'large', hours: -420, people: [6, 3] },
+      { stage: 13, name: 'Przekazanie ekspertyzy zamawiającemu', status: 'done', workload: 'small', hours: -150, people: [0] }
+    ],
+    '2612': [
+      { stage: 0, name: 'Inwentaryzacja zniszczeń po powodzi', status: 'done', workload: 'medium', hours: -620, people: [3, 7] },
+      { stage: 1, name: 'Koncepcja odbudowy wałów', status: 'working', est: 40, startDays: -10, work: 22, workload: 'large', hours: 70, people: [6, 4] },
+      { stage: 4, name: 'Pomiary geodezyjne korony wału', status: 'working', est: 18, startDays: -4, workload: 'medium', hours: 40, people: [7] },
+      { stage: 5, name: 'Wniosek o decyzję lokalizacyjną — Nowa Wieś', status: 'todo', est: 10, startDays: 6, workload: 'small', hours: 200, people: [4] }
     ]
   };
 
@@ -2678,14 +2708,20 @@
     return Catalog.all.filter(function (entry) { return ids.indexOf(entry.id) >= 0; });
   }
 
+  // start: dzień założenia projektu względem dziś; step: ile dni mija na jeden etap (z nich liczymy terminy etapów i oś czasu pracy).
   var DEMO = [
-    { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', priority: 2, deadline: demoDate(21), done: 7, working: 2 },
-    { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', priority: 1, deadline: demoDate(-6), done: 11, working: 1 },
-    { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(120), done: 0, working: 0 },
-    { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0 },
-    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: 16, working: 0 },
-    { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', priority: 3, deadline: demoDate(75), done: 6, working: 2, scale: 1.25, age: 70 },
-    { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', priority: 4, deadline: demoDate(150), done: 3, working: 1, scale: 0.7, age: 20 }
+    { code: '2601', name: 'Przebudowa przepustu w Lipnicy', client: 'Gmina Lipnica', status: 'active', priority: 2, deadline: demoDate(21), done: 7, working: 2, start: -150, step: 20 },
+    { code: '2602', name: 'Regulacja rzeki Białka — odcinek III', client: 'Wody Polskie RZGW', status: 'active', priority: 1, deadline: demoDate(-6), done: 11, working: 1, start: -190, step: 16 },
+    { code: '2603', name: 'Zbiornik retencyjny Dąbrowa', client: 'Starostwo Powiatowe', status: 'planned', deadline: demoDate(330), done: 0, working: 0, start: 25, step: 20, age: 3 },
+    { code: '2604', name: 'Modernizacja stacji pomp Rudnik', client: 'Spółka Wodna Rudnik', status: 'paused', deadline: demoDate(60), done: 5, working: 0, start: -170, step: 30 },
+    { code: '2605', name: 'Dokumentacja wałów w Zarzeczu', client: 'Urząd Miasta', status: 'done', deadline: demoDate(-40), done: 16, working: 0, start: -300, step: 16 },
+    { code: '2606', name: 'Odmulenie zbiornika Wąwolnica', client: 'Gmina Wąwolnica', status: 'active', priority: 3, deadline: demoDate(75), done: 6, working: 2, scale: 1.25, start: -70, step: 11 },
+    { code: '2607', name: 'Przepust drogowy Klonów — pozwolenie wodnoprawne', client: 'Zarząd Dróg Powiatowych', status: 'active', priority: 4, deadline: demoDate(150), done: 3, working: 1, scale: 0.7, start: -20, step: 7 },
+    { code: '2608', name: 'Przebudowa jazu w Kamionce', client: 'Gmina Kamionka', status: 'done', deadline: demoDate(-80), done: 16, working: 0, start: -260, step: 11 },
+    { code: '2609', name: 'Kanał ulgi Dobra — koncepcja', client: 'Wody Polskie RZGW', status: 'planned', deadline: demoDate(300), done: 0, working: 0, start: 45, step: 18, age: 2 },
+    { code: '2610', name: 'Polder przeciwpowodziowy Siedlce Zalew', client: 'Wody Polskie RZGW', status: 'active', priority: 5, deadline: demoDate(95), done: 5, working: 2, start: -105, step: 19, scale: 1.1 },
+    { code: '2611', name: 'Ekspertyza stanu technicznego zapory Rożnów', client: 'Zarząd Zlewni', status: 'done', deadline: demoDate(-5), done: 16, working: 0, start: -200, step: 12, scale: 0.8 },
+    { code: '2612', name: 'Odbudowa wałów po powodzi — Nowa Wieś', client: 'Gmina Nowa Wieś', status: 'active', deadline: demoDate(170), done: 2, working: 1, start: -35, step: 15, scale: 0.9 }
   ];
 
   var DEMO_RATES = { 'Anna Testowa': 220, 'Michał Testowy': 190, 'Ewa Testowa': 150, 'Jan Testowy': 90, 'Olga Testowa': 120, 'Piotr Testowy': 130, 'Marta Testowa': 160, 'Tomasz Testowy': 110 };
@@ -2778,7 +2814,7 @@
       g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(150 + variant * 160, 110, 46, 0, 7); g.fill();
       [[c[2], 330, 70], [c[3], 390, 50]].forEach(function (layer, i) {
         g.fillStyle = layer[0]; g.beginPath(); g.moveTo(0, 600);
-        for (var x = 0; x <= 960; x += 40) g.lineTo(x, layer[1] + Math.sin((x + variant * 90 + i * 140) / 120) * layer[2] * 0.5);
+        for (var x = 0; x <= 960; x += 40) g.lineTo(x, layer[1] + Math.sin((x + variant * 90 + i * 1.4) / 120) * layer[2] * 0.5);
         g.lineTo(960, 600); g.closePath(); g.fill();
       });
       g.fillStyle = c[4]; g.beginPath(); g.moveTo(300 + variant * 40, 600);
@@ -2825,6 +2861,7 @@
           task = moved.task;
           // Historia rozłożona na ostatnie dni, żeby strumień wyglądał jak prawdziwa praca.
           var hoursAgo = (demoSeq * 5 + 2) + (path.length - 1 - stepIndex) * 4;
+          if (spec.hours < -600) hoursAgo = -spec.hours + (path.length - 1 - stepIndex) * 24;
           var last = task.history[task.history.length - 1];
           if (last) last.at = new Date(Date.now() - hoursAgo * 3600000).toISOString();
         });
@@ -2844,6 +2881,28 @@
 
     setPeople(function () { return roster; });
 
+    // Nowe wczytanie zastępuje stare dane przykładowe (po kodzie i nazwie projektu), a dane użytkownika zostają.
+    var demoNotes = ['Wyjazd rodzinny', 'Urlop', 'Szkolenie z hydrauliki', 'Urlop letni', 'Szkolenie BHP', 'Zwolnienie lekarskie', 'Urlop wypoczynkowy', 'Urlop na żądanie', 'Termin złożenia projektu', 'Dwa dni wolne', 'Urlop listopadowy', 'Konferencja branżowa', 'Urlop świąteczny', 'Szkolenie z programu do obliczeń', 'Urlop zimowy', 'Opieka nad dzieckiem', 'Urlop wiosenny'];
+    updateWorkspace(function (workspace) {
+      var drop = {};
+      workspace.projects.forEach(function (project) {
+        if (DEMO.some(function (r) { return r.code === project.code && r.name === project.name; })) drop[project.id] = true;
+      });
+      var demoIds = DEMO_PEOPLE.map(function (row, i) { return demoPersonId(i); });
+      // Komplet nowych danych jest już w programie: nic nie czyścimy (ponowne wczytanie niczego nie dubluje).
+      var complete = DEMO.every(function (r) { return workspace.projects.some(function (p) { return p.code === r.code && p.name === r.name; }); });
+      if (!Object.keys(drop).length || complete) return workspace;
+      return Object.assign({}, workspace, {
+        version: Model.WORKSPACE_VERSION,
+        projects: workspace.projects.filter(function (p) { return !drop[p.id]; }),
+        entries: (workspace.entries || []).filter(function (e) { return !drop[e.projectId] && String(e.id).indexOf('e-demo-') !== 0; }),
+        mail: (workspace.mail || []).filter(function (m) { return !drop[m.projectId]; }),
+        cases: (workspace.cases || []).filter(function (c) { return !drop[c.projectId]; }),
+        orders: (workspace.orders || []).filter(function (o) { return !drop[o.projectId]; }),
+        absences: (workspace.absences || []).filter(function (a) { return !(demoIds.indexOf(a.personId) >= 0 && demoNotes.indexOf(a.note) >= 0); })
+      });
+    });
+
     var added = 0;
     var freshCodes = {};
     setWorkspace(function (projects) {
@@ -2851,7 +2910,7 @@
       DEMO.forEach(function (row) {
         if (result.some(function (p) { return p.code.toUpperCase() === row.code; })) return;
         var stages = demoCatalog().map(function (entry, index) {
-          var stage = Model.createStage(entry.id, { deadline: demoDate(index * 10 - 20), hours: row.scale ? Math.round(entry.defaultHours * row.scale) : undefined });
+          var stage = Model.createStage(entry.id, { deadline: demoDate(row.start + (index + 1) * row.step), hours: row.scale ? Math.round(entry.defaultHours * row.scale) : undefined });
           if (index < row.done) stage.status = 'done';
           else if (index < row.done + row.working) stage.status = 'working';
           return stage;
@@ -2862,7 +2921,7 @@
           code: row.code, name: row.name, client: row.client, status: row.status,
           deadline: row.deadline, stages: stages, team: team, scope: 'full'
         }, result);
-        created.createdAt = new Date(Date.now() - (row.age != null ? row.age : 14 + added * 11) * 86400000).toISOString();
+        created.createdAt = new Date(Date.now() - (row.age != null ? row.age : Math.max(1, -row.start)) * 86400000).toISOString();
         if (row.priority) created.priority = row.priority;
         freshCodes[row.code] = true;
         result = result.concat([created]);
@@ -2882,30 +2941,58 @@
       d.setDate(d.getDate() + offset);
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     };
+    var F1 = function (name, kb) { return { name: name, size: kb * 1024, location: 'e-Doręczenia' }; };
+    // Każdy wiersz to jedno pismo. decision: file | reply | none; answer: odpowiedź wysłana przez nas; ownerId: indeks osoby.
     var demoMail = {
       '2601': [
-        { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), needsAction: true },
-        { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), needsAction: true },
-        { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14) }
+        { direction: 'in', kind: 'ruling', counterparty: 'Starostwo Powiatowe', number: 'OS.6220.4.2026', subject: 'Postanowienie o przeprowadzeniu oceny oddziaływania na środowisko', registeredDate: iso(-110), decision: 'file', files: [F1('postanowienie-OS-6220.pdf', 310)] },
+        { direction: 'in', kind: 'inquiry', counterparty: 'Gmina Lipnica', subject: 'Zapytanie o termin przekazania koncepcji', registeredDate: iso(-95), decision: 'reply', responseDue: iso(-80), answer: { off: -84, subject: 'Odp.: Zapytanie o termin przekazania koncepcji', kind: 'reply' } },
+        { direction: 'in', kind: 'summons', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.12.2026', subject: 'Wezwanie do uzupełnienia wniosku o pozwolenie wodnoprawne', registeredDate: iso(-9), needsAction: true, responseDue: iso(12), files: [F1('wezwanie-KR-ZZ-2-4210-12.pdf', 482), F1('zalacznik-1-wykaz-brakow.pdf', 96), F1('zalacznik-2-mapa.pdf', 1840)] },
+        { direction: 'in', kind: 'opinion', counterparty: 'Starostwo Powiatowe', subject: 'Opinia w sprawie lokalizacji przepustu', registeredDate: iso(-20), needsAction: true, files: [F1('opinia-lokalizacja-przepustu.pdf', 220)] },
+        { direction: 'out', kind: 'application', counterparty: 'Gmina Lipnica', subject: 'Wniosek o udostępnienie map do celów projektowych', registeredDate: iso(-14) },
+        { direction: 'in', kind: 'notice', counterparty: 'RZGW Kraków', number: 'KR.ZZ.2.4210.30.2026', subject: 'Pismo RZGW w sprawie uzgodnienia przebiegu', registeredDate: iso(-17), decision: 'file', caseLink: 'Uzgodnienie przebiegu z Wodami Polskimi' }
       ],
       '2602': [
-        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30) },
-        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3) },
+        { direction: 'in', kind: 'contract', counterparty: 'Wody Polskie RZGW', number: 'UM/2026/041', subject: 'Umowa na dokumentację odcinka III', registeredDate: iso(-188), decision: 'file', files: [F1('umowa-UM-2026-041.pdf', 840)] },
+        { direction: 'in', kind: 'notice', counterparty: 'Wody Polskie RZGW', subject: 'Zawiadomienie o terminie wizji lokalnej', registeredDate: iso(-150), decision: 'file' },
+        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'DO.ZUZ.1.421.8.2026', subject: 'Decyzja o warunkach zabudowy odcinka III', registeredDate: iso(-30), decision: 'file', files: [F1('decyzja-DO-ZUZ-1-421-8.pdf', 560)] },
+        { direction: 'in', kind: 'inquiry', counterparty: 'Wody Polskie RZGW', subject: 'Zapytanie o harmonogram robót', registeredDate: iso(-3), needsAction: true },
         { direction: 'out', kind: 'application', counterparty: 'Starostwo Powiatowe', subject: 'Wniosek o pozwolenie wodnoprawne — odcinek III', registeredDate: iso(-12) }
       ],
       '2604': [
-        { direction: 'in', kind: 'opinion', counterparty: 'Regionalna Dyrekcja Ochrony Środowiska', subject: 'Opinia do karty informacyjnej przedsięwzięcia', registeredDate: iso(-6) },
-        { direction: 'out', kind: 'inquiry', counterparty: 'Spółka Wodna Rudnik', subject: 'Prośba o dane eksploatacyjne pomp', registeredDate: iso(-15) }
+        { direction: 'in', kind: 'opinion', counterparty: 'Regionalna Dyrekcja Ochrony Środowiska', subject: 'Opinia do karty informacyjnej przedsięwzięcia', registeredDate: iso(-6), decision: 'reply', responseDue: iso(-1), files: [F1('opinia-RDOS.pdf', 410)] },
+        { direction: 'out', kind: 'inquiry', counterparty: 'Spółka Wodna Rudnik', subject: 'Prośba o dane eksploatacyjne pomp', registeredDate: iso(-15) },
+        { direction: 'in', kind: 'notice', counterparty: 'Spółka Wodna Rudnik', subject: 'Informacja o wstrzymaniu prac do czasu decyzji zarządu', registeredDate: iso(-48), decision: 'file' }
       ],
       '2605': [
-        { direction: 'in', kind: 'decision', counterparty: 'Urząd Miasta', number: 'GK.6740.4.2026', subject: 'Decyzja zatwierdzająca dokumentację', registeredDate: iso(-45) }
+        { direction: 'in', kind: 'summons', counterparty: 'Urząd Miasta', subject: 'Wezwanie do uzupełnienia dokumentacji wałów', registeredDate: iso(-120), decision: 'reply', responseDue: iso(-100), answer: { off: -104, subject: 'Odp.: Wezwanie do uzupełnienia dokumentacji wałów', kind: 'reply' } },
+        { direction: 'in', kind: 'decision', counterparty: 'Urząd Miasta', number: 'GK.6740.4.2026', subject: 'Decyzja zatwierdzająca dokumentację', registeredDate: iso(-45), decision: 'file' }
       ],
       '2606': [
         { direction: 'out', kind: 'application', counterparty: 'Wody Polskie RZGW', subject: 'Wniosek o uzgodnienie operatu wodnoprawnego', registeredDate: iso(-4) },
-        { direction: 'in', kind: 'summons', counterparty: 'Gmina Wąwolnica', subject: 'Wezwanie do uzupełnienia danych o osadach', registeredDate: iso(-2), needsAction: true }
+        { direction: 'in', kind: 'summons', counterparty: 'Gmina Wąwolnica', subject: 'Wezwanie do uzupełnienia danych o osadach', registeredDate: iso(-2), decision: 'reply', responseDue: iso(2), files: [F1('wezwanie-osady.pdf', 190)] },
+        { direction: 'in', kind: 'decision', counterparty: 'RDOŚ Kraków', number: 'OO.4210.12', subject: 'Decyzja o środowiskowych uwarunkowaniach (projekt)', registeredDate: iso(-33), decision: 'file', caseLink: 'Decyzja środowiskowa' }
       ],
       '2607': [
-        { direction: 'in', kind: 'inquiry', counterparty: 'Zarząd Dróg Powiatowych', subject: 'Zapytanie o przepustowość istniejącego przepustu', registeredDate: iso(-5) }
+        { direction: 'in', kind: 'inquiry', counterparty: 'Zarząd Dróg Powiatowych', subject: 'Zapytanie o przepustowość istniejącego przepustu', registeredDate: iso(-5), needsAction: true, ownerId: 3 }
+      ],
+      '2608': [
+        { direction: 'in', kind: 'decision', counterparty: 'Wody Polskie RZGW', number: 'KR.ZZŚ.3.421.5.2025', subject: 'Pozwolenie wodnoprawne na przebudowę jazu', registeredDate: iso(-130), decision: 'file', files: [F1('pozwolenie-wodnoprawne-jaz.pdf', 1250)] },
+        { direction: 'out', kind: 'application', counterparty: 'Gmina Kamionka', subject: 'Przekazanie dokumentacji wykonawczej jazu', registeredDate: iso(-84) }
+      ],
+      '2610': [
+        { direction: 'in', kind: 'notice', counterparty: 'Wody Polskie RZGW', subject: 'Zawiadomienie o rozpoczęciu postępowania lokalizacyjnego', registeredDate: iso(-40), decision: 'file', files: [F1('zawiadomienie-lokalizacja.pdf', 260)] },
+        { direction: 'in', kind: 'summons', counterparty: 'RDOŚ Rzeszów', number: 'WOOŚ.4220.18.2026', subject: 'Wezwanie do uzupełnienia karty informacyjnej polderu', registeredDate: iso(-7), decision: 'reply', responseDue: iso(9), files: [F1('wezwanie-karta-polder.pdf', 330), F1('zalacznik-mapa-zalewu.pdf', 2100)] },
+        { direction: 'in', kind: 'inquiry', counterparty: 'Starostwo Powiatowe', subject: 'Zapytanie o przebieg obwałowania', registeredDate: iso(-1), needsAction: true },
+        { direction: 'out', kind: 'application', counterparty: 'RDOŚ Rzeszów', subject: 'Wniosek o wydanie decyzji środowiskowej', registeredDate: iso(-55) }
+      ],
+      '2611': [
+        { direction: 'in', kind: 'contract', counterparty: 'Zarząd Zlewni', number: 'ZZ/2026/012', subject: 'Zlecenie ekspertyzy stanu technicznego zapory', registeredDate: iso(-198), decision: 'file' },
+        { direction: 'out', kind: 'reply', counterparty: 'Zarząd Zlewni', subject: 'Przekazanie ekspertyzy', registeredDate: iso(-6) }
+      ],
+      '2612': [
+        { direction: 'in', kind: 'notice', counterparty: 'Wojewoda', subject: 'Zawiadomienie o dofinansowaniu odbudowy po powodzi', registeredDate: iso(-30), decision: 'file', files: [F1('zawiadomienie-dofinansowanie.pdf', 180)] },
+        { direction: 'in', kind: 'summons', counterparty: 'Gmina Nowa Wieś', subject: 'Wezwanie do przedstawienia harmonogramu odbudowy', registeredDate: iso(-1), needsAction: true, ownerId: 3, files: [F1('wezwanie-harmonogram.pdf', 140)] }
       ]
     };
     updateWorkspace(function (workspace) {
@@ -2914,11 +3001,22 @@
         var rows = demoMail[project.code];
         if (!rows || list.some(function (e) { return e.projectId === project.id; })) return;
         rows.forEach(function (row) {
-          var res = Mail.create(list, project.id, row, { now: new Date() });
-          if (res.valid) {
-            list = res.entries;
-            var made = list[list.length - 1];
-            if (made && row.registeredDate) made.createdAt = row.registeredDate + 'T09:00:00.000Z';
+          var input = Object.assign({}, row, { ownerId: row.ownerId != null ? demoPersonId(row.ownerId) : '' });
+          delete input.caseLink; delete input.answer; delete input.decision;
+          var res = Mail.create(list, project.id, input, { now: new Date() });
+          if (!res.valid) return;
+          list = res.entries;
+          var made = list[list.length - 1];
+          var when = new Date(row.registeredDate + 'T09:00:00');
+          made.createdAt = row.registeredDate + 'T09:00:00.000Z';
+          made.history = [{ at: row.registeredDate, by: '', text: 'Zarejestrowano' }];
+          if (row.decision) {
+            var dec = Mail.decide(list, made.id, row.decision, { responseDue: row.responseDue }, { now: when });
+            if (dec.valid) { list = dec.entries; made = dec.entry; }
+          }
+          if (row.answer) {
+            var ans = Mail.create(list, project.id, { direction: 'out', kind: row.answer.kind || 'reply', counterparty: row.counterparty, subject: row.answer.subject, registeredDate: iso(row.answer.off), replyTo: made.id }, { now: new Date() });
+            if (ans.valid) list = ans.entries;
           }
         });
       });
@@ -2942,7 +3040,21 @@
         { who: 1, from: -120, to: -120, kind: 'leave', note: 'Urlop na żądanie', onDemand: true },
         { who: 1, from: -60, to: -59, kind: 'leave', note: 'Termin złożenia projektu', state: 'rejected', reason: 'termin złożenia projektu 2601' },
         { who: 2, from: 17, to: 21, kind: 'leave', note: 'Urlop', state: 'pending' },
-        { who: 3, from: 28, to: 29, kind: 'leave', note: 'Dwa dni wolne', state: 'pending' }
+        { who: 3, from: 28, to: 29, kind: 'leave', note: 'Dwa dni wolne', state: 'pending' },
+        // Pół roku wstecz i pół roku w przód: urlopy, szkolenia i zwolnienia, żeby Plan i Kalendarz miały pełny obraz.
+        { who: 0, from: -170, to: -166, kind: 'leave', note: 'Urlop wiosenny' },
+        { who: 4, from: -140, to: -138, kind: 'training', note: 'Szkolenie z programu do obliczeń' },
+        { who: 5, from: -100, to: -90, kind: 'leave', note: 'Urlop wypoczynkowy' },
+        { who: 6, from: -85, to: -80, kind: 'leave', note: 'Urlop letni' },
+        { who: 7, from: -40, to: -39, kind: 'sick', note: 'Zwolnienie lekarskie' },
+        { who: 0, from: -12, to: -10, kind: 'training', note: 'Konferencja branżowa' },
+        { who: 4, from: 33, to: 37, kind: 'leave', note: 'Urlop listopadowy' },
+        { who: 6, from: 60, to: 64, kind: 'leave', note: 'Urlop świąteczny' },
+        { who: 2, from: 75, to: 86, kind: 'leave', note: 'Urlop zimowy' },
+        { who: 3, from: 100, to: 102, kind: 'training', note: 'Szkolenie z programu do obliczeń' },
+        { who: 5, from: 120, to: 126, kind: 'leave', note: 'Urlop wypoczynkowy' },
+        { who: 0, from: 150, to: 154, kind: 'leave', note: 'Urlop wiosenny' },
+        { who: 7, from: 25, to: 26, kind: 'leave', note: 'Opieka nad dzieckiem', state: 'pending' }
       ];
       var list = (workspace.absences || []).slice();
       rows.forEach(function (r) {
@@ -2964,6 +3076,23 @@
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
     });
+    // Zlecenia do wykonania (Skrzynka i ekran Zleceń): jedno zaległe, dwa świeże.
+    updateWorkspace(function (workspace) {
+      if ((workspace.orders || []).length) return workspace;
+      var byCode = function (code) { return workspace.projects.filter(function (pr) { return pr.code === code; })[0]; };
+      var rows = [
+        { by: 0, to: 1, code: '2602', kind: 'sign', text: 'Podpisać aneks do umowy na odcinek III', ago: 4 },
+        { by: 1, to: 2, code: '2606', kind: 'send', text: 'Wysłać wniosek o uzgodnienie operatu wodnoprawnego', ago: 1 },
+        { by: 2, to: 0, code: '2607', kind: 'pay', text: 'Opłacić opłatę skarbową za pozwolenie wodnoprawne', ago: 2 }
+      ];
+      var list = workspace.orders || [];
+      rows.forEach(function (r) {
+        var project = byCode(r.code);
+        var res = E.Orders.create(list, { createdBy: demoPersonId(r.by), projectId: project ? project.id : null, steps: [{ kind: r.kind, text: r.text, assigneeId: demoPersonId(r.to) }] }, workspace.people || [], new Date(Date.now() - r.ago * 86400000));
+        if (res.valid) list = res.list;
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, orders: list });
+    });
     // Sprawy w toku (wniosek złożony, materiał zamówiony): licznik dni od złożenia.
     updateWorkspace(function (workspace) {
       if ((workspace.cases || []).length) return workspace;
@@ -2981,7 +3110,18 @@
         { code: '2602', who: 7, name: 'Zamówienie mapy sytuacyjno-wysokościowej', org: 'Geodeta powiatowy', at: -4, calls: [-1] },
         { code: '2606', who: 6, name: 'Dane hydrologiczne', org: 'IMGW-PIB · wniosek', at: -30, calls: [] },
         { code: '2602', who: 3, name: 'Akceptacja wariantu koncepcji przez klienta', org: 'Wody Polskie RZGW', at: -6, calls: [] },
-        { code: '2601', who: -1, name: 'Zgoda właściciela działki 112/4', org: 'osoba prywatna', at: -3, calls: [] }
+        { code: '2601', who: -1, name: 'Zgoda właściciela działki 112/4', org: 'osoba prywatna', at: -3, calls: [] },
+        { code: '2610', who: 1, name: 'Decyzja środowiskowa polderu', org: 'RDOŚ Rzeszów · WOOŚ.4220.18', at: -38, calls: [-20, -9], letters: [-7] },
+        { code: '2610', who: 6, name: 'Dane hydrologiczne dla polderu', org: 'IMGW-PIB · wniosek', at: -14, calls: [-6] },
+        { code: '2612', who: 4, name: 'Zgoda zarządcy wałów', org: 'Zarząd Zlewni', at: -11, calls: [] },
+        { code: '2612', who: 3, name: 'Wypis z rejestru gruntów', org: 'Starostwo · zamówiono', at: -26, calls: [-14] },
+        { code: '2603', who: 0, name: 'Warunki techniczne od gestora sieci', org: 'PGE Dystrybucja', at: -1, calls: [] },
+        // Zakończone sprawy z ostatniego półrocza (historia).
+        { code: '2602', who: 1, name: 'Decyzja o warunkach zabudowy', org: 'Wody Polskie RZGW', at: -75, calls: [-60, -45], closed: -31, note: 'Decyzja DO.ZUZ.1.421.8.2026 odebrana' },
+        { code: '2605', who: 4, name: 'Zatwierdzenie dokumentacji', org: 'Urząd Miasta', at: -130, calls: [-100], closed: -45, note: 'Decyzja GK.6740.4.2026' },
+        { code: '2608', who: 1, name: 'Pozwolenie wodnoprawne na jaz', org: 'Wody Polskie RZGW', at: -230, calls: [-200, -170], closed: -130, note: 'Pozwolenie odebrane' },
+        { code: '2604', who: 2, name: 'Opinia RDOŚ do karty informacyjnej', org: 'RDOŚ Kraków', at: -60, calls: [-40], closed: -6, note: 'Opinia otrzymana' },
+        { code: '2606', who: 6, name: 'Pomiary batymetryczne', org: 'Geodeta · zlecenie', at: -62, calls: [], closed: -40, note: 'Dane odebrane' }
       ];
       var list = [];
       specs.forEach(function (sp) {
@@ -2995,8 +3135,27 @@
           .concat((sp.letters || []).map(function (off) { return { off: off, kind: 'letter', note: 'Wezwanie do uzupełnienia wniosku' }; }))
           .sort(function (x, y) { return x.off - y.off; });
         events.forEach(function (ev) { list = E.Cases.addEvent(list, res.item.id, { kind: ev.kind, note: ev.note, by: who }, demoDate(ev.off)); });
+        if (sp.closed != null) list = E.Cases.close(list, res.item.id, demoDate(sp.closed), sp.note || '');
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, cases: list });
+    });
+    // Pisma dołączone do spraw (decyzja „W sprawie”): łączymy po temacie pisma i nazwie sprawy.
+    updateWorkspace(function (workspace) {
+      var mailList2 = (workspace.mail || []).slice();
+      var changed = false;
+      Object.keys(demoMail).forEach(function (code) {
+        var project = workspace.projects.filter(function (pr) { return pr.code === code; })[0];
+        if (!project) return;
+        demoMail[code].filter(function (row) { return row.caseLink; }).forEach(function (row) {
+          var c = (workspace.cases || []).filter(function (x) { return x.projectId === project.id && x.name === row.caseLink; })[0];
+          var idx = -1;
+          mailList2.forEach(function (m, i) { if (m.projectId === project.id && m.subject === row.subject) idx = i; });
+          if (!c || idx < 0) return;
+          var res = Mail.decide(mailList2, mailList2[idx].id, 'case', { caseId: c.id }, { now: new Date(row.registeredDate + 'T10:00:00') });
+          if (res.valid) { mailList2 = res.entries; changed = true; }
+        });
+      });
+      return changed ? Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, mail: mailList2 }) : workspace;
     });
     // Zadania wywołane pismami: łączymy po temacie pisma (task.mailId), żeby widać było pismo → zadanie → czas.
     updateWorkspace(function (workspace) {
@@ -3020,8 +3179,8 @@
       return changed ? Object.assign({}, workspace, { projects: projects }) : workspace;
     });
     // Demonstracyjne wartości umów i czas pracy z ostatnich tygodni (do Analizy).
-    var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000, '2606': 240000, '2607': 95000 };
-    var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02, '2606': 0.84, '2607': 1.1 };
+    var demoValues = { '2601': 180000, '2602': 420000, '2603': 260000, '2604': 310000, '2605': 150000, '2606': 240000, '2607': 95000, '2608': 210000, '2609': 140000, '2610': 380000, '2611': 85000, '2612': 270000 };
+    var demoFactor = { '2601': 0.88, '2602': 1.38, '2603': 0.55, '2604': 1.04, '2605': 1.02, '2606': 0.84, '2607': 1.1, '2608': 0.97, '2609': 0.6, '2610': 1.12, '2611': 0.92, '2612': 1.05 };
     updateWorkspace(function (workspace) {
       // Wpisy przykładowe (id e-demo-*) generujemy na nowo; wpisy użytkownika zostają.
       var ownEntries = (workspace.entries || []).filter(function (e) { return String(e.id).indexOf('e-demo-') !== 0; });
@@ -3037,40 +3196,59 @@
         if (day.getDay() !== 0 && day.getDay() !== 6) workdays.unshift(new Date(day));
       }
       var counter = 0;
+      var busy = {};
+      var taskLogged = {};
+      // Oś czasu pracy: etap po etapie od dnia założenia projektu do dziś (do ~roku wstecz), deterministycznie.
       projectsOut.forEach(function (project) {
         var factor = demoFactor[project.code];
         if (factor === undefined) return;
+        var row = DEMO.filter(function (r) { return r.code === project.code; })[0];
         var team = Team.projectPeople(project.team);
-        if (!team.length) return;
-        var plan = [];
-        project.stages.forEach(function (stage) {
-          var share = stage.status === 'done' ? factor : (stage.status === 'working' ? 0.45 * factor : 0);
-          if (share > 0) plan.push({ stage: stage, hours: Math.round((Number(stage.hours) || 0) * share) });
-        });
-        var perDay = 6 * Math.min(3, team.length);
-        var needDays = plan.reduce(function (t, row) { return t + Math.max(1, Math.ceil(row.hours / perDay)); }, 0);
-        var cursor = Math.max(0, workdays.length - needDays);
-        plan.forEach(function (row) {
-          var days = Math.max(1, Math.ceil(row.hours / perDay));
-          var left = row.hours;
-          for (var d = 0; d < days && cursor < workdays.length; d += 1, cursor += 1) {
-            var todayHours = Math.min(left, perDay);
-            var persons = Math.min(team.length, Math.max(1, Math.round(todayHours / 6)));
-            for (var k = 0; k < persons && todayHours > 0; k += 1) {
-              var hours = Math.min(6, todayHours / (persons - k));
-              hours = Math.round(hours * 4) / 4;
-              if (hours <= 0) continue;
-              var start = new Date(workdays[cursor]); start.setHours(8 + k, 0, 0, 0);
-              var end = new Date(start.getTime() + hours * 3600000);
+        if (!row || !team.length || row.status === 'planned') return;
+        var seed = Number(project.code) % 97 + 13;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+        var base = new Date(); base.setHours(0, 0, 0, 0);
+        project.stages.forEach(function (stage, i) {
+          if (stage.status !== 'done' && stage.status !== 'working') return;
+          var from = row.start + i * row.step;
+          var to = stage.status === 'done' ? row.start + (i + 1) * row.step : -1;
+          if (to > -1) to = -1;
+          var days = [];
+          for (var off = Math.max(from, -330); off <= to; off += 1) {
+            var day = new Date(base.getTime()); day.setDate(day.getDate() + off);
+            if (day.getDay() !== 0 && day.getDay() !== 6) days.push(day);
+          }
+          if (!days.length) return;
+          var hours = Math.round((Number(stage.hours) || 0) * (stage.status === "done" ? factor : 0.55 * factor) * 1.4);
+          var avg = hours / days.length;
+          var tasks = stage.tasks || [];
+          days.forEach(function (day) {
+            if (rnd() < 0.14) return;
+            var left = avg * (0.4 + rnd() * 1.3);
+            while (left >= 1) {
+              var who = team[Math.floor(rnd() * team.length)];
+              var chunk = Math.min(left, Math.round((2 + rnd() * 4) * 4) / 4);
+              var key = who + '|' + day.getTime();
+              var used = busy[key] || 0;
+              left -= chunk;
+              if (used + chunk > 8.25) continue;
+              busy[key] = used + chunk;
+              var start = new Date(day.getTime() + (8 + used) * 3600000);
+              var task = tasks.length && rnd() < 0.4 ? tasks[Math.floor(rnd() * tasks.length)] : null;
+              // Czas przypinamy do zadania tylko do jego oszacowania, żeby plan nie pokazywał przekroczeń, których nie ma w scenariuszu.
+              if (task) {
+                var logKey = project.id + '|' + task.id;
+                if (task.status === 'todo' || (taskLogged[logKey] || 0) + chunk > (Number(task.estimate) || 0) * 0.8) task = null;
+                else taskLogged[logKey] = (taskLogged[logKey] || 0) + chunk;
+              }
               counter += 1;
               entriesOut.push({
-                id: 'e-demo-' + counter, personId: team[(k + d) % team.length], projectId: project.id, stageId: row.stage.id, taskId: (row.stage.tasks || []).length && counter % 2 === 0 ? row.stage.tasks[counter % row.stage.tasks.length].id : '',
-                label: Model.describeStage(row.stage).name, start: start.toISOString(), end: end.toISOString(), note: notes[counter % notes.length], source: 'manual',
-                updatedAt: start.toISOString()
+                id: 'e-demo-' + counter, personId: who, projectId: project.id, stageId: stage.id, taskId: task ? task.id : '',
+                label: task ? task.name : Model.describeStage(stage).name, start: start.toISOString(), end: new Date(start.getTime() + chunk * 3600000).toISOString(),
+                note: notes[counter % notes.length], source: 'manual', updatedAt: start.toISOString()
               });
-              left -= hours; todayHours -= hours;
             }
-          }
+          });
         });
       });
       // Praca nad zadaniami z pism (kilkadziesiąt godzin): wpisy przypięte do zadania.
@@ -3130,59 +3308,6 @@
         });
       }
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, projects: projectsOut, entries: ownEntries.concat(entriesOut) });
-    });
-    // Archiwalne pomiary czasu: praca sprzed okna 10 tygodni (do ok. roku wstecz), żeby Czas, Analiza i Plan miały historię.
-    var notesArch = ['', 'Zebranie danych', 'Obliczenia hydrauliczne', 'Rysunki i przekroje', '', 'Uzgodnienia', 'Opis techniczny', '', 'Wizja lokalna', 'Poprawki po uwagach'];
-    var demoArchive = [
-      { code: '2605', from: 400, to: 76, per: 1.7, chunk: [3, 7] },
-      { code: '2604', from: 250, to: 80, per: 1.1, chunk: [2, 6] },
-      { code: '2602', from: 210, to: 76, per: 1.4, chunk: [3, 7] },
-      { code: '2601', from: 150, to: 76, per: 1.2, chunk: [2, 6] },
-      { code: '2606', from: 110, to: 76, per: 1.0, chunk: [2, 5] }
-    ];
-    updateWorkspace(function (workspace) {
-      var own = (workspace.entries || []).filter(function (e) { return String(e.id).indexOf('e-demo-arch-') !== 0; });
-      var byCode = {};
-      workspace.projects.forEach(function (project) { byCode[project.code] = project; });
-      var out = [];
-      var seq = 0;
-      var busy = {};
-      demoArchive.forEach(function (row) {
-        var project = byCode[row.code];
-        if (!project) return;
-        var team = Team.projectPeople(project.team);
-        var stages = (project.stages || []).filter(function (st) { return st.status === 'done'; });
-        if (!team.length) return;
-        if (!stages.length) stages = (project.stages || []).slice(0, 2);
-        if (!stages.length) return;
-        var seed = Number(row.code) % 97 + 13;
-        function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
-        var days = [];
-        for (var back = row.from; back >= row.to; back -= 1) {
-          var day = new Date(); day.setDate(day.getDate() - back); day.setHours(0, 0, 0, 0);
-          if (day.getDay() !== 0 && day.getDay() !== 6) days.push(day);
-        }
-        days.forEach(function (day, di) {
-          var stage = stages[Math.min(stages.length - 1, Math.floor(di / days.length * stages.length))];
-          var tasks = (stage.tasks || []);
-          var count = rnd() < row.per - Math.floor(row.per) ? Math.floor(row.per) + 1 : Math.floor(row.per);
-          if (rnd() < 0.18) count = 0;
-          for (var k = 0; k < count; k += 1) {
-            var who = team[Math.floor(rnd() * team.length)];
-            var key = who + '|' + day.getTime();
-            var used = busy[key] || 0;
-            var hours = Math.round((row.chunk[0] + rnd() * (row.chunk[1] - row.chunk[0])) * 4) / 4;
-            if (used + hours > 8.5) continue;
-            busy[key] = used + hours;
-            var start = new Date(day.getTime() + (8 + used) * 3600000);
-            var task = tasks.length && rnd() < 0.55 ? tasks[Math.floor(rnd() * tasks.length)] : null;
-            seq += 1;
-            out.push({ id: 'e-demo-arch-' + seq, personId: who, projectId: project.id, stageId: stage.id, taskId: task ? task.id : '', label: task ? task.name : Model.describeStage(stage).name,
-              start: start.toISOString(), end: new Date(start.getTime() + hours * 3600000).toISOString(), note: notesArch[seq % notesArch.length], source: 'manual', updatedAt: start.toISOString() });
-          }
-        });
-      });
-      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, entries: own.concat(out) });
     });
     // Korekty godzin zarządu (np. dodatkowe uzgodnienia) — widać je w budżecie etapu i w Analizie.
     var demoAdjust = [
