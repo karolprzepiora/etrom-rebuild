@@ -139,11 +139,7 @@
           return n ? { cls: 'is-heat' + Math.min(3, n), tip: n + ' ' + E.Format.count(n, 'osoba nieobecna', 'osoby nieobecne', 'osób nieobecnych') } : null;
         }, Cal.isoOf(now)));
       }
-      return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [D.el('ul', { class: 'lv-legend lv-legend--row' }, [
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h1' }), D.el('span', { text: '1 osoba nieobecna' })]),
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h2' }), D.el('span', { text: '2 osoby' })]),
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h3' }), D.el('span', { text: '3 lub więcej' })])
-      ])])]);
+      return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legendBar('team')])]);
     }
     var mine = list.filter(function (a) { return a.personId === me.id; });
     var sel = lv.sel || null;

@@ -140,9 +140,9 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .cv-wcol__h { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-sm); }
 .cv-year { display: grid; gap: var(--space-3); }
 .cv-year .lv-months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.lv-day.is-heat1 { background: color-mix(in srgb, var(--warn) 14%, var(--sheet)); }
-.lv-day.is-heat2 { background: color-mix(in srgb, var(--warn) 30%, var(--sheet)); }
-.lv-day.is-heat3 { background: color-mix(in srgb, var(--warn) 55%, var(--sheet)); color: var(--ink); }
+.lv-day.is-heat1 { background: color-mix(in srgb, var(--leave) 20%, var(--sheet)); }
+.lv-day.is-heat2 { background: color-mix(in srgb, var(--leave) 48%, var(--sheet)); }
+.lv-day.is-heat3 { background: var(--leave); color: #fff; }
 .lv-day.has-dl { position: relative; }
 .lv-day.has-dl::after, .cv-dl-dot { content: ""; position: absolute; right: 2px; top: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .cv-dl-dot { position: static; display: inline-block; }

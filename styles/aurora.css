@@ -1953,3 +1953,8 @@ button.cb-bar { cursor: pointer; }
 .cb-lgbody { align-content: start; padding: 6px 4px 20px; }
 .cb-sy.is-dl { --k: var(--cb-dl, light-dark(#334155, #cbd5e1)); } .cb-sy.is-meet { --k: var(--cb-meet, light-dark(#c4811a, #e7a947)); }
 .lv-foot > .cb-lg { flex: 1 1 100%; }
+
+/* Zespół w roku: skala nieobecnych w kolorze urlopu (trzy nasycenia), te same miniatury w legendzie */
+.cb-sy.is-n1 { background: color-mix(in srgb, var(--leave) 20%, var(--sheet)); }
+.cb-sy.is-n2 { background: color-mix(in srgb, var(--leave) 48%, var(--sheet)); }
+.cb-sy.is-n3 { background: var(--leave); color: #fff; }

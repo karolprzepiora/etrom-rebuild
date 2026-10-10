@@ -122,6 +122,9 @@
     dl: { c: 'is-ul is-dl', t: '12', short: 'termin', name: 'Termin lub zadanie', desc: 'karteczka w kolorze projektu' },
     trip: { c: 'is-ul is-trip', t: '12', short: 'wyjazd', name: 'Wyjazd', desc: 'teren' },
     meet: { c: 'is-ul is-meet', t: '12', short: 'spotkanie', name: 'Spotkanie', desc: 'spotkanie, szkolenie, inne' },
+    n1: { c: 'is-n1', t: '1', short: '1 osoba', name: '1 osoba', desc: 'jedna osoba nieobecna tego dnia' },
+    n2: { c: 'is-n2', t: '2', short: '2 osoby', name: '2 osoby', desc: 'dwie osoby nieobecne' },
+    n3: { c: 'is-n3', t: '3', short: '3 lub więcej', name: '3 lub więcej', desc: 'dni, w których obsada może być za mała' },
     ok: { c: 'is-ok', t: '8', short: 'norma', name: 'Norma', desc: '8 godzin i więcej' },
     warn: { c: 'is-warn', t: '7', short: 'do godziny brakuje', name: 'Prawie', desc: 'brakuje do godziny' },
     bad: { c: 'is-bad', t: '4', short: 'brakuje więcej', name: 'Brakuje', desc: 'ponad godzinę poniżej normy' },
@@ -132,6 +135,7 @@
   var GROUPS = {
     calendar: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }, { title: 'Wydarzenia', items: ['dl', 'trip', 'meet'] }],
     leave: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }],
+    team: [{ title: 'Nieobecnych osób', items: ['n1', 'n2', 'n3'] }, { title: 'Dni', items: ['hol', 'today'] }],
     time: [{ title: 'Godziny dnia', items: ['ok', 'warn', 'bad'] }, { title: 'Nieobecności', items: ['tLeave', 'tSick'] }, { title: 'Dni', items: ['tHol', 'today'] }]
   };
 
@@ -151,7 +155,7 @@
     return D.el('div', { class: 'cb-lgbody' }, cols);
   }
 
-  /** Legenda pod kalendarzem: jedna linia grup + przycisk „Legenda” z objaśnieniami. kind: calendar | leave | time. */
+  /** Legenda pod kalendarzem: jedna linia grup + przycisk „Legenda” z objaśnieniami. kind: calendar | leave | team | time. */
   function legendBar(kind) {
     var groups = (GROUPS[kind] || GROUPS.calendar).map(function (g) {
       return D.el('div', { class: 'cb-lg__g' }, [D.el('i', { text: g.title })].concat(g.items.map(function (k) {
