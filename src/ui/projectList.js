@@ -24,7 +24,7 @@
   var COLUMNS = [
     { key: 'client', label: 'Zamawiający (pod nazwą)', optional: true },
     { key: 'team', label: 'Lider', optional: true },
-    { key: 'time', label: 'Czas umowy', optional: true },
+    { key: 'time', label: 'Postęp i czas umowy', optional: true },
     { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline', optional: true },
     { key: 'tasks', label: 'Sygnały', optional: true }
   ];
@@ -202,7 +202,7 @@
       { key: 'code', label: 'Nr', sort: 'code' },
       { key: 'name', label: 'Projekt', sort: 'name' },
       hidden.indexOf('team') < 0 ? { key: 'team', label: 'Lider' } : null,
-      hidden.indexOf('time') < 0 ? { key: 'time', label: 'Czas umowy' } : null,
+      hidden.indexOf('time') < 0 ? { key: 'time', label: 'Postęp i czas umowy' } : null,
       hidden.indexOf('deadline') < 0 ? { key: 'deadline', label: 'Najbliższy termin', sort: 'deadline' } : null,
       hidden.indexOf('tasks') < 0 ? { key: 'tasks', label: 'Sygnały' } : null
     ].filter(Boolean);
@@ -219,8 +219,8 @@
       on: { change: function (event) { ctx.actions.selectProjects([project.id], event.target.checked); } }
     });
     var cells = {
-      code: D.el('span', { class: 'pf-codecell' }, [D.el('span', { class: 'pf-num pf-num--pill t-num' }, [project.code])]),
-      time: timeRibbon(project, now) || D.el('span', { class: 't-muted', text: '—' }),
+      code: D.el('span', { class: 'pf-codecell' }, [numeral(project)]),
+      time: meter(project, now),
       name: nameCell(project, health, hidden, ctx),
       team: leaderCell(project, ctx),
       deadline: dueCell(project, ctx, now),
@@ -397,18 +397,43 @@
     ]);
   }
 
+  /** Numer projektu jako typografia: rok cienko, numer w roku grubo (2603 → 26 03). */
+  function numeral(project, className) {
+    var m = /^(\d{2})(\d{2})$/.exec(String(project.code || ''));
+    return D.el('span', { class: (className || 'pf-num') + ' pf-num--num t-num', attrs: { 'aria-label': 'Projekt ' + project.code } },
+      m ? [D.el('i', { text: m[1] }), D.el('b', { text: m[2] })] : [D.el('b', { text: String(project.code || '') })]);
+  }
+
+  /** Pasek: postęp prac, kreskowana luka do upływu czasu umowy i znacznik „dziś” na osi umowy. */
+  function meter(project, now) {
+    var pct = Math.max(0, Math.min(100, Math.round(Progress.projectProgress(project).percent)));
+    var start = Date.parse(project.createdAt || '');
+    var end = Date.parse(project.deadline || '');
+    var span = Number.isFinite(start) && Number.isFinite(end) && end > start;
+    var elapsed = span ? Math.max(0, Math.min(100, (now.getTime() - start) / (end - start) * 100)) : null;
+    var closed = project.status === 'done';
+    var gap = span && !closed && elapsed > pct;
+    return D.el('div', {
+      class: 'kb' + (closed ? ' is-closed' : ''),
+      attrs: { role: 'img', 'aria-label': 'Postęp ' + pct + '%' + (span ? ', upłynęło ' + Math.round(elapsed) + '% czasu umowy' : ''), 'data-tooltip': 'Postęp ' + pct + '%' + (span ? ' · upłynęło ' + Math.round(elapsed) + '% czasu umowy' : '') }
+    }, [
+      D.el('span', { class: 'kb__fill', style: { width: pct + '%' } }),
+      gap ? D.el('span', { class: 'kb__gap', style: { left: pct + '%', width: (elapsed - pct) + '%' } }) : null,
+      span && !closed ? D.el('span', { class: 'kb__now', style: { left: elapsed + '%' } }) : null
+    ]);
+  }
+
   function card(project, ctx, now) {
     var health = Insight.health(project, now);
     var risk = health.level === 'alarm' || health.level === 'warning';
     var done = project.status === 'done';
-    var team = Team.projectPeople(project.team).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
-    var leaderId = project.team && project.team.leader;
-    team.sort(function (a, b) { return (b.id === leaderId) - (a.id === leaderId); });
+    var item = done ? null : nearest(project, ctx, now);
 
     return D.el('article', {
-      class: 'pcard pf-card pc project level-' + health.level + (done ? ' is-closed' : ''),
+      class: 'pcard kc level-' + health.level + (done ? ' is-closed' : ''),
       dataset: { projectCode: project.code, projectId: project.id },
       style: E.Identity.hueStyle(project.code),
+      attrs: { title: risk ? health.reasons[0].text : null },
       on: {
         click: function (event) {
           if (event.target.closest('a, button, input, label, [role="menu"]')) return;
@@ -416,24 +441,16 @@
         }
       }
     }, [
-      D.el('div', { class: 'pc__top' }, [
-        D.el('span', { class: 'pc__num t-num', text: '#' + project.code }),
-        risk ? D.el('span', { class: 'pc__state pc__state--' + health.level }, [Sig.datum(health.level, { size: 12, label: false }), D.el('span', { text: health.level === 'alarm' ? 'Alarm' : 'Uwaga' })]) : (done ? D.el('span', { class: 'pc__state pc__state--done', text: 'Zakończony' }) : null),
-        D.el('span', { class: 'pcard__spacer' }),
-        moreButton(project, ctx.actions, 'pcard__more')
+      D.el('div', { class: 'kc__top' }, [
+        numeral(project, 'kc__num'),
+        D.el('span', { class: 'kc__spacer' }),
+        item ? D.el('span', { class: 'kc__due t-num' + (item.overdue ? ' is-overdue' : '') }, [F.date(item.date)]) : null,
+        moreButton(project, ctx.actions, 'pcard__more kc__more')
       ]),
-      D.el('h3', { class: 'pc__name' }, [
-        D.el('a', { class: 'project-link clamp-2', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id }, dataset: { projectTitle: project.id } })
+      D.el('h3', { class: 'kc__name' }, [
+        D.el('a', { class: 'project-link', text: project.name, attrs: { href: projectHref(project), 'data-fk': 'open-' + project.id, title: project.name }, dataset: { projectTitle: project.id } })
       ]),
-      D.el('p', { class: 'pc__client truncate', text: project.client || 'Bez zamawiającego' }),
-      risk ? D.el('p', { class: 'pc__reason' }, [E.Flow.stateButton(project, ctx, { text: health.reasons[0].text + (health.reasons.length > 1 ? ' · +' + (health.reasons.length - 1) : ''), className: 'pf-reason pf-reason--' + health.level })]) : null,
-      timeRibbon(project, now),
-      D.el('div', { class: 'pc__foot' }, [
-        team.length ? Avatar.avatarStack(team, { max: 4, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Bez zespołu' }),
-        D.el('span', { class: 'pcard__spacer' }),
-        signalsCell(project, ctx, now),
-        dueCell(project, ctx, now)
-      ])
+      meter(project, now)
     ]);
   }
 
@@ -441,9 +458,23 @@
     var now = new Date();
     var groupBy = ctx.state.prefs.groupBy || 'none';
     if (groupBy === 'none') {
-      var pins = (ctx.state.prefs.pinned || []);
-      var ordered = visible.filter(function (p) { return pins.indexOf(p.id) >= 0; }).concat(visible.filter(function (p) { return pins.indexOf(p.id) < 0; }));
-      return D.el('div', { class: 'pcard-grid' }, ordered.map(function (project) { return card(project, ctx, now); }));
+      var byYear = ctx.state.filters.sort === 'code';
+      if (!byYear) return D.el('div', { class: 'pcard-grid' }, visible.map(function (project) { return card(project, ctx, now); }));
+      var years = [];
+      var buckets = {};
+      visible.forEach(function (p) {
+        var m = /^(\d{2})\d{2}$/.exec(String(p.code || ''));
+        var y = m ? m[1] : '—';
+        if (!buckets[y]) { buckets[y] = []; years.push(y); }
+        buckets[y].push(p);
+      });
+      return D.el('div', { class: 'pf-cardgroups kc-years' }, years.map(function (y) {
+        var n = buckets[y].length;
+        return D.el('section', { class: 'kc-year' }, [
+          D.el('div', { class: 'kc-year__head' }, [D.el('b', { text: y }), D.el('em', { text: n + ' ' + (n === 1 ? 'projekt' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'projekty' : 'projektów') })]),
+          D.el('div', { class: 'pcard-grid' }, buckets[y].map(function (project) { return card(project, ctx, now); }))
+        ]);
+      }));
     }
     var groups = {};
     visible.forEach(function (p) {
@@ -671,6 +702,8 @@
     projectHref: projectHref,
     timeRibbon: timeRibbon,
     dueCell: dueCell,
+    meter: meter,
+    numeral: numeral,
     signalsCell: signalsCell,
     projectMenuItems: projectMenuItems,
     PAGE_SIZE: PAGE_SIZE

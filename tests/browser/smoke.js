@@ -595,6 +595,11 @@ async function main() {
     check('widok kart: jedna karta na projekt, bez paska postępu',
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === 0, JSON.stringify(cardsCheck));
 
+    check('kafle K1: numer jako typografia, nazwa i pasek, sekcja roku, bez grafiki rodzaju',
+      await evaluate('return document.querySelectorAll(".pcard.kc .pf-num--num").length === window.ETROM.app.store.getState().workspace.projects.length && document.querySelectorAll(".pcard.kc .kb").length === document.querySelectorAll(".pcard.kc").length && document.querySelector(".kc-year__head b").textContent === "26" && !document.querySelector(".kind-art, .kind-icon") && document.querySelector(".pcard.kc .pf-num--num").textContent.length === 4;'));
+    check('kafle K1: kolor projektu nie wypełnia kafla (białe tło arkusza)',
+      await evaluate('var c = getComputedStyle(document.querySelector(".pcard.kc")); return c.backgroundColor !== "rgba(0, 0, 0, 0)" && !/oklch|hsl\\(/.test(c.backgroundImage) ;'));
+
     const gridCheck = await evaluate('var c = document.querySelectorAll(".pcard"); return { cols: getComputedStyle(document.querySelector(".pcard-grid")).gridTemplateColumns.split(" ").length, w0: c[0].getBoundingClientRect().width, vw: document.documentElement.clientWidth };');
     check('widok kart: kafle układają się w kolumny (nie jeden na całą szerokość)', gridCheck.cols >= 2 && gridCheck.w0 < gridCheck.vw * 0.6, JSON.stringify(gridCheck));
 
