@@ -204,8 +204,6 @@
 
     var meNow = E.Team.findPerson(state.workspace.people || [], prefs.me);
     var isBoss = !!meNow && E.Budget.isManagement(meNow.id, state.workspace.people || []);
-    var visLabels = { who: 'Kto jest nieobecny (bez rodzaju)', kind: 'Kto i jakiego rodzaju nieobecność', own: 'Tylko własne nieobecności' };
-    var visSelect = isBoss ? UI.select({ id: 'abs-visibility', value: (state.workspace.settings || {}).absenceVisibility || 'who', options: Object.keys(visLabels).map(function (k) { return { value: k, label: visLabels[k] }; }), on: { change: function () { actions.setAbsenceVisibility(visSelect.value); } }, attrs: { 'data-fk': 'abs-visibility', 'aria-label': 'Co pracownicy widzą o cudzych nieobecnościach' } }) : null;
     function item(label, icon, run, tone, kbd) {
       return D.el('button', {
         class: 'menu__item' + (tone === 'danger' ? ' menu__item--danger' : ''),
@@ -239,7 +237,6 @@
       D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-min' }, text: 'Prognoza od postępu' }), minProgress, D.el('span', { class: 'settings__hint', text: 'wcześniej wynik byłby zgadywaniem' })]),
       isBoss ? D.el('div', { class: 'menu__separator' }) : null,
       isBoss ? D.el('p', { class: 'settings__group', text: 'Kalendarz i urlopy' }) : null,
-      isBoss ? D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'abs-visibility' }, text: 'Cudze nieobecności' }), visSelect, D.el('span', { class: 'settings__hint', text: 'co widzą pracownicy w Kalendarzu i Urlopach; Dyrekcja i lider projektu widzą wszystko' })]) : null,
       D.el('div', { class: 'menu__separator' }),
       D.el('p', { class: 'settings__group', text: 'Wygląd' }),
       D.el('div', { class: 'settings__row' }, [
@@ -324,7 +321,7 @@
           li(navItem('mywork', 'checklist', 'Moja praca', '#/moja-praca')),
           li(navItem('time', 'clock', 'Czas', '#/czas')),
           li(navItem('calendar', 'calendar', 'Kalendarz', '#/kalendarz')),
-          li(navItem('leave', 'leave', 'Urlopy', '#/urlopy', function () { if (actions.setLeave) actions.setLeave({ tab: 'mine' }); }))
+          li(navItem('leave', 'leave', 'Urlopy', '#/urlopy', function () { if (actions.setLeave) actions.setLeave({ who: 'me' }); }))
         ]),
         navGroup('projects', 'Projekty', [
           li((function () { var l = navItem('projects', 'folder', 'Projekty', '#/projekty'); l.insertBefore(nodes.alarm, l.lastChild); return l; })()),
@@ -338,8 +335,7 @@
           li(navItem('analysis', 'chart', 'Analiza', '#/analiza'))
         ]),
         navGroup('team', 'Zespół', [
-          li(navItem('team', 'people', 'Zespół', '#/zespol', function () { if (actions.setTeamTab) actions.setTeamTab('people'); })),
-          li(navItem('leaveteam', 'leave', 'Urlopy zespołu', '#/urlopy', function () { if (actions.setLeave) actions.setLeave({ tab: 'team' }); }))
+          li(navItem('team', 'people', 'Zespół', '#/zespol', function () { if (actions.setTeamTab) actions.setTeamTab('board'); }))
         ]),
         navGroup('comms', 'Komunikacja', [
           li(navItem('feed', 'sparkle', 'Aktualności', '#/aktualnosci')),
@@ -409,10 +405,8 @@
     var management = !!meNow && E.Budget.isManagement(meNow.id, people);
     var leads = !!meNow && projects.some(function (p) { return p.team && p.team.leader === meNow.id && p.status !== 'done'; });
     var may = management || leads;
-    var teamTab = section === 'leave' && (state.leave || {}).tab === 'team';
     Object.keys(nodes.nav).forEach(function (key) {
-      var here = key === section || (key === 'leave' && section === 'leave' && !teamTab) || (key === 'leaveteam' && teamTab) || (key === 'admin' && section === 'team' && management && state.teamTab === 'accounts');
-      if (section === 'leave') here = key === 'leaveteam' ? teamTab : (key === 'leave' ? !teamTab : false);
+      var here = key === section || (key === 'admin' && section === 'team' && management && state.teamTab === 'accounts');
       if (section === 'team' && key === 'team') here = !(management && state.teamTab === 'accounts');
       if (key === 'admin' && section !== 'team') here = false;
       var current = here ? (route.name === 'project' ? 'true' : 'page') : null;
@@ -424,7 +418,6 @@
     show('analysis', management);
     show('plan', may);
     show('review', may);
-    show('leaveteam', may);
     show('admin', management);
     Object.keys(nodes.groups).forEach(function (k) {
       var box = nodes.groups[k];
@@ -436,11 +429,10 @@
     if (nodes.counts.plan) nodes.counts.plan.hidden = true;
     if (nodes.counts.calendar) nodes.counts.calendar.hidden = true;
     var pendingLeave = E.LeaveScreen ? E.LeaveScreen.pendingFor(state, meNow) : 0;
-    if (nodes.counts.leave) nodes.counts.leave.hidden = true;
-    if (nodes.counts.leaveteam) {
-      nodes.counts.leaveteam.hidden = !pendingLeave;
-      nodes.counts.leaveteam.textContent = String(pendingLeave);
-      nodes.counts.leaveteam.classList.toggle('count--alarm', !!pendingLeave);
+    if (nodes.counts.leave) {
+      nodes.counts.leave.hidden = !pendingLeave;
+      nodes.counts.leave.textContent = String(pendingLeave);
+      nodes.counts.leave.classList.toggle('count--alarm', !!pendingLeave);
     }
     ['dashboard', 'admin', 'review'].forEach(function (k) { if (nodes.counts[k]) nodes.counts[k].hidden = true; });
     nodes.counts.team.textContent = String((state.workspace.people || []).filter(function (p) { return p.active !== false; }).length);

@@ -1,7 +1,6 @@
-/* ETROM — ekran „Urlopy”: saldo i wnioski pracownika (karty lub kalendarz roczny), kalendarz zespołu
-   i skrzynka akceptacji dla zarządu (decyzja) oraz liderów (opinia). Kolory z motywu: urlop = barwa
-   „zatwierdzenia” (--review), oczekuje = ostrzeżenie, zaakceptowany = sukces, odrzucony = alarm.
-   Dane i reguły: core/absences.js. Pracownik nie widzi cudzego salda ani rodzaju cudzej nieobecności. */
+/* ETROM — ekran „Urlopy”: jedna zakładka z kalendarzem w kaflach (jak w Czasie), saldo, własne wnioski oraz
+   „Do akceptacji” dla zarządu (decyzja) i liderów (opinia). Przełącznik Ja / Zespół: w widoku zespołu każdy widzi
+   urlopy i wnioski kolegów (L4 innych jako „nieobecność”). Dane i reguły: core/absences.js. Cudzego salda nie widać. */
 (function (root) {
   'use strict';
 
@@ -42,26 +41,6 @@
   }
 
   /* ---------- Mój urlop: karty ---------- */
-  function balanceCard(bal) {
-    var total = Math.max(1, bal.total);
-    var u = Math.min(100, bal.used / total * 100);
-    var p = Math.min(100 - u, bal.planned / total * 100);
-    var ring = D.el('div', { class: 'lv-ring', style: { '--u': u.toFixed(1) + '%', '--up': (u + p).toFixed(1) + '%' }, attrs: { role: 'img', 'aria-label': 'Pozostało ' + bal.left + ' z ' + bal.total + ' dni urlopu' } }, [
-      D.el('b', { text: String(bal.left) }), D.el('span', { text: 'dni zostało' })
-    ]);
-    var legend = D.el('ul', { class: 'lv-legend' }, [
-      D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--used' }), D.el('span', { text: 'wykorzystano ' }), D.el('b', { text: String(bal.used) })]),
-      D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--plan' }), D.el('span', { text: 'zaplanowano ' }), D.el('b', { text: String(bal.planned) })]),
-      D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--free' }), D.el('span', { text: 'wymiar roczny ' }), D.el('b', { text: String(bal.total) })]),
-      bal.pending ? D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--wait' }), D.el('span', { text: 'czeka na decyzję ' }), D.el('b', { text: String(bal.pending) })]) : null
-    ]);
-    function stat(value, label) { return D.el('div', { class: 'lv-stat' }, [D.el('b', { text: value }), D.el('span', { text: label })]); }
-    return card('Urlop wypoczynkowy ' + bal.year, [
-      D.el('div', { class: 'lv-balance' }, [ring, legend]),
-      D.el('div', { class: 'lv-stats' }, [stat(bal.onDemandUsed + ' / ' + bal.onDemandLimit, 'na żądanie'), stat(days(bal.sick), 'zwolnienia'), stat(days(bal.training), 'szkolenia')])
-    ], 'lv-card--balance');
-  }
-
   function requestRow(a, ctx, now, who) {
     var people = ctx.people;
     var decider = a.decidedBy ? Team.findPerson(people, a.decidedBy) : null;
@@ -80,44 +59,6 @@
       past ? UI.badge('Wykorzystany', null) : statusBadge(a.status),
       a.status === 'pending' && ctx.mine ? UI.button({ label: 'Wycofaj', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'lv-withdraw' }, onClick: function () { ctx.actions.withdrawLeave(a.id); } }) : null
     ]);
-  }
-
-  function yearBars(list, person, year) {
-    var perMonth = [];
-    for (var m = 0; m < 12; m += 1) {
-      var from = iso(year, m, 1);
-      var to = iso(year, m, new Date(year, m + 1, 0).getDate());
-      var sum = { done: 0, plan: 0 };
-      list.forEach(function (a) {
-        if (a.personId !== person.id || a.kind !== 'leave' || a.status === 'rejected') return;
-        var f = a.from > from ? a.from : from; var t = a.to < to ? a.to : to;
-        if (t < f) return;
-        var n = Cal.workdaysIn(f, t);
-        if (a.status === 'pending') sum.plan += n; else if (t < Cal.isoOf(new Date())) sum.done += n; else sum.plan += n;
-      });
-      perMonth.push(sum);
-    }
-    var max = Math.max(5, Math.max.apply(null, perMonth.map(function (x) { return x.done + x.plan; })));
-    return D.el('div', { class: 'lv-year' }, perMonth.map(function (x, i) {
-      var tip = MONTHS[i] + ': ' + (x.done + x.plan) + ' dni';
-      return D.el('div', { class: 'lv-year__col', attrs: { 'data-tooltip': tip } }, [
-        D.el('div', { class: 'lv-year__bar' }, [
-          D.el('i', { class: 'lv-year__plan', style: { height: (x.plan / max * 100) + '%' } }),
-          D.el('i', { class: 'lv-year__done', style: { height: (x.done / max * 100) + '%' } })
-        ]),
-        D.el('span', { text: MON_SHORT[i] })
-      ]);
-    }));
-  }
-
-  function mineCards(state, ctx, me, now) {
-    var list = state.workspace.absences || [];
-    var bal = A.balance(list, me, now);
-    var mine = list.filter(function (a) { return a.personId === me.id; }).sort(function (a, b) { return a.from < b.from ? 1 : -1; });
-    var rows = mine.length
-      ? D.el('ul', { class: 'lv-reqs' }, mine.map(function (a) { return requestRow(a, { people: ctx.people, actions: ctx.actions, mine: true }, now); }))
-      : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' });
-    return D.el('div', { class: 'lv-col' }, [card('Moje wnioski', [rows]), card('Rok w skrócie', [yearBars(list, me, bal.year)])]);
   }
 
   /* ---------- Mój urlop: kalendarz roczny ---------- */
@@ -159,103 +100,137 @@
     }, today);
   }
 
-  function yearCalendar(state, ctx, me, now) {
+  function selBar(state, ctx, me, now, year) {
     var lv = state.leave || {};
-    var year = Number(lv.year) || now.getFullYear();
-    var list = state.workspace.absences || [];
-    var mine = list.filter(function (a) { return a.personId === me.id; });
     var sel = lv.sel || null;
-    var bal = A.balance(list, me, new Date(year, 5, 15));
-    var months = [];
-    for (var m = 0; m < 12; m += 1) months.push(monthCard(year, m, ctx, mine, sel, Cal.isoOf(now)));
-    var bar;
+    var bal = A.balance(state.workspace.absences || [], me, new Date(year, 5, 15));
     if (sel && sel.from) {
       var to = sel.to || sel.from;
       var n = Cal.workdaysIn(sel.from, to);
       var after = bal.free - n;
-      bar = D.el('div', { class: 'lv-selbar', attrs: { role: 'status' } }, [
+      return D.el('div', { class: 'lv-selbar', attrs: { role: 'status' } }, [
         D.el('b', { text: range(sel.from, to, now) }),
         D.el('span', { text: workdays(n) + (after >= 0 ? ' · po wniosku zostanie ' + days(after) : ' · brakuje ' + days(-after)) }),
         UI.button({ label: 'Złóż wniosek', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'lv-sel-request' }, onClick: function () { ctx.actions.openLeaveRequest({ from: sel.from, to: to, kind: 'leave' }); } }),
         UI.button({ label: 'Anuluj', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ sel: null }); } })
       ]);
-    } else {
-      bar = D.el('p', { class: 't-meta lv-selbar lv-selbar--hint', text: 'Kliknij pierwszy i ostatni dzień urlopu. Do wykorzystania: ' + days(Math.max(0, bal.free)) + ' z ' + bal.total + '.' });
     }
-    var yearNav = D.el('div', { class: 'lv-yearnav' }, [
-      UI.iconButton ? UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni rok', onClick: function () { ctx.actions.setLeave({ year: year - 1, sel: null }); } }) : null,
-      D.el('b', { text: String(year) }),
-      UI.iconButton ? UI.iconButton({ icon: 'chevronRight', label: 'Następny rok', onClick: function () { ctx.actions.setLeave({ year: year + 1, sel: null }); } }) : null
-    ]);
+    return D.el('p', { class: 't-meta lv-selbar lv-selbar--hint', text: 'Kliknij pierwszy i ostatni dzień urlopu. Do wykorzystania: ' + days(Math.max(0, bal.free)) + ' z ' + bal.total + '.' });
+  }
+
+  function legendRow(items) {
+    return D.el('div', { class: 'ts-legend' }, items.map(function (x) { return D.el('span', { class: 'ts-legend__i ' + x[0], text: x[1] }); }));
+  }
+
+  /** Rok: własny (wybór dni) albo zespołu (ile osób nieobecnych w dniu). */
+  function yearCalendar(state, ctx, me, now, who) {
+    var lv = state.leave || {};
+    var year = Number(lv.year) || now.getFullYear();
+    var list = state.workspace.absences || [];
+    var months = [];
+    if (who === 'team') {
+      var projects = state.workspace.projects || [];
+      var active = ctx.people.filter(function (p) { return p.active !== false; });
+      for (var t = 0; t < 12; t += 1) {
+        months.push(miniMonth(year, t, function (key, wk, hol) {
+          if (wk || hol) return null;
+          var n = awayOn(list, active, key, me, projects, ctx.people).length;
+          return n ? { cls: 'is-heat' + Math.min(3, n), tip: n + ' ' + E.Format.count(n, 'osoba nieobecna', 'osoby nieobecne', 'osób nieobecnych') } : null;
+        }, Cal.isoOf(now)));
+      }
+      return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [D.el('ul', { class: 'lv-legend lv-legend--row' }, [
+        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h1' }), D.el('span', { text: '1 osoba nieobecna' })]),
+        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h2' }), D.el('span', { text: '2 osoby' })]),
+        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h3' }), D.el('span', { text: '3 lub więcej' })])
+      ])])]);
+    }
+    var mine = list.filter(function (a) { return a.personId === me.id; });
+    var sel = lv.sel || null;
+    for (var m = 0; m < 12; m += 1) months.push(monthCard(year, m, ctx, mine, sel, Cal.isoOf(now)));
     var legend = D.el('ul', { class: 'lv-legend lv-legend--row' }, [
       D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--used' }), D.el('span', { text: 'urlop' })]),
       D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--wait' }), D.el('span', { text: 'czeka na decyzję' })]),
       D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--other' }), D.el('span', { text: 'zwolnienie, szkolenie' })]),
       D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--holiday' }), D.el('span', { text: 'święto' })])
     ]);
-    return D.el('div', { class: 'lv-yearcal' }, [yearNav, D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [legend, bar])]);
+    return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [legend, selBar(state, ctx, me, now, year)])]);
   }
 
-  /* ---------- Kalendarz zespołu: miesiąc, osoby w wierszach ---------- */
-  /** Tabela osoby × dni. cellFn(person, key, off) zwraca { cls, tip }; extraRows: [{ label, cellFn(key, off) -> { cls, tip, text, style } }]. */
-  function teamTable(year, m, people, cellFn, now, extraRows) {
-    var count = new Date(year, m + 1, 0).getDate();
-    var today = Cal.isoOf(now);
-    var head = [D.el('span', { class: 'lv-t__name' })];
-    for (var d = 1; d <= count; d += 1) {
-      var key = iso(year, m, d);
-      head.push(D.el('span', { class: 'lv-t__d' + (Cal.isWeekend(key) ? ' is-weekend' : '') + (Cal.isHoliday(key) ? ' is-holiday' : '') + (key === today ? ' is-today' : ''), text: String(d) }));
-    }
-    var rows = people.map(function (p) {
-      var cells = [D.el('span', { class: 'lv-t__name' }, [E.Avatar.avatar(p, { size: 'sm' }), D.el('span', { class: 'truncate', text: Team.fullName(p) })])];
-      for (var day = 1; day <= count; day += 1) {
-        var k = iso(year, m, day);
-        var off = Cal.isWeekend(k) || Cal.isHoliday(k);
-        var info = cellFn(p, k, off) || {};
-        cells.push(D.el('span', { class: 'lv-t__c' + (off ? ' is-weekend' : '') + (info.cls ? ' ' + info.cls : ''), attrs: { 'data-tooltip': info.tip || null } }));
-      }
-      return D.el('div', { class: 'lv-t__row' }, cells);
+  /** Osoby nieobecne (lub z wnioskiem) w danym dniu, widoczne dla `me`: [{ person, rec, seen }]. */
+  function awayOn(list, people, key, me, projects, allPeople) {
+    var out = [];
+    people.forEach(function (p) {
+      var rec = list.filter(function (a) { return a.personId === p.id && a.from <= key && a.to >= key && a.status !== 'rejected'; })[0];
+      if (!rec) return;
+      var seen = A.peek(me.id, rec, projects, allPeople);
+      if (seen) out.push({ person: p, rec: rec, seen: seen });
     });
-    (extraRows || []).forEach(function (row) {
-      var cells = [D.el('span', { class: 'lv-t__name lv-t__name--sum', text: row.label })];
-      for (var day = 1; day <= count; day += 1) {
-        var k = iso(year, m, day);
-        var off = Cal.isWeekend(k) || Cal.isHoliday(k);
-        var info = row.cellFn(k, off) || {};
-        cells.push(D.el('span', { class: 'lv-t__c lv-t__c--sum' + (off ? ' is-weekend' : '') + (info.cls ? ' ' + info.cls : ''), style: info.style || null, text: info.text || '', attrs: { 'data-tooltip': info.tip || null } }));
-      }
-      rows.push(D.el('div', { class: 'lv-t__row lv-t__row--sum' }, cells));
-    });
-    return D.el('div', { class: 'lv-t', style: { '--days': String(count) } }, [D.el('div', { class: 'lv-t__row lv-t__row--head' }, head)].concat(rows));
+    return out;
   }
 
-  function teamCalendar(state, ctx, me, now) {
+  var SHORT = { leave: 'U', sick: 'L4', training: 'Sz', other: 'N' };
+
+  /** Miesiąc w kaflach: „Ja” – własne urlopy i wnioski (klik wybiera dni), „Zespół” – kółka osób nieobecnych. */
+  function monthTiles(state, ctx, me, now, who) {
     var lv = state.leave || {};
     var off = Number(lv.monthOffset) || 0;
     var base = new Date(now.getFullYear(), now.getMonth() + off, 1);
     var year = base.getFullYear();
     var m = base.getMonth();
-    var people = ctx.people.filter(function (p) { return p.active !== false; });
-    var all = state.workspace.absences || [];
+    var count = new Date(year, m + 1, 0).getDate();
+    var today = Cal.isoOf(now);
+    var list = state.workspace.absences || [];
     var projects = state.workspace.projects || [];
-    var mode = (state.workspace.settings || {}).absenceVisibility;
-    var management = E.Budget.isManagement(me.id, ctx.people);
-    var table = teamTable(year, m, people, function (p, k, wk) {
-      var rec = all.filter(function (a) { return a.personId === p.id && a.from <= k && a.to >= k && a.status !== 'rejected'; })[0];
-      if (!rec || wk) return null;
-      var seen = rec.status === 'pending' ? (A.canSee(me.id, rec, projects, ctx.people) ? 'full' : null) : A.peek(me.id, rec, projects, ctx.people, mode);
-      if (!seen) return null;
-      var detail = seen === 'full' ? kindLabel(rec) + (rec.status === 'pending' ? ' (czeka na decyzję)' : '') : 'Nieobecność';
-      return { cls: rec.status === 'pending' ? 'is-pending' : 'is-away', tip: Team.fullName(p) + ' · ' + detail };
-    }, now);
-    var nav = D.el('div', { class: 'lv-yearnav' }, [
-      UI.iconButton ? UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni miesiąc', onClick: function () { ctx.actions.setLeave({ monthOffset: off - 1 }); } }) : null,
-      D.el('b', { text: MONTHS[m][0].toUpperCase() + MONTHS[m].slice(1) + ' ' + year }),
-      UI.iconButton ? UI.iconButton({ icon: 'chevronRight', label: 'Następny miesiąc', onClick: function () { ctx.actions.setLeave({ monthOffset: off + 1 }); } }) : null,
-      off ? UI.button({ label: 'Ten miesiąc', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0 }); } }) : null
-    ]);
-    return D.el('div', { class: 'lv-team' }, [nav, table,
-      D.el('p', { class: 't-meta', text: management || mode === 'kind' ? 'Widzisz rodzaj nieobecności' + (management ? ' i wnioski oczekujące.' : '.') : (mode === 'own' ? 'Widzisz tylko własne nieobecności.' : 'Widzisz, kto jest nieobecny, bez rodzaju nieobecności.') })]);
+    var active = ctx.people.filter(function (p) { return p.active !== false; });
+    var mine = list.filter(function (a) { return a.personId === me.id && a.status !== 'rejected'; });
+    var sel = lv.sel || null;
+    var parts = ['pn', 'wt', 'śr', 'cz', 'pt', 'sb', 'nd'].map(function (n) { return D.el('span', { class: 'ts-cal__dh', text: n, attrs: { role: 'columnheader' } }); });
+    for (var i = 0; i < (new Date(year, m, 1).getDay() + 6) % 7; i += 1) parts.push(D.el('div', { class: 'ts-day is-out', attrs: { 'aria-hidden': 'true' } }));
+    for (var d = 1; d <= count; d += 1) {
+      (function (day) {
+        var key = iso(year, m, day);
+        var wk = Cal.isWeekend(key);
+        var hol = Cal.holidayName(key);
+        var cls = 'ts-day lv-c' + (wk ? ' is-weekend' : '') + (hol ? ' is-hol' : '') + (key === today ? ' is-today' : '');
+        var kids = [D.el('span', { class: 'ts-day__n', text: String(day) })];
+        var attrs = { role: 'gridcell', 'data-day': key };
+        var onClick = null;
+        if (hol) kids.push(D.el('span', { class: 'ts-day__tag' }, ['Ś', D.el('small', { text: hol })]));
+        if (who === 'me') {
+          var rec = mine.filter(function (a) { return a.from <= key && a.to >= key; })[0];
+          var inSel = sel && sel.from && key >= sel.from && key <= (sel.to || sel.from);
+          if (rec && !wk && !hol) {
+            var pend = rec.status === 'pending';
+            cls += pend ? ' is-req' : (rec.kind === 'sick' ? ' is-sick' : ' is-vac');
+            kids.push(D.el('span', { class: 'ts-day__tag' }, [pend ? 'wniosek' : (rec.kind === 'leave' && rec.onDemand ? 'UŻ' : SHORT[rec.kind] || 'N'), D.el('small', { text: pend ? 'czeka na decyzję' : kindLabel(rec).toLowerCase() })]));
+            attrs['data-tooltip'] = kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase();
+          } else if (!wk && !hol) {
+            cls += ' is-pick' + (inSel ? ' is-sel' : '');
+            attrs.tabindex = '0'; attrs['aria-pressed'] = inSel ? 'true' : 'false';
+            onClick = function () { ctx.actions.pickLeaveDay(key); };
+          }
+        } else if (!wk && !hol) {
+          var away = awayOn(list, active, key, me, projects, ctx.people);
+          if (away.length) {
+            var shown = away.slice(0, 4);
+            kids.push(D.el('span', { class: 'cv-who' }, shown.map(function (x) {
+              var tip = Team.fullName(x.person) + ' · ' + (x.seen === 'full' ? (x.rec.status === 'pending' ? 'wniosek: ' + kindLabel(x.rec).toLowerCase() : kindLabel(x.rec).toLowerCase()) : 'nieobecność') + ' · ' + range(x.rec.from, x.rec.to, now);
+              return D.el('span', { class: 'cv-av ' + (x.rec.status === 'pending' ? 'is-pending' : (x.seen === 'full' && x.rec.kind === 'leave' ? 'is-leave' : 'is-other')), attrs: { 'data-tooltip': tip, 'aria-label': tip } }, [E.Avatar.avatar(x.person, { size: 'xs' })]);
+            }).concat(away.length > shown.length ? [D.el('small', { text: '+' + (away.length - shown.length) })] : [])));
+          }
+        }
+        parts.push(D.el('div', { class: cls, attrs: attrs, on: onClick ? { click: onClick, keydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } } : null }, kids));
+      })(d);
+    }
+    var legend = who === 'me'
+      ? legendRow([['is-vac', 'urlop zatwierdzony'], ['is-req', 'wniosek czeka'], ['is-sick', 'zwolnienie'], ['is-hol', 'święto']])
+      : legendRow([['is-vac', 'urlop'], ['is-req', 'wniosek o urlop'], ['is-other', 'inna nieobecność'], ['is-hol', 'święto']]);
+    return D.el('div', { class: 'ts-cal is-week lv-tiles' }, [D.el('div', { class: 'ts-cal__grid', attrs: { role: 'grid', 'aria-label': MONTHS[m] + ' ' + year } }, parts), legend,
+      who === 'me' ? selBar(state, ctx, me, now, year) : D.el('p', { class: 't-meta', text: 'Wszyscy widzą urlopy i wnioski kolegów. Zwolnienia lekarskie innych osób są pokazane jako „nieobecność”.' })]);
+  }
+
+  function kpi(label, value, sub, extra) {
+    return D.el('div', { class: 'ts-stat' }, [D.el('span', { class: 'ts-stat__l', text: label }), D.el('b', { class: 'ts-stat__v', text: value }), D.el('span', { class: 'ts-stat__s', text: sub }), extra || null]);
   }
 
   /* ---------- Skrzynka akceptacji ---------- */
@@ -361,40 +336,6 @@
   }
 
   /* ---------- Ekran ---------- */
-  /* ---------- Pasek boczny: Saldo, Do akceptacji, Nieobecni dziś ---------- */
-  var RAIL_IDS = ['lv-saldo', 'lv-inbox', 'lv-today'];
-  function sideRail(state, ctx, me, now, bal, canInbox, pendingN, tab, content) {
-    var people = state.workspace.people || [];
-    var projects = state.workspace.projects || [];
-    var mode = (state.workspace.settings || {}).absenceVisibility;
-    var today = Cal.isoOf(now);
-    var items = [{ id: 'lv-saldo', title: 'Saldo i limity urlopu', icon: 'sun', tone: 'accent', badge: String(bal.left), side: [balanceCard(bal)] }];
-    if (canInbox) {
-      var waiting = (state.workspace.absences || []).filter(function (a) { return a.status === 'pending' && a.personId !== me.id && A.canSee(me.id, a, projects, people); }).sort(function (a, b) { return a.from < b.from ? -1 : 1; });
-      var list = waiting.length
-        ? D.el('ul', { class: 'lv-side-list' }, waiting.slice(0, 6).map(function (a) {
-          var p = Team.findPerson(people, a.personId);
-          return D.el('li', null, [D.el('b', { text: p ? Team.fullName(p) : '' }), D.el('span', { class: 't-meta', text: kindLabel(a) + ' · ' + range(a.from, a.to, now) })]);
-        }))
-        : D.el('p', { class: 't-meta', text: 'Nic nie czeka na decyzję.' });
-      items.push({ id: 'lv-inbox', title: 'Do akceptacji', icon: 'history', tone: 'warn', badge: pendingN ? String(pendingN) : '', late: pendingN > 0, side: [list, tab === 'inbox' ? null : UI.button({ label: 'Otwórz skrzynkę akceptacji', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-open-inbox' }, onClick: function () { ctx.actions.setLeave({ tab: 'inbox' }); } })] });
-    }
-    var away = [];
-    (state.workspace.absences || []).forEach(function (a) {
-      if (a.status === 'pending' || a.status === 'rejected' || a.from > today || a.to < today) return;
-      var seen = A.peek(me.id, a, projects, people, mode);
-      if (!seen) return;
-      var p = Team.findPerson(people, a.personId);
-      if (p) away.push({ name: Team.fullName(p), what: seen === 'full' ? kindLabel(a) : 'Nieobecność', to: a.to });
-    });
-    var awayList = away.length
-      ? D.el('ul', { class: 'lv-side-list' }, away.map(function (x) { return D.el('li', null, [D.el('b', { text: x.name }), D.el('span', { class: 't-meta', text: x.what + ' · do ' + range(x.to, x.to, now) })]); }))
-      : D.el('p', { class: 't-meta', text: 'Dziś wszyscy są w pracy.' });
-    items.push({ id: 'lv-today', title: 'Nieobecni dziś', icon: 'calendar', tone: 'violet', badge: away.length ? String(away.length) : '', side: [awayList] });
-    var ids = items.map(function (it) { return it.id; });
-    return UI.railLayout({ id: 'leave', cls: 'lv-rl', items: items, active: UI.railActive(state.prefs, ids), main: [content], onSelect: function (id) { ctx.actions.openRail(ids, id); } });
-  }
-
   function view(state, ctx) {
     var people = state.workspace.people || [];
     var me = Team.findPerson(people, state.prefs.me);
@@ -405,27 +346,44 @@
     var management = E.Budget.isManagement(me.id, people);
     var leader = projects.some(function (p) { return p.team && p.team.leader === me.id; });
     var canInbox = management || leader;
-    var tab = lv.tab === 'team' || (lv.tab === 'inbox' && canInbox) ? lv.tab : 'mine';
+    var who = lv.who === 'team' ? 'team' : 'me';
+    var mode = lv.view === 'year' ? 'year' : 'month';
     var pendingN = pendingFor(state, me);
     var vctx = { people: people, actions: ctx.actions };
+    var list = state.workspace.absences || [];
+    var bal = A.balance(list, me, now);
+    var off = Number(lv.monthOffset) || 0;
+    var base = new Date(now.getFullYear(), now.getMonth() + off, 1);
+    var year = Number(lv.year) || now.getFullYear();
+    var title = mode === 'year' ? String(year) : MONTHS[base.getMonth()][0].toUpperCase() + MONTHS[base.getMonth()].slice(1) + ' ' + base.getFullYear();
+    function shift(dir) { if (mode === 'year') ctx.actions.setLeave({ year: year + dir, sel: null }); else ctx.actions.setLeave({ monthOffset: off + dir }); }
 
-    var tabs = UI.segmented({
-      label: 'Widok urlopów', value: tab,
-      items: [{ value: 'mine', label: 'Mój urlop' }, { value: 'team', label: 'Kalendarz zespołu' }].concat(canInbox ? [{ value: 'inbox', label: 'Do akceptacji' + (pendingN ? ' · ' + pendingN : '') }] : []),
-      onChange: function (value) { ctx.actions.setLeave({ tab: value }); }
-    });
-    var sub = tab === 'mine' ? UI.segmented({
-      label: 'Sposób pokazania', value: lv.view === 'year' ? 'year' : 'cards',
-      items: [{ value: 'cards', label: 'Karty' }, { value: 'year', label: 'Kalendarz roczny' }],
-      onChange: function (value) { ctx.actions.setLeave({ view: value, sel: null }); }
-    }) : null;
-    var toolbar = D.el('div', { class: 'lv-bar' }, [tabs.node, sub ? sub.node : null, D.el('span', { class: 'lv-bar__fill' }), UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
+    var whoSeg = UI.segmented({ label: 'Czyje urlopy', value: who, items: [{ value: 'me', label: 'Ja' }, { value: 'team', label: 'Zespół' }], onChange: function (v) { ctx.actions.setLeave({ who: v, sel: null }); } });
+    var viewSeg = UI.segmented({ label: 'Zakres kalendarza', value: mode, items: [{ value: 'month', label: 'Miesiąc' }, { value: 'year', label: 'Rok' }], onChange: function (v) { ctx.actions.setLeave({ view: v, sel: null }); } });
+    var toolbar = D.el('div', { class: 'ts-bar lv-bar' }, [whoSeg.node, viewSeg.node,
+      UI.iconButton({ icon: 'chevronLeft', label: mode === 'year' ? 'Poprzedni rok' : 'Poprzedni miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-prev' }, onClick: function () { shift(-1); } }),
+      D.el('h2', { class: 'ts-title', text: title }),
+      UI.iconButton({ icon: 'chevronRight', label: mode === 'year' ? 'Następny rok' : 'Następny miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-next' }, onClick: function () { shift(1); } }),
+      (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null,
+      D.el('span', { class: 'lv-bar__fill' }),
+      UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
 
-    var content = tab === 'team' ? teamCalendar(state, vctx, me, now)
-      : tab === 'inbox' ? inbox(state, vctx, me, now)
-      : (lv.view === 'year' ? yearCalendar(state, vctx, me, now) : mineCards(state, vctx, me, now));
-    var bal = A.balance(state.workspace.absences || [], me, now);
-    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv' }, [toolbar, sideRail(state, ctx, me, now, bal, canInbox, pendingN, tab, content)]) };
+    var pct = bal.total ? Math.round(bal.left / bal.total * 100) : 0;
+    var stats = D.el('div', { class: 'ts-stats lv-stats-row' }, [
+      kpi('Pozostało', days(bal.left), 'z ' + bal.total + ' · ' + pct + '%', D.el('div', { class: 'lv-meter' }, [D.el('i', { style: { width: Math.max(0, Math.min(100, pct)) + '%' } })])),
+      kpi('Wykorzystano', days(bal.used), 'zaplanowano ' + bal.planned + (bal.sick ? ' · zwolnienia ' + bal.sick : '')),
+      kpi('Na żądanie', bal.onDemandUsed + ' z ' + bal.onDemandLimit, 'pozostało ' + Math.max(0, bal.onDemandLimit - bal.onDemandUsed)),
+      kpi('Wnioski', String(bal.pending ? bal.pending : 0), bal.pending ? 'czeka na decyzję' : 'nic nie czeka')
+    ]);
+
+    var calendar = mode === 'year' ? yearCalendar(state, vctx, me, now, who) : monthTiles(state, vctx, me, now, who);
+
+    var mine = list.filter(function (a) { return a.personId === me.id; }).sort(function (a, b) { return a.from < b.from ? 1 : -1; });
+    var asideCards = [card('Moje wnioski', [mine.length
+      ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, { people: people, actions: ctx.actions, mine: true }, now); }))
+      : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })])];
+    if (canInbox) asideCards.push(card('Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), [inbox(state, vctx, me, now)], 'lv-card--inbox'));
+    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar, stats, D.el('div', { class: 'lv-layout' }, [D.el('div', { class: 'lv-layout__main ts-calcard' }, [calendar]), D.el('aside', { class: 'lv-layout__side' }, asideCards)])]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */
@@ -441,5 +399,5 @@
     }).length;
   }
 
-  E.LeaveScreen = { miniMonth: miniMonth, teamTable: teamTable, kindLabel: kindLabel, view: view, requestForm: requestForm, pendingFor: pendingFor, range: range };
+  E.LeaveScreen = { miniMonth: miniMonth, kindLabel: kindLabel, view: view, requestForm: requestForm, pendingFor: pendingFor, range: range };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

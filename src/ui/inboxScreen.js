@@ -59,7 +59,7 @@
 
   function openItem(item, actions) {
     if (item.kind === 'order') { actions.setOrders({ tab: 'mine' }); root.location.hash = '#/zlecenia'; return; }
-    if (item.kind === 'leave') { actions.setLeave({ tab: 'inbox' }); root.location.hash = '#/urlopy'; return; }
+    if (item.kind === 'leave') { actions.setLeave({ who: 'me' }); root.location.hash = '#/urlopy'; return; }
     if (item.task) actions.inspect({ kind: 'task', projectId: item.project.id, stageId: item.stage.id, taskId: item.task.id });
     else if (item.kind === 'mail') actions.openMailCard(item.entry.id);
     else actions.openProject(item.project.id, 'etapy');

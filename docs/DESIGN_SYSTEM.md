@@ -777,7 +777,7 @@ Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagr
 
 ## Menu grupowe i Pulpit (`styles/dashboard.css`, makiety NV1 / DB8 / DB9)
 
-- **Menu** to bloki ze zwijanymi nagłówkami (stan w `localStorage`, klucz `etrom.nav.collapsed.v1`): Start (Pulpit, Skrzynka), Moja praca, Projekty, Finanse, Zespół, Komunikacja, Zasoby i Administracja na dole. Pozycje nieuruchomionych modułów (`soonItem`, plakietka „WKRÓTCE”) widzi tylko Dyrekcja. Czerwony licznik (`.count--alarm`) tylko przy sprawach czekających na zalogowaną osobę: Skrzynka (reakcje) i Urlopy zespołu (wnioski).
+- **Menu** to bloki ze zwijanymi nagłówkami (stan w `localStorage`, klucz `etrom.nav.collapsed.v1`): Start (Pulpit, Skrzynka), Moja praca, Projekty, Finanse, Zespół, Komunikacja, Zasoby i Administracja na dole. Pozycje nieuruchomionych modułów (`soonItem`, plakietka „WKRÓTCE”) widzi tylko Dyrekcja. Czerwony licznik (`.count--alarm`) tylko przy sprawach czekających na zalogowaną osobę: Skrzynka (reakcje) i Urlopy (wnioski do akceptacji).
 - **Pulpit** (`#/pulpit`, ekran startowy): hero z datą i numerem tygodnia, powitaniem, przyciskami i chipem wyjazdu; szklana karta pogody; pięć kafli nachodzących na hero (inne dla pracownika i Dyrekcji); środek „Ten tydzień” (te same sekcje co Moja praca), u Dyrekcji macierz zespołu na 5 dni roboczych i zdrowie projektów; prawa kolumna: Skrzynka (najpilniejsze pozycje, link do ekranu), stany wód, zespół dziś, Finanse (zapowiedź).
 - **Dostosowanie Pulpitu** (przycisk „Dostosuj pulpit” w hero, `prefs.dash`, logika w `src/core/dashtiles.js`): kafle wybiera się z puli, od 2 do 5, z kolejnością strzałkami. Pula Dyrekcji (8): projekty w ryzyku, obciążenie zespołu, do akceptacji, wymaga reakcji, zadania po terminie, terminy w 7 dni, nieobecni dziś, terminowość 90 dni. Pula pracownika (7): dziś, ten tydzień, po terminie, wymaga reakcji, najbliższy termin, terminy w 7 dni, urlop do wykorzystania. Do puli trafiają tylko najważniejsze informacje; statystyki motywacyjne i rankingi mają osobne miejsce (jeszcze nie wdrożone). Puste ustawienie = kafle domyślne roli.
 - **Zwijanie kart Pulpitu**: strzałka w nagłówku karty (`.db-card__fold`), zwinięta karta zostawia nagłówek i krótkie podsumowanie (`.db-card__sum`), np. „3 do decyzji”. Stan w `prefs.dash.collapsed` na urządzeniu. „Zwiń wszystkie” i „Przywróć domyślne” są w oknie dostosowania. Karty Spraw (bez nagłówka) nie zwijają się.
@@ -791,15 +791,19 @@ Domyślnie paski nie niosą daty: koniec paska i siatka pokazują termin, a zagr
 - Formularz w panelu bocznym (wariant A): chipy rodzaju, opis, pola zależne od rodzaju, dokument (plik/link), wykonawca z podpowiedzią z historii, projekt, opcjonalny krok „potem”.
 - Zlecenia w innych miejscach: karta „Zlecenia do mnie” na Pulpicie (prawa kolumna), pasek `.zl-strip` nad listą w „Mojej pracy” (widoki Wszystko, Dziś) i w Skrzynce, zakładka „Zlecenia” w projekcie (z licznikiem otwartych, „Nowe zlecenie” z wybranym projektem) oraz pozycja „Zleć…” w menu zadania (opis = nazwa zadania).
 
-## Kalendarz (`#/kalendarz`, `src/ui/calendarScreen.js`, wariant B)
+## Kalendarz (`#/kalendarz`, `src/ui/calendarScreen.js`)
 
-Jeden kalendarz w czterech widokach: **Miesiąc · Tydzień · Rok · Zespół** (przełącznik jak w Urlopach), pasek: ‹ › Dziś, tytuł okresu, Filtry, `.ics`, „Dodaj ▾” (wyjazd, urlop, zlecenie).
-- Lewy panel warstw: mini-miesiąc, zakres (Moje / Mój zespół / Wszyscy), osoby, projekty, rodzaje (terminy, zadania, nieobecności, wyjazdy). Ukryte pozycje pamiętane w `prefs.cal` na urządzeniu.
-- **Spójność z Urlopami:** Rok to te same `lv-month` (`LeaveScreen.miniMonth`), Zespół to ta sama tabela `lv-t` (`LeaveScreen.teamTable`); dochodzi tylko ciepło obsady (`is-heat1–3`), kropka terminu i wiersze „Obsada” i „Terminy”.
-- Obsada „7/9” przy dniu roboczym z nieobecnościami; od `THIN` (3) nieobecnych bursztyn. Konflikty (termin przy nieobecnym liderze, termin w dniu wolnym, ≥3 nieobecnych) widzą tylko Dyrekcja i Liderzy; oznaczone obwódką dnia i listą „Uwaga w tym zakresie”.
-- Paski wielodniowe: nieobecności, wyjazdy i zadania ze startem (tekst na początku paska i w poniedziałki).
-- Skróty: M / W / R / Z (widoki), D (dziś), strzałki (dzień). Eksport `.ics` działa bez serwera i obejmuje widoczny zakres.
-- Widoczność cudzych nieobecności: `workspace.settings.absenceVisibility` (patrz DATA_MODEL), logika w `Absences.peek`.
+Jeden kalendarz w trzech widokach: **Miesiąc · Tydzień · Rok**. Miesiąc i tydzień to **kafle jak w Czasie** (`ts-day`): w kaflu liczba pozycji i kropki rodzajów (termin projektu, teren, spotkanie), a nieobecności i wnioski to **kółka osób** (urlop pełny pierścień, wniosek pierścień przerywany). Kolumna „Tydzień” podsumowuje pozycje i dni nieobecności. Rok to te same `lv-month` co w Urlopach.
+- Przycisk „Wyjazd lub spotkanie” (jeden, bez menu); urlop składa się w Urlopach, a zlecenia mają własną zakładkę. Lista wybranego dnia nie ma przycisku „Wyjazd tego dnia”.
+- Lewy panel warstw: mini-miesiąc, zakres (Moje / Mój zespół / Wszyscy), osoby, projekty, rodzaje. Ukryte pozycje są pamiętane w ustawieniach urządzenia.
+- Nie ma już macierzy „Kto gdzie pracuje” ani widoku Zespół: to jest w zakładce **Zespół → Dziś i tydzień**.
+- Widoczność nieobecności: wszyscy widzą urlopy i wnioski kolegów; zwolnienie lekarskie innych osób jako „nieobecność” (`Absences.peek`). Odrzuconych wniosków nie widzi nikt poza właścicielem, zarządem i liderem.
+- Skróty: M / W / R (widoki), D (dziś), strzałki (dzień). Eksport `.ics` obejmuje widoczny zakres.
+
+## Zespół i Urlopy
+
+- **Zespół → Dziś i tydzień** (`TeamScreen.board`, `core/presence.js`): liczniki-filtry (dostępni, w terenie, spotkanie, urlop, nieobecni, wnioski) i kafle osób ze statusem na dziś, paskiem pn–pt i oczekującym wnioskiem. Pozostałe zakładki: Katalog osób, Konta i role (zarząd).
+- **Urlopy** to jedna zakładka (nie ma „Urlopów zespołu”): przełączniki Ja / Zespół i Miesiąc / Rok, saldo w kafelkach, kalendarz w kaflach jak w Czasie, po prawej „Moje wnioski” i (zarząd, liderzy) „Do akceptacji”.
 
 ## Panele boczne: jeden system (`UI.railLayout`, audyt w `AUDYT_PANELI_BOCZNYCH.md`)
 

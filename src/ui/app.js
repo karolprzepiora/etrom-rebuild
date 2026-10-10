@@ -31,7 +31,8 @@
     screen: 'projects',
     filters: { query: '', status: 'all', sort: 'manual', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
-    teamTab: 'people',
+    teamTab: 'board',
+    teamStatus: 'all',
     prefs: E.Prefs.defaults(),
     selection: {},
     page: 0,
@@ -505,7 +506,8 @@
     Toast.show({ message: 'Przywrócono konto: ' + Team.fullName(person), tone: 'success', timeout: 4000 });
   }
 
-  function setTeamTab(tab) { store.set({ teamTab: tab === 'accounts' ? 'accounts' : 'people' }); }
+  function setTeamTab(tab) { store.set({ teamTab: tab === 'accounts' ? 'accounts' : (tab === 'people' ? 'people' : 'board') }); }
+  function setTeamStatus(value) { store.set({ teamStatus: value || 'all' }); }
 
   function setPersonActive(id, active) {
     setPeople(function (current) {
@@ -2179,16 +2181,6 @@
     Toast.show({ message: 'Pobrano plik .ics (' + items.length + ' wpisów)', tone: 'success', timeout: 4000 });
   }
 
-  /** Dyrekcja ustawia, co pozostali widzą o cudzych nieobecnościach. */
-  function setAbsenceVisibility(mode) {
-    var state = store.getState();
-    var me = E.Team.findPerson(state.workspace.people || [], state.prefs.me);
-    if (!me || !E.Budget.isManagement(me.id, state.workspace.people || [])) return;
-    updateWorkspace(function (workspace) {
-      return Object.assign({}, workspace, { settings: E.Absences.normalizeSettings(Object.assign({}, workspace.settings, { absenceVisibility: mode })) });
-    });
-  }
-
   /* ---------- Urlopy: wnioski, decyzje, opinie ---------- */
   function setLeave(patch) {
     store.set({ leave: Object.assign({}, store.getState().leave || {}, patch) });
@@ -3752,7 +3744,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setAbsenceVisibility: setAbsenceVisibility, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: function (id) { mailToTask(id); },
     mailDecide: mailDecide,
@@ -3768,6 +3760,7 @@
     editPerson: openEditPerson,
     togglePerson: togglePerson,
     setTeamTab: setTeamTab,
+    setTeamStatus: setTeamStatus,
     createAccount: createAccountFor,
     resetPassword: resetPasswordFor,
     disableAccount: disableAccountFor,
@@ -4133,15 +4126,18 @@
 
     var mgmt = E.Budget.isManagement(state.prefs.me, roster);
     var accounts = mgmt && state.teamTab === 'accounts';
-    nodes.teamFilters.hidden = accounts || !roster.length;
-    var tabs = mgmt && roster.length ? D.el('div', { class: 'ac-tabs' }, [UI.segmented({
-      label: 'Widok zespołu', value: accounts ? 'accounts' : 'people',
-      items: [{ value: 'people', label: 'Osoby' }, { value: 'accounts', label: 'Konta i role' }],
+    var boardTab = !accounts && state.teamTab !== 'people' && roster.length > 0;
+    nodes.teamFilters.hidden = accounts || boardTab || !roster.length;
+    var tabs = roster.length ? D.el('div', { class: 'ac-tabs' }, [UI.segmented({
+      label: 'Widok zespołu', value: accounts ? 'accounts' : (boardTab ? 'board' : 'people'),
+      items: [{ value: 'board', label: 'Dziś i tydzień' }, { value: 'people', label: 'Katalog osób' }].concat(mgmt ? [{ value: 'accounts', label: 'Konta i role' }] : []),
       onChange: setTeamTab
     }).node]) : null;
-    var body = accounts ? E.AccountsScreen.view(state, actions) : E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state));
+    var body = accounts ? E.AccountsScreen.view(state, actions) : (boardTab ? E.TeamScreen.board(state, actions) : E.TeamScreen.teamList(roster, state.workspace.projects, state.teamFilters, actions, teamCapacity(state)));
     D.render(nodes.teamTabs, tabs ? [tabs] : []);
     D.patch(nodes.teamList, [body]);
+    if (boardTab && roster.length) nodes.teamSummary.textContent = 'Kto dziś pracuje, kto jest na urlopie, w terenie albo na spotkaniu.';
+
   }
 
   function renderPlan(state) {

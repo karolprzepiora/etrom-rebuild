@@ -244,5 +244,56 @@
     return { active: active.length, busy: busy, top: top && top.load.open ? top : null, late: late };
   }
 
-  root.ETROM.TeamScreen = { teamList: teamList, visiblePeople: visiblePeople, summary: summary };
+
+  /* ---------- Tablica „kto gdzie jest” (Zespół → Dziś i tydzień) ---------- */
+  var DOW5 = ['pn', 'wt', 'śr', 'cz', 'pt'];
+  var FILTERS = [
+    { value: 'all', label: 'Wszyscy', count: 'all' }, { value: 'ok', label: 'Dostępni', count: 'ok' }, { value: 'field', label: 'W terenie', count: 'field' },
+    { value: 'meeting', label: 'Spotkanie', count: 'meeting' }, { value: 'leave', label: 'Urlop', count: 'leave' }, { value: 'away', label: 'Nieobecni', count: 'away' },
+    { value: 'requests', label: 'Wnioski', count: 'requests' }
+  ];
+  var DAY_NAME = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+  var MONTH_GEN = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  function requestLine(a) {
+    var f = E.Calendar.parse(a.from);
+    var t = E.Calendar.parse(a.to);
+    var fmt = function (d) { return d.getDate() + '.' + (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1); };
+    return 'Wniosek: ' + (a.from === a.to ? fmt(f) : fmt(f) + '–' + fmt(t)) + ' · czeka na decyzję';
+  }
+
+  function board(state, actions) {
+    var people = state.workspace.people || [];
+    var me = Team.findPerson(people, state.prefs.me);
+    var now = new Date();
+    var today = E.Calendar.isoOf(now);
+    var data = E.Presence.build({ people: people, absences: state.workspace.absences || [], trips: state.workspace.trips || [], projects: state.workspace.projects || [], viewerId: me ? me.id : '', today: today });
+    var filter = state.teamStatus || 'all';
+    var rows = data.rows.filter(function (r) { return filter === 'all' || (filter === 'requests' ? r.requests.length > 0 : r.today.kind === filter); });
+    var chips = D.el('div', { class: 'tb-filters', attrs: { role: 'group', 'aria-label': 'Filtr statusu' } }, FILTERS.filter(function (f) { return f.value === 'all' || f.value === 'ok' || data.counts[f.count] > 0 || filter === f.value; }).map(function (f) {
+      var on = filter === f.value;
+      return D.el('button', { class: 'tb-chip tb-chip--' + f.value + (on ? ' is-on' : ''), attrs: { type: 'button', 'aria-pressed': String(on), 'data-fk': 'tb-f-' + f.value }, on: { click: function () { actions.setTeamStatus(f.value); } } }, [f.label + ' ', D.el('b', { text: String(data.counts[f.count]) })]);
+    }));
+    var d = E.Calendar.parse(today);
+    var head = D.el('div', { class: 'tb-head' }, [chips, D.el('span', { class: 'tb-date', text: DAY_NAME[d.getDay()] + ' ' + d.getDate() + ' ' + MONTH_GEN[d.getMonth()] })]);
+    var cards = rows.map(function (r) {
+      var p = r.person;
+      var st = r.today;
+      var strip = D.el('div', { class: 'tb-strip', attrs: { 'aria-label': 'Ten tydzień' } }, r.week.map(function (w, i) {
+        var ds = w.status;
+        var tip = DOW5[i] + ' ' + w.key.slice(8) + '.' + w.key.slice(5, 7) + ' · ' + ds.label + (ds.sub && ds.kind !== 'off' ? ' · ' + ds.sub : '') + (ds.pending ? ' · wniosek czeka' : '');
+        return D.el('span', { class: 'tb-day' + (w.key === today ? ' is-today' : '') }, [D.el('i', { class: 'tb-cell is-' + ds.kind + (ds.pending && ds.kind === 'ok' ? ' is-pending' : ''), attrs: { 'data-tooltip': tip, 'aria-label': tip } }), D.el('small', { text: DOW5[i] })]);
+      }));
+      return D.el('article', { class: 'tb-card', attrs: { 'data-fk': 'tb-card', 'data-person': p.id, tabindex: '0' }, on: { click: function () { actions.inspect({ kind: 'person', personId: p.id }); }, keydown: function (e) { if (e.key === 'Enter') actions.inspect({ kind: 'person', personId: p.id }); } } }, [
+        D.el('div', { class: 'tb-card__h' }, [Avatar.avatar(p, { size: 'lg', tooltip: false }), D.el('div', { class: 'tb-card__who' }, [D.el('b', { class: 'truncate', text: Team.fullName(p) }), D.el('small', { class: 'truncate', text: p.position || '' })])]),
+        D.el('div', { class: 'tb-st is-' + st.kind }, [D.el('b', { text: st.label }), st.sub ? D.el('small', { text: st.sub }) : null]),
+        strip,
+        r.requests.map(function (a) { return D.el('p', { class: 'tb-req', text: requestLine(a) }); })
+      ].reduce(function (acc, x) { return acc.concat(Array.isArray(x) ? x : [x]); }, []).filter(Boolean));
+    });
+    var body = cards.length ? D.el('div', { class: 'tb-grid' }, cards) : D.el('p', { class: 't-meta tb-empty', text: 'Nikt nie pasuje do tego filtra.' });
+    return D.el('div', { class: 'tb' }, [head, body, D.el('p', { class: 't-meta', text: 'Wszyscy widzą urlopy, wnioski, wyjazdy i spotkania. Zwolnienia lekarskie innych osób są pokazane jako „nieobecny”.' })]);
+  }
+
+  root.ETROM.TeamScreen = { teamList: teamList, visiblePeople: visiblePeople, summary: summary, board: board };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

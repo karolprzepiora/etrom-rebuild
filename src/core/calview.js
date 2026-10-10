@@ -127,19 +127,20 @@
     var awayByDay = {};
     function markAway(key, personId) { (awayByDay[key] = awayByDay[key] || {})[personId] = true; }
     (input.absences || []).forEach(function (a) {
-      if (a.status === 'pending' || a.status === 'rejected') return;
+      if (a.status === 'rejected') return;
+      var pending = a.status === 'pending';
       var seen = Absences.peek(me, a, projects, people, mode);
       if (!seen) return;
       if (!inScope(a.personId) || hidePeople[a.personId]) return;
       if (hideKind.absence) return;
-      var kindText = seen === 'full' ? (ABSENCE_LABEL[a.kind] || 'Nieobecność') : 'Nieobecność';
+      var kindText = seen === 'full' ? (pending ? 'Wniosek: ' + (ABSENCE_LABEL[a.kind] || 'nieobecność').toLowerCase() : (ABSENCE_LABEL[a.kind] || 'Nieobecność')) : 'Nieobecność';
       var title = personName(a.personId);
-      var ev = { kind: 'absence', bar: true, personId: a.personId, absenceId: a.id, title: title, sub: kindText, absKind: seen === 'full' ? a.kind : 'other', detail: seen, from: a.from, to: a.to };
+      var ev = { kind: 'absence', bar: true, personId: a.personId, absenceId: a.id, title: title, sub: kindText, absKind: seen === 'full' ? a.kind : 'other', detail: seen, pending: pending, from: a.from, to: a.to };
       spans.push(Object.assign({ spanKind: 'absence', from: a.from, to: a.to }, ev));
-      items.push({ uid: 'a-' + a.id, kind: 'absence', from: a.from, to: a.to, title: title + ' · ' + kindText.toLowerCase(), sub: kindText });
+      if (!pending) items.push({ uid: 'a-' + a.id, kind: 'absence', from: a.from, to: a.to, title: title + ' · ' + kindText.toLowerCase(), sub: kindText });
       for (var d = a.from; d <= a.to; d = Cal.addDays(d, 1)) {
         add(d, ev);
-        if (!isOff(d)) markAway(d, a.personId);
+        if (!isOff(d) && !pending) markAway(d, a.personId);
         if (d > '9999') break;
       }
     });

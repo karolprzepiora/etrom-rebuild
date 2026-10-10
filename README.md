@@ -154,6 +154,7 @@ src/ui/                 warstwa widoku
   mailTab.js            zakładka Korespondencja i formularz pisma (pliki, właściciel, termin odpowiedzi)
   mailFlow.js           decyzje o piśmie ze Skrzynki: termin odpowiedzi i zadania, sprawa, przekazanie
   timeDock.js           pasek czasu na dole ekranu: start z podpowiedzi (wznów, termin, szukanie), przełączanie, cofnięcie startu, Stop
+  presence.js (core)    status osób na dzień i tydzień (dostępny, urlop, teren, spotkanie, nieobecny, wnioski) do tablicy Zespołu
   workrecord.js (core)  ewidencja czasu pracy za miesiąc: wariant 1 (rzeczywisty czas) i 2 (8:00–16:00), CSV i dokument do wydruku/PDF
   teamScreen.js         ekran Zespołu
   myWork.js             ekran Moja praca

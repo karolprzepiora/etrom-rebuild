@@ -260,14 +260,15 @@
 
   /**
    * Ile widzi `viewerId` z nieobecności: null (nic), 'who' (osoba bez rodzaju), 'full' (osoba, rodzaj i status).
-   * Właściciel, zarząd i lider osoby widzą wszystko; pozostali tylko zaakceptowane, wg ustawienia zarządu.
+   * Wszyscy widzą urlopy, wnioski i inne nieobecności kolegów (żeby lepiej planować pracę); zwolnienie lekarskie
+   * (dane zdrowotne) pokazuje się innym tylko jako „nieobecność”. Odrzuconych wniosków nie widzi nikt poza
+   * właścicielem, zarządem i liderem. Parametr `mode` został zachowany dla zgodności i nie ma już wpływu.
    */
-  function peek(viewerId, absence, projects, people, mode) {
+  function peek(viewerId, absence, projects, people) {
     if (!viewerId || !absence) return null;
     if (canSee(viewerId, absence, projects, people)) return 'full';
-    if (absence.status === 'pending' || absence.status === 'rejected') return null;
-    var m = VISIBILITY[mode] ? mode : 'who';
-    return m === 'own' ? null : (m === 'kind' ? 'full' : 'who');
+    if (absence.status === 'rejected') return null;
+    return absence.kind === 'sick' ? 'who' : 'full';
   }
 
   var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };

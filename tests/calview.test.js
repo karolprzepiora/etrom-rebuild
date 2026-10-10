@@ -37,14 +37,14 @@ test('zarząd widzi terminy projektów, etapów, zadania osób w zakresie i wszy
   assert.equal(cell(r, '2026-10-19').events[0].sub, 'Zwolnienie');
 });
 
-test('pracownik widzi własne zadania, terminy swoich projektów i (przy ustawieniu „own”) tylko własne nieobecności', () => {
-  const r = CV.build(Object.assign({ meId: 'p-3', visibility: 'own' }, base));
+test('pracownik widzi własne zadania, terminy swoich projektów i nieobecności zespołu', () => {
+  const r = CV.build(Object.assign({ meId: 'p-3' }, base));
   assert.deepEqual(cell(r, '2026-10-06').events.map((e) => e.kind), ['task']);
   assert.equal(cell(r, '2026-10-07').events.length, 0, 'cudze zadanie');
   assert.deepEqual(cell(r, '2026-10-16').events.map((e) => e.kind), ['project']);
   assert.equal(cell(r, '2026-10-20').events.length, 0, 'projekt, w którym nie jest w zespole');
   assert.equal(cell(r, '2026-10-09').events.length, 0, 'terminy etapów tylko dla zarządu i lidera');
-  assert.equal(cell(r, '2026-10-19').events.length, 0, 'cudza nieobecność');
+  assert.equal(cell(r, '2026-10-19').events.length, 1, 'cudza nieobecność jest widoczna dla wszystkich');
   assert.equal(cell(r, '2026-10-13').events.length, 1);
 });
 
@@ -55,13 +55,22 @@ test('lider widzi swój zespół i etapy swoich projektów', () => {
   assert.deepEqual(cell(r, '2026-10-07').events.map((e) => e.kind), ['task']);
 });
 
-test('ustawienie zarządu: domyślnie „kto” bez rodzaju, „kind” z rodzajem, „own” ukrywa', () => {
+test('zwolnienie lekarskie innych osób widać tylko jako „nieobecność”; zarząd widzi rodzaj', () => {
   const who = CV.build(Object.assign({ meId: 'p-3' }, base));
   const e = cell(who, '2026-10-19').events[0];
   assert.equal(e.sub, 'Nieobecność');
   assert.equal(e.personId, 'p-2');
-  const kind = CV.build(Object.assign({ meId: 'p-3', visibility: 'kind' }, base));
-  assert.equal(cell(kind, '2026-10-19').events[0].sub, 'Zwolnienie');
+  const boss = CV.build(Object.assign({ meId: 'p-1' }, base));
+  assert.equal(cell(boss, '2026-10-19').events[0].sub, 'Zwolnienie');
+});
+
+test('wniosek czekający na decyzję jest widoczny dla wszystkich, ale nie liczy się do nieobecnych', () => {
+  const ab = [{ id: 'w1', personId: 'p-2', from: '2026-10-21', to: '2026-10-21', kind: 'leave', status: 'pending' }];
+  const r = CV.build(Object.assign({ meId: 'p-3' }, base, { absences: ab }));
+  const e = cell(r, '2026-10-21').events.filter((x) => x.kind === 'absence')[0];
+  assert.equal(e.pending, true);
+  assert.match(e.sub, /Wniosek/);
+  assert.equal(cell(r, '2026-10-21').awayCount, 0);
 });
 
 test('filtry: zakres „mine”, ukryte osoby i rodzaje', () => {
