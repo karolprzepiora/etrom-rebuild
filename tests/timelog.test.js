@@ -174,3 +174,17 @@ test('update w trybie od–do przesuwa wpis i nie liczy samego siebie jako nakł
   assert.match(clash.errors.time, /Nakłada się/);
   assert.equal(T.update(b.entries, a.entry.id, { from: '09:00', to: '10:00' }, now).valid, true, 'ten sam przedział jest dozwolony');
 });
+
+test('shiftStart: cofa start trwającego zegara, ale nie nachodzi na wcześniejszy wpis ani początek dnia', () => {
+  const first = T.stop(T.start([], spec(), at(8)).entries, 'p-1', at(9)).entries;      // 8:00–9:00
+  const run = T.start(first, spec({ taskId: 't-2' }), at(10)).entries;                // zegar od 10:00
+  const a = T.shiftStart(run, 'p-1', 15, at(10, 5));
+  assert.equal(a.valid, true); assert.equal(a.shifted, 15);
+  assert.equal(new Date(T.running(a.entries, 'p-1').start).getHours() * 60 + new Date(T.running(a.entries, 'p-1').start).getMinutes(), 9 * 60 + 45);
+  const b = T.shiftStart(run, 'p-1', 120, at(10, 5));
+  assert.equal(b.shifted, 60, 'zatrzymuje się na końcu wpisu 8:00–9:00');
+  assert.equal(T.shiftStart(b.entries, 'p-1', 5, at(10, 5)).valid, false, 'dalej nie ma miejsca');
+  assert.equal(T.shiftStart([], 'p-1', 5, at(10)).valid, false);
+  assert.equal(T.shiftStart(run, 'p-1', 0, at(10)).valid, false);
+  assert.equal(run.find((e) => !e.end).start, at(10).toISOString(), 'oryginał bez zmian');
+});

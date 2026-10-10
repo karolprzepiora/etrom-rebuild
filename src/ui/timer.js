@@ -511,7 +511,7 @@
     var parts = dayParts(entries, ctx);
     var total = partsTotal(parts, now);
     var left = Math.max(0, DAY_TARGET - total);
-    var live = nowCard(entries, ctx);
+    var live = ctx.noLive ? null : nowCard(entries, ctx);
     return D.el('section', { class: 'etoday', attrs: { 'aria-label': 'Czas zapisany dziś' } }, [
       live,
       D.el('div', { class: 'etoday__head' }, [
@@ -682,5 +682,5 @@
     for (var b = 0; b < bigs.length; b += 1) refreshMeter(bigs[b], now);
   }
 
-  E.Timer = { setTarget: setTarget, nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
+  E.Timer = { budgetChip: budgetChip, setTarget: setTarget, nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -153,6 +153,7 @@ src/ui/                 warstwa widoku
   taskList.js           zadania
   mailTab.js            zakładka Korespondencja i formularz pisma (pliki, właściciel, termin odpowiedzi)
   mailFlow.js           decyzje o piśmie ze Skrzynki: termin odpowiedzi i zadania, sprawa, przekazanie
+  timeDock.js           pasek czasu na dole ekranu: start z podpowiedzi (wznów, termin, szukanie), przełączanie, cofnięcie startu, Stop
   teamScreen.js         ekran Zespołu
   myWork.js             ekran Moja praca
   inboxScreen.js        sekcja „Wymaga reakcji” w Mojej pracy

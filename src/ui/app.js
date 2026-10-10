@@ -1338,6 +1338,16 @@
     toggleTimer(entry.projectId, entry.stageId, entry.taskId);
   }
 
+  /** „Zacząłem wcześniej”: cofa start trwającego zegara o podaną liczbę minut (bez nachodzenia na inne wpisy). */
+  function shiftTimerStart(minutes) {
+    var me = currentMe();
+    if (!me) return;
+    var result = TL.shiftStart(entries(), me, minutes, new Date());
+    if (!result.valid) { Toast.show({ message: result.error || 'Nie udało się cofnąć startu.', tone: 'info', timeout: 4000 }); return; }
+    setEntries(function () { return result.entries; });
+    Toast.show({ message: 'Start cofnięty o ' + TL.duration(result.shifted) + ' – zegar liczy od ' + E.Timer.hm(result.entry.start) + '.', tone: 'success', timeout: 4000 });
+  }
+
   function toggleTimerKey() {
     var me = currentMe();
     if (!me) { requireMe(); return; }
@@ -1391,7 +1401,7 @@
         (stage.tasks || []).forEach(function (task) {
           if (task.status === 'done' || (task.assignees || []).indexOf(personId) < 0) return;
           var key = project.id + '|' + stage.id + '|' + task.id;
-          out.push({ value: key, label: project.code + ' · ' + task.name + ' (' + Model.describeStage(stage).name + ')', rank: key in recent ? recent[key] : 1e6, ref: { projectId: project.id, stageId: stage.id, taskId: task.id }, code: project.code, name: task.name });
+          out.push({ value: key, label: project.code + ' · ' + task.name + ' (' + Model.describeStage(stage).name + ')', rank: key in recent ? recent[key] : 1e6, ref: { projectId: project.id, stageId: stage.id, taskId: task.id }, code: project.code, name: task.name, deadline: task.deadline || '', status: task.status });
         });
       });
     });
@@ -3667,6 +3677,7 @@
     snoozeInbox: snoozeInbox,
     unsnoozeInbox: unsnoozeInbox,
     lastTimedTask: lastTimedTask,
+    shiftTimerStart: shiftTimerStart,
     taskMinutes: function (taskId) { return TL.sum(entries().filter(function (e) { return e.taskId === taskId; }), new Date()); },
     stopTimer: stopTimer,
     switchTimer: switchTimer,
@@ -4378,8 +4389,9 @@
     D.render(nodes.timerSlot, [
       E.Timer.nowClock(),
       meCurrent ? E.Timer.dayMeter(todays, { find: locateEntry, actions: actions }) : null,
-      E.Timer.pill(runningTimer(), { find: locateEntry, actions: actions, budget: timerBudget })
+      null
     ]);
+    if (E.TimeDock) E.TimeDock.render(nodes.timeDock, { state: state, me: meCurrent, running: runningTimer(), todays: todays, find: locateEntry, actions: actions, budget: timerBudget });
 
     if (route.name === 'time') {
       document.title = 'Czas · ETROM';
@@ -4596,6 +4608,7 @@
     nodes.teamList = D.byId('team-list');
     nodes.teamSummary = D.byId('team-summary');
     nodes.timerSlot = D.byId('timer-slot');
+    nodes.timeDock = D.byId('time-dock');
     nodes.myworkSummary = D.byId('mywork-summary');
     nodes.librarySummary = D.byId('library-summary');
     nodes.planSummary = D.byId('plan-summary');

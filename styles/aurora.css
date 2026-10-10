@@ -1645,3 +1645,51 @@ tbody.is-reorder tr.is-drop { box-shadow: inset 0 2px 0 var(--accent); }
   .ts-cal.is-week .ts-day { min-height: 0; }
   .ts-pr { grid-template-columns: 1.6rem auto 1fr 6rem; } .ts-pbar { display: none; }
 }
+
+/* ---------- Pasek czasu (na dole ekranu) ---------- */
+.tdock-host { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 45; width: min(52rem, calc(100vw - 2rem)); pointer-events: none; }
+.tdock-host:empty { display: none; }
+body.has-dock .page { padding-bottom: 6.5rem; }
+.tdock { position: relative; pointer-events: auto; display: flex; align-items: center; gap: var(--space-3); min-height: 3.5rem; padding: 8px 8px 8px 18px; border-radius: 99px; color: #fff; background: linear-gradient(135deg, oklch(.27 .06 245), oklch(.22 .05 250)); box-shadow: 0 14px 34px oklch(.2 .05 250 / .38), inset 0 0 0 1px rgb(255 255 255 / .1); }
+.tdock .code { background: rgb(255 255 255 / .18); color: #fff; }
+.tdock__ico { display: grid; place-items: center; opacity: .75; flex: none; }
+.tdock__input { all: unset; flex: 1; min-width: 0; font-size: 1rem; color: #fff; }
+.tdock__input::placeholder { color: rgb(255 255 255 / .6); }
+.tdock .kbd { background: rgb(255 255 255 / .16); color: rgb(255 255 255 / .85); box-shadow: none; flex: none; margin-right: var(--space-2); }
+.tdock__pop { position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); display: grid; gap: 2px; padding: 8px; border-radius: 20px; background: var(--raised); color: var(--ink); box-shadow: 0 18px 44px oklch(.2 .05 250 / .28), inset 0 0 0 1px var(--line); max-height: 18rem; overflow: auto; }
+.tdock__pop[hidden] { display: none; }
+.tdock__opt { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: var(--space-3); padding: 9px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); }
+.tdock__opt:hover, .tdock__opt.is-active { background: var(--flow-wash, color-mix(in srgb, var(--flow) 12%, transparent)); }
+.tdock__opt .code { background: var(--ink); color: var(--raised); }
+.tdock__play { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--flow) 16%, transparent); color: var(--flow-ink); }
+.tdock__optname { flex: 1; min-width: 0; }
+.tdock__why { flex: none; font-size: var(--fs-xs); color: var(--ink-3); }
+.tdock__why.is-late { color: var(--alarm-ink); font-weight: 700; }
+.tdock__empty { margin: 0; padding: 10px 12px; color: var(--ink-3); font-size: var(--fs-sm); }
+.tdock__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #5ad07a; box-shadow: 0 0 0 5px rgb(90 208 122 / .25); animation: tdock-pulse 1.8s infinite; }
+@keyframes tdock-pulse { 50% { box-shadow: 0 0 0 9px rgb(90 208 122 / 0); } }
+@media (prefers-reduced-motion: reduce) { .tdock__dot { animation: none; } }
+.tdock__what { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.tdock__what--btn { all: unset; flex: 1; min-width: 0; display: grid; gap: 1px; cursor: pointer; border-radius: 10px; }
+.tdock__what--btn:focus-visible { box-shadow: 0 0 0 2px rgb(255 255 255 / .6); }
+.tdock__line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.tdock__line b { font-weight: 650; min-width: 0; }
+.tdock__sub, .tdock__what small { font-size: var(--fs-xs); opacity: .72; }
+.tdock__time { flex: none; font: 600 1.25rem/1 var(--font-mono, ui-monospace, monospace); letter-spacing: .02em; }
+.tdock .btn { flex: none; background: rgb(255 255 255 / .14); color: #fff; box-shadow: none; }
+.tdock .btn:hover { background: rgb(255 255 255 / .24); }
+.tdock .tdock__stop { background: #fff; color: oklch(.25 .05 250); }
+.tdock .tdock__stop:hover { background: rgb(255 255 255 / .88); }
+.tdock.is-forgotten { background: linear-gradient(135deg, oklch(.4 .1 60), oklch(.32 .09 50)); }
+.tdock.is-pending { overflow: hidden; }
+.tdock__bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: rgb(255 255 255 / .7); transform-origin: left; animation: tdock-count 5s linear forwards; }
+@keyframes tdock-count { to { transform: scaleX(0); } }
+@media (max-width: 40rem) {
+  .tdock { padding-left: 14px; gap: var(--space-2); flex-wrap: wrap; border-radius: 24px; }
+  .tdock .btn[data-fk="switch-menu"] { display: none; }
+  .tdock__time { font-size: 1.05rem; }
+}
+body.has-dock .toasts { bottom: 6.5rem; }
+.tdock .icon-btn, .tdock .tdock__back { flex: none; color: #fff; background: rgb(255 255 255 / .14); }
+.tdock .icon-btn:hover { background: rgb(255 255 255 / .24); }
+.tdock .timer-pill__budget { color: #fff; background: rgb(255 255 255 / .14); box-shadow: none; }

@@ -34,10 +34,10 @@
 
   function controls(state, ctx, canPick, people, personId, sheet) {
     var a = ctx.actions;
-    var mode = state.timeMode === 'month' ? 'month' : 'week';
+    var mode = state.timeMode === 'month' ? 'month' : (state.timeMode === 'day' ? 'day' : 'week');
     var seg = UI.segmented({
       label: 'Okres', value: mode,
-      items: [{ value: 'week', label: 'Tydzień' }, { value: 'month', label: 'Miesiąc' }],
+      items: [{ value: 'day', label: 'Dzień' }, { value: 'week', label: 'Tydzień' }, { value: 'month', label: 'Miesiąc' }],
       onChange: function (value) { a.setTime({ timeMode: value, timeOffset: 0 }); }
     });
     var offset = state.timeOffset || 0;
@@ -49,6 +49,7 @@
         on: { change: function () { a.setTime({ timePerson: select.value }); } }, attrs: { 'aria-label': 'Osoba', 'data-fk': 'ts-person' }
       });
     }
+    if (mode === 'day') return D.el('div', { class: 'ts-bar' }, [seg.node]);
     var title = sheet.period.title;
     var bar = [
       seg.node,
@@ -212,12 +213,25 @@
     return out.length ? D.el('span', { class: 'ts-pills' }, out) : null;
   }
 
+  /** Dzień: wszystko, co zapisano dziś (oś dnia, luki, wpisy, podsumowanie). Zegar włącza się paskiem na dole. */
+  function dayView(state, ctx, me, now) {
+    var todays = TL.forDay(state.workspace.entries || [], me.id, now);
+    var minutes = TL.sum(todays, now);
+    var seg = controls(Object.assign({}, state, { timeMode: 'day' }), ctx, false, [], me.id, null);
+    var side = D.el('div', { class: 'ts-day-view' }, [
+      E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true }),
+      E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions })
+    ]);
+    return { body: [seg, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
+  }
+
   function sheetView(state, ctx, person, now) {
     var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
     var people = state.workspace.people || [];
     var canPick = Budget.isManagement(me.id, people);
     var personId = canPick && state.timePerson && Team.findPerson(people, state.timePerson) ? state.timePerson : me.id;
     var who = Team.findPerson(people, personId);
+    if (state.timeMode === 'day') return dayView(state, ctx, me, now);
     var sheet = TS.build(state.workspace.entries || [], personId, now, { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [] });
     var pct = sheet.target ? Math.round(sheet.total / sheet.target * 100) : 0;
     var avg = sheet.activeDays ? Math.round(sheet.total / sheet.activeDays) : 0;
@@ -263,19 +277,8 @@
         ]
       };
     });
-    var todays = TL.forDay(state.workspace.entries || [], me.id, now);
-    var minutes = TL.sum(todays, now);
     var main = D.el('div', { class: 'ts' }, part.body.filter(Boolean));
-    return {
-      summary: part.summary, tools: tools,
-      body: UI.railLayout({
-        id: 'time', cls: 'rl--time',
-        items: [{ id: 'time', title: 'Panel dnia', icon: 'hours', tone: 'accent', badge: minutes ? (TL.hoursOf(minutes) + ' h').replace('.', ',') : '', side: [D.el('div', { class: 'mywork__aside' }, [E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id })])] }],
-        active: (state.prefs.collapsedRails || []).indexOf('time') >= 0 ? null : 'time',
-        onSelect: function () { ctx.actions.toggleRail('time'); },
-        main: [main]
-      })
-    };
+    return { summary: part.summary, tools: tools, body: main };
   }
 
   E.TimeScreen = { view: view };

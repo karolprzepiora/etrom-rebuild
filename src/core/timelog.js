@@ -226,6 +226,32 @@
     return { valid: true, errors: {}, entries: entries.map(function (e) { return e === target ? next : e; }), entry: next };
   }
 
+  /**
+   * Cofnięcie startu trwającego zegara („zacząłem 15 minut temu”).
+   * Start nie może wejść na wcześniejszy wpis osoby ani cofnąć się przed początek tego samego dnia.
+   * @returns {{valid: boolean, error?: string, entries: Array, entry: Object|null, shifted: number}} shifted: o ile minut faktycznie cofnięto
+   */
+  function shiftStart(entries, personId, minutes, now) {
+    var list = (entries || []).slice();
+    var run = running(list, personId);
+    var back = Math.round(Number(minutes));
+    if (!run) return { valid: false, error: 'Zegar nie chodzi.', entries: list, entry: null, shifted: 0 };
+    if (!Number.isFinite(back) || back <= 0) return { valid: false, error: 'Podaj, o ile minut cofnąć start.', entries: list, entry: null, shifted: 0 };
+    var oldStart = time(run.start);
+    var floor = new Date(oldStart); floor.setHours(0, 0, 0, 0);
+    var limit = floor.getTime();
+    list.forEach(function (e) {
+      if (e.personId !== personId || e.id === run.id || !e.end) return;
+      var end = time(e.end);
+      if (end <= oldStart && end > limit) limit = end;
+    });
+    var next = Math.max(limit, oldStart - back * 60000);
+    var shifted = Math.round((oldStart - next) / 60000);
+    if (shifted <= 0) return { valid: false, error: 'Wcześniej jest już inny wpis albo początek dnia.', entries: list, entry: null, shifted: 0 };
+    var entry = Object.assign({}, run, { start: new Date(next).toISOString(), updatedAt: new Date(nowMs(now)).toISOString() });
+    return { valid: true, entries: list.map(function (e) { return e === run ? entry : e; }), entry: entry, shifted: shifted };
+  }
+
   function remove(entries, id) {
     return (entries || []).filter(function (entry) { return entry.id !== id; });
   }
@@ -438,6 +464,7 @@
     findOverlap: findOverlap,
     clockLabel: clockLabel,
     isoWeek: isoWeek,
+    shiftStart: shiftStart,
     weekDays: weekDays,
     gaps: gaps,
     normalizeEntries: normalizeEntries

@@ -808,3 +808,9 @@ Jeden kalendarz w czterech widokach: **Miesiąc · Tydzień · Rok · Zespół**
 - Stan otwarcia: `prefs.collapsedRails` przez `UI.railActive(prefs, ids)` i `actions.openRail(ids, id)`; Kalendarz trzyma własny wybór w `prefs.cal.rail`.
 - Ekrany z paskiem: Moja praca, Czas, Plan, Kalendarz, Aktualności (Projekty, Wyróżnienia, Zespół), Urlopy (Saldo, Do akceptacji, Nieobecni dziś), Projekty (Najbliższe terminy, własny układ o tych samych przyciskach).
 - Ekrany bez paska (jedna funkcja): Przegląd, Zespół, Biblioteka, Analiza.
+
+## Pasek czasu i zakładka Czas
+
+- **Pasek czasu** (`timeDock.js`, `.tdock`) jest jedynym miejscem do włączania i zatrzymywania pracy, na dole każdego ekranu. Bez zegara pokazuje pole „Nad czym pracujesz?” z podpowiedziami (wznów ostatnie, termin dziś/jutro, ostatnio używane) i szukaniem po kodzie lub nazwie; Enter włącza zegar. Z zegarem pokazuje zadanie, licznik, „Zacząłem wcześniej” (cofnięcie startu: `TimeLog.shiftStart`, bez nachodzenia na inne wpisy), Przełącz (5 s na cofnięcie) i Stop.
+- **Czas** ma trzy tryby w jednym języku wizualnym: Dzień (oś dnia, wpisy, podsumowanie), Tydzień i Miesiąc (kalendarz z godzinami co do minuty `g:mm`, różnicą względem normy, urlopami U/UŻ, L4, świętami i sumą tygodnia). Norma nie liczy dni urlopu, L4 i świąt.
+- Wpisy czasu ogląda się i poprawia tylko w zakładce Czas; Moja praca zostawia przyciski ▶ przy zadaniach i listę projektów.

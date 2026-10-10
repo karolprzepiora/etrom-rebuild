@@ -729,8 +729,8 @@ async function main() {
     const firstTimer = await evaluate('const b = document.querySelector(".mrow:not(.mrow--approve) .timer-btn"); return b ? b.dataset.fk : null;');
     await click('[data-fk="' + firstTimer + '"]');
     await sleep(300);
-    check('włączenie zegara pokazuje pływający zegar w pasku górnym i oznacza przycisk',
-      await evaluate('return !!document.querySelector(".timer-pill") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".timer-pill__time").textContent);'));
+    check('włączenie zegara pokazuje pasek czasu na dole ekranu i oznacza przycisk',
+      await evaluate('return !!document.querySelector(".tdock.is-on") && !!document.querySelector(".timer-btn.is-running") && /^\\d+:\\d\\d:\\d\\d$/.test(document.querySelector(".tdock__time").textContent);'));
     check('zegar zapisuje się jako wpis bez końca, jeden na osobę',
       (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
     check('pasek dnia w górnej belce: oś 6–22 z odcinkiem projektu, znacznikiem „teraz” i sumą',
@@ -748,14 +748,30 @@ async function main() {
       (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
     await click('[data-fk="timer-stop"]');
     await sleep(300);
-    check('stop zamyka wpis i chowa pływający zegar',
-      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 0 && await evaluate('return !document.querySelector(".timer-pill");'));
+    check('stop zamyka wpis, a pasek czasu wraca do pola „Nad czym pracujesz?”',
+      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 0 && await evaluate('return !document.querySelector(".tdock.is-on") && !!document.querySelector(".tdock.is-idle [data-fk=dock-input]");'));
+    await evaluate('document.querySelector("[data-fk=dock-input]").focus(); return true;');
+    await sleep(200);
+    check('pasek czasu: po kliknięciu w pole podpowiada zadania do włączenia',
+      await evaluate('return document.querySelectorAll(".tdock__opt").length >= 1 && !document.querySelector(".tdock__pop").hidden;'));
+    await evaluate('const i = document.querySelector("[data-fk=dock-input]"); i.value = "zzzzqq"; i.dispatchEvent(new Event("input")); return true;');
+    await sleep(150);
+    check('pasek czasu: szukanie bez wyniku pokazuje komunikat zamiast pustej listy',
+      await evaluate('return /Brak otwartych zadań/.test(document.querySelector(".tdock__pop").textContent);'));
+    await evaluate('const i = document.querySelector("[data-fk=dock-input]"); i.value = ""; i.dispatchEvent(new Event("input")); i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); return true;');
+    await sleep(300);
+    check('pasek czasu: Enter włącza zegar na pierwszej podpowiedzi',
+      (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1 && await evaluate('return !!document.querySelector(".tdock.is-on [data-fk=dock-back]") && !!document.querySelector(".tdock.is-on [data-fk=switch-menu]");'));
+    await click('[data-fk="timer-stop"]');
+    await sleep(300);
+    await evaluate('ETROM.app.actions.setTime({ timeMode: "day" }); return true;');
+    await go('#/czas');
     check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
     check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
       await evaluate('return document.querySelectorAll(".etoday .eproj__row").length >= 1 && !!document.querySelector(".etoday .dmtrack--big");'));
-    check('panel „Dzisiaj” jest zwięzły: bez osi dnia i tygodnia (są na pasku u góry i w „Czas”)',
-      await evaluate('return !document.querySelector(".etoday .eweek") && !document.querySelector(".etoday .dayaxis") && !!document.querySelector(".dribbon");'));
+    check('„Moja praca” nie ma już panelu czasu ani podsumowania dnia, a Czas w trybie „Dzień” ma wpisy i podsumowanie',
+      await evaluate('return !!document.querySelector("#view-time .etoday") && !!document.querySelector("#view-time [data-fk=day-summary]") && !document.querySelector(".etoday .eweek") && !!document.querySelector(".dribbon");'));
     check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
       await evaluate('return !!document.querySelector(".etoday__resume");'));
     await pressKey('t');
@@ -772,6 +788,7 @@ async function main() {
     await sleep(300);
     check('edycja wpisu zmienia czas trwania na 2,5 h',
       await evaluate('return [...document.querySelectorAll(".erow__dur")].some(n => /2 h 30 min/.test(n.textContent));'));
+    await go('#/moja-praca');
     await click('.mrow:not(.mrow--approve) .trow__name');
     await sleep(300);
     await evaluate('const b = [...document.querySelectorAll("#inspector button")].find(x => /Dopisz czas/.test(x.textContent)); b.click(); return true;');
@@ -787,7 +804,7 @@ async function main() {
     await pressKey('escape');
 
     /* 21b. Wpis od–do, wybór zadania, kontrola zakresu */
-    await go('#/moja-praca');
+    await go('#/czas');
     await click('[data-fk="time-add"]');
     await sleep(300);
     check('„Dopisz czas wstecz” otwiera formularz z wyborem zadania i polami od–do',
@@ -815,11 +832,8 @@ async function main() {
 
     /* 21d. Panel boczny, kolor projektu, jeden kafel wskaźnika */
     await go('#/czas');
-    check('Czas ma wysuwany panel boczny, który zwija się i zapamiętuje stan',
-      await evaluate('const b = document.querySelector("[data-fk=rail-time]"); if (!b) return false; b.click(); return true;')
-      && (await sleep(300), await evaluate('return !!document.querySelector("#view-time .rl.is-collapsed") && window.ETROM.app.store.getState().prefs.collapsedRails.indexOf("time") >= 0;')));
-    await evaluate('document.querySelector("[data-fk=rail-time]").click(); return true;');
-    await sleep(200);
+    await evaluate('ETROM.app.actions.setTime({ timeMode: "week" }); return true;');
+    await go('#/czas');
     check('kafle wskaźników na Czasie i w projekcie mają ten sam krój etykiety',
       await evaluate('const l = document.querySelector("#view-time .ts-stat__l"); return !!l && getComputedStyle(l).textTransform === "uppercase" && getComputedStyle(l).fontSize === "11px";'));
     await go('#/projekty');
@@ -846,7 +860,7 @@ async function main() {
     check('przesunięcie okresu zmienia tytuł i wraca przyciskiem „Ten tydzień”',
       (await state('s.timeOffset')) === -1 && await evaluate('return !!document.querySelector("[data-fk=ts-today]");'));
     await click('[data-fk="ts-today"]');
-    await click('.ts-bar .segmented button:nth-child(2)');
+    await click('.ts-bar .segmented button:nth-child(3)');
     await sleep(200);
     check('widok miesiąca ma komórkę na każdy dzień miesiąca i sumy tygodni',
       await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-cal.is-month .ts-day:not(.is-out)").length === days && document.querySelectorAll(".ts-cal .ts-wk").length >= 4;'));
@@ -2072,19 +2086,23 @@ async function main() {
       await go('#/moja-praca');
       await sleep(300);
     }
-    check('Moja praca ma kartę „Podsumowanie dnia”: godziny względem celu, zadania z dziś i terminy z upływem czasu',
+    await evaluate('ETROM.app.actions.setTime({ timeMode: "day" }); return true;');
+    await go('#/czas');
+    check('Czas (Dzień) ma kartę „Podsumowanie dnia”: godziny względem celu, zadania z dziś i terminy z upływem czasu',
       await evaluate('const c = document.querySelector("[data-fk=day-summary]"); return !!c && !!c.querySelector(".dsum__pill") && /\\d/.test(c.querySelector(".dsum__big").textContent);'));
+    await evaluate('ETROM.app.actions.setTime({ timeMode: "week" }); return true;');
+    await go('#/moja-praca');
     check('pracownik w Tygodniach nie widzi obciążenia ani godzin planu, tylko termin, upływ czasu i własną rejestrację',
       await evaluate('const b = document.querySelector(".pb--solo"); const t = b.querySelector(".pb-tn__time b"); return !b.querySelector(".pb-load") && !b.querySelector(".pb-bar__hours") && !b.querySelector(".pb-bar__h") && !/\\d\\s*\\/\\s*\\d+[,.]?\\d*\\s?h/.test(b.textContent) && (!b.querySelector(".pb-tn") || (!!t && !/%/.test(t.textContent) && /dziś|jutro|po terminie|^(pn|wt|śr|cz|pt|sb|nd) \\d/.test(t.textContent)));'));
     /* Zegar w górnym pasku: budżet etapu tylko dla zarządu i lidera projektu */
     await evaluate('ETROM.app.actions.setMe("p-3"); ETROM.app.actions.toggleTimer(1, "water-docs", "t-2"); return true;');
     await sleep(500);
-    check('pasek zegara: pracownik nie widzi znacznika budżetu etapu',
-      await evaluate('return !!document.querySelector(".timer-pill") && !document.querySelector(".timer-pill__budget");'));
+    check('pasek czasu: pracownik nie widzi znacznika budżetu etapu',
+      await evaluate('return !!document.querySelector(".tdock.is-on") && !document.querySelector(".tdock .timer-pill__budget");'));
     await evaluate('ETROM.app.actions.stopTimer(); ETROM.app.actions.setMe("p-1"); ETROM.app.actions.toggleTimer(1, "water-docs", "t-2"); return true;');
     await sleep(500);
-    check('pasek zegara: zarząd widzi znacznik budżetu etapu',
-      await evaluate('return !!document.querySelector(".timer-pill__budget");'));
+    check('pasek czasu: zarząd widzi znacznik budżetu etapu',
+      await evaluate('return !!document.querySelector(".tdock .timer-pill__budget");'));
     await evaluate('ETROM.app.actions.stopTimer(); return true;');
     await sleep(200);
     await click('[data-fk="mywork-view-all"]');

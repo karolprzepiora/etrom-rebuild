@@ -334,8 +334,6 @@
         var minutes = TL.sum(todays, now);
         var zegarSide = [
             D.el('div', { class: 'mywork__aside' }, [
-              E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: state.pendingSwitch ? ctx.find(state.pendingSwitch) : null }),
-              E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions }),
               D.el('div', { class: 'maside__projects' }, [
                 D.el('h2', { class: 'msec__title', text: 'Moje projekty' }),
                 projectsAside(m.work, now)
@@ -344,7 +342,7 @@
           ];
         var items = [];
         if (caseEl) items.push({ id: 'mycases', title: caseEl.dataset.title, label: 'Sprawy w toku', icon: 'history', tone: 'warn', badge: caseEl.dataset.count, late: Number(caseEl.dataset.attention) > 0, side: [caseEl] });
-        items.push({ id: 'mywork', title: 'Zegar i projekty', label: 'Czas i projekty', icon: 'clock', tone: 'accent', badge: minutes ? (TL.hoursOf(minutes) + ' h').replace('.', ',') : '', side: zegarSide });
+        items.push({ id: 'mywork', title: 'Moje projekty', label: 'Projekty', icon: 'folder', tone: 'accent', badge: '', side: zegarSide });
         var openId = caseEl ? (!dock.cases ? 'mycases' : (!dock.zegar ? 'mywork' : null)) : (dock.zegar ? null : 'mywork');
         return UI.railLayout({
           id: 'mywork', cls: 'mywork', mainCls: 'mywork__main', items: items, active: openId, main: main,
