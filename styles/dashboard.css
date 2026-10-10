@@ -118,7 +118,7 @@ button.pb-trip:focus-visible { box-shadow: var(--focus-ring); }
 .cv-swatch--trip { background: var(--trip); }
 .cv-swatch--task { background: color-mix(in srgb, var(--accent) 40%, var(--sheet)); }
 .cv-swatch--deadline { background: var(--accent); }
-.cv-rl .lv-month { padding: 0; background: none; }
+.cv-rl .cv-rl__side .lv-month, .cv-panel .lv-month { padding: 0; background: none; }
 .cv-ev--cont { min-height: 1.1rem; }
 .cv-ev.is-warn { box-shadow: inset 0 0 0 1.5px var(--alarm); }
 .cv-occ { margin-left: auto; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink-2); white-space: nowrap; }

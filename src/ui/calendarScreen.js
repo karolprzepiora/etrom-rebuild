@@ -17,7 +17,7 @@
   var DOW_FULL = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
   var MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
   var MONTHS_NOM = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
-  var VIEWS = [{ value: 'month', label: 'Miesiąc' }, { value: 'week', label: 'Tydzień' }, { value: 'year', label: 'Rok' }];
+  var VIEWS = [{ value: 'day', label: 'Dzień' }, { value: 'week', label: 'Tydzień' }, { value: 'month', label: 'Miesiąc' }, { value: 'year', label: 'Rok' }];
   var MAX_CHIPS = 3;
 
   function n2(n) { return n < 10 ? '0' + n : String(n); }
@@ -41,7 +41,7 @@
     var now = new Date();
     var today = Cal.isoOf(now);
     var cal = state.prefs.cal || {};
-    var mode = cal.view === 'week' || cal.view === 'year' ? cal.view : 'month';
+    var mode = cal.view === 'day' || cal.view === 'week' || cal.view === 'year' ? cal.view : 'month';
     var management = E.Budget.isManagement(me.id, people);
     var visibility = (state.workspace.settings || {}).absenceVisibility;
     var anchor = state.calAnchor && /^\d{4}-\d{2}-\d{2}$/.test(state.calAnchor) ? state.calAnchor : today;
@@ -56,6 +56,7 @@
     };
     var title;
     if (mode === 'month') { input.year = year; input.month = month; title = cap(MONTHS_NOM[month]) + ' ' + year; }
+    else if (mode === 'day') { input.range = { from: anchor, to: anchor }; title = cap(longDay(anchor)) + ' ' + year; }
     else if (mode === 'week') { var mon = monday(anchor); input.range = { from: mon, to: Cal.addDays(mon, 6) }; title = weekTitle(input.range.from, input.range.to); }
     else { input.range = { from: iso(year, 0, 1), to: iso(year, 11, 31) }; title = String(year); }
     var data = CV.build(input);
@@ -78,12 +79,13 @@
     /* ---------- pasek narzędzi ---------- */
     function shift(dir) {
       var next;
-      if (mode === 'week') next = Cal.addDays(anchor, 7 * dir);
+      if (mode === 'day') next = Cal.addDays(anchor, dir);
+      else if (mode === 'week') next = Cal.addDays(anchor, 7 * dir);
       else if (mode === 'year') next = iso(year + dir, month, 1);
       else next = iso(new Date(year, month + dir, 1).getFullYear(), new Date(year, month + dir, 1).getMonth(), 1);
       ctx.actions.setTime({ calAnchor: next, calDay: null });
     }
-    var unit = { month: 'miesiąc', week: 'tydzień', year: 'rok' }[mode];
+    var unit = { day: 'dzień', month: 'miesiąc', week: 'tydzień', year: 'rok' }[mode];
     var switcher = UI.segmented({ label: 'Widok kalendarza', value: mode, items: VIEWS, onChange: function (v) { ctx.actions.setCal({ view: v }); } });
     var hiddenCount = (cal.hiddenPeople || []).length + (cal.hiddenProjects || []).length + (cal.hiddenKinds || []).length + (cal.scope && cal.scope !== CV.defaultScope(management) ? 1 : 0);
     var addBtn = UI.button({ label: 'Wyjazd lub spotkanie', variant: 'primary', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-add' }, onClick: function () { ctx.actions.openTrip(null, selected); } });
@@ -263,7 +265,7 @@
           return { cls: cls.trim(), tip: tipParts.join(' · '), onClick: function (k) { ctx.actions.setCal({ view: 'month' }); ctx.actions.setTime({ calAnchor: k, calDay: k }); } };
         }, today));
       }
-      return D.el('div', { class: 'cv-year' }, [D.el('div', { class: 'lv-months' }, months), yearLegend()]);
+      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [yearLegend()])]);
     }
     function yearLegend() {
       return D.el('ul', { class: 'lv-legend lv-legend--row' }, [
@@ -309,7 +311,75 @@
       }))];
     }
 
-    var main = mode === 'month' ? monthGrid() : mode === 'week' ? weekView() : yearView();
+    /* ---------- widok: dzień ---------- */
+    function dayView() {
+      var c = selCell || data.cells[0];
+      if (!c) return D.el('p', { class: 'cv-empty', text: 'Brak danych.' });
+      var abs = c.events.filter(function (e) { return e.kind === 'absence'; });
+      var trips = c.events.filter(function (e) { return e.kind === 'trip'; });
+      var deadlines = c.events.filter(function (e) { return e.kind !== 'absence' && e.kind !== 'trip'; });
+      function group(name, list, rows, emptyText) {
+        return D.el('section', { class: 'cv-dgroup' }, [
+          D.el('h3', { class: 'cv-dgroup__t' }, [name, D.el('small', { text: String(list.length) })]),
+          list.length ? D.el('div', { class: 'cv-dgrid' }, rows) : D.el('p', { class: 'cv-empty', text: emptyText })
+        ]);
+      }
+      function dtile(ev) {
+        return D.el('button', { class: 'cv-dtile' + (ev.kind === 'trip' ? ' is-trip' : '') + (ev.tripKind === 'meeting' ? ' is-meet' : ''), style: ev.kind === 'trip' ? null : E.Identity.hueStyle(ev.code), attrs: { type: 'button', 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function () { openEvent(ev); } } }, [
+          D.el('i', { class: 'cv-dtile__bar', attrs: { 'aria-hidden': 'true' } }),
+          D.el('span', { class: 'cv-dtile__t' }, [ev.code ? D.el('span', { class: 'cv-ev__code', text: ev.code }) : null, D.el('b', { text: ev.title })]),
+          D.el('small', { text: (ev.project ? ev.project + ' · ' : '') + (ev.sub || '') })
+        ]);
+      }
+      function atile(ev) {
+        var p = byPerson[ev.personId];
+        return D.el('div', { class: 'cv-dtile cv-dtile--abs' + (ev.pending ? ' is-pending' : ''), attrs: { 'data-fk': 'cv-ev-absence' } }, [
+          p ? E.Avatar.avatar(p, { size: 'sm' }) : null,
+          D.el('span', { class: 'cv-dtile__t' }, [D.el('b', { text: p ? Team.fullName(p) : ev.title })]),
+          D.el('small', { text: ev.pending ? (ev.sub || 'Wniosek') : (ev.title || 'Nieobecność') })
+        ]);
+      }
+      var head = D.el('div', { class: 'cv-dhead' }, [
+        c.holiday ? D.el('span', { class: 'ts-pill is-hol', text: c.holiday }) : null,
+        c.total && c.workday ? occ(c) : null
+      ]);
+      var conf = data.conflicts.filter(function (x) { return c.key >= x.day && c.key <= (x.to || x.day); });
+      return D.el('div', { class: 'cv-day' }, [
+        c.holiday || (c.total && c.workday) ? head : null,
+        conf.length ? D.el('ul', { class: 'cv-conf' }, conf.map(function (x) { return D.el('li', { text: x.text }); })) : null,
+        group('Terminy i zadania', deadlines, deadlines.map(dtile), 'Brak terminów w tym dniu.'),
+        group('Wyjazdy i spotkania', trips, trips.map(dtile), 'Brak wyjazdów i spotkań.'),
+        group('Nieobecności', abs, abs.map(atile), c.workday ? 'Wszyscy obecni.' : 'Dzień wolny.')
+      ]);
+    }
+
+    /* ---------- cztery kafle statystyk (jak w Czasie) ---------- */
+    function stat(label, value, sub) {
+      return D.el('div', { class: 'ts-stat' }, [D.el('span', { class: 'ts-stat__l', text: label }), D.el('span', { class: 'ts-stat__v t-num', text: value }), sub ? D.el('span', { class: 'ts-stat__s', text: sub }) : null]);
+    }
+    function stats() {
+      var inR = data.cells.filter(function (c) { return !c.out; });
+      var dl = 0, absDays = 0, pend = 0, minPresent = null, minKey = null, tripIds = {}, trips = 0, meets = 0;
+      inR.forEach(function (c) {
+        c.events.forEach(function (e) {
+          if (e.kind === 'trip') { if (!tripIds[e.tripId]) { tripIds[e.tripId] = 1; if (e.tripKind === 'meeting') meets += 1; else trips += 1; } }
+          else if (e.kind === 'absence') { if (e.pending) pend += 1; else if (c.workday) absDays += 1; }
+          else dl += 1;
+        });
+        if (c.workday && c.total && (minPresent === null || c.present < minPresent)) { minPresent = c.present; minKey = c.key; }
+      });
+      var one = mode === 'day';
+      var tot = inR[0] ? inR[0].total : 0;
+      return D.el('div', { class: 'ts-stats cv-stats' }, [
+        stat('Terminy', String(dl), F(dl, 'projekt, etap lub zadanie', 'projekty, etapy lub zadania', 'projektów, etapów lub zadań') + (one ? ' w tym dniu' : ' w okresie')),
+        stat('Nieobecności', absDays ? (one ? F(absDays, 'osoba', 'osoby', 'osób') : F(absDays, 'dzień osobowy', 'dni osobowe', 'dni osobowych')) : 'brak', pend ? F(pend, 'wniosek czeka', 'wnioski czekają', 'wniosków czeka') + ' na decyzję' : 'bez wniosków w toku'),
+        stat('Wyjazdy i spotkania', String(trips + meets), trips + meets ? F(trips, 'wyjazd', 'wyjazdy', 'wyjazdów') + ' · ' + F(meets, 'spotkanie', 'spotkania', 'spotkań') : 'nic nie zaplanowano'),
+        stat(one ? 'Obsada' : 'Najmniejsza obsada', minPresent === null ? '—' : minPresent + ' z ' + tot, minPresent === null ? 'dni wolne' : (one ? 'osób obecnych' : 'osób obecnych · ' + longDay(minKey)))
+      ]);
+    }
+    function F(n, a, b, c) { return E.Format.count(n, a, b, c); }
+
+    var main = mode === 'day' ? dayView() : mode === 'month' ? monthGrid() : mode === 'week' ? weekView() : yearView();
     var items = [{ id: 'filters', title: 'Filtry i warstwy', icon: 'filter', tone: 'accent', badge: hiddenCount ? String(hiddenCount) : '', side: filtersSide }];
     if (mode === 'month' || mode === 'week') items.push({ id: 'day', title: 'Wybrany dzień i najbliższe terminy', label: 'Dzień', icon: 'calendar', tone: 'violet', side: daySide() });
     if (data.conflicts.length) items.push({ id: 'warn', title: 'Uwaga w tym zakresie', icon: 'alert', tone: 'warn', badge: String(data.conflicts.length), late: true, side: warnSide() });
@@ -319,7 +389,7 @@
     return {
       summary: management ? 'Terminy projektów i etapów oraz nieobecności zespołu.' : 'Twoje terminy i nieobecności.',
       body: D.el('div', { class: 'cv' }, [toolbar,
-        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [D.el('section', { class: 'an-card ts-calcard cv-card' }, [main])], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
+        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [stats(), D.el('section', { class: 'an-card ts-calcard cv-card' }, [main])], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
         D.el('p', { class: 'sr-only', text: total + ' terminów w zakresie', attrs: { 'aria-live': 'polite' } })])
     };
   }

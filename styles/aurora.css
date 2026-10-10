@@ -1788,3 +1788,27 @@ body.has-dock .toasts { bottom: 6.5rem; }
 .lv-meter { height: 6px; margin-top: 6px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--ink) 10%, transparent); }
 .lv-meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--flow), var(--good)); }
 .lv-card--inbox .lv-inboxes { gap: var(--space-3); }
+
+/* Kalendarz: widok Dzień i kafle statystyk (jak w Czasie) */
+.cv-stats { margin-bottom: var(--space-3); }
+.cv-day { display: grid; gap: var(--space-4); }
+.cv-dhead { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.cv-dhead__d { font-size: var(--fs-lg, 1.15rem); }
+.cv-dgroup { display: grid; gap: var(--space-2); }
+.cv-dgroup__t { margin: 0; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 8px; align-items: baseline; }
+.cv-dgroup__t small { font-weight: 700; color: var(--ink-4); }
+.cv-dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-2); }
+.cv-dtile { all: unset; box-sizing: border-box; display: grid; gap: 4px; padding: 10px 12px 10px 16px; border-radius: 12px; background: var(--sheet, #f3f6fa); position: relative; cursor: pointer; min-width: 0; }
+.cv-dtile:hover { background: var(--pressed); }
+.cv-dtile:focus-visible { box-shadow: var(--focus-ring); }
+.cv-dtile__bar { position: absolute; left: 6px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: oklch(.55 .15 var(--hue, 250)); }
+.cv-dtile.is-trip .cv-dtile__bar { background: var(--trip); }
+.cv-dtile.is-meet .cv-dtile__bar { background: var(--violet, #8a5cc8); }
+.cv-dtile__t { display: flex; gap: 6px; align-items: center; min-width: 0; font-size: var(--fs-sm); }
+.cv-dtile__t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-dtile small { color: var(--ink-3); font-size: var(--fs-xs); }
+.cv-dtile--abs { grid-template-columns: auto 1fr; align-items: center; cursor: default; padding-left: 12px; column-gap: 10px; }
+.cv-dtile--abs small { grid-column: 2; }
+.cv-dtile--abs.is-pending { box-shadow: inset 0 0 0 1.5px var(--leave); background: var(--leave-wash); }
+/* Rok: ten sam wygląd miesięcy co w Urlopach */
+.cv-year .lv-month { padding: var(--space-3); background: var(--sheet); }

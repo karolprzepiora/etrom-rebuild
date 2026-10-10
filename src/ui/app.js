@@ -4558,7 +4558,7 @@
       if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
     }
     if (route === 'calendar' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      var calKeys = { m: 'month', w: 'week', r: 'year', z: 'team' };
+      var calKeys = { m: 'month', w: 'week', r: 'year', z: 'day' };
       var ck = String(event.key).toLowerCase();
       if (calKeys[ck]) { event.preventDefault(); setCal({ view: calKeys[ck] }); return; }
       if (ck === 'd') { event.preventDefault(); store.set({ calAnchor: null, calDay: null }); return; }

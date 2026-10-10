@@ -62,7 +62,7 @@
     var src = raw && typeof raw === 'object' ? raw : {};
     function list(v, test) { return (Array.isArray(v) ? v : []).filter(function (x, i, a) { return test(x) && a.indexOf(x) === i; }).slice(0, 200); }
     return {
-      view: ['month', 'week', 'year', 'team'].indexOf(src.view) >= 0 ? src.view : 'month',
+      view: ['day', 'month', 'week', 'year'].indexOf(src.view) >= 0 ? src.view : 'month',
       scope: ['mine', 'team', 'all'].indexOf(src.scope) >= 0 ? src.scope : '',
       hiddenPeople: list(src.hiddenPeople, function (x) { return typeof x === 'string' && /^p-\d+$/.test(x); }),
       hiddenProjects: list(src.hiddenProjects, function (x) { return Number.isSafeInteger(x) && x > 0; }),

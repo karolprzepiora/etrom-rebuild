@@ -884,8 +884,12 @@ async function main() {
     // ---- Kalendarz: widoki, filtry, ustawienie widoczności ----
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ calAnchor: null, calDay: null }); window.ETROM.app.actions.setCal({ rail: "filters" }); return true;');
     await sleep(300);
-    check('kalendarz: panel warstw z zakresem, osobami, projektami i rodzajami oraz przełącznik 3 widoków (Miesiąc, Tydzień, Rok)',
-      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".rl__side .lv-month") && v.querySelectorAll(".cv-panel__sec").length === 4 && v.querySelectorAll(".cv-bar .segmented__btn").length === 3 && v.querySelectorAll(".cv-opt").length >= 4;'));
+    check('kalendarz: panel warstw z zakresem, osobami, projektami i rodzajami oraz przełącznik 4 widoków (Dzień, Tydzień, Miesiąc, Rok)',
+      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".rl__side .lv-month") && v.querySelectorAll(".cv-panel__sec").length === 4 && v.querySelectorAll(".cv-bar .segmented__btn").length === 4 && v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-opt").length >= 4;'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "day" }); return true;');
+    await sleep(300);
+    check('kalendarz: widok Dzień ma 4 kafle statystyk i trzy grupy (terminy, wyjazdy i spotkania, nieobecności)',
+      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-dgroup").length === 3 && !v.querySelector(".cv-c");'));
     await evaluate('window.ETROM.app.actions.setCal({ view: "week" }); return true;');
     await sleep(300);
     check('kalendarz: widok Tydzień ma 7 kafli i nie ma już macierzy „Kto gdzie pracuje”',

@@ -619,6 +619,8 @@ Ekran `#/przeglad`: 6 sekcji spraw wymagających decyzji (np. przeterminowane, b
 ### Ekran Kalendarz
 Pozycja „Kalendarz” w menu (`#/kalendarz`): miesiąc z numerami tygodni, świętami i oznaczonym dniem „dziś”. Terminy mają kolor projektu: pełny pasek to termin umowy, średni to termin etapu (tylko zarząd i lider), jasny to własne zadanie, kreskowany to nieobecność. Klik w dzień pokazuje jego listę i najbliższe terminy z boku, klik w termin otwiera projekt albo zadanie (nieobecność edytuje zarząd). Zakres wg roli: zarząd wszystko, lider swoje projekty i ich osoby, pracownik własne zadania, terminy swoich projektów i własne nieobecności. Bez godzin i obciążenia. Dane: `src/core/calview.js`.
 
+**Widoki Kalendarza (jak w Czasie):** przełącznik Dzień / Tydzień / Miesiąc / Rok (`prefs.cal.view`), pod nim cztery kafle `ts-stat` (Terminy, Nieobecności, Wyjazdy i spotkania, Najmniejsza obsada; w Dniu: Obsada). Dzień to karta `cv-day` z trzema grupami kafli (terminy i zadania, wyjazdy i spotkania, nieobecności). Rok używa tych samych kart miesięcy `lv-month` co Urlopy.
+
 ### Święta w liczeniu
 Polskie święta nie są dniami roboczymi: zmniejszają pojemność tygodnia w Planie, nie dostają godzin zadań, nie liczą się do nieobecności ani do celu dnia w karcie czasu (dzień świąteczny jest neutralny).
 
