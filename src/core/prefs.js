@@ -114,7 +114,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, dockCompact: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
       cal: cleanCal(null), dash: cleanDash(null)
     };
   }
@@ -158,6 +158,7 @@
       projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,
       railCollapsed: source.railCollapsed === true,
+      dockCompact: source.dockCompact === true,
       collapsedRails: (Array.isArray(source.collapsedRails) ? source.collapsedRails : ['time', 'mywork', 'mycases', 'feed']).filter(function (id, i, a) { return typeof id === 'string' && /^[a-z-]{1,24}$/.test(id) && a.indexOf(id) === i; }).slice(0, 12),
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
       look: LOOK_IDS.indexOf(source.look) >= 0 ? source.look : 'etrom',

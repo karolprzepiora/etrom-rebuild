@@ -752,6 +752,11 @@ async function main() {
     await sleep(300);
     check('włączenie drugiego zegara zatrzymuje pierwszy: nadal jeden chodzący wpis',
       (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
+    await click('[data-fk="dock-fold"]');
+    await sleep(300);
+    check('pasek czasu przy włączonym zegarze zwija się do małej pigułki (zegar dalej chodzi), a rozwinięcie przywraca pełny pasek',
+      await evaluate('const d = document.querySelector(".tdock"); return d.classList.contains("is-compact") && !!d.querySelector(".timer-pill__time") && d.getBoundingClientRect().width < 360 && document.body.classList.contains("has-dock-compact") && window.ETROM.app.store.getState().prefs.dockCompact === true;')
+      && (await (async () => { await click('[data-fk="dock-unfold"]'); await sleep(300); return evaluate('const d = document.querySelector(".tdock"); return !d.classList.contains("is-compact") && d.getBoundingClientRect().width > 500 && !document.body.classList.contains("has-dock-compact");'); })()));
     await click('[data-fk="timer-stop"]');
     await sleep(300);
     check('stop zamyka wpis, a pasek czasu wraca do pola „Nad czym pracujesz?”',

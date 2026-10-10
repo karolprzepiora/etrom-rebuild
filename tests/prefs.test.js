@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, dockCompact: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -188,6 +188,12 @@ test('ustawienia pulpitu: tylko poprawne identyfikatory, bez duplikatów, z limi
   assert.deepEqual(n.dash.tiles, ['risk', 'load', 'a', 'b', 'c']);
   assert.deepEqual(n.dash.collapsed, ['week', 'team']);
   assert.deepEqual(Prefs.normalize({ dash: 'zepsute' }).dash, { tiles: [], collapsed: [] });
+});
+
+test('zwinięty pasek czasu: tylko prawdziwe true się zapisuje', () => {
+  assert.equal(Prefs.normalize({}).dockCompact, false);
+  assert.equal(Prefs.normalize({ dockCompact: true }).dockCompact, true);
+  assert.equal(Prefs.normalize({ dockCompact: 'tak' }).dockCompact, false);
 });
 
 test('styl wyglądu: znane style przechodzą, reszta wraca do ETROM; schemat wymuszają ETROM, OLED, Filmowy i Papier', () => {

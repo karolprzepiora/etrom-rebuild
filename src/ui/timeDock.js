@@ -146,6 +146,16 @@
     });
     var now = Date.now();
     var forgotten = TL.isForgotten(run);
+    var collapse = UI.iconButton({ icon: 'chevronDown', label: 'Zwiń pasek czasu', size: 'sm', tooltip: 'Zwiń do małej pigułki', class: 'tdock__fold', attrs: { 'data-fk': 'dock-fold' }, onClick: function () { a.setPref({ dockCompact: true }); } });
+    if (ctx.state.prefs && ctx.state.prefs.dockCompact) {
+      return D.el('div', { class: 'tdock is-on is-compact' + (forgotten ? ' is-forgotten' : ''), attrs: { role: 'group', 'aria-label': 'Zegar pracy (zwinięty)', 'data-fk': 'dock' } }, [
+        D.el('span', { class: 'tdock__dot', attrs: { 'aria-hidden': 'true' } }),
+        pill(code),
+        D.el('time', { class: 'tdock__time t-num timer-pill__time', text: TL.clock(now - startMs), attrs: { 'data-timer-start': String(startMs), 'aria-hidden': 'true' } }),
+        UI.iconButton({ icon: 'stop', label: 'Zatrzymaj zegar', size: 'sm', class: 'tdock__stop tdock__stop--icon', attrs: { 'data-fk': 'timer-stop' }, onClick: function () { a.stopTimer(); } }),
+        UI.iconButton({ icon: 'chevronUp', label: 'Rozwiń pasek czasu', size: 'sm', tooltip: 'Rozwiń pasek', class: 'tdock__fold', attrs: { 'data-fk': 'dock-unfold' }, onClick: function () { a.setPref({ dockCompact: false }); } })
+      ]);
+    }
     return D.el('div', { class: 'tdock is-on' + (forgotten ? ' is-forgotten' : ''), attrs: { role: 'group', 'aria-label': 'Zegar pracy', 'data-fk': 'dock' } }, [
       D.el('span', { class: 'tdock__dot', attrs: { 'aria-hidden': 'true' } }),
       D.el('button', { class: 'tdock__what tdock__what--btn', attrs: { type: 'button', 'data-tooltip': 'Pokaż zadanie', 'data-fk': 'timer-open' }, on: { click: function () { if (found && found.project) a.inspect({ kind: 'task', projectId: found.project.id, stageId: found.stage.id, taskId: found.task.id }); } } }, [
@@ -159,7 +169,8 @@
       E.Timer.budgetChip(ctx.budget && ctx.budget(run)),
       D.el('time', { class: 'tdock__time t-num timer-pill__time', text: TL.clock(now - startMs), attrs: { 'data-timer-start': String(startMs), 'aria-hidden': 'true' } }),
       canBack ? back : null, more,
-      UI.button({ label: 'Stop', icon: 'stop', size: 'sm', attrs: { 'data-fk': 'timer-stop' }, class: 'tdock__stop', onClick: function () { a.stopTimer(); } })
+      UI.button({ label: 'Stop', icon: 'stop', size: 'sm', attrs: { 'data-fk': 'timer-stop' }, class: 'tdock__stop', onClick: function () { a.stopTimer(); } }),
+      collapse
     ]);
   }
 
@@ -167,11 +178,12 @@
   function render(host, ctx) {
     if (!host) return;
     lastCtx = ctx;
-    if (!ctx.me) { lastSig = 'none'; D.clear(host); document.body.classList.remove('has-dock'); return; }
+    if (!ctx.me) { lastSig = 'none'; D.clear(host); document.body.classList.remove('has-dock', 'has-dock-compact'); return; }
     var run = ctx.running;
     var pend = ctx.state.pendingSwitch;
-    var sig = [ctx.me, run ? run.id + '|' + run.start + '|' + run.taskId : 'idle', pend ? pend.taskId + '|' + pend.until : '', run ? '' : ctx.state.workspace.projects.length].join('~');
+    var sig = [ctx.me, run ? run.id + '|' + run.start + '|' + run.taskId : 'idle', pend ? pend.taskId + '|' + pend.until : '', run ? '' : ctx.state.workspace.projects.length, run && ctx.state.prefs && ctx.state.prefs.dockCompact ? 'compact' : ''].join('~');
     document.body.classList.add('has-dock');
+    document.body.classList.toggle('has-dock-compact', !!(run && ctx.state.prefs && ctx.state.prefs.dockCompact));
     if (!run && sig === lastSig && host.firstChild) return;
     lastSig = sig;
     var node = run ? runningView(ctx) : idleView(ctx, host);
