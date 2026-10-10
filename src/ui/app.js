@@ -2764,7 +2764,7 @@
   /** Wygląd: paleta, HDR, intensywność i kontrast jako atrybuty i zmienne CSS (podgląd na żywo bez zapisu). */
   function applyLook(look) {
     var el = document.documentElement;
-    var style = look.look || 'aurora';
+    var style = look.look || 'etrom';
     if (style === 'aurora') el.removeAttribute('data-look');
     else el.setAttribute('data-look', style);
     // Palety należą do Aurory; inne style mają własną kolorystykę.

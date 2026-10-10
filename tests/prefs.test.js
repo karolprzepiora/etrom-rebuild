@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'aurora', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -190,13 +190,14 @@ test('ustawienia pulpitu: tylko poprawne identyfikatory, bez duplikatów, z limi
   assert.deepEqual(Prefs.normalize({ dash: 'zepsute' }).dash, { tiles: [], collapsed: [] });
 });
 
-test('styl wyglądu: znane style przechodzą, reszta wraca do Aurory; schemat wymuszają ETROM, OLED, Filmowy i Papier', () => {
-  assert.equal(Prefs.normalize({}).look, 'aurora');
+test('styl wyglądu: znane style przechodzą, reszta wraca do ETROM; schemat wymuszają ETROM, OLED, Filmowy i Papier', () => {
+  assert.equal(Prefs.normalize({}).look, 'etrom');
+  assert.equal(Prefs.normalize({ look: 'aurora' }).look, 'aurora');
   assert.equal(Prefs.normalize({ look: 'oled' }).look, 'oled');
   assert.equal(Prefs.normalize({ look: 'etrom' }).look, 'etrom');
   assert.equal(Prefs.normalize({ look: 'cinema' }).look, 'cinema');
   assert.equal(Prefs.normalize({ look: 'paper' }).look, 'paper');
-  assert.equal(Prefs.normalize({ look: 'neon' }).look, 'aurora');
+  assert.equal(Prefs.normalize({ look: 'neon' }).look, 'etrom');
   assert.equal(Prefs.schemeOf('oled'), 'dark');
   assert.equal(Prefs.schemeOf('cinema'), 'dark');
   assert.equal(Prefs.schemeOf('paper'), 'light');
@@ -204,7 +205,7 @@ test('styl wyglądu: znane style przechodzą, reszta wraca do Aurory; schemat wy
   assert.equal(Prefs.PALETTES.length, 12);
   assert.equal(Prefs.ACCENTS.length, 12);
   assert.equal(Prefs.schemeOf('aurora'), null);
-  assert.deepEqual(Prefs.LOOKS.map((l) => l.value), ['aurora', 'etrom', 'oled', 'cinema', 'paper']);
+  assert.deepEqual(Prefs.LOOKS.map((l) => l.value), ['etrom', 'aurora', 'oled', 'cinema', 'paper']);
 });
 
 test('ochrona OLED: tylko true ją włącza', () => {

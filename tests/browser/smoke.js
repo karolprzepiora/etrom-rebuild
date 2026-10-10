@@ -578,6 +578,10 @@ async function main() {
     const gridCheck = await evaluate('var c = document.querySelectorAll(".pcard"); return { cols: getComputedStyle(document.querySelector(".pcard-grid")).gridTemplateColumns.split(" ").length, w0: c[0].getBoundingClientRect().width, vw: document.documentElement.clientWidth };');
     check('widok kart: kafle układają się w kolumny (nie jeden na całą szerokość)', gridCheck.cols >= 2 && gridCheck.w0 < gridCheck.vw * 0.6, JSON.stringify(gridCheck));
 
+    check('domyślny styl to ETROM: jasny schemat i ciemny panel boczny; dalsze testy motywów działają w stylu Aurora',
+      await evaluate('return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && window.ETROM.Prefs.LOOKS[0].value === "etrom";'));
+    await evaluate('window.ETROM.app.actions.setPref({ look: "aurora" }); return true;');
+    await sleep(200);
     await click('#action-settings');
     await sleep(150);
     await evaluate('document.querySelector(\'.settings .segmented__btn[data-value="dark"]\').click(); return true;');
@@ -2219,7 +2223,7 @@ async function main() {
     await click('[data-fk="look-style-etrom"]');
     await sleep(300);
     check('styl ETROM: jasne pole pracy, ciemny panel boczny z dużym logo i podpisem, wymuszony jasny schemat',
-      (await state('s.prefs.look')) === 'etrom' && await evaluate('const sb = document.querySelector(".sidebar"); const lg = document.querySelector(".workspace .logo"); return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(255, 255, 255)" && /rgb\\(16, 20, 23\\)/.test(getComputedStyle(sb).backgroundImage) && lg.getBoundingClientRect().height >= 48 && !!document.querySelector(".brand-tag");'));
+      (await state('s.prefs.look')) === 'etrom' && await evaluate('const sb = document.querySelector(".sidebar"); const lg = document.querySelector(".workspace .logo"); return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet__scroll")).backgroundColor === "rgb(255, 255, 255)" && /rgb\\(16, 20, 23\\)/.test(getComputedStyle(document.querySelector(".app")).backgroundImage) && lg.getBoundingClientRect().height >= 48 && !!document.querySelector(".brand-tag");'));
     await click('[data-fk="look-style-oled"]');
     await sleep(300);
     check('styl OLED Black: czarne tło, wymuszony ciemny schemat, palety wyłączone',
@@ -2233,7 +2237,7 @@ async function main() {
     await click('[data-fk="look-style-paper"]');
     await sleep(300);
     check('styl Papier: wymuszony jasny schemat, ciepłe tło arkusza i matowy nagłówek ekranu',
-      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(251, 248, 240)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundColor === "rgb(47, 93, 107)";'));
+      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet__scroll")).backgroundColor === "rgb(251, 248, 240)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundColor === "rgb(47, 93, 107)";'));
     await click('[data-fk="look-style-aurora"]');
     await sleep(300);
     check('powrót do stylu Aurora zdejmuje atrybut stylu, a schemat wraca do wyboru z Motywu (tu: ciemny)',

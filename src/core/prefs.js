@@ -13,8 +13,8 @@
   // Style całego wyglądu (Ustawienia → Wygląd). Aurora to dotychczasowy, z paletami; pozostałe mają własny charakter.
   // scheme: styl wymusza jasny/ciemny schemat (OLED i Filmowy są ciemne, Papier jasny); null = decyduje Motyw.
   var LOOKS = [
-    { value: 'aurora', label: 'Aurora', hint: 'domyślny, z paletami', scheme: null },
-    { value: 'etrom', label: 'ETROM', hint: 'marka: ciemny pasek, jasne tło', scheme: 'light' },
+    { value: 'etrom', label: 'ETROM', hint: 'domyślny: barwy marki', scheme: 'light' },
+    { value: 'aurora', label: 'Aurora', hint: 'z paletami kolorów', scheme: null },
     { value: 'oled', label: 'OLED Black', hint: 'czerń na ekrany OLED', scheme: 'dark' },
     { value: 'cinema', label: 'Filmowy', hint: 'kino i prezentacje', scheme: 'dark' },
     { value: 'paper', label: 'Papier', hint: 'jasny, matowy', scheme: 'light' }
@@ -114,7 +114,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'aurora', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
       cal: cleanCal(null), dash: cleanDash(null)
     };
   }
@@ -160,7 +160,7 @@
       railCollapsed: source.railCollapsed === true,
       collapsedRails: (Array.isArray(source.collapsedRails) ? source.collapsedRails : ['time', 'mywork', 'mycases', 'feed']).filter(function (id, i, a) { return typeof id === 'string' && /^[a-z-]{1,24}$/.test(id) && a.indexOf(id) === i; }).slice(0, 12),
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
-      look: LOOK_IDS.indexOf(source.look) >= 0 ? source.look : 'aurora',
+      look: LOOK_IDS.indexOf(source.look) >= 0 ? source.look : 'etrom',
       oledGuard: source.oledGuard === true,
       hdr: source.hdr !== false,
       tilesFull: source.tilesFull === true,

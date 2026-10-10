@@ -20,7 +20,7 @@
   ];
   var DEFAULT_SECTION = 'look';
 
-  var LOOK_DEFAULTS = { look: 'aurora', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
+  var LOOK_DEFAULTS = { look: 'etrom', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
 
   function sectionsFor(management) {
     return SECTIONS.filter(function (s) { return !s.management || management; });
@@ -63,7 +63,7 @@
   function lookSection(state, ctx) {
     var a = ctx.actions;
     var prefs = state.prefs;
-    var style = prefs.look || 'aurora';
+    var style = prefs.look || 'etrom';
     var forced = Prefs.schemeOf(style);
     var shell = E.Shell;
 

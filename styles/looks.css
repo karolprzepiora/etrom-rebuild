@@ -15,16 +15,17 @@ html[data-look="etrom"] {
   --ink: #0b0d0f; --ink-2: #323d44; --ink-3: #566873;
   --brand: #dc5799; --au-bg: #f3f5f6; --au-base: #f3f5f6;
 }
-html[data-look="etrom"] .sidebar {
+html[data-look="etrom"] { --frame: linear-gradient(180deg, #101417, #080a0c); }
+html[data-look="etrom"] :is(.sidebar, .topbar) {
   --ink: #fff; --ink-2: #e6ecef; --ink-3: #aab9c1; --ink-4: #8195a0;
   --line: #2a3238; --line-strong: #3a444c; --hover: #1d252b; --pressed: #26313a; --wash: #161d22; --wash-2: #1f282e; --raised: #1f282e; --sheet: #161d22;
-  background: linear-gradient(180deg, #101417, #080a0c); box-shadow: none; color: #fff;
+  box-shadow: none; color: #fff;
 }
 html[data-look="etrom"] .sidebar .logo__ink { background-color: #fff; }
 html[data-look="etrom"] .sidebar .workspace { border-bottom: 3px solid var(--brand); background: rgb(255 255 255 / .04); border-radius: 0; }
 html[data-look="etrom"] .sidebar .workspace:hover { background: rgb(255 255 255 / .08); }
 html[data-look="etrom"] .sidebar .nav__item[aria-current="page"] { background: rgb(255 255 255 / .09); box-shadow: inset 3px 0 0 var(--brand); }
-html[data-look="etrom"] .sheet { background: #fff; box-shadow: inset 0 0 0 1px #dbe2e6; }
+html[data-look="etrom"] .sheet__scroll { background: #fff; box-shadow: none; }
 html[data-look="etrom"] .db-hero, html[data-look="etrom"] .page-header {
   position: relative; overflow: hidden; color: #fff; box-shadow: none;
   background: radial-gradient(34rem 16rem at 100% 0%, rgb(220 87 153 / .5), transparent 70%), linear-gradient(115deg, #1a2126, #0e1215);
@@ -46,9 +47,10 @@ html[data-look="oled"] {
   --canvas: #000; --sheet: #000; --raised: #0c0c0e; --wash: #08090a; --wash-2: #111214; --hover: #101113; --pressed: #18191c;
   --line: #1a1b1e; --line-strong: #2a2c30; --au-bg: #000; --au-base: #000;
 }
-html[data-look="oled"] body, html[data-look="oled"] .app { background: #000; }
-html[data-look="oled"] .sidebar { background: #000; box-shadow: inset -1px 0 0 #17181a; }
-html[data-look="oled"] .sheet { background: #000; box-shadow: inset 0 0 0 1px #17181a; }
+html[data-look="oled"] body { background: #000; }
+html[data-look="oled"] { --frame: linear-gradient(#000, #000); }
+html[data-look="oled"] .sidebar { box-shadow: inset -1px 0 0 #17181a; }
+html[data-look="oled"] .sheet__scroll { background: #000; box-shadow: inset 0 0 0 1px #17181a; }
 html[data-look="oled"] .db-hero {
   background: radial-gradient(60% 120% at 100% 0%, oklch(.45 calc(.15 * var(--k)) var(--au-h1) / .55), transparent 70%), #000;
   box-shadow: inset 0 0 0 1px oklch(.7 calc(.14 * var(--k)) var(--au-h1) / .55), 0 0 calc(48px * var(--hdr)) -10px oklch(.65 calc(.16 * var(--k)) var(--au-h1) / .55);
@@ -124,8 +126,8 @@ html[data-look="paper"] {
   --flow: #2f6f86; --flow-ink: #245a6d; --flow-wash: #e1eef1; --brand: #c4457f; --warn: #a56000;
   --au-bg: #e7dfcf; --au-base: #e7dfcf; --hdr: 0;
 }
-html[data-look="paper"] .sidebar { background: #2b3a3f; box-shadow: none; }
-html[data-look="paper"] .sheet { background: #fbf8f0; box-shadow: 0 1px 0 #d6ccb4, 0 0 0 1px #d9cfb8; }
+html[data-look="paper"] { --frame: linear-gradient(#2b3a3f, #2b3a3f); }
+html[data-look="paper"] .sheet__scroll { background: #fbf8f0; box-shadow: 0 0 0 1px #d9cfb8; }
 html[data-look="paper"] .db-hero { background: #2f5d6b; box-shadow: none; }
 html[data-look="paper"] .db-tile, html[data-look="paper"] .db-card { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
 html[data-look="paper"] .db-tile__v, html[data-look="paper"] .ts-stat__v { font-family: Georgia, 'Times New Roman', serif; }

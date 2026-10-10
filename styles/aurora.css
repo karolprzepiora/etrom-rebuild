@@ -64,22 +64,14 @@
 
 /* ---------- Tło okna i arkusz ---------- */
 body, .app { background: var(--au-bg); background-attachment: fixed; }
-.sheet {
-  background:
-    radial-gradient(52rem 15rem at 92% -5rem, light-dark(oklch(.82 calc(.09 * var(--k)) var(--au-h1) / .24), oklch(.5 calc(.14 * var(--k)) var(--au-h1) / .16)), transparent 70%),
-    radial-gradient(40rem 14rem at 4% -4rem, light-dark(oklch(.84 calc(.07 * var(--k)) var(--au-h2) / .22), oklch(.5 calc(.13 * var(--k)) var(--au-h2) / .15)), transparent 70%),
-    var(--sheet);
-}
 
 /* ---------- Panel boczny ---------- */
-.sidebar {
+.sidebar, .topbar {
   --ink: #fff; --ink-2: rgb(255 255 255 / .88); --ink-3: rgb(255 255 255 / .66); --ink-4: rgb(255 255 255 / .48);
   --sheet: oklch(1 0 0 / .15); --hover: oklch(1 0 0 / .09); --wash: oklch(1 0 0 / .08); --line: oklch(1 0 0 / .16); --line-strong: oklch(1 0 0 / .3);
   --alarm-ink: oklch(.8 .16 25); --warn-ink: oklch(.86 .15 85);
   --elev-lift: inset 0 1px 0 rgb(255 255 255 / .28), 0 8px 18px -8px rgb(0 0 0 / .6);
   color: #fff;
-  /* spokojna, głęboka kolumna: plama aurory z tła nie prześwituje przez logo i wyszukiwarkę */
-  background: linear-gradient(180deg, oklch(.2 calc(.055 * var(--k)) var(--au-bh) / .9), oklch(.145 calc(.045 * var(--k)) var(--au-bh) / .94));
 }
 .sidebar .nav__item[aria-current="page"] {
   background: oklch(1 0 0 / .13);
@@ -110,7 +102,7 @@ body, .app { background: var(--au-bg); background-attachment: fixed; }
     radial-gradient(44rem 26rem at 105% -8%, light-dark(oklch(.88 calc(.08 * var(--k)) var(--au-h3) / .6), oklch(.55 calc(.13 * var(--k)) var(--au-h3) / .4)), transparent 62%),
     var(--au-base);
 }
-:root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) .sidebar {
+:root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) :is(.sidebar, .topbar) {
   --ink: light-dark(oklch(.27 .05 var(--au-bh)), #fff); --ink-2: light-dark(oklch(.36 .05 var(--au-bh)), rgb(255 255 255 / .88));
   --ink-3: light-dark(oklch(.45 .045 var(--au-bh)), rgb(255 255 255 / .66)); --ink-4: light-dark(oklch(.55 .04 var(--au-bh)), rgb(255 255 255 / .48));
   --sheet: light-dark(oklch(1 0 0 / .7), oklch(1 0 0 / .15)); --hover: light-dark(oklch(1 0 0 / .6), oklch(1 0 0 / .09)); --wash: light-dark(oklch(1 0 0 / .5), oklch(1 0 0 / .08));
@@ -118,8 +110,8 @@ body, .app { background: var(--au-bg); background-attachment: fixed; }
   --alarm-ink: light-dark(oklch(.5 .2 25), oklch(.8 .16 25)); --warn-ink: light-dark(oklch(.5 .13 70), oklch(.86 .15 85));
   --elev-lift: 0 1px 2px oklch(.3 .05 var(--au-bh) / .14);
   color: light-dark(oklch(.27 .05 var(--au-bh)), #fff);
-  background: linear-gradient(180deg, light-dark(oklch(1 0 0 / .62), oklch(.2 calc(.055 * var(--k)) var(--au-bh) / .9)), light-dark(oklch(1 0 0 / .4), oklch(.145 calc(.045 * var(--k)) var(--au-bh) / .94)));
 }
+:root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) { --frame: linear-gradient(180deg, light-dark(oklch(1 0 0 / .62), oklch(.2 calc(.055 * var(--k)) var(--au-bh) / .9)), light-dark(oklch(1 0 0 / .4), oklch(.145 calc(.045 * var(--k)) var(--au-bh) / .94))); }
 :root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) .sidebar .nav__item[aria-current="page"],
 :root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) .sidebar .nav__item--project[aria-current="page"] {
   background: light-dark(oklch(1 0 0 / .9), oklch(1 0 0 / .13));
@@ -143,6 +135,24 @@ body, .app { background: var(--au-bg); background-attachment: fixed; }
     light-dark(oklch(calc(.5 - .04 * var(--ctr)) calc(.14 * var(--k)) var(--au-h2)), oklch(calc(.2 - .03 * var(--ctr)) calc(.05 * var(--k)) var(--au-bh)));
 }
 @media (max-width: 56rem) { .sidebar, :root:is([data-palette="sky"],[data-palette="mint"],[data-palette="peach"],[data-palette="lilac"],[data-palette="rose"]) .sidebar { background: var(--au-bg); } }
+
+/* ---------- Ramka: panel boczny i pasek górny to jedna powierzchnia ----------
+   --frame maluje tło całego okna (panel, pasek górny i wąskie marginesy); arkusz treści leży na niej jako zaokrąglona karta. */
+:root { --frame: linear-gradient(180deg, oklch(.2 calc(.055 * var(--k)) var(--au-bh) / .9), oklch(.145 calc(.045 * var(--k)) var(--au-bh) / .94)); }
+.app { background: var(--frame), var(--au-bg); background-attachment: fixed; }
+.sidebar { background: none; }
+.topbar { background: none; box-shadow: none; }
+.sheet { background: none; box-shadow: none; margin: 0 var(--space-2) var(--space-2) 0; border-radius: 0; }
+.sheet.is-scrolled .topbar { box-shadow: none; }
+.sheet__scroll {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-sheet);
+  background:
+    radial-gradient(52rem 15rem at 92% -5rem, light-dark(oklch(.82 calc(.09 * var(--k)) var(--au-h1) / .24), oklch(.5 calc(.14 * var(--k)) var(--au-h1) / .16)), transparent 70%),
+    radial-gradient(40rem 14rem at 4% -4rem, light-dark(oklch(.84 calc(.07 * var(--k)) var(--au-h2) / .22), oklch(.5 calc(.13 * var(--k)) var(--au-h2) / .15)), transparent 70%),
+    var(--sheet);
+}
+.topbar { --topbar-ink: #fff; }
 
 /* ---------- Przyciski, karty, zakładki ---------- */
 .btn--primary { background: var(--grad-aurora); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl)), inset 0 -1px 0 rgb(0 0 0 / .18), 0 10px 22px -10px oklch(.5 calc(.13 * var(--k)) var(--au-h2) / calc(.7 * var(--hdr))); }

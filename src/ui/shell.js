@@ -46,7 +46,7 @@
     { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' },
     { value: 'rose', label: 'Róża (jasny)', a: 'oklch(.9 .07 5)', b: 'oklch(.64 .16 345)' }
   ];
-  var LOOK_DEFAULTS = { look: 'aurora', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
+  var LOOK_DEFAULTS = { look: 'etrom', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
 
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
   function logo(markOnly) {
