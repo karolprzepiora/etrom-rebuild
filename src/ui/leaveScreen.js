@@ -37,7 +37,7 @@
   function statusBadge(status) { return UI.badge(A.STATUS[status] || status, STATUS_TONE[status] || null); }
 
   function card(title, children, cls) {
-    return D.el('section', { class: 'lv-card' + (cls ? ' ' + cls : '') }, [title ? D.el('h2', { class: 'lv-card__title', text: title }) : null].concat(children));
+    return D.el('section', { class: 'an-card lv-card' + (cls ? ' ' + cls : '') }, [title ? D.el('h2', { class: 'lv-card__title', text: title }) : null].concat(children));
   }
 
   /* ---------- Mój urlop: karty ---------- */
@@ -383,7 +383,7 @@
       ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, { people: people, actions: ctx.actions, mine: true }, now); }))
       : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })])];
     if (canInbox) asideCards.push(card('Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), [inbox(state, vctx, me, now)], 'lv-card--inbox'));
-    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar, stats, D.el('div', { class: 'lv-layout' }, [D.el('div', { class: 'lv-layout__main ts-calcard' }, [calendar]), D.el('aside', { class: 'lv-layout__side' }, asideCards)])]) };
+    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar, stats, D.el('div', { class: 'lv-layout' }, [D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar]), D.el('aside', { class: 'lv-layout__side' }, asideCards)])]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */

@@ -319,7 +319,7 @@
     return {
       summary: management ? 'Terminy projektów i etapów oraz nieobecności zespołu.' : 'Twoje terminy i nieobecności.',
       body: D.el('div', { class: 'cv' }, [toolbar,
-        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [main], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
+        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [D.el('section', { class: 'an-card ts-calcard cv-card' }, [main])], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
         D.el('p', { class: 'sr-only', text: total + ' terminów w zakresie', attrs: { 'aria-live': 'polite' } })])
     };
   }
