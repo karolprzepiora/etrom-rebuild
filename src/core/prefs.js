@@ -67,7 +67,8 @@
       hiddenPeople: list(src.hiddenPeople, function (x) { return typeof x === 'string' && /^p-\d+$/.test(x); }),
       hiddenProjects: list(src.hiddenProjects, function (x) { return Number.isSafeInteger(x) && x > 0; }),
       hiddenKinds: list(src.hiddenKinds, function (x) { return ['deadline', 'task', 'absence', 'trip'].indexOf(x) >= 0; }),
-      rail: ['filters', 'day', 'warn', 'none'].indexOf(src.rail) >= 0 ? src.rail : 'day'
+      rail: ['filters', 'day', 'warn', 'none'].indexOf(src.rail) >= 0 ? src.rail : 'day',
+      layer: ['abs', 'dl', 'trip'].indexOf(src.layer) >= 0 ? src.layer : 'all'
     };
   }
 

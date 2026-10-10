@@ -1,6 +1,7 @@
-/* ETROM — ekran „Kalendarz”: jeden kalendarz w trzech widokach (Miesiąc, Tydzień, Rok) z panelem warstw po lewej.
-   Miesiąc i tydzień to kafle, tak samo jak w Czasie. Terminy projektów, etapów i zadań, wyjazdy i spotkania oraz święta;
-   nieobecności i wnioski urlopowe to kółka osób na kaflu (wszyscy widzą wszystko, L4 innych jako „nieobecność”).
+/* ETROM — ekran „Kalendarz”: jeden kalendarz w czterech widokach (Dzień, Tydzień, Miesiąc, Rok) z panelami z boku.
+   Nieobecności i wnioski urlopowe to ciągłe paski z imieniem (wszyscy widzą wszystko, L4 innych jako „nieobecność”),
+   terminy projektów, etapów i zadań oraz wyjazdy i spotkania to karteczki z tekstem; przełącznik „Pokaż” wybiera warstwę.
+   Wspólne elementy: ui/calBars.js.
    Kto gdzie jest dziś i w tym tygodniu: zakładka Zespół.
    Dane i filtry: core/calview.js, ustawienia widoku pamiętane na urządzeniu (prefs.cal). Bez godzin i obciążenia. */
 (function (root) {
@@ -11,6 +12,7 @@
   var UI = E.UI;
   var Team = E.Team;
   var Cal = E.Calendar;
+  var CB = E.CalBars;
   var CV = E.CalView;
 
   var DOW = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
@@ -138,16 +140,6 @@
     ];
 
     /* ---------- elementy wspólne ---------- */
-    function chip(ev, showText) {
-      var tip = ev.kind === 'trip' ? ev.title + ' · ' + ev.sub : ev.kind === 'absence' ? ev.title + ' · ' + ev.sub : ev.code + ' · ' + ev.title + ' · ' + ev.sub;
-      var text = ev.kind === 'trip' ? ev.title : ev.kind === 'absence' ? ev.title + ' · ' + ev.sub.toLowerCase() : null;
-      var kids = !showText ? [] : (text ? [D.el('span', { class: 'truncate', text: text })] : [D.el('span', { class: 'cv-ev__code', text: ev.code }), D.el('span', { class: 'truncate', text: ev.title })]);
-      return D.el('button', {
-        class: 'cv-ev cv-ev--' + ev.kind + (ev.tripKind === 'meeting' ? ' is-meet' : '') + (ev.warn ? ' is-warn' : '') + (!showText ? ' cv-ev--cont' : ''), style: ev.kind === 'absence' || ev.kind === 'trip' ? null : E.Identity.hueStyle(ev.code),
-        attrs: { type: 'button', 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-' + ev.kind },
-        on: { click: function (e) { e.stopPropagation(); openEvent(ev); } }
-      }, kids);
-    }
     function occ(c) {
       if (!c.total || !c.workday || c.out || !c.awayCount) return null;
       return D.el('span', { class: 'cv-occ' + (c.awayCount >= CV.THIN ? ' is-warn' : ''), text: c.present + '/' + c.total, attrs: { 'data-tooltip': 'Obecnych ' + c.present + ' z ' + c.total + ', nieobecnych ' + c.awayCount } });
@@ -156,39 +148,8 @@
     /* ---------- kafle (miesiąc i tydzień) ---------- */
     var byPerson = {};
     people.forEach(function (p) { byPerson[p.id] = p; });
-    function whoRow(c, limit) {
-      if (c.weekend || c.holiday) return null;
-      var abs = c.events.filter(function (e) { return e.kind === 'absence'; });
-      if (!abs.length) return null;
-      var shown = abs.slice(0, limit);
-      var extra = abs.length - shown.length;
-      var nodes = shown.map(function (ev) {
-        var p = byPerson[ev.personId];
-        if (!p) return null;
-        var tip = Team.fullName(p) + ' · ' + ev.sub.toLowerCase() + ' · ' + E.LeaveScreen.range(ev.from, ev.to, now);
-        return D.el('span', { class: 'cv-av ' + (ev.pending ? 'is-pending' : (ev.absKind === 'leave' ? 'is-leave' : 'is-other')), attrs: { 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-absence' }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [E.Avatar.avatar(p, { size: 'xs' })]);
-      });
-      return D.el('span', { class: 'cv-who' }, nodes.concat(extra > 0 ? [D.el('small', { text: '+' + extra })] : []));
-    }
-    function items(c) { return c.events.filter(function (e) { return e.kind !== 'absence'; }); }
-    function dots(list) {
-      return D.el('span', { class: 'cv-dots', attrs: { 'aria-hidden': 'true' } }, list.slice(0, 8).map(function (e) { return D.el('i', { class: 'cv-dot cv-dot--' + (e.kind === 'trip' ? (e.tripKind === 'meeting' ? 'meet' : 'trip') : 'dl') }); }));
-    }
-    function tileClass(c) {
-      return 'ts-day cv-c' + (c.out ? ' is-out' : '') + (c.weekend ? ' is-weekend' : '') + (c.holiday ? ' is-hol' : '') + (c.today ? ' is-today' : '') + (c.key === selected ? ' is-sel' : '') + (conflictDays[c.key] && !c.out ? ' is-conflict' : '');
-    }
     function tileAttrs(c) {
       return { role: 'gridcell', tabindex: c.key === selected ? '0' : '-1', 'data-k': c.key, 'data-day': c.key, 'aria-label': longDay(c.key) + (c.holiday ? ', ' + c.holiday : '') + (c.events.length ? ', ' + c.events.length + ' wpisów' : ''), 'aria-selected': String(c.key === selected) };
-    }
-    function legend() {
-      return D.el('div', { class: 'ts-legend' }, [
-        D.el('span', { class: 'ts-legend__i is-dl', text: 'termin projektu' }),
-        D.el('span', { class: 'ts-legend__i is-trip', text: 'teren' }),
-        D.el('span', { class: 'ts-legend__i is-meet', text: 'spotkanie' }),
-        D.el('span', { class: 'ts-legend__i is-vac', text: 'urlop' }),
-        D.el('span', { class: 'ts-legend__i is-req', text: 'wniosek o urlop' }),
-        D.el('span', { class: 'ts-legend__i is-hol', text: 'święto' })
-      ]);
     }
     function gridKeys(grid) {
       grid.addEventListener('keydown', function (e) {
@@ -202,79 +163,139 @@
         if (!next) return;
         e.preventDefault();
         ctx.actions.setTime({ calDay: next, calAnchor: next });
-        window.setTimeout(function () { var el = document.querySelector('.cv-c[data-k="' + next + '"]'); if (el) el.focus(); }, 30);
+        window.setTimeout(function () { var el = document.querySelector('.cb-day[data-k="' + next + '"]'); if (el) el.focus(); }, 30);
       });
+    }
+
+    /* ---------- paski nieobecności, karteczki i warstwy ---------- */
+    var layer = ['abs', 'dl', 'trip'].indexOf(cal.layer) >= 0 ? cal.layer : 'all';
+    var showAbs = layer === 'all' || layer === 'abs';
+    function isDl(e) { return e.kind === 'project' || e.kind === 'stage' || e.kind === 'task'; }
+    function evOk(e) { return layer === 'all' || (layer === 'dl' && isDl(e)) || (layer === 'trip' && e.kind === 'trip'); }
+    function dayItems(c) { return c.events.filter(function (e) { return e.kind !== 'absence' && evOk(e); }); }
+    function absLabel(ev, p) {
+      var who = p ? Team.fullName(p).split(' ')[0] + ' ' + (Team.fullName(p).split(' ')[1] || '').charAt(0) + '.' : ev.title;
+      var k = CB.kindOf(ev.absKind, ev.pending);
+      return who.replace(/ \.$/, '') + ' · ' + (k === 'other' && ev.absKind === 'training' ? 'szkolenie' : CB.TEXT[k]);
+    }
+    /** Jeden pasek na całą nieobecność w widocznych komórkach (z danych CalView), przycinany później do tygodnia. */
+    function barsFrom(cells) {
+      var seen = {};
+      var out = [];
+      cells.forEach(function (c) {
+        c.events.forEach(function (ev) {
+          if (ev.kind !== 'absence' || seen[ev.absenceId]) return;
+          seen[ev.absenceId] = true;
+          var p = byPerson[ev.personId];
+          var tip = (p ? Team.fullName(p) : ev.title) + ' · ' + ev.sub.toLowerCase() + ' · ' + E.LeaveScreen.range(ev.from, ev.to, now);
+          out.push({ from: ev.from, to: ev.to, kind: CB.kindOf(ev.absKind, ev.pending), label: absLabel(ev, p), tip: tip, fk: 'cv-ev-absence', onClick: management ? function () { openEvent(ev); } : null });
+        });
+      });
+      return out;
+    }
+    function chipType(ev) { return ev.kind === 'trip' ? (ev.tripKind === 'meeting' ? 'meet' : 'trip') : (ev.kind === 'task' ? 'task' : 'dl'); }
+    function chipNode(ev) {
+      var t = chipType(ev);
+      var tip = (ev.code ? ev.code + ' · ' : '') + ev.title + (ev.project ? ' · ' + ev.project : '') + (ev.sub ? ' · ' + ev.sub : '');
+      return D.el('button', { class: 'cb-chip cv-ev is-' + t + (ev.warn ? ' is-warn' : ''), attrs: { type: 'button', 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
+        ev.code && t !== 'trip' && t !== 'meet' ? D.el('b', { class: 'cb-chip__c', text: ev.code }) : null, D.el('span', { class: 'truncate', text: ev.title })
+      ]);
+    }
+    function cardNode(ev) {
+      var t = chipType(ev);
+      return D.el('button', { class: 'cb-card cv-ev is-' + t + (ev.warn ? ' is-warn' : ''), attrs: { type: 'button', 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
+        ev.code && t !== 'trip' && t !== 'meet' ? D.el('b', { class: 'cb-chip__c', text: ev.code }) : null,
+        D.el('span', { class: 'cb-card__t', text: ev.title }),
+        ev.project || (t === 'trip' || t === 'meet') && ev.sub ? D.el('small', { class: 'truncate', text: ev.project || ev.sub }) : null
+      ]);
+    }
+    function tileOf(c) {
+      if (c.out) return {};
+      return { cls: 'cb-day' + (c.key === selected ? ' is-sel' : ''), attrs: tileAttrs(c), onClick: function () { pickDay(c.key); } };
+    }
+    function rangeCounts() {
+      var inR = data.cells.filter(function (c) { return !c.out; });
+      var trips = {};
+      var dl = 0;
+      inR.forEach(function (c) { c.events.forEach(function (e) { if (e.kind === 'trip') trips[e.tripId] = 1; else if (isDl(e)) dl += 1; }); });
+      return { abs: barsFrom(inR).length, dl: dl, trip: Object.keys(trips).length };
+    }
+    function layerBar() {
+      var n = rangeCounts();
+      var seg = UI.segmented({ label: 'Pokaż warstwę kalendarza', value: layer, items: [
+        { value: 'all', label: 'Wszystko' }, { value: 'abs', label: 'Nieobecności · ' + n.abs }, { value: 'dl', label: 'Terminy i zadania · ' + n.dl }, { value: 'trip', label: 'Wyjazdy i spotkania · ' + n.trip }
+      ], onChange: function (v) { ctx.actions.setCal({ layer: v }); } });
+      return D.el('div', { class: 'cb-layers', attrs: { 'data-fk': 'cv-layers' } }, [D.el('span', { class: 'cb-layers__l', text: 'Pokaż' }), seg.node]);
     }
 
     /* ---------- widok: miesiąc ---------- */
     function monthGrid() {
-      var parts = DOW.map(function (n) { return D.el('span', { class: 'ts-cal__dh', text: n.toLowerCase(), attrs: { role: 'columnheader' } }); }).concat([D.el('span', { class: 'ts-cal__dh ts-cal__dh--wk', text: 'Tydzień' })]);
+      var parts = [D.el('div', { class: 'cb-dow' }, DOW.map(function (n) { return D.el('span', { text: n.toLowerCase(), attrs: { role: 'columnheader' } }); }))];
+      var bars = showAbs ? barsFrom(data.cells) : [];
+      var grid = D.el('div', { class: 'cb-grid', attrs: { role: 'grid', 'aria-label': title } });
+      var mFirst = iso(year, month, 1);
+      var mLast = monthLast(year, month);
+      bars = bars.filter(function (b) { return b.to >= mFirst && b.from <= mLast; }).map(function (b) { return Object.assign({}, b, { from: b.from < mFirst ? mFirst : b.from, to: b.to > mLast ? mLast : b.to }); });
       for (var i = 0; i < data.cells.length; i += 7) {
-        var week = data.cells.slice(i, i + 7);
-        var sumItems = 0;
-        var sumAbs = 0;
-        week.forEach(function (c) {
-          if (c.out) { parts.push(D.el('div', { class: 'ts-day is-out', attrs: { 'aria-hidden': 'true' } })); return; }
-          var list = items(c);
-          sumItems += list.length;
-          sumAbs += c.weekend || c.holiday ? 0 : c.events.filter(function (e) { return e.kind === 'absence'; }).length;
-          var kids = [D.el('span', { class: 'ts-day__n' }, [String(c.day), c.holiday ? D.el('small', { class: 'cv-holname truncate', text: ' ' + c.holiday }) : null])];
-          if (list.length) kids.push(D.el('span', { class: 'ts-day__h t-num' }, [String(list.length), D.el('small', { text: ' ' + E.Format.count(list.length, 'pozycja', 'pozycje', 'pozycji').replace(/^\d+\s/, '') })]), dots(list));
-          kids.push(whoRow(c, 3));
-          parts.push(D.el('div', { class: tileClass(c), attrs: tileAttrs(c), on: { click: function () { pickDay(c.key); } } }, kids.filter(Boolean)));
-        });
-        parts.push(D.el('div', { class: 'ts-wk', attrs: { role: 'cell' } }, [
-          D.el('span', { text: 'Tydz. ' + Cal.weekNumber(week[0].key) }),
-          D.el('b', { class: 't-num', text: sumItems ? sumItems + ' poz.' : '—' }),
-          D.el('span', { text: sumAbs ? E.Format.count(sumAbs, 'dzień nieobecności', 'dni nieobecności', 'dni nieobecności') : '' })
-        ]));
+        var wkDays = data.cells.slice(i, i + 7);
+        if (wkDays.every(function (c) { return c.out; })) continue;
+        grid.appendChild(CB.weekRow({
+          days: wkDays, bars: bars, tile: tileOf,
+          events: function (c) {
+            var list = dayItems(c);
+            var nodes = list.slice(0, 2).map(chipNode);
+            if (list.length > 2) nodes.push(D.el('span', { class: 'cb-more', text: '+' + (list.length - 2) + ' więcej' }));
+            return nodes;
+          }
+        }));
       }
-      var grid = D.el('div', { class: 'ts-cal__grid', attrs: { role: 'grid', 'aria-label': title } }, parts);
+      parts.push(grid);
       gridKeys(grid);
-      return D.el('div', { class: 'ts-cal is-month cv-wrap' }, [grid, legend()]);
+      return D.el('div', { class: 'cb cv-wrap' }, parts.concat([D.el('p', { class: 't-meta cb-hint', text: 'Pasek to nieobecność: pełny kolor — potwierdzona, kreskowany — wniosek czeka na decyzję. Najedź na pasek lub terminy, żeby zobaczyć szczegóły.' })]));
     }
 
     /* ---------- widok: tydzień ---------- */
     function weekView() {
-      var head = data.cells.map(function (c) { return D.el('span', { class: 'ts-cal__dh', text: DOW[(Cal.parse(c.key).getDay() + 6) % 7].toLowerCase(), attrs: { role: 'columnheader' } }); });
-      var tiles = data.cells.map(function (c) {
-        var kids = [D.el('span', { class: 'ts-day__n' }, [c.day + ' ' + DOW[(Cal.parse(c.key).getDay() + 6) % 7].toLowerCase(), occ(c)]), c.holiday ? D.el('small', { class: 'cv-holname', text: c.holiday }) : null,
-          D.el('div', { class: 'cv-evs' }, items(c).map(function (ev) { return chip(ev, true); })), whoRow(c, 6)];
-        return D.el('div', { class: tileClass(c) + ' cv-wcol', attrs: tileAttrs(c), on: { click: function () { pickDay(c.key); } } }, kids.filter(Boolean));
+      var keys = data.cells.map(function (c) { return c.key; });
+      var lane = showAbs ? CB.lanes(barsFrom(data.cells), keys) : null;
+      var cols = data.cells.map(function (c) {
+        var list = dayItems(c);
+        var t = tileOf(c);
+        return D.el('div', { class: 'cb-wc ' + t.cls + (c.weekend ? ' is-weekend' : '') + (c.holiday ? ' is-hol' : '') + (c.today ? ' is-today' : ''), attrs: t.attrs, on: { click: t.onClick } }, [
+          D.el('div', { class: 'cb-wc__h' }, [D.el('span', { text: c.day + ' ' + DOW[(Cal.parse(c.key).getDay() + 6) % 7].toLowerCase() }), occ(c)]),
+          c.holiday ? D.el('small', { class: 'cb-hol', text: c.holiday }) : null
+        ].concat(list.map(cardNode)));
       });
-      var grid = D.el('div', { class: 'ts-cal__grid', attrs: { role: 'grid', 'aria-label': title } }, head.concat(tiles));
+      var grid = D.el('div', { class: 'cb-wcols', attrs: { role: 'grid', 'aria-label': title } }, cols);
       gridKeys(grid);
-      return D.el('div', { class: 'ts-cal is-week cv-week' }, [grid, legend()]);
+      return D.el('div', { class: 'cb cb--week cv-week' }, [
+        lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid
+      ]);
     }
 
     /* ---------- widok: rok ---------- */
+    function yearKind(key) {
+      var c = byKey[key];
+      if (!showAbs || !c || c.weekend || c.holiday) return null;
+      return CB.top(c.events.filter(function (e) { return e.kind === 'absence'; }).map(function (e) { return CB.kindOf(e.absKind, e.pending); }));
+    }
     function yearView() {
       var months = [];
       for (var m = 0; m < 12; m += 1) {
         months.push(E.LeaveScreen.miniMonth(year, m, function (key, wk, hol) {
           var c = byKey[key];
           if (!c) return null;
-          var cls = '';
-          if (c.workday && c.awayCount) cls += ' is-heat' + Math.min(3, c.awayCount >= CV.THIN ? 3 : c.awayCount);
-          if (c.events.some(function (e) { return e.kind === 'project' || e.kind === 'stage'; })) cls += ' has-dl';
-          if (conflictDays[key]) cls += ' is-conflict';
+          var cls = CB.stripCls(yearKind, key);
+          var evs = c.weekend || c.holiday ? [] : dayItems(c);
+          if (evs.length) cls += ' has-ev has-ev-' + (evs.some(function (e) { return e.kind === 'trip' && e.tripKind !== 'meeting'; }) ? 'trip' : (evs.some(function (e) { return e.kind === 'trip'; }) ? 'meet' : 'dl'));
           var tipParts = [];
           if (c.holiday) tipParts.push(c.holiday);
-          if (c.awayCount) tipParts.push('nieobecnych ' + c.awayCount + ' z ' + c.total);
-          c.events.filter(function (e) { return e.kind === 'project' || e.kind === 'stage'; }).forEach(function (e) { tipParts.push(e.code + ' ' + e.title); });
+          c.events.filter(function (e) { return e.kind === 'absence'; }).forEach(function (e) { var p = byPerson[e.personId]; tipParts.push(absLabel(e, p)); });
+          evs.slice(0, 3).forEach(function (e) { tipParts.push((e.code ? e.code + ' ' : '') + e.title); });
           return { cls: cls.trim(), tip: tipParts.join(' · '), onClick: function (k) { ctx.actions.setCal({ view: 'month' }); ctx.actions.setTime({ calAnchor: k, calDay: k }); } };
         }, today));
       }
-      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [yearLegend()])]);
-    }
-    function yearLegend() {
-      return D.el('ul', { class: 'lv-legend lv-legend--row' }, [
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h1' }), D.el('span', { text: '1 osoba nieobecna' })]),
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h2' }), D.el('span', { text: '2 osoby' })]),
-        D.el('li', null, [D.el('i', { class: 'lv-dot cv-dot--h3' }), D.el('span', { text: CV.THIN + ' lub więcej' })]),
-        D.el('li', null, [D.el('i', { class: 'lv-dot lv-dot--holiday' }), D.el('span', { text: 'święto' })]),
-        D.el('li', null, [D.el('i', { class: 'cv-dl-dot' }), D.el('span', { text: 'termin projektu lub etapu' })])
-      ]);
+      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'L4'], ['is-k-other', 'szkolenie, inna nieobecność'], ['is-hol', 'święto'], ['is-ev', 'kropka pod dniem: termin lub wyjazd']])])]);
     }
 
     /* ---------- panel dnia ---------- */
@@ -389,7 +410,7 @@
     return {
       summary: management ? 'Terminy projektów i etapów oraz nieobecności zespołu.' : 'Twoje terminy i nieobecności.',
       body: D.el('div', { class: 'cv' }, [toolbar,
-        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [stats(), D.el('section', { class: 'an-card ts-calcard cv-card' }, [main])], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
+        UI.railLayout({ id: 'calendar', cls: 'cv-rl', mainCls: 'cv-main', items: items, active: openId, main: [stats(), D.el('section', { class: 'an-card ts-calcard cv-card' }, [mode === 'day' ? null : layerBar(), main])], onSelect: function (id) { ctx.actions.setCal({ rail: id || 'none' }); } }),
         D.el('p', { class: 'sr-only', text: total + ' terminów w zakresie', attrs: { 'aria-live': 'polite' } })])
     };
   }

@@ -621,6 +621,8 @@ Pozycja „Kalendarz” w menu (`#/kalendarz`): miesiąc z numerami tygodni, św
 
 **Widoki Kalendarza (jak w Czasie):** przełącznik Dzień / Tydzień / Miesiąc / Rok (`prefs.cal.view`), pod nim cztery kafle `ts-stat` (Terminy, Nieobecności, Wyjazdy i spotkania, Najmniejsza obsada; w Dniu: Obsada). Dzień to karta `cv-day` z trzema grupami kafli (terminy i zadania, wyjazdy i spotkania, nieobecności). Rok używa tych samych kart miesięcy `lv-month` co Urlopy.
 
+**Język kalendarzy (Kalendarz i Urlopy, `ui/calBars.js`, klasy `cb-*`):** bez legendy, wszystko opisane słowami. Nieobecność to jeden ciągły pasek `cb-bar` z imieniem i słowem („Marta T. · urlop”, „Ewa T. · wniosek (czeka)”, L4, szkolenie) przycinany do tygodnia; rodzaje: `is-leave` (kolor `--leave`), `is-req` (kreskowany, czeka na decyzję), `is-sick` (`--alarm`), `is-other` (szare). Termin, zadanie, wyjazd i spotkanie to karteczki `cb-chip` (miesiąc, maks. 2 i „+N więcej”) albo `cb-card` (tydzień) z kolorowym paskiem z lewej. Miesiąc to wiersze `cb-wk` (kafle `cb-bg`, numer `cb-num`, pasy, karteczki). Tydzień ma nad kolumnami pasy „Nieobecni w tym tygodniu”. Rok pokazuje kolejne dni nieobecności jako połączony pasek (`is-strip is-s is-e`, `is-k-*`), a termin lub wyjazd jako kropkę pod dniem (`has-ev-*`). Przełącznik „Pokaż: Wszystko / Nieobecności / Terminy i zadania / Wyjazdy i spotkania” (`prefs.cal.layer`) zastępuje filtry rodzajów. W Urlopach „Moje wnioski” i „Do akceptacji” to boczne przyciski (`UI.railLayout`, `leave.rail`).
+
 ### Święta w liczeniu
 Polskie święta nie są dniami roboczymi: zmniejszają pojemność tygodnia w Planie, nie dostają godzin zadań, nie liczą się do nieobecności ani do celu dnia w karcie czasu (dzień świąteczny jest neutralny).
 

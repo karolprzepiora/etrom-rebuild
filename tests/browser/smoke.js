@@ -871,8 +871,8 @@ async function main() {
       await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 7 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
     await go('#/kalendarz');
     await sleep(300);
-    check('ekran „Kalendarz”: miesiąc w kaflach z kolumną tygodnia, wybrany dzień i lista najbliższych terminów',
-      await evaluate('const v = document.getElementById("view-calendar"); const n = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); return !v.hidden && v.querySelectorAll(".cv-c").length === n && v.querySelectorAll(".ts-wk").length >= 4 && v.querySelectorAll(".cv-c.is-today").length === 1 && !!v.querySelector(".rl__side") && !!document.querySelector(".nav a[href=\\"#/kalendarz\\"]");'));
+    check('ekran „Kalendarz”: miesiąc w wierszach tygodni z paskami nieobecności, wybrany dzień i lista najbliższych terminów',
+      await evaluate('const v = document.getElementById("view-calendar"); const n = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); return !v.hidden && v.querySelectorAll(".cb-day").length === n && v.querySelectorAll(".cb-bg").length >= n && v.querySelectorAll(".cb-day.is-today").length === 1 && !!v.querySelector(".cb-layers") && !!v.querySelector(".rl__side") && !!document.querySelector(".nav a[href=\\"#/kalendarz\\"]");'));
     const calTitle = await evaluate('return document.querySelector(".cv-title").textContent;');
     await click('[data-fk="cv-next"]');
     await sleep(250);
@@ -889,11 +889,11 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setCal({ view: "day" }); return true;');
     await sleep(300);
     check('kalendarz: widok Dzień ma 4 kafle statystyk i trzy grupy (terminy, wyjazdy i spotkania, nieobecności)',
-      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-dgroup").length === 3 && !v.querySelector(".cv-c");'));
+      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-dgroup").length === 3 && !v.querySelector(".cb-day");'));
     await evaluate('window.ETROM.app.actions.setCal({ view: "week" }); return true;');
     await sleep(300);
     check('kalendarz: widok Tydzień ma 7 kafli i nie ma już macierzy „Kto gdzie pracuje”',
-      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cv-wcol").length === 7 && !v.querySelector(".lv-t") && !/Kto gdzie pracuje/.test(v.textContent);'));
+      await evaluate('const v = document.getElementById("view-calendar"); return v.querySelectorAll(".cb-wc").length === 7 && !v.querySelector(".lv-t") && !/Kto gdzie pracuje/.test(v.textContent);'));
     await evaluate('window.ETROM.app.actions.setCal({ view: "year" }); return true;');
     await sleep(300);
     check('kalendarz: widok Rok używa tych samych miesięcy co Urlopy (12 × lv-month)',
@@ -901,7 +901,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setCal({ view: "team" }); return true;');
     await sleep(300);
     check('kalendarz: nie ma już widoku Zespół (stary zapis wraca do miesiąca), a „Dodaj” to jeden przycisk Wyjazd lub spotkanie',
-      await evaluate('const v = document.getElementById("view-calendar"); return !v.querySelector(".lv-t") && v.querySelectorAll(".cv-c").length >= 28 && /Wyjazd lub spotkanie/.test(v.querySelector("[data-fk=cv-add]").textContent) && !v.querySelector("[data-fk=cv-add][aria-haspopup]") && !/Wyjazd tego dnia/.test(v.textContent);'));
+      await evaluate('const v = document.getElementById("view-calendar"); return !v.querySelector(".lv-t") && v.querySelectorAll(".cb-day").length >= 28 && /Wyjazd lub spotkanie/.test(v.querySelector("[data-fk=cv-add]").textContent) && !v.querySelector("[data-fk=cv-add][aria-haspopup]") && !/Wyjazd tego dnia/.test(v.textContent);'));
     await evaluate('window.ETROM.app.actions.setCal({ view: "month", hiddenKinds: ["absence", "trip", "deadline", "task"] }); return true;');
     await sleep(300);
     check('kalendarz: ukrycie wszystkich rodzajów czyści siatkę, a filtr jest zapamiętany w ustawieniach urządzenia',
@@ -953,7 +953,7 @@ async function main() {
     await evaluate('const f = document.getElementById("trip-form"); (f.querySelector("button[type=submit]") || document.querySelector("button[type=submit][form=trip-form]")).click(); return true;');
     await sleep(400);
     check('wyjazd dodany przez pracownika trafia do danych, kalendarza i chipa na Pulpicie',
-      (await state('s.workspace.trips.length')) === 1 && (await state('s.workspace.trips[0].personIds.join()')) === 'p-3' && await evaluate('return !!document.querySelector(".cv-c.is-today .cv-dot--trip");') && await (async () => { await go('#/pulpit'); await sleep(400); return evaluate('const c = document.querySelector("[data-fk=db-trip]"); return !!c && /Dziś: teren/.test(c.textContent);'); })());
+      (await state('s.workspace.trips.length')) === 1 && (await state('s.workspace.trips[0].personIds.join()')) === 'p-3' && await evaluate('return !!document.querySelector("#view-calendar .cb-chip.is-trip");') && await (async () => { await go('#/pulpit'); await sleep(400); return evaluate('const c = document.querySelector("[data-fk=db-trip]"); return !!c && /Dziś: teren/.test(c.textContent);'); })());
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
     await sleep(300);
     check('Dyrekcja widzi wyjazd w „Zespół dziś”', await evaluate('return /Lipnica/.test(document.querySelector("[data-fk=db-team]").textContent);'));
@@ -2280,7 +2280,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.setLeave({ who: "team" }); return true;');
     await sleep(300);
     check('urlopy: widok „Zespół” pokazuje kółka osób; urlopy widać z rodzajem, a cudze L4 tylko jako „nieobecność”',
-      await evaluate('const av = [...document.querySelectorAll("#view-leave .lv-c .cv-av")]; const tips = av.map(c => c.getAttribute("data-tooltip") || ""); return av.length > 0 && tips.every(t => !/zwolnienie/i.test(t)) && tips.some(t => /urlop|nieobecność/i.test(t));'));
+      await evaluate('const av = [...document.querySelectorAll("#view-leave .cb-bar")]; const tips = av.map(c => c.getAttribute("data-tooltip") || ""); return av.length > 0 && tips.every(t => !/zwolnienie/i.test(t)) && tips.some(t => /urlop|nieobecność/i.test(t));'));
     await evaluate('window.ETROM.app.actions.setLeave({ who: "me", view: "year" }); return true;');
     await sleep(250);
     check('urlopy: widok Rok ma 12 miesięcy, a „Zespół” w roku pokazuje zagęszczenie nieobecności',
