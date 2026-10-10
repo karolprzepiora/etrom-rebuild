@@ -3046,11 +3046,9 @@
       var rows = [
         { who: 2, from: 3, to: 4, kind: 'leave', note: 'Wyjazd rodzinny' },
         { who: 3, from: 9, to: 15, kind: 'leave', note: 'Urlop' },
-        { who: 5, from: 6, to: 6, kind: 'training', note: 'Szkolenie z hydrauliki' },
         // Archiwalne nieobecności: widać je w planie po cofnięciu okna i w kalendarzu.
         { who: 2, from: -75, to: -66, kind: 'leave', note: 'Urlop letni' },
         { who: 6, from: -52, to: -48, kind: 'leave', note: 'Urlop' },
-        { who: 4, from: -31, to: -31, kind: 'training', note: 'Szkolenie BHP' },
         { who: 3, from: -22, to: -19, kind: 'sick', note: 'Zwolnienie lekarskie' },
         { who: 7, from: -118, to: -108, kind: 'leave', note: 'Urlop wypoczynkowy' },
         { who: 1, from: -95, to: -91, kind: 'leave', note: 'Urlop' },
@@ -3062,15 +3060,12 @@
         { who: 3, from: 28, to: 29, kind: 'leave', note: 'Dwa dni wolne', state: 'pending' },
         // Pół roku wstecz i pół roku w przód: urlopy, szkolenia i zwolnienia, żeby Plan i Kalendarz miały pełny obraz.
         { who: 0, from: -170, to: -166, kind: 'leave', note: 'Urlop wiosenny' },
-        { who: 4, from: -140, to: -138, kind: 'training', note: 'Szkolenie z programu do obliczeń' },
         { who: 5, from: -100, to: -90, kind: 'leave', note: 'Urlop wypoczynkowy' },
         { who: 6, from: -85, to: -80, kind: 'leave', note: 'Urlop letni' },
         { who: 7, from: -40, to: -39, kind: 'sick', note: 'Zwolnienie lekarskie' },
-        { who: 0, from: -12, to: -10, kind: 'training', note: 'Konferencja branżowa' },
         { who: 4, from: 33, to: 37, kind: 'leave', note: 'Urlop listopadowy' },
         { who: 6, from: 60, to: 64, kind: 'leave', note: 'Urlop świąteczny' },
         { who: 2, from: 75, to: 86, kind: 'leave', note: 'Urlop zimowy' },
-        { who: 3, from: 100, to: 102, kind: 'training', note: 'Szkolenie z programu do obliczeń' },
         { who: 5, from: 120, to: 126, kind: 'leave', note: 'Urlop wypoczynkowy' },
         { who: 0, from: 150, to: 154, kind: 'leave', note: 'Urlop wiosenny' },
         { who: 7, from: 25, to: 26, kind: 'leave', note: 'Opieka nad dzieckiem', state: 'pending' }
@@ -3094,6 +3089,24 @@
         } else if (res.valid && r.onDemand) list[list.length - 1].onDemand = true;
       });
       return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, absences: list });
+    });
+    // Szkolenia i konferencje to wyjazdy (rodzaj „Szkolenie” albo „Inne”), nie nieobecności.
+    updateWorkspace(function (workspace) {
+      var rows = [
+        { who: 5, from: 6, to: 6, kind: 'training', place: 'Warszawa, szkolenie z hydrauliki' },
+        { who: 4, from: -31, to: -31, kind: 'training', place: 'Szkolenie BHP' },
+        { who: 4, from: -140, to: -138, kind: 'training', place: 'Szkolenie z programu do obliczeń' },
+        { who: 0, from: -12, to: -10, kind: 'other', place: 'Konferencja branżowa' },
+        { who: 3, from: 100, to: 102, kind: 'training', place: 'Szkolenie z programu do obliczeń' }
+      ];
+      var list = (workspace.trips || []).slice();
+      rows.forEach(function (r) {
+        var who = demoPersonId(r.who);
+        if (!who || list.some(function (t) { return t.personIds.indexOf(who) >= 0 && t.place === r.place && t.from === iso(r.from); })) return;
+        var res = E.Trips.save(list, { personIds: [who], kind: r.kind, from: iso(r.from), to: iso(r.to), place: r.place }, workspace.people || [], who, new Date());
+        if (res.valid) list = res.list;
+      });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, trips: list });
     });
     // Zlecenia do wykonania (Skrzynka i ekran Zleceń): jedno zaległe, dwa świeże.
     updateWorkspace(function (workspace) {

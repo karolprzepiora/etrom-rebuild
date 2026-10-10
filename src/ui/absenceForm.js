@@ -18,7 +18,7 @@
     var problems = errors || {};
     var editing = !!v.id;
     var person = UI.select({ id: 'ab-person', value: v.personId || '', options: [{ value: '', label: 'Wybierz osobę' }].concat((people || []).map(function (p) { return { value: p.id, label: Team.fullName(p) }; })) });
-    var kind = UI.select({ id: 'ab-kind', value: v.kind || 'leave', options: Object.keys(E.Absences.KINDS).map(function (k) { return { value: k, label: E.Absences.KINDS[k] }; }) });
+    var kind = UI.select({ id: 'ab-kind', value: v.kind || 'leave', options: Object.keys(E.Absences.KINDS).filter(function (k) { return E.Absences.FORM_KINDS[k] || k === v.kind; }).map(function (k) { return { value: k, label: E.Absences.KINDS[k] }; }) });
     var from = UI.input({ id: 'ab-from', type: 'date', value: v.from || '', error: problems.from });
     var to = UI.input({ id: 'ab-to', type: 'date', value: v.to || '', error: problems.to });
     var note = UI.input({ id: 'ab-note', value: v.note || '', maxlength: 200, placeholder: 'np. wyjazd rodzinny' });

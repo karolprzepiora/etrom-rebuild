@@ -1,4 +1,4 @@
-/* ETROM — wyjazdy (teren, spotkanie). Czyste funkcje, bez DOM.
+/* ETROM — wyjazdy (teren, spotkanie, szkolenie, inne). Czyste funkcje, bez DOM.
    Wyjazd nie zmienia godzin planu ani licznika czasu: to tylko informacja „gdzie ta osoba będzie”.
    Każdy dodaje wyjazdy sobie; Lider (swojego zespołu) i Dyrekcja mogą dodawać innym. */
 (function (root) {
@@ -7,7 +7,7 @@
   var node = typeof module !== 'undefined' && module.exports;
   var Team = node ? require('./team.js') : root.ETROM.Team;
 
-  var KINDS = { field: 'Teren', meeting: 'Spotkanie' };
+  var KINDS = { field: 'Teren', meeting: 'Spotkanie', training: 'Szkolenie', other: 'Inne' };
 
   function isDay(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v + 'T00:00:00')); }
   function str(v, n) { return typeof v === 'string' ? v.trim().slice(0, n) : ''; }

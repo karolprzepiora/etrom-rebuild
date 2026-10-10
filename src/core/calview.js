@@ -153,7 +153,7 @@
       var proj = t.projectId ? projects.filter(function (p) { return p.id === t.projectId; })[0] : null;
       if (proj && hideProj[String(proj.id)]) return;
       var who = ids.map(personName).filter(Boolean).join(', ');
-      var title = (t.kind === 'meeting' ? 'Spotkanie' : 'Teren') + ' · ' + t.place;
+      var title = ({ field: 'Teren', meeting: 'Spotkanie', training: 'Szkolenie', other: 'Inne' }[t.kind] || 'Teren') + ' · ' + t.place;
       var ev = { kind: 'trip', bar: true, tripId: t.id, tripKind: t.kind, personIds: ids, code: proj ? proj.code : '', projectId: proj ? proj.id : '', title: title, sub: who, from: t.from, to: t.to };
       spans.push(Object.assign({ spanKind: 'trip', from: t.from, to: t.to }, ev));
       items.push({ uid: 'w-' + t.id, kind: 'trip', from: t.from, to: t.to, title: title, sub: who });

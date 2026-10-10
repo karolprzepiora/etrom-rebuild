@@ -148,7 +148,7 @@
     var mine = list.filter(function (a) { return a.personId === me.id; });
     var sel = lv.sel || null;
     for (var m = 0; m < 12; m += 1) months.push(monthCard(year, m, ctx, mine, sel, Cal.isoOf(now)));
-    var legend = CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'zwolnienie lekarskie'], ['is-k-other', 'szkolenie, inna nieobecność'], ['is-hol', 'święto']]);
+    var legend = CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'zwolnienie lekarskie (L4)'], ['is-k-other', 'nieobecność (L4 innych osób)'], ['is-hol', 'święto']]);
     return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [legend, selBar(state, ctx, me, now, year)])]);
   }
 
@@ -319,15 +319,14 @@
   function requestForm(draft, errors, handlers, info) {
     var v = draft || {};
     var problems = errors || {};
-    var kind = UI.select({ id: 'lv-kind', value: v.kind || 'leave', options: Object.keys(A.KINDS).map(function (k) { return { value: k, label: A.KINDS[k] }; }) });
+    var kind = { value: 'leave', addEventListener: function () {} };
     var from = UI.input({ id: 'lv-from', type: 'date', value: v.from || '', error: problems.from });
     var to = UI.input({ id: 'lv-to', type: 'date', value: v.to || '', error: problems.to });
     var onDemand = UI.checkbox({ id: 'lv-ondemand', label: 'Urlop na żądanie', hint: 'Limit ' + A.ON_DEMAND_LIMIT + ' dni w roku. Pozostało: ' + Math.max(0, info.onDemandLeft), checked: v.onDemand === true });
     var note = UI.input({ id: 'lv-note', value: v.note || '', maxlength: 200, placeholder: 'np. wyjazd rodzinny' });
     var count = D.el('p', { class: 't-meta', attrs: { 'data-fk': 'lv-days', 'aria-live': 'polite' } });
     function recount() {
-      onDemand.hidden = kind.value !== 'leave';
-      if (!from.value || !to.value) { count.textContent = ''; return; }
+            if (!from.value || !to.value) { count.textContent = ''; return; }
       var n = Cal.workdaysIn(from.value, to.value);
       var left = info.free - n;
       count.textContent = workdays(n) + ' (bez weekendów i świąt)' + (kind.value === 'leave' ? (left >= 0 ? ' · po wniosku zostanie ' + days(left) : ' · brakuje ' + days(-left)) : '');
@@ -342,7 +341,6 @@
       onCancel: handlers.onCancel,
       onSubmit: function () { handlers.onSubmit({ from: from.value, to: to.value, kind: kind.value, note: note.value, onDemand: kind.value === 'leave' && onDemand.querySelector('input').checked }); },
       body: [
-        UI.field({ id: 'lv-kind', label: 'Rodzaj', control: kind, error: problems.kind }),
         D.el('div', { class: 'form__row' }, [UI.field({ id: 'lv-from', label: 'Od', control: from, error: problems.from }), UI.field({ id: 'lv-to', label: 'Do (włącznie)', control: to, error: problems.to })]),
         count,
         problems.onDemand ? D.el('p', { class: 'field__error', text: problems.onDemand }) : null,
@@ -385,6 +383,8 @@
 
   /* ---------- Ekran ---------- */
   function view(state, ctx) {
+    /* Urlopy pokazują tylko urlopy i L4. Szkolenia i inne wyjazdy to „wyjazd lub spotkanie” w Kalendarzu. */
+    state = Object.assign({}, state, { workspace: Object.assign({}, state.workspace, { absences: (state.workspace.absences || []).filter(function (a) { return a.kind === 'leave' || a.kind === 'sick'; }) }) });
     var people = state.workspace.people || [];
     var me = Team.findPerson(people, state.prefs.me);
     if (!me) return { summary: 'Urlopy i nieobecności zespołu.', body: E.Welcome.card(state, ctx, 'Urlopy pokazują Twoje saldo i wnioski. Wybierz, kim jesteś.') };

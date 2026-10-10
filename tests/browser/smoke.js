@@ -953,7 +953,20 @@ async function main() {
     await evaluate('const f = document.getElementById("trip-form"); (f.querySelector("button[type=submit]") || document.querySelector("button[type=submit][form=trip-form]")).click(); return true;');
     await sleep(400);
     check('wyjazd dodany przez pracownika trafia do danych, kalendarza i chipa na Pulpicie',
-      (await state('s.workspace.trips.length')) === 1 && (await state('s.workspace.trips[0].personIds.join()')) === 'p-3' && await evaluate('return !!document.querySelector("#view-calendar .cb-chip.is-trip");') && await (async () => { await go('#/pulpit'); await sleep(400); return evaluate('const c = document.querySelector("[data-fk=db-trip]"); return !!c && /Dziś: teren/.test(c.textContent);'); })());
+      (await state('s.workspace.trips.filter(t => t.place === "Lipnica").length')) === 1 && (await state('s.workspace.trips.filter(t => t.place === "Lipnica")[0].personIds.join()')) === 'p-3' && await evaluate('return !!document.querySelector("#view-calendar .cb-chip.is-trip");') && await (async () => { await go('#/pulpit'); await sleep(400); return evaluate('const c = document.querySelector("[data-fk=db-trip]"); return !!c && /Dziś: teren/.test(c.textContent);'); })());
+    await go('#/kalendarz');
+    await evaluate('window.ETROM.app.actions.setCal({ view: "month" }); return true;');
+    await sleep(300);
+    await evaluate('document.querySelector("#view-calendar .cb-day").click(); return true;');
+    await sleep(300);
+    check('kalendarz: kliknięcie dnia w Miesiącu otwiera ten dzień w widoku Dzień',
+      (await state('s.prefs.cal.view')) === 'day' && await evaluate('return !!document.querySelector("#view-calendar .cv-day, #view-calendar .cv-dgroup");'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "month" }); return true;');
+    await go('#/urlopy');
+    await sleep(300);
+    check('urlopy: legenda nie zawiera szkoleń',
+      await evaluate('return !/szkolen/i.test(document.getElementById("view-leave").textContent);'));
+    await go('#/pulpit');
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
     await sleep(300);
     check('Dyrekcja widzi wyjazd w „Zespół dziś”', await evaluate('return /Lipnica/.test(document.querySelector("[data-fk=db-team]").textContent);'));

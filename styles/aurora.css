@@ -1911,3 +1911,6 @@ button.cb-bar { cursor: pointer; }
 /* Kalendarz: stary kontener .cv-wrap miał ramkę i overflow, przez co ucinał nagłówek dni tygodnia */
 .cb.cv-wrap { overflow: visible; background: none; box-shadow: none; border-radius: 0; }
 .cb-dow { padding-top: 2px; }
+
+/* Święto w roku (Kalendarz i Urlopy): fiolet, jak w legendzie */
+.lv-day.is-holiday { background: color-mix(in srgb, oklch(.55 .15 300) 18%, transparent); color: light-dark(oklch(.42 .15 300), oklch(.8 .1 300)); font-weight: 650; }

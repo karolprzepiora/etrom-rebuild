@@ -11,6 +11,7 @@
 
   var LABEL = { ok: 'Dostępny', leave: 'Urlop', field: 'W terenie', meeting: 'Spotkanie', away: 'Nieobecny', off: 'Dzień wolny' };
   var ABSENCE = { leave: 'Urlop', sick: 'Zwolnienie', training: 'Szkolenie', other: 'Nieobecność' };
+  var TRIP_LABEL = { training: 'Szkolenie', other: 'Poza biurem' };
   var ORDER = ['field', 'meeting', 'leave', 'away', 'ok'];
 
   function female(person) { return !!(person && /a$/i.test(String(person.firstName || ''))); }
@@ -37,8 +38,8 @@
     });
     (ctx.trips || []).forEach(function (t) {
       if (t.personIds.indexOf(person.id) < 0 || t.from > key || t.to < key) return;
-      var kind = t.kind === 'meeting' ? 'meeting' : 'field';
-      var cand = { kind: kind, label: LABEL[kind], sub: t.place + (t.to > t.from ? ' · do ' + shortDate(t.to) : ''), tripId: t.id };
+      var kind = t.kind === 'field' ? 'field' : 'meeting';
+      var cand = { kind: kind, label: kind === 'meeting' && TRIP_LABEL[t.kind] ? TRIP_LABEL[t.kind] : LABEL[kind], sub: t.place + (t.to > t.from ? ' · do ' + shortDate(t.to) : ''), tripId: t.id };
       if (!res || ORDER.indexOf(kind) < ORDER.indexOf(res.kind)) res = cand;
     });
     if (!res) res = offDay ? { kind: 'off', label: LABEL.off, sub: Calendar.holidayName(key) || (Calendar.isWeekend(key) ? 'weekend' : '') } : { kind: 'ok', label: word('ok', person), sub: '' };

@@ -334,7 +334,7 @@
       return D.el('tr', null, [D.el('th', { attrs: { scope: 'row' } }, [D.el('span', { class: 'truncate', text: Team.fullName(person) })])].concat(days.map(function (day) {
         var t = E.Trips.onDay(state.workspace.trips || [], day, r.personId)[0];
         if (abs[day]) return D.el('td', null, [D.el('span', { class: 'db-cap db-cap--leave', text: 'urlop' })]);
-        if (t) return D.el('td', null, [D.el('span', { class: 'db-cap db-cap--' + t.kind, text: t.kind === 'meeting' ? 'spotkanie' : 'teren', attrs: { 'data-tooltip': t.place } })]);
+        if (t) return D.el('td', null, [D.el('span', { class: 'db-cap db-cap--' + t.kind, text: (E.Trips.KINDS[t.kind] || 'teren').toLowerCase(), attrs: { 'data-tooltip': t.place } })]);
         var h = r.days[day] || 0;
         return D.el('td', null, [D.el('span', { class: 'db-cap db-cap--h' + (h > dayH ? ' is-over' : ''), text: h ? hh(h) + ' h' : '—' })]);
       })));

@@ -8,6 +8,8 @@
   var Team = node ? require('./team.js') : root.ETROM.Team;
 
   var KINDS = { leave: 'Urlop', sick: 'Zwolnienie', training: 'Szkolenie', other: 'Inna nieobecność' };
+  /** Rodzaje do wyboru w formularzach: szkolenia i inne wyjazdy zgłasza się jako wyjazd lub spotkanie. */
+  var FORM_KINDS = { leave: 'Urlop', sick: 'Zwolnienie' };
   var STATUS = { pending: 'Oczekuje', approved: 'Zaakceptowany', rejected: 'Odrzucony' };
   var DEFAULT_LEAVE_DAYS = 26;
   var ON_DEMAND_LIMIT = 4;
@@ -271,7 +273,7 @@
     return absence.kind === 'sick' ? 'who' : 'full';
   }
 
-  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
+  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
