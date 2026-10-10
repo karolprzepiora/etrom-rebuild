@@ -2771,6 +2771,11 @@
     if (style !== 'aurora' || !look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
     else el.setAttribute('data-palette', look.palette);
     OledGuard.set(style === 'oled' && !!look.oledGuard);
+    // Pasek przeglądarki w barwie stylu.
+    var tc = { etrom: '#f3f5f6', oled: '#000000', cinema: '#050607', paper: '#e7dfcf' }[style];
+    if (!tc) tc = (el.getAttribute('data-theme') === 'dark' || (!el.getAttribute('data-theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? '#0c1620' : '#eaf2f7';
+    var tcm = document.querySelector('meta[name="theme-color"]');
+    if (tcm) tcm.setAttribute('content', tc);
     if (E.Identity && E.Identity.setMode) E.Identity.setMode(look.colorBy);
     if (look.tilesFull) el.setAttribute('data-tiles', 'full');
     else el.removeAttribute('data-tiles');
@@ -3859,7 +3864,7 @@
       { label: 'Motyw jasny', icon: 'sun', meta: now(prefs.theme === 'light'), run: function () { setPref({ theme: 'light' }); } },
       { label: 'Motyw ciemny', icon: 'moon', meta: now(prefs.theme === 'dark'), run: function () { setPref({ theme: 'dark' }); } },
       { label: 'Motyw jak w systemie', icon: 'monitor', meta: now(prefs.theme === 'system'), run: function () { setPref({ theme: 'system' }); } },
-    ].concat([['standard', 'nurt', 'water'], ['etrom', 'różowy etrom logo magenta', 'sparkle'], ['graphite', 'grafit', 'datum'], ['morski', 'morski turkus', 'water'], ['lesny', 'leśny zieleń', 'water'], ['granat', 'granat indygo', 'water'], ['lupek', 'łupek szary', 'datum'], ['fiolet', 'fiolet purpurowy', 'water'], ['bursztyn', 'bursztyn żółty', 'water'], ['terakota', 'terakota ceglasty', 'water'], ['oliwka', 'oliwka zieleń', 'water'], ['blekit', 'błękit niebieski', 'water']].map(function (a) {
+    ].concat([['standard', 'wg stylu domyślny nurt', 'water'], ['etrom', 'różowy etrom logo magenta', 'sparkle'], ['graphite', 'grafit', 'datum'], ['morski', 'morski turkus', 'water'], ['lesny', 'leśny zieleń', 'water'], ['granat', 'granat indygo', 'water'], ['lupek', 'łupek szary', 'datum'], ['fiolet', 'fiolet purpurowy', 'water'], ['bursztyn', 'bursztyn żółty', 'water'], ['terakota', 'terakota ceglasty', 'water'], ['oliwka', 'oliwka zieleń', 'water'], ['blekit', 'błękit niebieski', 'water']].map(function (a) {
       return { label: 'Kolor pracy w toku: ' + a[1].split(' ')[0], icon: a[2], meta: now(prefs.accent === a[0]), keywords: 'akcent barwy kolor ' + a[1], run: function () { setPref({ accent: a[0] }); } };
     })).concat([
       { label: 'Skróty klawiszowe', icon: 'keyboard', meta: '?', keywords: 'pomoc klawiatura', run: showShortcuts },

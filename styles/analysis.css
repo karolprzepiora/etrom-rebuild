@@ -145,9 +145,9 @@
 .ch-v-ok .ch-dot { fill: var(--flow); } .ch-v-watch .ch-dot { fill: var(--warn); } .ch-v-risk .ch-dot { fill: var(--alarm); }
 .ch-v-closed .ch-dot, .ch-v-nodata .ch-dot { fill: var(--ink-4); }
 /* paleta projektów i rodzajów pracy */
-.ch-c0 { fill: #2c7ca0; background: #2c7ca0; } .ch-c1 { fill: #6a8f3a; background: #6a8f3a; } .ch-c2 { fill: #bd7706; background: #bd7706; } .ch-c3 { fill: #8a5aa8; background: #8a5aa8; }
+.ch-c0 { fill: var(--flow); background: var(--flow); } .ch-c1 { fill: #6a8f3a; background: #6a8f3a; } .ch-c2 { fill: #bd7706; background: #bd7706; } .ch-c3 { fill: #8a5aa8; background: #8a5aa8; }
 .ch-c4 { fill: #c25b6a; background: #c25b6a; } .ch-c5 { fill: #3f9b8e; background: #3f9b8e; } .ch-c6 { fill: #7b7f86; background: #7b7f86; } .ch-c7 { fill: #b3873c; background: #b3873c; }
-.ch-s0 { stroke: #2c7ca0; background: #2c7ca0; } .ch-s1 { stroke: #6a8f3a; background: #6a8f3a; } .ch-s2 { stroke: #bd7706; background: #bd7706; }
+.ch-s0 { stroke: var(--flow); background: var(--flow); } .ch-s1 { stroke: #6a8f3a; background: #6a8f3a; } .ch-s2 { stroke: #bd7706; background: #bd7706; }
 .ch-s3 { stroke: #8a5aa8; background: #8a5aa8; } .ch-s4 { stroke: #c25b6a; background: #c25b6a; } .ch-s5 { stroke: #7b7f86; background: #7b7f86; }
 .ch-seg { fill: none; }
 .an-sw.ch-c0, .an-sw.ch-c1, .an-sw.ch-c2, .an-sw.ch-c3, .an-sw.ch-c4, .an-sw.ch-c5, .an-sw.ch-c6, .an-sw.ch-c7 { fill: none; }

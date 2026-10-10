@@ -17,7 +17,7 @@
   var getState = null;
 
   var ACCENTS = [
-    { value: 'standard', label: 'Nurt', color: '#2C7CA0' },
+    { value: 'standard', label: 'Wg stylu', color: 'conic-gradient(#DC5799 0 25%, #4F6B7A 0 50%, #2C7CA0 0 75%, #B5532F 0)' },
     { value: 'etrom', label: 'Różowy', color: '#C23F86' },
     { value: 'graphite', label: 'Grafit', color: '#3E4B49' },
     { value: 'morski', label: 'Morski', color: '#0B7285' },

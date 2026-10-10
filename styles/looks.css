@@ -161,3 +161,30 @@ html[data-look="paper"] .page-header::before { display: none; }
 html[data-look="paper"] .ts-stat, html[data-look="paper"] .an-card, html[data-look="paper"] .tb-card, html[data-look="paper"] .case-card,
 html[data-look="paper"] .set-card, html[data-look="paper"] .ts-calcard { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
 @media (prefers-reduced-motion: reduce) { html[data-oled-guard] .app { transition: none; } }
+
+/* ---------- Barwy stylu (poza Aurorą) ----------
+   Odcienie --au-h* napędzają przyciski główne, pastylki liczników, cienie, zaznaczenie i poświaty;
+   bez nadpisania zostawały niebieskie. Każdy styl dostaje własną rodzinę barw. */
+html[data-look="etrom"] { --au-h1: 352; --au-h2: 345; --au-h3: 5; }
+html[data-look="oled"]  { --au-h1: 352; --au-h2: 345; --au-h3: 5; }
+html[data-look="cinema"] { --au-h1: 30; --au-h2: 20; --au-h3: 45; }
+html[data-look="paper"] { --au-h1: 220; --au-h2: 225; --au-h3: 215; --au-sat: .42; }
+
+/* Kolor pracy w toku, gdy w Ustawieniach wybrano „Wg stylu”: różowy (ETROM, OLED), terakota (Filmowy), łupek (Papier). */
+html[data-look="etrom"]:not([data-accent]), html[data-look="oled"]:not([data-accent]) {
+  --flow: light-dark(#c23f86, #ee86bb); --flow-ink: light-dark(#9c2d6b, #f4a9cf);
+  --flow-wash: light-dark(#f8e6f0, #2c1624); --flow-ring: light-dark(rgb(194 63 134 / .34), rgb(238 134 187 / .42));
+  --done: light-dark(#667f8d, #9fb4bf);
+}
+html[data-look="cinema"]:not([data-accent]) {
+  --flow: light-dark(#b5532f, #e88b66); --flow-ink: light-dark(#8a3b1f, #f2ae92);
+  --flow-wash: light-dark(#f8e5dd, #301a12); --flow-ring: light-dark(rgb(181 83 47 / .34), rgb(232 139 102 / .42));
+}
+html[data-look="paper"]:not([data-accent]) {
+  --flow: light-dark(#4f6b7a, #9fb6c3); --flow-ink: light-dark(#3b5260, #c0d0da);
+  --flow-wash: light-dark(#e4ebef, #1b262d); --flow-ring: light-dark(rgb(79 107 122 / .34), rgb(159 182 195 / .42));
+}
+
+/* Urlop i wyjazd: osobna barwa od „w toku”, ale w rodzinie stylu (ETROM: łupek z logo; Papier: zieleń). */
+html[data-look="etrom"] { --leave: light-dark(#4f6b7a, #9fb6c3); --leave-ink: light-dark(#3b5260, #c0d0da); --leave-wash: light-dark(#e4ebef, #1b262d); --trip: light-dark(#4f6b7a, #9fb6c3); }
+html[data-look="paper"] { --leave: light-dark(#2f7d5b, #62c79c); --leave-ink: light-dark(#205a40, #96ddbc); --leave-wash: light-dark(#e1f1e9, #10281d); --trip: light-dark(#2f7d5b, #62c79c); }

@@ -580,6 +580,19 @@ async function main() {
 
     check('domyślny styl to ETROM: jasny schemat i ciemny panel boczny; dalsze testy motywów działają w stylu Aurora',
       await evaluate('return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && window.ETROM.Prefs.LOOKS[0].value === "etrom";'));
+    {
+      const hues = {};
+      for (const lk of ['etrom', 'oled', 'cinema', 'paper']) {
+        await evaluate('window.ETROM.app.actions.setPref({ look: "' + lk + '", accent: "standard" }); return true;');
+        await sleep(150);
+        hues[lk] = await evaluate('var r = getComputedStyle(document.documentElement); var d = document.createElement("i"); d.style.color = "var(--flow)"; document.body.appendChild(d); var c = getComputedStyle(d).color; d.remove(); return { h1: r.getPropertyValue("--au-h1").trim(), c: c, tc: document.querySelector("meta[name=theme-color]").getAttribute("content") };');
+      }
+      check('style poza Aurorą mają własne odcienie (przyciski główne nie są niebieskie)',
+        hues.etrom.h1 === '352' && hues.oled.h1 === '352' && hues.cinema.h1 === '30' && hues.paper.h1 === '220', JSON.stringify(hues));
+      check('kolor pracy „Wg stylu” zależy od stylu (ETROM różowy, Filmowy terakota, Papier łupek)',
+        hues.etrom.c !== hues.cinema.c && hues.cinema.c !== hues.paper.c && hues.etrom.c !== hues.paper.c, JSON.stringify(hues));
+      check('theme-color podąża za stylem', hues.oled.tc === '#000000' && hues.paper.tc === '#e7dfcf' && hues.etrom.tc === '#f3f5f6', JSON.stringify(hues));
+    }
     await evaluate('window.ETROM.app.actions.setPref({ look: "aurora" }); return true;');
     await sleep(200);
     await click('#action-settings');

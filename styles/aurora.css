@@ -1958,7 +1958,7 @@ button.cb-bar { cursor: pointer; }
 .cv-agenda { display: none; }
 .cv-ag__day { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 14%, transparent); }
 .cv-ag__h { justify-self: start; font: inherit; font-weight: 800; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); }
-.cv-ag__day.is-today .cv-ag__h { color: var(--leave); }
+.cv-ag__day.is-today .cv-ag__h { color: var(--flow-ink); }
 .cv-ag__l { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .cv-ag__abs { padding: 4px 10px; border-radius: 8px; font-size: .8rem; font-weight: 700; color: #fff; background: var(--cb-other); }
 .cv-ag__abs.is-leave { background: var(--leave); } .cv-ag__abs.is-sick { background: var(--alarm); }
