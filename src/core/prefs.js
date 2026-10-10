@@ -10,6 +10,36 @@
   var ACCENTS = ['standard', 'etrom', 'graphite', 'morski', 'lesny', 'granat'];
   // Motywy kolorystyczne: tło okna, pasek boczny, nagłówki i przycisk główny.
   var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet', 'etrom', 'sky', 'mint', 'peach', 'lilac'];
+  // Style całego wyglądu (Ustawienia → Wygląd). Aurora to dotychczasowy, z paletami; pozostałe mają własny charakter.
+  // scheme: styl wymusza jasny/ciemny schemat (OLED i Filmowy są ciemne, Papier jasny); null = decyduje Motyw.
+  var LOOKS = [
+    { value: 'aurora', label: 'Aurora', hint: 'domyślny, z paletami', scheme: null },
+    { value: 'oled', label: 'OLED Black', hint: 'czerń na ekrany OLED', scheme: 'dark' },
+    { value: 'cinema', label: 'Filmowy', hint: 'kino i prezentacje', scheme: 'dark' },
+    { value: 'paper', label: 'Papier', hint: 'jasny, matowy', scheme: 'light' }
+  ];
+  var LOOK_IDS = LOOKS.map(function (l) { return l.value; });
+  function schemeOf(look) {
+    var found = LOOKS.filter(function (l) { return l.value === look; })[0];
+    return found ? found.scheme : null;
+  }
+  // Profile zasad budżetu: gotowe zestawy ostrzeżenia, alarmu i rezerwy. Wszystko inne to „Własny”.
+  var BUDGET_PROFILES = [
+    { id: 'recommended', label: 'Zalecany', values: { forecastWarn: 10, forecastAlarm: 25, reservePct: 15 } },
+    { id: 'careful', label: 'Ostrożny', values: { forecastWarn: 5, forecastAlarm: 15, reservePct: 20 } },
+    { id: 'loose', label: 'Luźny', values: { forecastWarn: 15, forecastAlarm: 40, reservePct: 10 } }
+  ];
+  function profileOf(prefs) {
+    var found = BUDGET_PROFILES.filter(function (p) {
+      return Object.keys(p.values).every(function (k) { return prefs[k] === p.values[k]; });
+    })[0];
+    return found ? found.id : 'custom';
+  }
+  /** Wartości profilu do wpisania w preferencje; nieznany profil daje null. */
+  function profileValues(id) {
+    var found = BUDGET_PROFILES.filter(function (p) { return p.id === id; })[0];
+    return found ? Object.assign({}, found.values) : null;
+  }
   var VIVID_MIN = 40; var VIVID_MAX = 150; var VIVID_DEFAULT = 100; var CONTRAST_DEFAULT = 50;
   var GROUPS = ['health', 'status', 'none'];
   var DENSITIES = ['comfortable', 'compact'];
@@ -83,7 +113,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'aurora', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
       cal: cleanCal(null), dash: cleanDash(null)
     };
   }
@@ -129,6 +159,8 @@
       railCollapsed: source.railCollapsed === true,
       collapsedRails: (Array.isArray(source.collapsedRails) ? source.collapsedRails : ['time', 'mywork', 'mycases', 'feed']).filter(function (id, i, a) { return typeof id === 'string' && /^[a-z-]{1,24}$/.test(id) && a.indexOf(id) === i; }).slice(0, 12),
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
+      look: LOOK_IDS.indexOf(source.look) >= 0 ? source.look : 'aurora',
+      oledGuard: source.oledGuard === true,
       hdr: source.hdr !== false,
       tilesFull: source.tilesFull === true,
       colorBy: 'number',
@@ -202,6 +234,11 @@
     VIEWS: VIEWS,
     ACCENTS: ACCENTS,
     PALETTES: PALETTES,
+    LOOKS: LOOKS,
+    schemeOf: schemeOf,
+    BUDGET_PROFILES: BUDGET_PROFILES,
+    profileOf: profileOf,
+    profileValues: profileValues,
     VIVID_MIN: VIVID_MIN,
     VIVID_MAX: VIVID_MAX,
     COLUMNS: COLUMNS,

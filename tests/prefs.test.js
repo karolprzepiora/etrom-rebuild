@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'aurora', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -188,4 +188,37 @@ test('ustawienia pulpitu: tylko poprawne identyfikatory, bez duplikatów, z limi
   assert.deepEqual(n.dash.tiles, ['risk', 'load', 'a', 'b', 'c']);
   assert.deepEqual(n.dash.collapsed, ['week', 'team']);
   assert.deepEqual(Prefs.normalize({ dash: 'zepsute' }).dash, { tiles: [], collapsed: [] });
+});
+
+test('styl wyglądu: znane style przechodzą, reszta wraca do Aurory; schemat wymuszają OLED, Filmowy i Papier', () => {
+  assert.equal(Prefs.normalize({}).look, 'aurora');
+  assert.equal(Prefs.normalize({ look: 'oled' }).look, 'oled');
+  assert.equal(Prefs.normalize({ look: 'cinema' }).look, 'cinema');
+  assert.equal(Prefs.normalize({ look: 'paper' }).look, 'paper');
+  assert.equal(Prefs.normalize({ look: 'neon' }).look, 'aurora');
+  assert.equal(Prefs.schemeOf('oled'), 'dark');
+  assert.equal(Prefs.schemeOf('cinema'), 'dark');
+  assert.equal(Prefs.schemeOf('paper'), 'light');
+  assert.equal(Prefs.schemeOf('aurora'), null);
+  assert.deepEqual(Prefs.LOOKS.map((l) => l.value), ['aurora', 'oled', 'cinema', 'paper']);
+});
+
+test('ochrona OLED: tylko true ją włącza', () => {
+  assert.equal(Prefs.normalize({}).oledGuard, false);
+  assert.equal(Prefs.normalize({ oledGuard: 'tak' }).oledGuard, false);
+  assert.equal(Prefs.normalize({ oledGuard: true }).oledGuard, true);
+});
+
+test('profile budżetu: rozpoznawane po ostrzeżeniu, alarmie i rezerwie; reszta to „custom”', () => {
+  assert.equal(Prefs.profileOf(Prefs.normalize({})), 'recommended');
+  assert.equal(Prefs.profileOf(Prefs.normalize(Object.assign({}, Prefs.profileValues('careful')))), 'careful');
+  assert.equal(Prefs.profileOf(Prefs.normalize(Object.assign({}, Prefs.profileValues('loose')))), 'loose');
+  assert.equal(Prefs.profileOf(Prefs.normalize({ forecastWarn: 20 })), 'custom');
+  assert.equal(Prefs.profileValues('nieznany'), null);
+  // wartości profili mieszczą się w listach wyboru z Ustawień
+  Prefs.BUDGET_PROFILES.forEach((p) => {
+    assert.ok([5, 10, 15, 20].includes(p.values.forecastWarn));
+    assert.ok([15, 20, 25, 30, 35, 40, 50].includes(p.values.forecastAlarm));
+    assert.ok([0, 10, 15, 20, 25, 30].includes(p.values.reservePct));
+  });
 });

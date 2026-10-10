@@ -183,3 +183,17 @@ test('portfel: zespół, klienci, kalibracja i sygnały', () => {
   assert.ok(data.signals && typeof data.signals.overdueTasks === 'number');
   assert.ok(data.totals.utilization >= 0);
 });
+
+test('impactOf: liczy skutki progów bez zmiany zapisanych zasad', () => {
+  // dużo godzin na etapie „koncepcja” przy małym postępie: prognoza przekracza budżet
+  const entries = [];
+  for (let d = -30; d < -2; d += 1) entries.push(entry('p-3', d, 8, 'land'));
+  const w = ws(entries);
+  const before = Analysis.getRules();
+  const [loose, strict] = Analysis.impactOf(w, 'p-1', NOW, [{ warn: 0.9, alarm: 1.9 }, { warn: 0, alarm: 0.01 }]);
+  assert.deepEqual(Analysis.getRules(), before, 'zasady wracają do poprzednich');
+  assert.equal(loose.active, 1);
+  assert.equal(strict.active, 1);
+  assert.ok(strict.risk + strict.watch >= loose.risk + loose.watch, 'ostrzejsze progi nie dają mniej ostrzeżeń');
+  assert.deepEqual(Analysis.impactOf(w, 'p-2', NOW, []), []);
+});

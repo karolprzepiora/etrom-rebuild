@@ -28,6 +28,8 @@
   <link rel="stylesheet" href="styles/capsules.css">
   <link rel="stylesheet" href="styles/dashboard.css">
   <link rel="stylesheet" href="styles/orders.css">
+  <link rel="stylesheet" href="styles/settings.css">
+  <link rel="stylesheet" href="styles/looks.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
@@ -88,6 +90,16 @@
               </div>
             </header>
             <div id="feed-body"></div>
+          </section>
+
+          <section class="view" id="view-settings" hidden aria-labelledby="settings-title">
+            <header class="page-header">
+              <div class="page-header__main">
+                <h1 class="t-page-title" id="settings-title">Ustawienia</h1>
+                <p class="page-header__description" id="settings-summary"></p>
+              </div>
+            </header>
+            <div id="settings-body"></div>
           </section>
 
           <section class="view" id="view-analysis" hidden aria-labelledby="analysis-title">
@@ -320,6 +332,7 @@
   <script src="src/ui/inboxScreen.js"></script>
   <script src="src/ui/welcome.js"></script>
   <script src="src/ui/feedScreen.js"></script>
+  <script src="src/ui/settingsScreen.js"></script>
   <script src="src/ui/charts.js"></script>
   <script src="src/ui/analysisScreen.js"></script>
   <script src="src/ui/budgetScreen.js"></script>

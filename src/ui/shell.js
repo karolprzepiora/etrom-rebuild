@@ -38,7 +38,7 @@
     { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },
     { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' }
   ];
-  var LOOK_DEFAULTS = { palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
+  var LOOK_DEFAULTS = { look: 'aurora', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
 
   /** Logo ETROM: warstwa barwna + napis w kolorze tekstu (działa w obu motywach). */
   function logo(markOnly) {
@@ -115,93 +115,6 @@
       onChange: function (value) { actions.setPref({ density: value }); density.set(value); }
     });
 
-    var swatches = ACCENTS.map(function (accent) {
-      return D.el('button', {
-        class: 'accent-swatch',
-        attrs: { type: 'button', role: 'radio', 'aria-checked': String(prefs.accent === accent.value), 'aria-label': 'Kolor bieżącej pracy: ' + accent.label, 'data-tooltip': accent.label },
-        style: { '--swatch': accent.color },
-        dataset: { value: accent.value },
-        on: {
-          click: function () {
-            actions.setPref({ accent: accent.value });
-            swatches.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === accent.value)); });
-          }
-        }
-      });
-    });
-
-    // ---- Wygląd: motyw kolorystyczny, HDR, intensywność i kontrast ----
-    var look = { palette: prefs.palette, hdr: prefs.hdr, vivid: prefs.vivid, contrast: prefs.contrast, tilesFull: prefs.tilesFull, colorBy: prefs.colorBy };
-    var palButtons = PALETTES.map(function (pal) {
-      return D.el('button', {
-        class: 'pal-swatch',
-        attrs: { type: 'button', role: 'radio', 'aria-checked': String(look.palette === pal.value), 'aria-label': 'Motyw kolorystyczny: ' + pal.label, 'data-tooltip': pal.label, 'data-fk': 'palette-' + pal.value },
-        style: { '--pa': pal.a, '--pb': pal.b },
-        dataset: { value: pal.value },
-        on: { click: function () { look.palette = pal.value; actions.setPref({ palette: pal.value }); syncLook(); } }
-      });
-    });
-    var hdrSwitch = UI.switchControl({
-      id: 'look-hdr', label: 'HDR', checked: look.hdr,
-      attrs: { 'data-fk': 'look-hdr', 'aria-describedby': 'look-hdr-hint' },
-      onChange: function (on) { look.hdr = on; actions.setPref({ hdr: on }); syncLook(); }
-    });
-    var tilesSwitch = UI.switchControl({
-      id: 'look-tiles', label: 'Kafle z połyskiem', checked: !!look.tilesFull,
-      attrs: { 'data-fk': 'look-tiles', 'aria-describedby': 'look-tiles-hint' },
-      onChange: function (on) { look.tilesFull = on; actions.setPref({ tilesFull: on }); syncLook(); }
-    });
-    function slider(o) {
-      var out = D.el('output', { class: 'look-slider__val t-num', attrs: { for: o.id } });
-      var input = D.el('input', {
-        class: 'look-slider__input', attrs: { id: o.id, type: 'range', min: String(o.min), max: String(o.max), step: '1', 'data-fk': o.id, 'aria-label': o.label },
-        on: {
-          input: function () { o.set(Number(input.value)); out.textContent = o.format(Number(input.value)); actions.previewLook(look); },
-          change: function () { actions.setPref(o.patch(Number(input.value))); }
-        }
-      });
-      input.value = String(o.get());
-      out.textContent = o.format(o.get());
-      return { node: D.el('div', { class: 'look-slider' }, [D.el('label', { class: 'settings__label', attrs: { for: o.id }, text: o.label }), input, out]), input: input, out: out, o: o };
-    }
-    var vividSlider = slider({
-      id: 'look-vivid', label: 'Intensywność kolorów', min: 40, max: 150,
-      get: function () { return look.vivid; }, set: function (v) { look.vivid = v; },
-      format: function (v) { return v + '%'; }, patch: function (v) { return { vivid: v }; }
-    });
-    var contrastSlider = slider({
-      id: 'look-contrast', label: 'Kontrast', min: 0, max: 100,
-      get: function () { return look.contrast; }, set: function (v) { look.contrast = v; },
-      format: function (v) { return v === 50 ? 'standard' : (v > 50 ? '+' + (v - 50) : String(v - 50)); }, patch: function (v) { return { contrast: v }; }
-    });
-    function syncLook() {
-      palButtons.forEach(function (btn) { btn.setAttribute('aria-checked', String(btn.dataset.value === look.palette)); });
-      hdrSwitch.input.checked = !!look.hdr;
-      tilesSwitch.input.checked = !!look.tilesFull;
-      [vividSlider, contrastSlider].forEach(function (sl) { sl.input.value = String(sl.o.get()); sl.out.textContent = sl.o.format(sl.o.get()); });
-      actions.previewLook(look);
-    }
-    var resetLook = D.el('button', {
-      class: 'link-btn', text: 'Przywróć domyślny wygląd', attrs: { type: 'button', 'data-fk': 'look-reset' },
-      on: { click: function () { look = Object.assign({}, LOOK_DEFAULTS); actions.setPref(look); syncLook(); } }
-    });
-
-    var targetOptions = [240, 300, 360, 420, 450, 480, 540, 600].map(function (m) { return { value: String(m), label: (Math.round(m / 6) / 10 + ' h').replace('.', ',') }; });
-    var dayTarget = UI.select({ id: 'work-target', value: String(prefs.dayTarget || 480), options: targetOptions, on: { change: function () { actions.setPref({ dayTarget: Number(dayTarget.value) }); } }, attrs: { 'data-fk': 'work-target', 'aria-label': 'Cel dnia pracy' } });
-    function ruleSelect(id, key, values, label, suffix) {
-      var sel = UI.select({ id: id, value: String(prefs[key]), options: values.map(function (v) { return { value: String(v), label: label ? label(v) : v + suffix }; }), on: { change: function () { var patch = {}; patch[key] = sel.value; if (key !== 'progressMethod') patch[key] = Number(sel.value); actions.setPref(patch); } }, attrs: { 'data-fk': id, 'aria-label': id } });
-      return sel;
-    }
-    var progressMethod = ruleSelect('rule-method', 'progressMethod', ['auto', 'status', 'done'], function (v) { return { auto: 'Z zadań (zalecane)', status: 'Tylko ze statusu etapu', done: 'Tylko etapy zakończone' }[v]; });
-    var workingWeight = ruleSelect('rule-weight', 'workingWeight', [0, 10, 25, 30, 40, 50, 60, 75, 90], null, '%');
-    var forecastWarn = ruleSelect('rule-warn', 'forecastWarn', [5, 10, 15, 20], null, '%');
-    var forecastAlarm = ruleSelect('rule-alarm', 'forecastAlarm', [15, 20, 25, 30, 40, 50], null, '%');
-    var reservePct = ruleSelect('rule-reserve', 'reservePct', [0, 10, 15, 20, 25, 30], null, '%');
-    var minProgress = ruleSelect('rule-min', 'minProgress', [0, 5, 10, 15, 20, 30], null, '%');
-    var endOptions = [];
-    for (var m = 15 * 60; m <= 21 * 60; m += 30) endOptions.push({ value: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), label: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') });
-    var dayEnd = UI.select({ id: 'work-end', value: prefs.dayEnd || '17:00', options: endOptions, on: { change: function () { actions.setPref({ dayEnd: dayEnd.value }); } }, attrs: { 'data-fk': 'work-end', 'aria-label': 'Koniec dnia pracy' } });
-
     var meNow = E.Team.findPerson(state.workspace.people || [], prefs.me);
     var isBoss = !!meNow && E.Budget.isManagement(meNow.id, state.workspace.people || []);
     function item(label, icon, run, tone, kbd) {
@@ -219,36 +132,8 @@
       ]),
       D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Motyw' }), theme.node]),
       D.el('div', { class: 'settings__row' }, [D.el('span', { class: 'settings__label', text: 'Gęstość' }), density.node]),
-      D.el('div', { class: 'settings__row' }, [
-        D.el('span', { class: 'settings__label', text: 'Kolor pracy w toku', attrs: { id: 'accent-label' } }),
-        D.el('div', { class: 'accent-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'accent-label' } }, swatches)
-      ]),
       D.el('div', { class: 'menu__separator' }),
-      D.el('p', { class: 'settings__group', text: 'Czas pracy' }),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-target' }, text: 'Cel dnia' }), dayTarget]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'work-end' }, text: 'Koniec dnia pracy' }), dayEnd, D.el('span', { class: 'settings__hint', text: 'po nim zapytam o niezatrzymany zegar' })]),
-      D.el('div', { class: 'menu__separator' }),
-      D.el('p', { class: 'settings__group', text: 'Budżet i postęp' }),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-method' }, text: 'Liczenie postępu' }), progressMethod, D.el('span', { class: 'settings__hint', text: 'etap w toku liczy się wg godzin oszacowanych zadań, a bez nich wg liczby zadań' })]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-weight' }, text: 'Waga etapu „w toku” bez zadań' }), workingWeight]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-warn' }, text: 'Uwaga od przekroczenia' }), forecastWarn, D.el('span', { class: 'settings__hint', text: 'prognoza godzin wobec budżetu' })]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-alarm' }, text: 'Alarm od przekroczenia' }), forecastAlarm]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-reserve' }, text: 'Rezerwa postępowań' }), reservePct, D.el('span', { class: 'settings__hint', text: 'część budżetu etapu-postępowania na uzupełnienia; dzień roboczy = Cel dnia' })]),
-      D.el('div', { class: 'settings__row' }, [D.el('label', { class: 'settings__label', attrs: { for: 'rule-min' }, text: 'Prognoza od postępu' }), minProgress, D.el('span', { class: 'settings__hint', text: 'wcześniej wynik byłby zgadywaniem' })]),
-      isBoss ? D.el('div', { class: 'menu__separator' }) : null,
-      isBoss ? D.el('p', { class: 'settings__group', text: 'Kalendarz i urlopy' }) : null,
-      D.el('div', { class: 'menu__separator' }),
-      D.el('p', { class: 'settings__group', text: 'Wygląd' }),
-      D.el('div', { class: 'settings__row' }, [
-        D.el('span', { class: 'settings__label', text: 'Motyw kolorystyczny', attrs: { id: 'palette-label' } }),
-        D.el('div', { class: 'pal-swatches', attrs: { role: 'radiogroup', 'aria-labelledby': 'palette-label' } }, palButtons)
-      ]),
-      D.el('div', { class: 'settings__row' }, [hdrSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-hdr-hint' }, text: 'połysk, poświata i szersza gama barw' })]),
-      D.el('div', { class: 'settings__row' }, [tilesSwitch.node, D.el('span', { class: 'settings__hint', attrs: { id: 'look-tiles-hint' }, text: 'domyślnie jednolity kolor, bez połysku i cieniowania' })]),
-      vividSlider.node,
-      contrastSlider.node,
-      D.el('div', { class: 'settings__row' }, [resetLook]),
-      D.el('div', { class: 'menu__separator' }),
+      item('Wszystkie ustawienia…', 'sparkle', function () { actions.openSettings(); }, null, null),
       item('Skróty klawiszowe', 'keyboard', actions.showShortcuts, null, '?'),
       item('Dodaj dane przykładowe', 'sparkle', actions.loadDemo),
       item('Pobierz kopię zapasową', 'download', actions.exportJson),
@@ -391,13 +276,14 @@
     if (route.name === 'time') return [{ label: 'Czas' }];
     if (route.name === 'mywork') return [{ label: 'Moja praca' }];
     if (route.name === 'inbox') return [{ label: 'Skrzynka' }];
+    if (route.name === 'settings') return [{ label: 'Ustawienia' }];
     if (route.name === 'project') return [{ label: 'Projekty', href: '#/projekty' }, { label: project ? project.name : 'Nie znaleziono' }];
     return [{ label: 'Projekty' }];
   }
 
   function render(state, project) {
     var route = state.route;
-    var screens = { orders: 'orders', dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', inbox: 'inbox', time: 'time', feed: 'feed', analysis: 'analysis' };
+    var screens = { settings: 'settings', orders: 'orders', dashboard: 'dashboard', leave: 'leave', calendar: 'calendar', review: 'review', plan: 'plan', library: 'library', team: 'team', mywork: 'mywork', inbox: 'inbox', time: 'time', feed: 'feed', analysis: 'analysis' };
     var section = screens[route.name] || 'projects';
     var people = state.workspace.people || [];
     var meNow = E.Team.findPerson(people, state.prefs.me);
@@ -494,5 +380,5 @@
     }
   }
 
-  root.ETROM.Shell = { build: build, render: render, setSaved: setSaved };
+  root.ETROM.Shell = { build: build, render: render, setSaved: setSaved, PALETTES: PALETTES, ACCENTS: ACCENTS };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

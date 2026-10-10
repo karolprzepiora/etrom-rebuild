@@ -57,6 +57,8 @@
     timeDone: false,
     planCell: null,
     analysisTab: 'overview',
+    settingsSection: 'look',
+    settingsAdvOpen: false,
     feedEditing: null,
     feedFilter: 'all',
     feedLimit: 20,
@@ -99,6 +101,7 @@
 
   function parseRoute(hash) {
     var parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+    if (parts[0] === 'ustawienia') return { name: 'settings' };
     if (parts[0] === 'zespol') return { name: 'team' };
     if (parts[0] === 'biblioteka') return { name: 'library' };
     if (parts[0] === 'plan') return { name: 'plan' };
@@ -120,10 +123,11 @@
   }
 
   function screenOf(route) {
-    return route.name === 'orders' ? 'orders' : route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'inbox' ? 'inbox' : route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
+    return route.name === 'settings' ? 'settings' : route.name === 'orders' ? 'orders' : route.name === 'dashboard' ? 'dashboard' : route.name === 'leave' ? 'leave' : route.name === 'calendar' ? 'calendar' : route.name === 'review' ? 'review' : route.name === 'plan' ? 'plan' : route.name === 'library' ? 'library' : route.name === 'team' ? 'team' : (route.name === 'inbox' ? 'inbox' : route.name === 'mywork' ? 'mywork' : (route.name === 'time' ? 'time' : (route.name === 'feed' ? 'feed' : (route.name === 'analysis' ? 'analysis' : 'projects'))));
   }
 
   function routeHash(route) {
+    if (route.name === 'settings') return '#/ustawienia';
     if (route.name === 'team') return '#/zespol';
     if (route.name === 'library') return '#/biblioteka';
     if (route.name === 'plan') return '#/plan';
@@ -217,7 +221,7 @@
   }
 
   function goTo(screen) {
-    navigate({ name: screen === 'orders' ? 'orders' : screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'inbox' ? 'inbox' : screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
+    navigate({ name: screen === 'settings' ? 'settings' : screen === 'orders' ? 'orders' : screen === 'dashboard' ? 'dashboard' : screen === 'leave' ? 'leave' : screen === 'calendar' ? 'calendar' : screen === 'review' ? 'review' : screen === 'plan' ? 'plan' : screen === 'library' ? 'library' : screen === 'team' ? 'team' : (screen === 'inbox' ? 'inbox' : screen === 'mywork' ? 'mywork' : (screen === 'time' ? 'time' : (screen === 'feed' ? 'feed' : (screen === 'analysis' ? 'analysis' : 'projects')))) });
   }
 
   function openProject(id, tab) {
@@ -2087,8 +2091,10 @@
   }
 
   function applyPrefs(prefs) {
-    if (prefs.theme === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', prefs.theme);
+    // Styl OLED, Filmowy i Papier mają jeden schemat; w Aurorze decyduje Motyw.
+    var scheme = E.Prefs.schemeOf(prefs.look) || (prefs.theme === 'system' ? null : prefs.theme);
+    if (!scheme) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', scheme);
     if (prefs.accent === 'standard') document.documentElement.removeAttribute('data-accent');
     else document.documentElement.setAttribute('data-accent', prefs.accent);
     document.documentElement.setAttribute('data-density', prefs.density || 'comfortable');
@@ -2717,11 +2723,54 @@
     });
   }
 
+  /** Ochrona OLED: co minutę przesuwa układ o 0–2 px, a po 3 minutach bez ruchu przygasza ekran. */
+  var OledGuard = (function () {
+    var on = false; var shiftTimer = null; var idleTimer = null; var wired = false; var step = 0;
+    var SHIFTS = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 2], [-2, 0], [-2, -2], [0, -2], [2, -2]];
+    var root = document.documentElement;
+    function wake() {
+      root.removeAttribute('data-idle');
+      window.clearTimeout(idleTimer);
+      if (on) idleTimer = window.setTimeout(function () { root.setAttribute('data-idle', 'true'); }, 180000);
+    }
+    function shift() {
+      step = (step + 1) % SHIFTS.length;
+      root.style.setProperty('--shift-x', SHIFTS[step][0] + 'px');
+      root.style.setProperty('--shift-y', SHIFTS[step][1] + 'px');
+    }
+    function set(next) {
+      if (next === on) return;
+      on = next;
+      if (on) {
+        root.setAttribute('data-oled-guard', 'true');
+        if (!wired) {
+          wired = true;
+          ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (name) { window.addEventListener(name, wake, { passive: true }); });
+        }
+        shiftTimer = window.setInterval(shift, 60000);
+        wake();
+      } else {
+        root.removeAttribute('data-oled-guard');
+        root.removeAttribute('data-idle');
+        root.style.removeProperty('--shift-x');
+        root.style.removeProperty('--shift-y');
+        window.clearInterval(shiftTimer);
+        window.clearTimeout(idleTimer);
+      }
+    }
+    return { set: set };
+  })();
+
   /** Wygląd: paleta, HDR, intensywność i kontrast jako atrybuty i zmienne CSS (podgląd na żywo bez zapisu). */
   function applyLook(look) {
     var el = document.documentElement;
-    if (!look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
+    var style = look.look || 'aurora';
+    if (style === 'aurora') el.removeAttribute('data-look');
+    else el.setAttribute('data-look', style);
+    // Palety należą do Aurory; inne style mają własną kolorystykę.
+    if (style !== 'aurora' || !look.palette || look.palette === 'ocean') el.removeAttribute('data-palette');
     else el.setAttribute('data-palette', look.palette);
+    OledGuard.set(style === 'oled' && !!look.oledGuard);
     if (E.Identity && E.Identity.setMode) E.Identity.setMode(look.colorBy);
     if (look.tilesFull) el.setAttribute('data-tiles', 'full');
     else el.removeAttribute('data-tiles');
@@ -3796,6 +3845,7 @@
       { label: 'Przejdź do projektów', icon: 'folder', meta: now(state.route.name === 'projects'), keywords: 'ekran lista portfel', run: function () { goTo('projects'); } },
       { label: 'Przejdź do karty czasu', icon: 'clock', meta: now(state.route.name === 'time'), keywords: 'czas godziny tydzień miesiąc eksport csv plan obciążenia', run: function () { goTo('time'); } },
       { label: 'Przejdź do analizy', icon: 'chart', meta: now(state.route.name === 'analysis'), keywords: 'opłacalność budżet godziny prognoza marża zużycie', run: function () { goTo('analysis'); } },
+      { label: 'Przejdź do ustawień', icon: 'sparkle', keywords: 'wygląd styl motyw oled papier budżet kopia', run: function () { goTo('settings'); } },
       { label: 'Przejdź do aktualności', icon: 'sparkle', meta: now(state.route.name === 'feed'), keywords: 'strumień wpisy reakcje komentarze media', run: function () { goTo('feed'); } },
       { label: 'Przejdź do zleceń', icon: 'checklist', meta: now(state.route.name === 'orders'), keywords: 'zlecenia do podpisu wysłania opłacenia prośba', run: function () { goTo('orders'); } },
       { label: 'Nowe zlecenie', icon: 'plus', keywords: 'zlecenie podpis wysyłka opłata poproś', run: function () { openOrder(); } },
@@ -4024,6 +4074,14 @@
     setMe: setMe,
     setPref: setPref,
     previewLook: applyLook,
+    showShortcuts: showShortcuts,
+    exportJson: exportJson,
+    importJson: function () { nodes.fileInput.click(); },
+    clearAll: clearAll,
+    setSettingsSection: function (id) { store.set({ settingsSection: id }); },
+    setSettingsAdv: function (open) { if (store.getState().settingsAdvOpen !== !!open) store.set({ settingsAdvOpen: !!open }); },
+    openSettings: function (section) { if (section) store.set({ settingsSection: section }); goTo('settings'); },
+    openLeaveRules: function () { setLeave({ rail: 'rules' }); goTo('leave'); },
     inspect: inspect,
     closeInspector: closeInspector,
     isInspected: isInspected,
@@ -4447,6 +4505,12 @@
     D.patch(nodes.dashboardBody, [screen.body]);
   }
 
+  function renderSettings(state) {
+    var screen = E.SettingsScreen.view(state, { actions: actions });
+    nodes.settingsSummary.textContent = screen.summary;
+    D.patch(nodes.settingsBody, [screen.body]);
+  }
+
   function renderFeed(state) {
     var screen = E.FeedScreen.view(state, { actions: actions });
     nodes.feedSummary.textContent = screen.summary;
@@ -4674,6 +4738,8 @@
     nodes.views.mywork.hidden = route.name !== 'mywork';
     nodes.views.inbox.hidden = route.name !== 'inbox';
     nodes.views.feed.hidden = route.name !== 'feed';
+    nodes.views.settings.hidden = route.name !== 'settings';
+    if (route.name !== 'settings' && nodes.settingsBody.firstChild) D.clear(nodes.settingsBody);
     nodes.views.analysis.hidden = route.name !== 'analysis';
     nodes.views.time.hidden = route.name !== 'time';
 
@@ -4699,6 +4765,9 @@
     } else if (route.name === 'analysis') {
       document.title = 'Analiza · ETROM';
       renderAnalysis(state);
+    } else if (route.name === 'settings') {
+      document.title = 'Ustawienia · ETROM';
+      renderSettings(state);
     } else if (route.name === 'feed') {
       document.title = 'Aktualności · ETROM';
       renderFeed(state);
@@ -4979,6 +5048,8 @@
     });
     nodes.inboxBody = D.byId('inbox-body');
     nodes.dashboardBody = D.byId('dashboard-body');
+    nodes.settingsSummary = D.byId('settings-summary');
+    nodes.settingsBody = D.byId('settings-body');
     nodes.feedSummary = D.byId('feed-summary');
     nodes.feedBody = D.byId('feed-body');
     nodes.analysisSummary = D.byId('analysis-summary');
@@ -4989,7 +5060,7 @@
     nodes.leaveTools = D.byId('leave-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
-    nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
+    nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), settings: D.byId('view-settings'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
     nodes.portfolio = D.byId('portfolio');
     nodes.rail = D.byId('rail');
     nodes.railWrap = D.byId('rail-wrap');

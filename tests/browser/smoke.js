@@ -2192,8 +2192,9 @@ async function main() {
     await click('[data-fk="rail-terminy"]');
     await sleep(300);
     check('panel terminów da się rozwinąć z powrotem', (await state('s.prefs.railCollapsed')) === false && await evaluate('return !!document.querySelector(".pf-rail__sec");'));
-    await click('#action-settings');
-    await sleep(300);
+    await go('#/ustawienia');
+    await evaluate('window.ETROM.app.actions.setSettingsSection("look"); return true;');
+    await sleep(400);
     await click('[data-fk="palette-forest"]');
     await sleep(200);
     check('Ustawienia → Wygląd: wybór motywu kolorystycznego zmienia paletę i zapisuje ją',
@@ -2212,6 +2213,48 @@ async function main() {
     check('„Przywróć domyślny wygląd” cofa paletę, HDR, intensywność i kontrast',
       (await state('s.prefs.palette')) === 'ocean' && (await state('s.prefs.hdr')) === true && (await state('s.prefs.vivid')) === 100 && (await state('s.prefs.contrast')) === 50 &&
       await evaluate('return !document.documentElement.hasAttribute("data-palette") && !document.documentElement.hasAttribute("data-hdr");'));
+    // ---- Ustawienia jako osobna strona, style wyglądu, profile budżetu ----
+    check('Ustawienia: osobna strona z sekcjami (Wygląd, Czas pracy, Skróty, Budżet, Dane…)',
+      await evaluate('return location.hash === "#/ustawienia" && document.querySelectorAll(".set-nav__item").length >= 5 && !!document.querySelector("[data-fk=set-nav-budget]") && document.querySelectorAll(".look-card").length === 4;'));
+    await click('[data-fk="look-style-oled"]');
+    await sleep(300);
+    check('styl OLED Black: czarne tło, wymuszony ciemny schemat, palety wyłączone',
+      (await state('s.prefs.look')) === 'oled' && await evaluate('return document.documentElement.getAttribute("data-look") === "oled" && document.documentElement.getAttribute("data-theme") === "dark" && getComputedStyle(document.body).backgroundColor === "rgb(0, 0, 0)" && document.querySelector("[data-fk=palette-forest]").disabled === true;'));
+    check('styl OLED pokazuje przełącznik ochrony OLED, a włączenie ustawia atrybut ochrony',
+      await evaluate('return !!document.getElementById("look-oled-guard");') && (await (async () => { await click('#look-oled-guard'); await sleep(250); return evaluate('return document.documentElement.getAttribute("data-oled-guard") === "true" && window.ETROM.app.store.getState().prefs.oledGuard === true;'); })()));
+    await click('[data-fk="look-style-cinema"]');
+    await sleep(300);
+    check('styl Filmowy: pasy kinowe (38 px) i ciemny schemat; ochrona OLED wyłączona poza stylem OLED',
+      await evaluate('return document.documentElement.getAttribute("data-look") === "cinema" && getComputedStyle(document.body, "::before").height === "38px" && !document.documentElement.hasAttribute("data-oled-guard") && !document.getElementById("look-oled-guard");'));
+    await click('[data-fk="look-style-paper"]');
+    await sleep(300);
+    check('styl Papier: wymuszony jasny schemat i ciepłe, matowe tło arkusza',
+      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(251, 248, 240)";'));
+    await click('[data-fk="look-style-aurora"]');
+    await sleep(300);
+    check('powrót do stylu Aurora zdejmuje atrybut stylu, a schemat wraca do wyboru z Motywu (tu: ciemny)',
+      !(await evaluate('return document.documentElement.hasAttribute("data-look");')) && (await evaluate('return document.documentElement.getAttribute("data-theme");')) === (await state('s.prefs.theme')) && (await state('s.prefs.look')) === 'aurora');
+    await click('[data-fk="set-nav-budget"]');
+    await sleep(300);
+    check('Budżet i postęp: profil Zalecany jest zaznaczony, pokazuje podgląd skutków dla trzech profili',
+      await evaluate('return document.querySelector("[data-fk=bp-recommended]").getAttribute("aria-pressed") === "true" && document.querySelectorAll("[data-fk=bp-impact] .impact__list li").length === 3;'));
+    await click('[data-fk="bp-careful"]');
+    await sleep(250);
+    check('profil Ostrożny ustawia ostrzeżenie 5%, alarm 15% i rezerwę 20%',
+      (await state('s.prefs.forecastWarn')) === 5 && (await state('s.prefs.forecastAlarm')) === 15 && (await state('s.prefs.reservePct')) === 20 &&
+      await evaluate('return document.querySelector("[data-fk=bp-careful]").getAttribute("aria-pressed") === "true";'));
+    await evaluate('const s = document.getElementById("rule-warn"); s.value = "20"; s.dispatchEvent(new Event("change", { bubbles: true })); return true;');
+    await sleep(250);
+    check('ręczna zmiana progu pokazuje profil „Własny”, a wybór Zalecanego przywraca gotowy zestaw',
+      await evaluate('return !!document.querySelector("[data-fk=bp-custom]");') && await (async () => { await click('[data-fk="bp-recommended"]'); await sleep(250); return (await state('s.prefs.forecastWarn')) === 10 && (await state('s.prefs.forecastAlarm')) === 25 && (await evaluate('return !document.querySelector("[data-fk=bp-custom]");')); })());
+    await click('#action-settings');
+    await sleep(300);
+    check('menu przy logo ma skrót „Wszystkie ustawienia…” i nie zawiera już długich list ustawień',
+      await evaluate('const m = document.querySelector(".popover--settings"); return !!m && /Wszystkie ustawienia/.test(m.textContent) && !m.querySelector("#look-hdr") && !m.querySelector("#rule-warn");'));
+    await pressKey('escape');
+    await evaluate('window.ETROM.app.actions.setSettingsSection("look"); return true;');
+    await go('#/projekty');
+    await sleep(300);
     await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return true;');
     await sleep(200);
     check('wiersze tabeli i kafle mają barwę projektu', await evaluate('const r = document.querySelector("tr.prow-project"); return !!r && /^\\d+$/.test(r.style.getPropertyValue("--hue"));'));
@@ -2421,28 +2464,29 @@ async function main() {
     /* 38l. Czas: zamykanie tygodnia, blokada, mapa kompletności, zatwierdzenie */
     await evaluate('window.ETROM.app.actions.setMe("p-8"); location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
     await sleep(400);
+    let lastStep = 'zamknięcie tygodnia';
     check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd dostaje pozycję w Skrzynce, widzi pasek luk, po rozwinięciu pełny widok i zatwierdza',
       (await evaluate('const b = document.querySelector("[data-fk=ts-wk-close]"); if (!b) return false; b.click(); return true;'))
       && await (async () => {
-        await sleep(350);
+        await sleep(600);
         const locked = await evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l.length === 1 && l[0].personId === "p-8" && l[0].status === "submitted" && window.ETROM.WeekLock.isLocked(l, "p-8", l[0].week);');
-        if (!locked) return false;
+        if (!locked) { lastStep = 'blokada'; return false; }
         await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/skrzynka"; return true;');
-        await sleep(400);
+        await sleep(650);
         const inb = await evaluate('return !!document.querySelector("#view-inbox [data-kind=timeweek] [data-fk^=inbox-week-ok-]");');
-        if (!inb) return false;
+        if (!inb) { lastStep = 'skrzynka'; return false; }
         await evaluate('location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
-        await sleep(400);
+        await sleep(650);
         const bar = await evaluate('return !!document.querySelector("#view-time [data-fk=ts-gaps]") && !document.querySelector("#view-time [data-fk=ts-completeness]");');
-        if (!bar) return false;
+        if (!bar) { lastStep = 'pasek luk'; return false; }
         await evaluate('window.ETROM.app.actions.setTime({ timeGaps: true }); return true;');
-        await sleep(350);
+        await sleep(600);
         const map = await evaluate('return !!document.querySelector("[data-fk=ts-completeness]") && !!document.querySelector("[data-fk=ts-cm-approve]");');
-        if (!map) return false;
+        if (!map) { lastStep = 'mapa'; return false; }
         await evaluate('document.querySelector("[data-fk=ts-cm-approve]").click(); return true;');
-        await sleep(350);
+        await sleep(600);
         return evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l[0].status === "approved";');
-      })());
+      })(), lastStep);
 
     /* 38l2. Przypomnienie o czasie trafia do pracownika, a gdy luki znikną, prośba znika */
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1, timeGaps: false, timePerson: null }); return true;');

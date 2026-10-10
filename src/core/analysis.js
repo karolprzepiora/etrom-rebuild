@@ -357,7 +357,30 @@
     };
   }
 
-  var api = { configure: configure, getRules: getRules, makeBaseline: makeBaseline, project: project, portfolio: portfolio, visibleProjects: visibleProjects, weekStart: weekStart, stageDone: stageDone, verdictOf: verdictOf };
+  /**
+   * Skutki progów dla bieżącego portfela: ile aktywnych projektów dostałoby „Alarm” i „Uwagę” przy podanych zasadach.
+   * Zasady są podmieniane tylko na czas liczenia; zapisane ustawienia zostają bez zmian.
+   * @param {Object} ws przestrzeń robocza
+   * @param {string} personId
+   * @param {Date} now
+   * @param {Array<{warn:number, alarm:number, minProgress?:number}>} ruleSets
+   * @returns {Array<{risk:number, watch:number, active:number}>} jeden wynik na zestaw zasad
+   */
+  function impactOf(ws, personId, now, ruleSets) {
+    var saved = getRules();
+    try {
+      return (ruleSets || []).map(function (set) {
+        configure({ warn: set.warn, alarm: set.alarm, minProgress: set.minProgress === undefined ? saved.minProgress : set.minProgress });
+        var data = portfolio(ws, personId, now);
+        if (!data || data.access === false || !data.totals) return { risk: 0, watch: 0, active: 0 };
+        return { risk: data.totals.risk, watch: data.totals.watch, active: data.totals.active };
+      });
+    } finally {
+      rules.warn = saved.warn; rules.alarm = saved.alarm; rules.minProgress = saved.minProgress; rules.rate = saved.rate;
+    }
+  }
+
+  var api = { impactOf: impactOf, configure: configure, getRules: getRules, makeBaseline: makeBaseline, project: project, portfolio: portfolio, visibleProjects: visibleProjects, weekStart: weekStart, stageDone: stageDone, verdictOf: verdictOf };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Analysis = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
