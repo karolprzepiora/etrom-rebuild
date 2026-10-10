@@ -159,8 +159,7 @@
         D.el('span', { class: 'ts-legend__i is-bad', text: 'poniżej normy' }),
         D.el('span', { class: 'ts-legend__i is-vac', text: 'urlop (U, UŻ)' }),
         D.el('span', { class: 'ts-legend__i is-sick', text: 'zwolnienie lekarskie (L4)' }),
-        D.el('span', { class: 'ts-legend__i is-hol', text: 'święto' }),
-        D.el('span', { text: 'Pasek: podział dnia na projekty względem normy · liczby co do minuty (g:mm)' })
+        D.el('span', { class: 'ts-legend__i is-hol', text: 'święto' })
       ])
     ]);
   }
@@ -221,9 +220,6 @@
     var side = D.el('div', { class: 'ts-day-view' }, [
       D.el('div', { class: 'ts-day-view__main' }, [
         E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true })
-      ]),
-      D.el('div', { class: 'ts-day-view__side' }, [
-        E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions }, { compact: true })
       ])
     ]);
     return { body: [seg, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
@@ -276,16 +272,14 @@
     E.Menu.bind(tools.firstChild, function () {
       return {
         label: 'Eksport czasu pracy', items: [
-          { type: 'label', label: 'Ewidencja za miesiąc (do księgowości)' },
-          { label: 'Wariant 1 · rzeczywisty czas – wydruk / PDF', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'print', personId); } },
-          { label: 'Wariant 1 · rzeczywisty czas – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'csv', personId); } },
-          { label: 'Wariant 2 · ewidencja 8:00–16:00 – wydruk / PDF', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'print', personId); } },
-          { label: 'Wariant 2 · ewidencja 8:00–16:00 – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'csv', personId); } },
-          { type: 'separator' },
-          { type: 'label', label: 'Dane do rozliczeń' },
-          { label: 'Podsumowanie okresu (projekty i zadania × dni)', icon: 'download', onSelect: function () { ctx.actions.exportTime('summary', personId); } },
-          { label: 'Wszystkie wpisy okresu (do rozliczeń)', icon: 'download', onSelect: function () { ctx.actions.exportTime('entries', personId); } }
-        ]
+          { type: 'label', label: 'Ewidencja za miesiąc' }
+        ].concat(Budget.isManagement(me.id, state.workspace.people || []) ? [
+          { label: 'Rzeczywisty czas – wydruk', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'print', personId); } },
+          { label: 'Rzeczywisty czas – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'csv', personId); } }
+        ] : []).concat([
+          { label: 'Ewidencja czasu pracy – wydruk', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'print', personId); } },
+          { label: 'Ewidencja czasu pracy – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'csv', personId); } }
+        ])
       };
     });
     var main = D.el('div', { class: 'ts' }, part.body.filter(Boolean));

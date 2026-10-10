@@ -58,7 +58,7 @@ test('csvRows i html: oba warianty, nagłówki, sumy i ucieczka znaków', () => 
   const html1 = W.html(r, 1, { personName: 'A <b>&', generatedAt: '10.10.2026' });
   assert.match(html1, /Zestawienie czasu pracy/); assert.match(html1, /7:59/); assert.ok(!html1.includes('A <b>&'), 'imię jest zabezpieczone przed HTML');
   const html2 = W.html(W.normative(r), 2, { personName: 'Anna', confirmedBy: 'Anna Testowa', autoPrint: true });
-  assert.match(html2, /art\. 149 Kodeksu pracy/); assert.match(html2, /Potwierdzono w aplikacji/); assert.match(html2, /window\.print/);
+  assert.doesNotMatch(html2, /art\. 149/); assert.doesNotMatch(html2, /Potwierdzono w aplikacji/); assert.match(html2, /window\.print/);
   assert.match(html2, /Dzień wolny – sobota/);
 });
 

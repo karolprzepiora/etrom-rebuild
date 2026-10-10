@@ -3479,6 +3479,7 @@
   function exportRecord(variant, format, personId) {
     var state = store.getState();
     var now = new Date();
+    if (variant !== 2 && !E.Budget.isManagement(state.prefs.me, people())) { Toast.show({ message: 'Zestawienie rzeczywistego czasu udostępnia zarząd.', tone: 'danger' }); return; }
     var pid = personId || state.prefs.me;
     var person = Team.findPerson(people(), pid);
     var period = E.Timesheet.period(now, state.timeMode === 'month' ? 'month' : 'week', state.timeMode === 'month' ? state.timeOffset : 0);

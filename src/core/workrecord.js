@@ -171,10 +171,8 @@
     }).join('');
     var t = record.totals;
     var foot = '<tr class="sum"><td colspan="4" class="r">Razem (dni z pracą: ' + t.workDays + ')</td>' + (v2 ? '<td>' + hm(t.minutes) + '</td><td>0:00</td>' : '<td></td><td><b>' + hm(t.minutes) + '</b></td>') + '<td class="l">' + esc(absenceLine(record)) + '</td></tr>';
-    var basis = v2
-      ? 'Ewidencja czasu pracy prowadzona zgodnie z art. 149 Kodeksu pracy i rozporządzeniem w sprawie dokumentacji pracowniczej. Dzień pracy: ' + clock(START) + '–' + clock(START + record.target) + ' (' + hm(record.target) + ').'
-      : 'Zestawienie sporządzone na podstawie zapisów czasu pracy w aplikacji ETROM; godziny podano co do minuty.';
-    var note = v2 ? '<p class="note">Potwierdzono w aplikacji' + (m.confirmedBy ? ' (' + esc(m.confirmedBy) + ')' : '') + ', że godziny odpowiadają faktycznie przepracowanemu czasowi.</p>' : '';
+    var basis = v2 ? '' : 'Zestawienie sporządzone na podstawie zapisów czasu pracy w aplikacji ETROM; godziny podano co do minuty.';
+    var note = '';
     return '<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>' + esc(title + ' – ' + record.title + (m.personName ? ' – ' + m.personName : '')) + '</title><style>'
       + '@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font:11px/1.35 "Segoe UI",Arial,sans-serif;color:#111;margin:0}'
       + 'h1{font-size:17px;margin:0 0 2px}h2{font-size:12px;font-weight:500;margin:0 0 10px;color:#444}'
@@ -185,7 +183,7 @@
       + '</style></head><body>'
       + '<h1>' + esc(title) + '</h1><h2>' + esc(record.title) + (m.personName ? ' · ' + esc(m.personName) : '') + (m.employer ? ' · ' + esc(m.employer) : '') + '</h2>'
       + '<table><thead>' + head + '</thead><tbody>' + rows + foot + '</tbody></table>'
-      + '<p class="basis">' + esc(basis) + '</p>' + note
+      + (basis ? '<p class="basis">' + esc(basis) + '</p>' : '')
       + '<div class="sign"><span>podpis pracownika</span><span>podpis pracodawcy</span></div>'
       + (m.generatedAt ? '<p class="basis">Wygenerowano ' + esc(m.generatedAt) + '.</p>' : '')
       + (m.autoPrint ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},300);});</script>' : '')
