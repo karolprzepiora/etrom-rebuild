@@ -214,12 +214,24 @@
     var todays = TL.forDay(state.workspace.entries || [], me.id, now);
     var minutes = TL.sum(todays, now);
     var seg = controls(Object.assign({}, state, { timeMode: 'day' }), ctx, false, [], me.id, null);
-    var side = D.el('div', { class: 'ts-day-view' }, [
+    var target = state.prefs.dayTarget || 480;
+    var left = Math.max(0, target - minutes);
+    var pct = target ? Math.round(minutes / target * 100) : 0;
+    var codes = {};
+    todays.forEach(function (e) { codes[e.projectId || e.code || e.taskId] = 1; });
+    var nProj = Object.keys(codes).length;
+    var stats = D.el('div', { class: 'ts-stats' }, [
+      stat('Przepracowano dziś', TL.duration(minutes), 'z normy ' + TL.duration(target) + ' · ' + pct + '%', D.el('span', { class: 'ts-meter' }, [D.el('i', { style: { width: Math.min(100, pct) + '%' } })])),
+      stat(minutes > target ? 'Nadwyżka' : 'Do celu dnia', TL.duration(Math.abs(target - minutes)), minutes > target ? 'ponad normę dnia' : (left ? 'zostało do normy' : 'norma wypełniona')),
+      stat('Wpisy', String(todays.length), todays.length ? 'zapisanych odcinków czasu' : 'brak zapisu'),
+      stat('Projekty', String(nProj), nProj ? F2(nProj, 'projekt', 'projekty', 'projektów') + ' dziś' : 'brak zapisu')
+    ]);
+    var side = D.el('section', { class: 'an-card ts-calcard ts-day-view' }, [
       D.el('div', { class: 'ts-day-view__main' }, [
         E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true })
       ])
     ]);
-    return { body: [seg, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
+    return { body: [seg, stats, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
   }
 
   function sheetView(state, ctx, person, now) {

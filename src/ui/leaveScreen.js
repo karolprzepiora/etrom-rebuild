@@ -379,11 +379,14 @@
     var calendar = mode === 'year' ? yearCalendar(state, vctx, me, now, who) : monthTiles(state, vctx, me, now, who);
 
     var mine = list.filter(function (a) { return a.personId === me.id; }).sort(function (a, b) { return a.from < b.from ? 1 : -1; });
-    var asideCards = [card('Moje wnioski', [mine.length
+    var items = [{ id: 'mine', title: 'Moje wnioski', icon: 'sun', tone: 'accent', badge: mine.filter(function (a) { return a.status === 'pending'; }).length || '', side: [mine.length
       ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, { people: people, actions: ctx.actions, mine: true }, now); }))
-      : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })])];
-    if (canInbox) asideCards.push(card('Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), [inbox(state, vctx, me, now)], 'lv-card--inbox'));
-    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar, stats, D.el('div', { class: 'lv-layout' }, [D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar]), D.el('aside', { class: 'lv-layout__side' }, asideCards)])]) };
+      : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })] }];
+    if (canInbox) items.push({ id: 'inbox', title: 'Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), label: 'Do akceptacji', icon: 'check', tone: 'violet', badge: pendingN ? String(pendingN) : '', late: !!pendingN, side: [inbox(state, vctx, me, now)] });
+    var railPref = lv.rail || (canInbox && pendingN ? 'inbox' : 'mine');
+    var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
+    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
+      UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])], onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */

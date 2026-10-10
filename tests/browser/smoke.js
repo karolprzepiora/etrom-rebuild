@@ -2258,7 +2258,7 @@ async function main() {
     check('urlopy: ekran widoczny, w menu licznik wniosków do akceptacji przy „Urlopy” (nie ma „Urlopów zespołu”)',
       await evaluate('const n = document.querySelector("[data-screen=leave] .nav__count"); return !document.getElementById("view-leave").hidden && !!n && !n.hidden && Number(n.textContent) >= 1 && !document.querySelector("[data-screen=leaveteam]");'));
     check('urlopy: jedna zakładka z kaflami, przełącznikami Ja/Zespół i Miesiąc/Rok, saldem oraz „Moje wnioski”',
-      await evaluate('const v = document.getElementById("view-leave"); return v.querySelectorAll(".lv-bar .segmented__btn").length === 4 && v.querySelectorAll(".lv-c").length >= 28 && v.querySelectorAll(".lv-stats-row .ts-stat").length === 4 && /Moje wnioski/.test(v.textContent);'));
+      await evaluate('const v = document.getElementById("view-leave"); return v.querySelectorAll(".lv-bar .segmented__btn").length === 4 && v.querySelectorAll(".lv-c").length >= 28 && v.querySelectorAll(".lv-stats-row .ts-stat").length === 4 && !!v.querySelector("[data-fk=rail-mine]");'));
     check('urlopy: „Do akceptacji” jest w tej samej zakładce, z wnioskami, wpływem na plan i przyciskami decyzji',
       await evaluate('const c = document.querySelectorAll(".lv-inbox"); return c.length >= 2 && [...c].every(x => /WPŁYW NA PLAN/.test(x.textContent)) && !!document.querySelector("[data-fk=lv-approve]") && !!document.querySelector("[data-fk=lv-reject]");'));
     const leaveId = await evaluate('return document.querySelector(".lv-inbox").dataset.id;');
@@ -2273,6 +2273,7 @@ async function main() {
     await evaluate('window.ETROM.app.actions.openLeaveRequest({ from: "2026-12-14", to: "2026-12-15", kind: "leave" }); return true;');
     await sleep(400);
     await evaluate('document.getElementById("leave-form").requestSubmit(); return true;');
+    await evaluate('window.ETROM.app.actions.setLeave({ rail: "mine" }); return true;');
     await sleep(300);
     check('urlopy: wniosek pracownika czeka na zarząd i nie wchodzi do nieobecności w planie',
       await evaluate('const st = window.ETROM.app.store.getState(); const a = st.workspace.absences.find(x => x.personId === "p-8" && x.from === "2026-12-14"); return !!a && a.status === "pending" && a.requestedBy === "p-8" && Object.keys(window.ETROM.Absences.daysOf(st.workspace.absences, "p-8")).indexOf("2026-12-14") < 0 && !!document.querySelector(".lv-req[data-status=pending]");'));
