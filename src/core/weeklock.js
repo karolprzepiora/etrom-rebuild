@@ -73,6 +73,20 @@
     });
   }
 
+  /** Przypomnienia o uzupełnieniu czasu: jedno na osobę i tydzień (ponowne przypomnienie odświeża datę). */
+  function normalizeNudges(raw) {
+    var seen = {};
+    return (Array.isArray(raw) ? raw : []).filter(function (n) {
+      return n && n.personId && n.by && /^\d{4}-\d{2}-\d{2}$/.test(n.week) && !seen[idOf(n.personId, n.week)] && (seen[idOf(n.personId, n.week)] = true);
+    }).map(function (n) { return { id: idOf(n.personId, n.week), personId: n.personId, week: n.week, by: n.by, at: String(n.at || '') }; }).slice(-200);
+  }
+  function nudge(nudges, personIds, monday, by, now) {
+    var ids = {};
+    personIds.forEach(function (id) { ids[id] = true; });
+    var kept = (nudges || []).filter(function (n) { return !(n.week === monday && ids[n.personId]); });
+    return kept.concat(personIds.map(function (id) { return { id: idOf(id, monday), personId: id, week: monday, by: by, at: now.toISOString() }; }));
+  }
+
   /** Mapa kompletności tygodnia: wiersz na osobę, komórka na dzień roboczy ('ok' | 'warn' | 'bad' | 'off' | 'run'), plus blokada. */
   function completeness(entries, people, mondayIso, now, opts) {
     var o = opts || {};
@@ -90,7 +104,7 @@
     return new Date(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7), 12).getTime();
   }
 
-  var api = { STATUS: STATUS, mondayOf: mondayOf, normalize: normalize, find: find, isLocked: isLocked, submit: submit, decide: decide, reopen: reopen, canDecide: canDecide, completeness: completeness };
+  var api = { normalizeNudges: normalizeNudges, nudge: nudge, STATUS: STATUS, mondayOf: mondayOf, normalize: normalize, find: find, isLocked: isLocked, submit: submit, decide: decide, reopen: reopen, canDecide: canDecide, completeness: completeness };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.WeekLock = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

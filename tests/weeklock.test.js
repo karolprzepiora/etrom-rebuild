@@ -54,3 +54,14 @@ test('mapa kompletności i bilans narastający', () => {
   const c = TS.cumulative([], 'p-2', NOW, { target: 480 });
   assert.equal(typeof c, 'number');
 });
+
+test('przypomnienia: jedno na osobę i tydzień, ponowne odświeża datę', () => {
+  const t1 = new Date(2026, 9, 14, 10, 0);
+  const t2 = new Date(2026, 9, 15, 10, 0);
+  const a = WL.nudge([], ['p-2', 'p-3'], '2026-10-05', 'p-1', t1);
+  assert.equal(a.length, 2);
+  const b = WL.nudge(a, ['p-2'], '2026-10-05', 'p-1', t2);
+  assert.equal(b.length, 2);
+  assert.equal(b.filter((n) => n.personId === 'p-2')[0].at, t2.toISOString());
+  assert.equal(WL.normalizeNudges([...b, { personId: 'p-2', week: '2026-10-05', by: 'p-1' }, { personId: '', week: 'x' }]).length, 2);
+});

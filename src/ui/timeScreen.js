@@ -300,7 +300,7 @@
     var own = personId === me.id;
     var canDecide = WL.canDecide(me.id, personId, projects, mgmt);
     var status = lock ? WL.STATUS[lock.status] : 'otwarty';
-    var parts = [D.el('span', { class: 'ts-wk__t' }, [D.el('b', { text: 'Tydzień: ' }), D.el('span', { class: 'ts-wk__s is-' + (lock ? lock.status : 'open'), text: status })])];
+    var parts = [D.el('span', { class: 'ts-wkbar__t' }, [D.el('b', { text: 'Tydzień: ' }), D.el('span', { class: 'ts-wkbar__s is-' + (lock ? lock.status : 'open'), text: status })])];
     if (lock && lock.status === 'returned' && lock.note) parts.push(D.el('span', { class: 't-meta', text: lock.note }));
     var btn = function (label, fk, variant, fn) { return UI.button({ label: label, variant: variant, size: 'sm', attrs: { 'data-fk': fk }, onClick: fn }); };
     var a = ctx.actions;
@@ -309,42 +309,126 @@
       if (own) parts.push(btn('Cofnij zgłoszenie', 'ts-wk-reopen', 'ghost', function () { a.reopenWeek(personId, monday); }));
       if (canDecide) { parts.push(btn('Zatwierdź', 'ts-wk-approve', 'primary', function () { a.decideWeek(personId, monday, 'approve'); })); parts.push(btn('Zwróć do poprawy', 'ts-wk-return', 'ghost', function () { a.decideWeek(personId, monday, 'return'); })); }
     } else if (canDecide) parts.push(btn('Otwórz ponownie', 'ts-wk-reopen', 'ghost', function () { a.reopenWeek(personId, monday); }));
-    return D.el('div', { class: 'ts-wk', attrs: { 'data-fk': 'ts-week-bar', role: 'status' } }, parts);
+    return D.el('div', { class: 'ts-wkbar', attrs: { 'data-fk': 'ts-week-bar', role: 'status' } }, parts);
   }
 
-  /** Mapa kompletności tygodnia dla zarządu i liderów: kto uzupełnił czas, kto czeka na zatwierdzenie. */
-  function completenessCard(state, ctx, sheet, me, now) {
+  function plural(n, one, few, many) { return E.Format.count(n, one, few, many); }
+  function dnia(n) { return n === 1 ? '1 dzień' : n + ' dni'; }
+
+  /** Osoby, które zarząd lub lider ma w tym tygodniu na oku: dane z mapy kompletności, z podziałem na grupy. */
+  function gapsModel(state, sheet, me, now) {
     var people = (state.workspace.people || []).filter(function (p) { return p.active !== false; });
     var projects = state.workspace.projects || [];
     var mgmt = Budget.isManagement(me.id, state.workspace.people || []);
     var led = {};
     projects.forEach(function (p) { if (p.team && p.team.leader === me.id) (p.stages || []).forEach(function (st) { (st.tasks || []).forEach(function (t) { (t.assignees || []).forEach(function (id) { led[id] = 1; }); }); }); });
     var list = people.filter(function (p) { return p.id !== me.id && (mgmt || led[p.id]); });
-    if (!list.length) return null;
     var monday = Cal.isoOf(sheet.period.from);
-    if (monday > Cal.isoOf(now)) return null;
+    if (!list.length || monday > Cal.isoOf(now)) return null;
     var rows = WL.completeness(state.workspace.entries || [], list, monday, now, { target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [], locks: state.workspace.timeLocks || [] });
-    var head = D.el('div', { class: 'ts-cm__row ts-cm__head' }, [D.el('span', { text: 'Osoba' })].concat(DAYS5.map(function (d) { return D.el('span', { text: d }); }), [D.el('span', { text: 'Razem' }), D.el('span', { text: 'Tydzień' })]));
-    var body = rows.map(function (r) {
-      var person = Team.findPerson(state.workspace.people || [], r.personId);
-      var lock = r.lock;
-      var can = lock && lock.status === 'submitted' && WL.canDecide(me.id, r.personId, projects, mgmt);
-      return D.el('div', { class: 'ts-cm__row', dataset: { id: r.personId } }, [
-        D.el('span', { class: 'truncate', text: person ? Team.fullName(person) : r.personId })
-      ].concat(r.days.map(function (d) {
-        var key = d.absent ? 'off' : (d.state in MARK ? d.state : 'off');
-        var label = d.absent ? (d.absent === 'sick' ? 'L4' : 'U') : (d.holiday ? 'Ś' : MARK[key][0]);
-        return D.el('span', { class: 'ts-cm__c is-' + (d.absent ? (d.absent === 'sick' ? 'sick' : 'leave') : (d.holiday ? 'hol' : key)), text: label, attrs: { 'data-tooltip': d.key + ' · ' + (d.absent ? (d.absent === 'sick' ? 'zwolnienie' : 'urlop') : (d.holiday ? 'święto' : MARK[key][1] + ' · ' + TL.duration(d.minutes))), 'aria-label': d.key + ': ' + (d.absent ? 'nieobecność' : (d.holiday ? 'święto' : MARK[key][1])) } });
-      }), [
-        D.el('span', { class: 't-num', text: TL.duration(r.total) }),
-        D.el('span', { class: 'ts-cm__st' }, [
-          D.el('span', { class: 'ts-wk__s is-' + (lock ? lock.status : 'open'), text: lock ? WL.STATUS[lock.status] : 'otwarty' }),
-          can ? UI.button({ label: 'Zatwierdź', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-cm-approve' }, onClick: function () { ctx.actions.decideWeek(r.personId, monday, 'approve'); } }) : null,
-          can ? UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'ts-cm-return' }, onClick: function () { ctx.actions.decideWeek(r.personId, monday, 'return'); } }) : null
-        ])
-      ]));
-    });
-    return card('Kompletność czasu · ' + sheet.period.title, 'Kto uzupełnił tydzień. Znaki: ✓ norma, ! brakuje do godziny, ✕ brakuje więcej, – bez oceny.', D.el('div', { class: 'ts-cm', attrs: { 'data-fk': 'ts-completeness' } }, [head].concat(body)));
+    return {
+      monday: monday, mgmt: mgmt, projects: projects,
+      waiting: rows.filter(function (r) { return r.lock && r.lock.status === 'submitted'; }),
+      gaps: rows.filter(function (r) { return r.missing > 0 && !(r.lock && r.lock.status !== 'returned'); }).sort(function (a, b) { return b.missing - a.missing; }),
+      done: rows.filter(function (r) { return !(r.missing > 0) || (r.lock && r.lock.status !== 'returned'); }).filter(function (r) { return !(r.lock && r.lock.status === 'submitted'); })
+    };
+  }
+
+  function dayMarks(r) {
+    return D.el('div', { class: 'ts-gp__days' }, r.days.map(function (d) {
+      var key = d.absent ? 'off' : (d.state in MARK ? d.state : 'off');
+      var cls = d.absent ? (d.absent === 'sick' ? 'sick' : 'leave') : (d.holiday ? 'hol' : key);
+      var label = d.absent ? (d.absent === 'sick' ? 'L4' : 'U') : (d.holiday ? 'Ś' : MARK[key][0]);
+      var what = d.absent ? (d.absent === 'sick' ? 'zwolnienie' : 'urlop') : (d.holiday ? 'święto' : MARK[key][1] + ' · ' + TL.duration(d.minutes));
+      return D.el('span', { class: 'ts-cm__c is-' + cls, text: label, attrs: { 'data-tooltip': d.key + ' · ' + what, 'aria-label': d.key + ': ' + what } });
+    }));
+  }
+
+  function personCell(state, r) {
+    var person = Team.findPerson(state.workspace.people || [], r.personId);
+    return { person: person, name: person ? Team.fullName(person) : r.personId };
+  }
+
+  function gapNames(r) {
+    return r.days.map(function (d, i) { return d.state === 'bad' && !d.absent ? DAYS5[i] : null; }).filter(Boolean).join(', ');
+  }
+
+  /** Pasek „luki w czasie” nad kalendarzem tygodnia (tylko, gdy jest problem) i po rozwinięciu pełny widok z działaniami. */
+  function gapsBanner(state, ctx, sheet, me, now) {
+    var m = gapsModel(state, sheet, me, now);
+    if (!m || (!m.gaps.length && !m.waiting.length)) return null;
+    var open = state.timeGaps === true;
+    var a = ctx.actions;
+    var names = m.gaps.slice(0, 3).map(function (r) { return personCell(state, r).name.split(' ')[0] + ' ' + (personCell(state, r).name.split(' ')[1] || '').charAt(0) + '. (' + r.missing + ')'; });
+    var text = m.gaps.length
+      ? [D.el('b', { text: plural(m.gaps.length, 'osoba ma', 'osoby mają', 'osób ma') + ' luki w czasie' }), ' w tym tygodniu: ' + names.join(', ') + (m.gaps.length > 3 ? ' i ' + plural(m.gaps.length - 3, 'inna', 'inne', 'innych') : '') + '.' + (m.waiting.length ? ' Do zatwierdzenia: ' + m.waiting.length + '.' : '')]
+      : [D.el('b', { text: plural(m.waiting.length, 'tydzień czeka', 'tygodnie czekają', 'tygodni czeka') + ' na zatwierdzenie' }), '.'];
+    var banner = D.el('div', { class: 'ts-gp__bar' + (m.gaps.length ? ' is-bad' : ' is-info'), attrs: { 'data-fk': 'ts-gaps', role: 'status' } }, [
+      D.el('span', { class: 'ts-cm__c ' + (m.gaps.length ? 'is-bad' : 'is-ok'), text: m.gaps.length ? '!' : '✓', attrs: { 'aria-hidden': 'true' } }),
+      D.el('span', { class: 'ts-gp__t' }, text),
+      UI.button({ label: open ? 'Ukryj' : 'Pokaż', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'ts-gaps-toggle', 'aria-expanded': String(open) }, onClick: function () { a.setTime({ timeGaps: !open }); } }),
+      m.gaps.length ? UI.button({ label: 'Przypomnij', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-gaps-nudge' }, onClick: function () { a.nudgeTime(m.gaps.map(function (r) { return r.personId; }), m.monday); } }) : null
+    ]);
+    if (!open) return banner;
+    var totalMissing = m.gaps.reduce(function (n, r) { return n + r.missing; }, 0);
+    var stats = D.el('div', { class: 'ts-gp__stats' }, [
+      stat('Do uzupełnienia', plural(m.gaps.length, 'osoba', 'osoby', 'osób'), 'w tygodniu ' + sheet.period.title),
+      stat('Brakujące dni', String(totalMissing), 'dni roboczych bez pełnego zapisu'),
+      stat('Czeka na zatwierdzenie', String(m.waiting.length), 'zamknięte przez pracownika'),
+      stat('Najdłuższa luka', m.gaps[0] ? personCell(state, m.gaps[0]).name.split(' ')[0] + ' ' + (personCell(state, m.gaps[0]).name.split(' ')[1] || '').charAt(0) + '.' : '—', m.gaps[0] ? dnia(m.gaps[0].missing) + ' · ' + TL.duration(m.gaps[0].total) + ' zapisane' : 'brak luk')
+    ]);
+    function row(r, extra) {
+      var pc = personCell(state, r);
+      var pct = r.norm ? Math.min(100, Math.round(r.total / r.norm * 100)) : 0;
+      return D.el('div', { class: 'ts-gp__row', dataset: { id: r.personId } }, [
+        pc.person ? E.Avatar.avatar(pc.person, { size: 'md', tooltip: false }) : D.el('span'),
+        D.el('div', { class: 'ts-gp__who' }, [D.el('b', { class: 'truncate', text: pc.name }), D.el('span', { class: 't-meta', text: (gapNames(r) ? 'brakuje: ' + gapNames(r) + ' · ' : '') + TL.duration(r.total) + (r.norm ? ' z ' + TL.duration(r.norm) : '') })]),
+        dayMarks(r),
+        D.el('span', { class: 'ts-gp__meter ' + (pct >= 97 ? 'is-ok' : pct >= 75 ? 'is-warn' : 'is-bad') }, [D.el('i', { style: { width: pct + '%' } })]),
+        D.el('div', { class: 'ts-gp__acts' }, extra)
+      ]);
+    }
+    function open_(r) { return UI.button({ label: 'Otwórz tydzień', variant: 'ghost', size: 'sm', onClick: function () { a.setTime({ timePerson: r.personId, timeGaps: false }); } }); }
+    var parts = [stats];
+    if (m.waiting.length) {
+      parts.push(D.el('h4', { class: 'ts-gp__h', text: 'Czeka na zatwierdzenie' }));
+      m.waiting.forEach(function (r) {
+        var can = WL.canDecide(me.id, r.personId, m.projects, m.mgmt);
+        parts.push(row(r, [open_(r), can ? UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'ts-cm-return' }, onClick: function () { a.decideWeek(r.personId, m.monday, 'return'); } }) : null, can ? UI.button({ label: 'Zatwierdź', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-cm-approve' }, onClick: function () { a.decideWeek(r.personId, m.monday, 'approve'); } }) : null]));
+      });
+    }
+    if (m.gaps.length) {
+      parts.push(D.el('h4', { class: 'ts-gp__h', text: 'Z lukami' }));
+      m.gaps.forEach(function (r) {
+        var asked = (state.workspace.timeNudges || []).some(function (n) { return n.personId === r.personId && n.week === m.monday; });
+        parts.push(row(r, [open_(r), UI.button({ label: asked ? 'Przypomniano' : 'Przypomnij', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-gaps-nudge-one' }, onClick: function () { a.nudgeTime([r.personId], m.monday); } })]));
+      });
+    }
+    var doneOpen = state.timeDone === true;
+    parts.push(D.el('button', { class: 'ts-gp__fold', attrs: { type: 'button', 'aria-expanded': String(doneOpen), 'data-fk': 'ts-gaps-done' }, on: { click: function () { a.setTime({ timeDone: !doneOpen }); } } }, [
+      Icons.icon(doneOpen ? 'chevronDown' : 'chevronRight', 14),
+      D.el('span', { text: 'Kompletne (' + m.done.length + ')' + (doneOpen || !m.done.length ? '' : ': ' + m.done.slice(0, 3).map(function (r) { return personCell(state, r).name.split(' ')[0]; }).join(', ') + (m.done.length > 3 ? '…' : '')) })
+    ]));
+    if (doneOpen) m.done.forEach(function (r) { parts.push(row(r, [open_(r), r.lock ? D.el('span', { class: 'ts-wkbar__s is-' + r.lock.status, text: WL.STATUS[r.lock.status] }) : null])); });
+    return D.el('div', { class: 'ts-gp' }, [banner, D.el('section', { class: 'an-card ts-gp__panel', attrs: { 'data-fk': 'ts-completeness' } }, parts)]);
+  }
+
+  /** Prośba o uzupełnienie czasu widoczna dla pracownika, dopóki tydzień ma luki. */
+  function nudgeBanner(state, ctx, me, now) {
+    var mon = WL.mondayOf(Cal.isoOf(now));
+    var mine = (state.workspace.timeNudges || []).filter(function (n) { return n.personId === me.id; }).sort(function (a, b) { return a.week < b.week ? 1 : -1; })[0];
+    if (!mine) return null;
+    var lock = WL.find(state.workspace.timeLocks || [], me.id, mine.week);
+    if (lock && lock.status !== 'returned') return null;
+    var offset = Math.round((Cal.parse(mine.week) - Cal.parse(mon)) / (7 * 86400000));
+    var sh = TS.build(state.workspace.entries || [], me.id, now, { mode: 'week', offset: offset, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
+    if (!sh.days.some(function (d) { return d.state === 'bad'; })) return null;
+    var by = Team.findPerson(state.workspace.people || [], mine.by);
+    return D.el('div', { class: 'ts-gp__bar is-bad', attrs: { 'data-fk': 'ts-nudge', role: 'status' } }, [
+      D.el('span', { class: 'ts-cm__c is-bad', text: '!', attrs: { 'aria-hidden': 'true' } }),
+      D.el('span', { class: 'ts-gp__t' }, [D.el('b', { text: 'Uzupełnij czas za tydzień ' + sh.period.title }), by ? ' · prośba od ' + Team.fullName(by) + '.' : '.']),
+      UI.button({ label: 'Przejdź do tygodnia', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-nudge-go' }, onClick: function () { ctx.actions.setTime({ timeMode: 'week', timeOffset: offset, timePerson: null }); } })
+    ]);
   }
 
   function sheetView(state, ctx, person, now) {
@@ -378,9 +462,10 @@
         stat('Dni z zapisem', sheet.activeDays + ' z ' + (sheet.workdays - sheet.absentDays), 'średnio ' + (avg ? TL.duration(avg) : '—') + ' dziennie'),
         stat('Nieobecności', absentTotal ? absentTotal + (absentTotal === 1 ? ' dzień' : ' dni') : 'brak', sheet.rows.length ? F2(sheet.rows.length, 'projekt', 'projekty', 'projektów') + ' w okresie' : 'brak zapisu', absencePills(counts))
       ]),
+      nudgeBanner(state, ctx, me, now),
+      state.timeMode === 'week' ? gapsBanner(state, ctx, sheet, me, now) : null,
       state.timeMode === 'week' ? weekBar(state, ctx, sheet, me, personId, now) : null,
       D.el('section', { class: 'an-card ts-calcard' }, [calendar(sheet, ctx)]),
-      state.timeMode === 'week' ? completenessCard(state, ctx, sheet, me, now) : null,
       sheet.rows.length ? card('Projekty w okresie', 'Kliknij strzałkę, aby zobaczyć zadania.', projectList(sheet, state, ctx)) : UI.emptyState({ icon: 'clock', title: 'Brak zapisanego czasu w tym okresie', text: 'Włącz zegar przy zadaniu (▶), dopisz czas z menu zadania albo zaznacz przedział na osi dnia w Mojej pracy.' })
     ];
     body = body.filter(Boolean);

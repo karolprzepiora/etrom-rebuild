@@ -53,6 +53,8 @@
     timeOffset: 0,
     timePerson: null,
     timeOpen: {},
+    timeGaps: false,
+    timeDone: false,
     planCell: null,
     analysisTab: 'overview',
     feedEditing: null,
@@ -1522,6 +1524,16 @@
     if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
     updateWorkspace(function (ws) { return Object.assign({}, ws, { timeLocks: res.locks }); });
     Toast.show({ message: 'Tydzień otwarty do edycji.', tone: 'success', timeout: 3500 });
+  }
+
+  /** Przypomnienie o uzupełnieniu czasu: osoba zobaczy prośbę w swoim Czasie, dopóki tydzień ma luki. */
+  function nudgeTime(personIds, monday) {
+    var me = currentMe();
+    var mgmt = E.Budget.isManagement(me, people());
+    var ids = (personIds || []).filter(function (id) { return id !== me && (mgmt || E.WeekLock.canDecide(me, id, store.getState().workspace.projects || [], false)); });
+    if (!ids.length) { Toast.show({ message: 'Nie możesz wysłać tego przypomnienia.', tone: 'danger' }); return; }
+    updateWorkspace(function (ws) { return Object.assign({}, ws, { timeNudges: E.WeekLock.nudge(ws.timeNudges || [], ids, monday, me, new Date()) }); });
+    Toast.show({ message: ids.length === 1 ? 'Przypomnienie wysłane.' : 'Przypomnienia wysłane: ' + ids.length + '.', tone: 'success', timeout: 3500 });
   }
 
   /** „Powtórz wczoraj”: kopiuje wpisy z poprzedniego dnia z zapisem (do 7 dni wstecz) na pusty dzień. */
@@ -3889,7 +3901,7 @@
     exportTime: exportTime,
     exportRecord: exportRecord,
     exportLeaveCard: exportLeaveCard,
-    closeWeek: closeWeek, decideWeek: decideWeek, reopenWeek: reopenWeek,
+    nudgeTime: nudgeTime, closeWeek: closeWeek, decideWeek: decideWeek, reopenWeek: reopenWeek,
     repeatDay: repeatDay,
     saveLeaveSettings: saveLeaveSettings,
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },

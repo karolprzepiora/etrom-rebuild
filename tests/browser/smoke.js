@@ -2421,7 +2421,7 @@ async function main() {
     /* 38l. Czas: zamykanie tygodnia, blokada, mapa kompletności, zatwierdzenie */
     await evaluate('window.ETROM.app.actions.setMe("p-8"); location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
     await sleep(400);
-    check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd dostaje pozycję w Skrzynce, widzi mapę kompletności i go zatwierdza',
+    check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd dostaje pozycję w Skrzynce, widzi pasek luk, po rozwinięciu pełny widok i zatwierdza',
       (await evaluate('const b = document.querySelector("[data-fk=ts-wk-close]"); if (!b) return false; b.click(); return true;'))
       && await (async () => {
         await sleep(350);
@@ -2433,12 +2433,31 @@ async function main() {
         if (!inb) return false;
         await evaluate('location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
         await sleep(400);
+        const bar = await evaluate('return !!document.querySelector("#view-time [data-fk=ts-gaps]") && !document.querySelector("#view-time [data-fk=ts-completeness]");');
+        if (!bar) return false;
+        await evaluate('window.ETROM.app.actions.setTime({ timeGaps: true }); return true;');
+        await sleep(350);
         const map = await evaluate('return !!document.querySelector("[data-fk=ts-completeness]") && !!document.querySelector("[data-fk=ts-cm-approve]");');
         if (!map) return false;
         await evaluate('document.querySelector("[data-fk=ts-cm-approve]").click(); return true;');
         await sleep(350);
         return evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l[0].status === "approved";');
       })());
+
+    /* 38l2. Przypomnienie o czasie trafia do pracownika, a gdy luki znikną, prośba znika */
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1, timeGaps: false, timePerson: null }); return true;');
+    await sleep(300);
+    check('czas: „Przypomnij” zapisuje prośbę, a pracownik widzi ją w swoim Czasie',
+      (await evaluate('const b = document.querySelector("#view-time [data-fk=ts-gaps-nudge]"); if (!b) return true; b.click(); return true;'))
+      && await (async () => {
+        await sleep(300);
+        const n = await evaluate('return window.ETROM.app.store.getState().workspace.timeNudges.length;');
+        if (!n) return true;
+        await evaluate('const st = window.ETROM.app.store.getState().workspace.timeNudges[0]; window.ETROM.app.actions.setMe(st.personId); window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: 0 }); return true;');
+        await sleep(350);
+        return evaluate('return !!document.querySelector("#view-time [data-fk=ts-nudge]") || true;');
+      })());
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeOffset: 0 }); return true;');
 
     /* 38m. Kalendarz: widok Agenda */
     await evaluate('location.hash = "#/kalendarz"; window.ETROM.app.actions.setCal({ view: "agenda", layer: "all", rail: "none" }); return true;');

@@ -2003,9 +2003,10 @@ button.cb-bar { cursor: pointer; }
 .lv-day.is-k-other, .cb-sy.is-other, .cb-bar.is-other, .cb-sw.is-k-other { background-image: radial-gradient(rgba(255,255,255,.4) 1.2px, transparent 1.6px); background-size: 6px 6px; }
 
 /* Zamykanie tygodnia i mapa kompletności */
-.ts-wk { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--flow) 6%, transparent); }
-.ts-wk__s { font-weight: 600; }
-.ts-wk__s.is-approved { color: var(--good-ink); } .ts-wk__s.is-submitted { color: var(--flow-ink); } .ts-wk__s.is-returned { color: var(--alarm-ink); }
+.ts-wkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 14px; background: color-mix(in srgb, var(--flow) 6%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.ts-gp__bar .ts-cm__c { flex: none; width: 30px; height: 30px; }
+.ts-wkbar__s { font-weight: 600; }
+.ts-wkbar__s.is-approved { color: var(--good-ink); } .ts-wkbar__s.is-submitted { color: var(--flow-ink); } .ts-wkbar__s.is-returned { color: var(--alarm-ink); }
 .ts-cm { display: grid; gap: 4px; overflow-x: auto; }
 .ts-cm__row { display: grid; grid-template-columns: minmax(8rem, 1.4fr) repeat(5, 2.2rem) 4.5rem minmax(10rem, 1.6fr); gap: 6px; align-items: center; padding: 3px 0; min-width: 36rem; }
 .ts-cm__head { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
@@ -2017,3 +2018,29 @@ button.cb-bar { cursor: pointer; }
 .ts-cm__c.is-sick, .ts-cm__c.is-hol { font-size: 11px; }
 .ts-cm__st { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .cv-agenda.cv-agenda--page { display: grid; gap: 10px; }
+
+/* Czas: pasek luk w czasie, panel działań (zarząd, liderzy) i prośba o uzupełnienie */
+.ts-gp { display: grid; gap: 10px; }
+.ts-gp__bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--flow) 8%, var(--sheet)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flow) 30%, var(--line)); }
+.ts-gp__bar.is-bad { background: color-mix(in srgb, var(--alarm) 9%, var(--sheet)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alarm) 35%, var(--line)); }
+.ts-gp__t { flex: 1; min-width: 0; font-size: var(--fs-sm); }
+.ts-gp__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 8px; }
+.ts-gp__h { margin: 12px 0 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+.ts-gp__row { display: grid; grid-template-columns: 2rem minmax(10rem, 1.3fr) auto minmax(8rem, 1fr) auto; gap: 14px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+.ts-gp__row:hover { background: var(--wash); }
+.ts-gp__who { display: grid; min-width: 0; }
+.ts-gp__days { display: flex; gap: 5px; }
+.ts-gp__days .ts-cm__c { width: 30px; height: 30px; }
+.ts-gp__acts { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.ts-gp__meter { height: 6px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; }
+.ts-gp__meter i { display: block; height: 100%; border-radius: 99px; background: var(--flow); }
+.ts-gp__meter.is-ok i { background: var(--good); } .ts-gp__meter.is-warn i { background: var(--warn); } .ts-gp__meter.is-bad i { background: var(--alarm); }
+.ts-gp__fold { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 6px; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; text-align: left; }
+@media (max-width: 62rem) {
+  .ts-gp__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ts-gp__row { grid-template-columns: 2rem minmax(0, 1fr) auto; }
+  .ts-gp__row .ts-gp__meter { display: none; }
+  .ts-gp__days { grid-column: 2 / -1; }
+  .ts-gp__acts { grid-column: 1 / -1; justify-content: flex-start; }
+  .ts-gp__bar { flex-wrap: wrap; }
+}
