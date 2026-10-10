@@ -31,7 +31,8 @@ function baseTokens(mode) {
 function overrides(look) {
   const src = block(LOOKS, 'html[data-look="' + look + '"]');
   const map = {};
-  const re = /--([a-z0-9-]+):\s*(#[0-9a-f]{6})\b/gi;
+  // wartość bazowa (kontrast = 0): pierwsza barwa heksadecymalna, także w color-mix(in oklab, #bazowy, …)
+  const re = /--([a-z0-9-]+):\s*(?:color-mix\(in oklab,\s*)*(#[0-9a-f]{6})\b/gi;
   let m;
   while ((m = re.exec(src))) map[m[1]] = m[2];
   return map;

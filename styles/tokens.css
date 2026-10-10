@@ -140,7 +140,7 @@
   --row-pad: var(--space-3);
 
   /* ---------- Układ ---------- */
-  --sidebar-width: 15rem;
+  --sidebar-width: 15.5rem;
   --sidebar-rail: 3.5rem;
   --topbar-height: 3rem;
   --page-max: 86rem;

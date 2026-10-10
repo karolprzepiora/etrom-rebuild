@@ -2223,7 +2223,7 @@ async function main() {
     await click('[data-fk="look-style-etrom"]');
     await sleep(300);
     check('styl ETROM: jasne pole pracy, ciemny panel boczny z dużym logo i podpisem, wymuszony jasny schemat',
-      (await state('s.prefs.look')) === 'etrom' && await evaluate('const sb = document.querySelector(".sidebar"); const lg = document.querySelector(".workspace .logo"); return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet__scroll")).backgroundColor === "rgb(255, 255, 255)" && /rgb\\(16, 20, 23\\)/.test(getComputedStyle(document.querySelector(".app")).backgroundImage) && lg.getBoundingClientRect().height >= 48 && !!document.querySelector(".brand-tag");'));
+      (await state('s.prefs.look')) === 'etrom' && await evaluate('const sb = document.querySelector(".sidebar"); const lg = document.querySelector(".workspace .logo"); return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(255, 255, 255)" && /gradient/.test(getComputedStyle(sb).backgroundImage) && parseFloat(getComputedStyle(sb).borderTopLeftRadius) >= 12 && parseFloat(getComputedStyle(sb).marginLeft) > 0 && lg.getBoundingClientRect().height >= 48 && !!document.querySelector(".brand-tag");'));
     await click('[data-fk="look-style-oled"]');
     await sleep(300);
     check('styl OLED Black: czarne tło, wymuszony ciemny schemat, palety wyłączone',
@@ -2237,7 +2237,30 @@ async function main() {
     await click('[data-fk="look-style-paper"]');
     await sleep(300);
     check('styl Papier: wymuszony jasny schemat, ciepłe tło arkusza i matowy nagłówek ekranu',
-      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet__scroll")).backgroundColor === "rgb(251, 248, 240)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundColor === "rgb(47, 93, 107)";'));
+      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(251, 248, 240)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundColor !== "rgba(0, 0, 0, 0)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundImage === "none";'));
+    // Kontrast, intensywność, HDR i połysk muszą działać w każdym stylu (miejsca: panel boczny, nagłówek, linie, tekst, kafle projektów).
+    const ctlProbe = 'const g = (q, pr) => { const e = document.querySelector(q); return e ? getComputedStyle(e)[pr] : "-"; }; const r = getComputedStyle(document.documentElement); return [g(".sidebar", "backgroundImage"), g(".sidebar", "backgroundColor"), g(".page-header", "backgroundImage"), g(".page-header", "backgroundColor"), g(".page-header", "boxShadow"), r.getPropertyValue("--ink-3"), g(".page-header__description", "color"), g(".sheet", "boxShadow"), g(".sidebar", "boxShadow"), g("body", "backgroundImage")].join("|");';
+    const ctlLooks = ['etrom', 'aurora', 'oled', 'cinema', 'paper'];
+    const ctlResult = {};
+    for (const look of ctlLooks) {
+      await evaluate('window.ETROM.app.actions.setPref({ look: "' + look + '", vivid: 100, contrast: 50, hdr: true, tilesFull: false }); return true;');
+      await sleep(250);
+      for (const [name, lo, hi] of [['vivid', '{ vivid: 40 }', '{ vivid: 150 }'], ['contrast', '{ contrast: 0 }', '{ contrast: 100 }'], ['hdr', '{ hdr: false }', '{ hdr: true }']]) {
+        await evaluate('window.ETROM.app.actions.setPref(' + lo + '); return true;'); await sleep(200);
+        const a = await evaluate(ctlProbe);
+        await evaluate('window.ETROM.app.actions.setPref(' + hi + '); return true;'); await sleep(200);
+        const b2 = await evaluate(ctlProbe);
+        // OLED i ETROM mają czarny panel boczny, więc intensywność widać tylko w nagłówku; liczy się zmiana czegokolwiek z sondy
+        (ctlResult[name] = ctlResult[name] || []).push(a !== b2 ? null : look);
+        await evaluate('window.ETROM.app.actions.setPref({ vivid: 100, contrast: 50, hdr: true }); return true;');
+      }
+    }
+    ['vivid', 'contrast', 'hdr'].forEach((name) => {
+      const dead = ctlResult[name].filter(Boolean);
+      check('suwak/przełącznik „' + name + '” zmienia wygląd w każdym stylu', dead.length === 0, 'bez efektu w: ' + dead.join(', '));
+    });
+    await evaluate('window.ETROM.app.actions.setPref({ look: "etrom" }); return true;');
+    await sleep(200);
     await click('[data-fk="look-style-aurora"]');
     await sleep(300);
     check('powrót do stylu Aurora zdejmuje atrybut stylu, a schemat wraca do wyboru z Motywu (tu: ciemny)',

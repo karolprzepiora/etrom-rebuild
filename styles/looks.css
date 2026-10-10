@@ -3,32 +3,44 @@
      data-look="etrom"  — marka: ciemny panel boczny, jasne pole pracy, róż i łupek z logo
      data-look="oled"   — czysta czerń, kafle odcinają się linią i poświatą (ekrany OLED)
      data-look="cinema" — pasy kinowe, winieta, ziarno, serifowy nagłówek pulpitu
-     data-look="paper"  — jasny, matowy, bez połysku
+     data-look="paper"  — jasny, matowy (HDR dodaje tylko delikatny połysk krawędzi)
    Schemat jasny/ciemny wymusza skrypt (data-theme), więc tokeny poniżej są stałe. Ładowany po aurora.css. */
 
 /* ---------- ETROM ----------
    Barwy marki: biel, czerń, róż #dc5799, łupek #78909c. Ciemny panel boczny jak w Aurorze, jasne pole pracy.
-   Schemat wymuszony jasny; panel boczny ma własne, ciemne tokeny. */
+   Schemat wymuszony jasny; panel boczny ma własne, ciemne tokeny.
+   Suwaki działają tak jak w Aurorze: kontrast (--ctr) przyciemnia tekst i linie, intensywność (--kp) nasyca róż, HDR (--hdr) dodaje połysk i poświatę.
+   Pomocnik --up / --dn: część dodatnia i ujemna kontrastu, do mieszania barw. */
 html[data-look="etrom"] {
+  --up: max(var(--ctr), 0); --dn: max(calc(var(--ctr) * -1), 0);
   --canvas: #f3f5f6; --sheet: #fff; --raised: #fff; --wash: #f3f6f7; --wash-2: #e8edef; --hover: #e9eff2; --pressed: #dde6ea;
-  --line: #dbe2e6; --line-strong: #c1ccd2;
-  --ink: #0b0d0f; --ink-2: #323d44; --ink-3: #566873;
-  --brand: #dc5799; --au-bg: #f3f5f6; --au-base: #f3f5f6;
+  --line: color-mix(in oklab, color-mix(in oklab, #dbe2e6, #7d8d97 calc(var(--up) * 55%)), #fff calc(var(--dn) * 70%));
+  --line-strong: color-mix(in oklab, color-mix(in oklab, #c1ccd2, #5d6e78 calc(var(--up) * 55%)), #fff calc(var(--dn) * 50%));
+  --ink: color-mix(in oklab, #0b0d0f, #fff calc(var(--dn) * 20%));
+  --ink-2: color-mix(in oklab, color-mix(in oklab, #323d44, #000 calc(var(--up) * 45%)), #fff calc(var(--dn) * 30%));
+  --ink-3: color-mix(in oklab, color-mix(in oklab, #566873, #000 calc(var(--up) * 45%)), #fff calc(var(--dn) * 25%));
+  --brand: oklch(.648 calc(.179 * var(--kp)) 352.4);
+  --au-bg: #f3f5f6; --au-base: #f3f5f6;
+  --bar-base: color-mix(in oklab, #121820, #000 calc(var(--up) * 55%));
+  --bar-g1: oklch(.648 calc(.179 * var(--kp)) 352.4 / calc(.5 * (.75 + .25 * var(--hdr))));
+  --bar-g2: oklch(.5 calc(.03 * var(--kp)) 235 / calc(.35 * (.75 + .25 * var(--hdr))));
 }
-html[data-look="etrom"] { --frame: linear-gradient(180deg, #101417, #080a0c); }
-html[data-look="etrom"] :is(.sidebar, .topbar) {
+html[data-look="etrom"] .sidebar {
   --ink: #fff; --ink-2: #e6ecef; --ink-3: #aab9c1; --ink-4: #8195a0;
   --line: #2a3238; --line-strong: #3a444c; --hover: #1d252b; --pressed: #26313a; --wash: #161d22; --wash-2: #1f282e; --raised: #1f282e; --sheet: #161d22;
-  box-shadow: none; color: #fff;
+  background: linear-gradient(180deg, color-mix(in oklab, #101417, #000 calc(var(--up) * 40%)), #080a0c); color: #fff;
+  box-shadow: 0 10px 30px -14px rgb(0 0 0 / .55), inset 0 0 0 1px rgb(255 255 255 / .06);
 }
 html[data-look="etrom"] .sidebar .logo__ink { background-color: #fff; }
-html[data-look="etrom"] .sidebar .workspace { border-bottom: 3px solid var(--brand); background: rgb(255 255 255 / .04); border-radius: 0; }
+html[data-look="etrom"] .sidebar .logo__color { filter: drop-shadow(0 0 calc(10px * var(--hdr)) oklch(.648 calc(.179 * var(--kp)) 352.4 / .45)); }
+html[data-look="etrom"] .sidebar .workspace { border-bottom: 3px solid var(--brand); background: rgb(255 255 255 / .04); border-radius: var(--radius-md) var(--radius-md) 0 0; }
 html[data-look="etrom"] .sidebar .workspace:hover { background: rgb(255 255 255 / .08); }
-html[data-look="etrom"] .sidebar .nav__item[aria-current="page"] { background: rgb(255 255 255 / .09); box-shadow: inset 3px 0 0 var(--brand); }
-html[data-look="etrom"] .sheet__scroll { background: #fff; box-shadow: none; }
+html[data-look="etrom"] .sidebar .nav__item[aria-current="page"] { background: rgb(255 255 255 / .09); box-shadow: inset 3px 0 0 var(--brand), 0 0 calc(14px * var(--hdr)) -4px var(--brand); }
+html[data-look="etrom"] .sheet { background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
 html[data-look="etrom"] .db-hero, html[data-look="etrom"] .page-header {
-  position: relative; overflow: hidden; color: #fff; box-shadow: none;
-  background: radial-gradient(34rem 16rem at 100% 0%, rgb(220 87 153 / .5), transparent 70%), linear-gradient(115deg, #1a2126, #0e1215);
+  position: relative; overflow: hidden; color: #fff;
+  background: radial-gradient(34rem 16rem at 100% 0%, var(--bar-g1), transparent 70%), radial-gradient(30rem 14rem at 0% 130%, var(--bar-g2), transparent 64%), linear-gradient(115deg, color-mix(in oklab, #1a2126, #000 calc(var(--up) * 55%)), var(--bar-base));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.34 * var(--hdr))), 0 22px 40px -24px oklch(.648 calc(.179 * var(--kp)) 352.4 / calc(.6 * var(--hdr)));
 }
 html[data-look="etrom"] .page-header::before { display: none; }
 html[data-look="etrom"] .db-hero::after, html[data-look="etrom"] .page-header::after {
@@ -38,24 +50,26 @@ html[data-look="etrom"] .db-hero::after, html[data-look="etrom"] .page-header::a
 }
 html[data-look="etrom"] .db-tile, html[data-look="etrom"] .db-card, html[data-look="etrom"] .ts-stat, html[data-look="etrom"] .an-card,
 html[data-look="etrom"] .tb-card, html[data-look="etrom"] .case-card, html[data-look="etrom"] .set-card, html[data-look="etrom"] .ts-calcard {
-  background: #fff; box-shadow: inset 0 0 0 1px #dbe2e6;
+  background: #fff; box-shadow: inset 0 0 0 1px var(--line), 0 12px 28px -20px rgb(11 13 15 / calc(.35 * var(--hdr)));
 }
-html[data-look="etrom"] .db-tile:hover { box-shadow: inset 0 0 0 1px var(--brand); }
+html[data-look="etrom"] .db-tile:hover { box-shadow: inset 0 0 0 1px var(--brand), 0 0 calc(18px * var(--hdr)) -6px var(--brand); }
 
 /* ---------- OLED Black ---------- */
 html[data-look="oled"] {
   --canvas: #000; --sheet: #000; --raised: #0c0c0e; --wash: #08090a; --wash-2: #111214; --hover: #101113; --pressed: #18191c;
-  --line: #1a1b1e; --line-strong: #2a2c30; --au-bg: #000; --au-base: #000;
+  --up: max(var(--ctr), 0); --dn: max(calc(var(--ctr) * -1), 0);
+  --line: color-mix(in oklab, color-mix(in oklab, #1a1b1e, #5a5e66 calc(var(--up) * 60%)), #000 calc(var(--dn) * 60%));
+  --line-strong: color-mix(in oklab, color-mix(in oklab, #2a2c30, #80858f calc(var(--up) * 60%)), #000 calc(var(--dn) * 50%));
+  --au-bg: #000; --au-base: #000;
 }
-html[data-look="oled"] body { background: #000; }
-html[data-look="oled"] { --frame: linear-gradient(#000, #000); }
-html[data-look="oled"] .sidebar { box-shadow: inset -1px 0 0 #17181a; }
-html[data-look="oled"] .sheet__scroll { background: #000; box-shadow: inset 0 0 0 1px #17181a; }
+html[data-look="oled"] body, html[data-look="oled"] .app { background: #000; }
+html[data-look="oled"] .sidebar { background: #000; box-shadow: inset 0 0 0 1px var(--line); }
+html[data-look="oled"] .sheet { background: #000; box-shadow: inset 0 0 0 1px #17181a; }
 html[data-look="oled"] .db-hero {
   background: radial-gradient(60% 120% at 100% 0%, oklch(.45 calc(.15 * var(--k)) var(--au-h1) / .55), transparent 70%), #000;
   box-shadow: inset 0 0 0 1px oklch(.7 calc(.14 * var(--k)) var(--au-h1) / .55), 0 0 calc(48px * var(--hdr)) -10px oklch(.65 calc(.16 * var(--k)) var(--au-h1) / .55);
 }
-html[data-look="oled"] .db-tile, html[data-look="oled"] .db-card { background: #040405; box-shadow: inset 0 0 0 1px #1d1f22; }
+html[data-look="oled"] .db-tile, html[data-look="oled"] .db-card { background: #040405; box-shadow: inset 0 0 0 1px var(--line); }
 html[data-look="oled"] .db-tile__v { text-shadow: 0 0 calc(18px * var(--hdr)) currentColor; }
 html[data-look="oled"] .nav__item[aria-current="page"] { background: #0d0e10; box-shadow: inset 0 0 0 1px #26282c; }
 html[data-look="oled"] .sidebar__search, html[data-look="oled"] .sidebar__create { background: #050506; }
@@ -67,7 +81,7 @@ html[data-look="oled"] .page-header {
 }
 html[data-look="oled"] .page-header::before { opacity: .5; }
 html[data-look="oled"] .ts-stat, html[data-look="oled"] .an-card, html[data-look="oled"] .tb-card, html[data-look="oled"] .case-card,
-html[data-look="oled"] .set-card, html[data-look="oled"] .lv-card--inbox, html[data-look="oled"] .ts-calcard { background: #040405; box-shadow: inset 0 0 0 1px #1d1f22; }
+html[data-look="oled"] .set-card, html[data-look="oled"] .lv-card--inbox, html[data-look="oled"] .ts-calcard { background: #040405; box-shadow: inset 0 0 0 1px var(--line); }
 html[data-look="oled"] .ts-stat__v { text-shadow: 0 0 calc(14px * var(--hdr)) currentColor; }
 
 /* Ochrona przed wypaleniem: stałe elementy przesuwają się o kilka pikseli, a po bezczynności ekran przygasa. */
@@ -77,7 +91,8 @@ html[data-oled-guard][data-idle] .app { opacity: .28; }
 /* ---------- Filmowy ---------- */
 html[data-look="cinema"] {
   --bars: 38px;
-  --canvas: #050607; --sheet: #0b0d10; --raised: #12151a; --wash: #0e1014; --line: #23272e;
+  --canvas: #050607; --sheet: #0b0d10; --raised: #12151a; --wash: #0e1014;
+  --line: color-mix(in oklab, color-mix(in oklab, #23272e, #6a7280 calc(max(var(--ctr), 0) * 55%)), #000 calc(max(calc(var(--ctr) * -1), 0) * 55%));
   --au-bg: radial-gradient(70rem 40rem at 85% 0%, oklch(.4 .08 55 / .35), transparent 70%), radial-gradient(60rem 40rem at 0% 100%, oklch(.35 .08 215 / .45), transparent 70%), #07090b;
   --au-base: #07090b;
 }
@@ -91,7 +106,7 @@ html[data-look="cinema"] .app::after {
   content: ""; position: fixed; inset: 0; z-index: 9998; pointer-events: none; opacity: .14; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.2 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
 }
-html[data-look="cinema"] .db-hero { background: linear-gradient(115deg, oklch(.3 .07 220), oklch(.24 .06 235) 45%, oklch(.42 .1 55)); }
+html[data-look="cinema"] .db-hero { background: linear-gradient(115deg, oklch(.3 calc(.07 * var(--k)) 220), oklch(.24 calc(.06 * var(--k)) 235) 45%, oklch(.42 calc(.1 * var(--k)) 55)); }
 html[data-look="cinema"] .db-hero::after {
   content: ""; position: absolute; left: -10%; right: -10%; top: 42%; height: 2px; pointer-events: none;
   background: linear-gradient(90deg, transparent, oklch(.85 .12 225), transparent); filter: blur(1px);
@@ -106,7 +121,7 @@ html[data-look="cinema"] .db-tile__k { color: oklch(.78 .08 70); letter-spacing:
 }
 
 /* Nagłówek ekranu: ta sama gradacja co plansza Pulpitu, serifowy tytuł i wąski pas światła */
-html[data-look="cinema"] .page-header { background: linear-gradient(115deg, oklch(.3 .07 220), oklch(.24 .06 235) 50%, oklch(.4 .09 55)); }
+html[data-look="cinema"] .page-header { background: linear-gradient(115deg, oklch(.3 calc(.07 * var(--k)) 220), oklch(.24 calc(.06 * var(--k)) 235) 50%, oklch(.4 calc(.09 * var(--k)) 55)); }
 html[data-look="cinema"] .page-header::before { opacity: .35; }
 html[data-look="cinema"] .page-header::after {
   content: ""; position: absolute; left: -10%; right: -10%; top: 62%; height: 2px; pointer-events: none;
@@ -121,18 +136,23 @@ html[data-look="cinema"] .ts-stat__l, html[data-look="cinema"] .set-card__title 
 /* ---------- Papier ---------- */
 html[data-look="paper"] {
   --canvas: #e7dfcf; --sheet: #fbf8f0; --raised: #fffdf8; --wash: #f4efe3; --wash-2: #ece5d4; --hover: #efe8d8; --pressed: #e4dcc7;
-  --line: #e1d8c3; --line-strong: #cbbfa3;
-  --ink: #2a251d; --ink-2: #4d4435; --ink-3: #685d4b;
+  --up: max(var(--ctr), 0); --dn: max(calc(var(--ctr) * -1), 0);
+  --line: color-mix(in oklab, color-mix(in oklab, #e1d8c3, #8c7f63 calc(var(--up) * 55%)), #fffdf8 calc(var(--dn) * 70%));
+  --line-strong: color-mix(in oklab, color-mix(in oklab, #cbbfa3, #6c604a calc(var(--up) * 55%)), #fffdf8 calc(var(--dn) * 50%));
+  --ink: color-mix(in oklab, #2a251d, #fffdf8 calc(var(--dn) * 20%));
+  --ink-2: color-mix(in oklab, color-mix(in oklab, #4d4435, #000 calc(var(--up) * 45%)), #fffdf8 calc(var(--dn) * 30%));
+  --ink-3: color-mix(in oklab, color-mix(in oklab, #685d4b, #000 calc(var(--up) * 45%)), #fffdf8 calc(var(--dn) * 25%));
   --flow: #2f6f86; --flow-ink: #245a6d; --flow-wash: #e1eef1; --brand: #c4457f; --warn: #a56000;
-  --au-bg: #e7dfcf; --au-base: #e7dfcf; --hdr: 0;
+  --au-bg: #e7dfcf; --au-base: #e7dfcf;
+  --paper-bar: oklch(calc(.452 - .04 * var(--ctr)) calc(.055 * var(--k)) 220);
 }
-html[data-look="paper"] { --frame: linear-gradient(#2b3a3f, #2b3a3f); }
-html[data-look="paper"] .sheet__scroll { background: #fbf8f0; box-shadow: 0 0 0 1px #d9cfb8; }
-html[data-look="paper"] .db-hero { background: #2f5d6b; box-shadow: none; }
+html[data-look="paper"] .sidebar { background: oklch(calc(.36 - .04 * var(--ctr)) calc(.03 * var(--k)) 215); box-shadow: 0 8px 22px -14px rgb(60 50 30 / calc(.5 * var(--hdr))); }
+html[data-look="paper"] .sheet { background: #fbf8f0; box-shadow: 0 1px 0 #d6ccb4, 0 0 0 1px #d9cfb8; }
+html[data-look="paper"] .db-hero { background: var(--paper-bar); box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.22 * var(--hdr))); }
 html[data-look="paper"] .db-tile, html[data-look="paper"] .db-card { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
 html[data-look="paper"] .db-tile__v, html[data-look="paper"] .ts-stat__v { font-family: Georgia, 'Times New Roman', serif; }
 /* Nagłówek ekranu: matowy łupek bez poświaty i prążków */
-html[data-look="paper"] .page-header { background: #2f5d6b; box-shadow: none; }
+html[data-look="paper"] .page-header { background: var(--paper-bar); box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.22 * var(--hdr))); }
 html[data-look="paper"] .page-header::before { display: none; }
 html[data-look="paper"] .ts-stat, html[data-look="paper"] .an-card, html[data-look="paper"] .tb-card, html[data-look="paper"] .case-card,
 html[data-look="paper"] .set-card, html[data-look="paper"] .ts-calcard { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
