@@ -111,12 +111,59 @@
     return null;
   }
 
-  /** Jedna linia objaśnień pod rokiem: [[klasa, tekst], …]. */
-  function legend(items) {
-    return D.el('ul', { class: 'cb-legend' }, items.map(function (x) {
-      return D.el('li', null, [D.el('i', { class: 'cb-sw ' + x[0], attrs: { 'aria-hidden': 'true' } }), D.el('span', { text: x[1] })]);
-    }));
+  /* ---------- legenda: jedna linia (symbole = miniatury dni) i okno „Legenda” z objaśnieniami ---------- */
+  var ITEMS = {
+    leave: { c: 'is-leave', t: '12', short: 'urlop', name: 'Urlop', desc: 'zatwierdzony, pasek z imieniem' },
+    req: { c: 'is-req', t: '12', short: 'wniosek czeka', name: 'Wniosek', desc: 'kreskowany, czeka na decyzję' },
+    sick: { c: 'is-sick', t: '12', short: 'L4', name: 'L4', desc: 'zwolnienie lekarskie' },
+    other: { c: 'is-other', t: '12', short: 'nieobecny', name: 'Nieobecny', desc: 'L4 innej osoby (bez podania powodu)' },
+    hol: { c: 'is-hol', t: '1', short: 'święto', name: 'Święto', desc: 'dzień wolny ustawowo' },
+    today: { c: 'is-today', t: '14', short: 'dziś', name: 'Dziś', desc: 'obramowanie dnia' },
+    dl: { c: 'is-ul is-dl', t: '12', short: 'termin', name: 'Termin lub zadanie', desc: 'karteczka w kolorze projektu' },
+    trip: { c: 'is-ul is-trip', t: '12', short: 'wyjazd', name: 'Wyjazd', desc: 'teren' },
+    meet: { c: 'is-ul is-meet', t: '12', short: 'spotkanie', name: 'Spotkanie', desc: 'spotkanie, szkolenie, inne' },
+    ok: { c: 'is-ok', t: '8', short: 'norma', name: 'Norma', desc: '8 godzin i więcej' },
+    warn: { c: 'is-warn', t: '7', short: 'do godziny brakuje', name: 'Prawie', desc: 'brakuje do godziny' },
+    bad: { c: 'is-bad', t: '4', short: 'brakuje więcej', name: 'Brakuje', desc: 'ponad godzinę poniżej normy' },
+    tLeave: { c: 'is-leave', t: 'U', short: 'urlop', name: 'Urlop', desc: 'UŻ = na żądanie' },
+    tSick: { c: 'is-sick', t: 'L4', short: 'zwolnienie', name: 'Zwolnienie', desc: 'lekarskie' },
+    tHol: { c: 'is-hol', t: 'Ś', short: 'święto', name: 'Święto', desc: 'norma dnia wynosi 0' }
+  };
+  var GROUPS = {
+    calendar: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }, { title: 'Wydarzenia', items: ['dl', 'trip', 'meet'] }],
+    leave: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }],
+    time: [{ title: 'Godziny dnia', items: ['ok', 'warn', 'bad'] }, { title: 'Nieobecności', items: ['tLeave', 'tSick'] }, { title: 'Dni', items: ['tHol', 'today'] }]
+  };
+
+  function symbol(key) {
+    var it = ITEMS[key];
+    return D.el('span', { class: 'cb-sy ' + it.c, attrs: { 'aria-hidden': 'true' }, text: it.t });
   }
 
-  E.CalBars = { kindOf: kindOf, weekRow: weekRow, lanes: lanes, stripCls: stripCls, top: top, legend: legend, TEXT: TEXT };
+  /** Okno „Legenda”: trzy kolumny z miniaturą, nazwą i jednym zdaniem objaśnienia. */
+  function legendBody(kind) {
+    var cols = (GROUPS[kind] || GROUPS.calendar).map(function (g) {
+      return D.el('section', { class: 'cb-lgcol' }, [D.el('h3', { text: g.title })].concat(g.items.map(function (k) {
+        var it = ITEMS[k];
+        return D.el('div', { class: 'cb-lgrow' }, [symbol(k), D.el('span', null, [D.el('b', { text: it.name }), D.el('small', { text: it.desc })])]);
+      })));
+    });
+    return D.el('div', { class: 'cb-lgbody' }, cols);
+  }
+
+  /** Legenda pod kalendarzem: jedna linia grup + przycisk „Legenda” z objaśnieniami. kind: calendar | leave | time. */
+  function legendBar(kind) {
+    var groups = (GROUPS[kind] || GROUPS.calendar).map(function (g) {
+      return D.el('div', { class: 'cb-lg__g' }, [D.el('i', { text: g.title })].concat(g.items.map(function (k) {
+        return D.el('span', { class: 'cb-lg__i' }, [symbol(k), D.el('span', { text: ITEMS[k].short })]);
+      })));
+    });
+    var help = E.UI.button({
+      label: 'Legenda', variant: 'ghost', size: 'sm', icon: 'info', attrs: { 'data-fk': 'cb-legend-open', 'aria-haspopup': 'dialog' },
+      onClick: function () { E.Dialog.openDrawer({ title: 'Legenda', subtitle: 'Znaczenie kolorów i oznaczeń w kalendarzu.', content: legendBody(kind) }); }
+    });
+    return D.el('div', { class: 'cb-lg', attrs: { 'data-fk': 'cb-legend' } }, [D.el('div', { class: 'cb-lg__groups' }, groups), help]);
+  }
+
+  E.CalBars = { kindOf: kindOf, weekRow: weekRow, lanes: lanes, stripCls: stripCls, top: top, legendBar: legendBar, TEXT: TEXT };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -980,6 +980,11 @@ async function main() {
     await sleep(300);
     check('urlopy: legenda nie zawiera szkoleń',
       await evaluate('return !/szkolen/i.test(document.getElementById("view-leave").textContent);'));
+    await evaluate('document.querySelector("#view-leave [data-fk=cb-legend-open]").click(); return true;');
+    await sleep(400);
+    check('legenda: jedna linia z grupami i przycisk „Legenda” otwiera okno z objaśnieniami',
+      await evaluate('const d = document.querySelector("dialog.drawer"); return !!document.querySelector("#view-leave .cb-lg .cb-lg__g") && !!d && d.querySelectorAll(".cb-lgcol").length === 2 && /Nieobecny/.test(d.textContent) && /L4 innej osoby/.test(d.textContent);'));
+    await evaluate('window.ETROM.Dialog.closeDrawer(); return true;');
     await go('#/pulpit');
     await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;');
     await sleep(300);

@@ -148,7 +148,7 @@
     var mine = list.filter(function (a) { return a.personId === me.id; });
     var sel = lv.sel || null;
     for (var m = 0; m < 12; m += 1) months.push(monthCard(year, m, ctx, mine, sel, Cal.isoOf(now)));
-    var legend = CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'zwolnienie lekarskie (L4)'], ['is-k-other', 'nieobecność (L4 innych osób)'], ['is-hol', 'święto']]);
+    var legend = CB.legendBar('leave');
     return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [legend, selBar(state, ctx, me, now, year)])]);
   }
 
@@ -244,8 +244,8 @@
       }));
     }
     var head = D.el('div', { class: 'cb-dow' }, ['pn', 'wt', 'śr', 'cz', 'pt', 'sb', 'nd'].map(function (n) { return D.el('span', { text: n, attrs: { role: 'columnheader' } }); }));
-    return D.el('div', { class: 'cb lv-tiles' }, [head, grid,
-      who === 'me' ? selBar(state, ctx, me, now, year) : D.el('p', { class: 't-meta cb-hint', text: 'Wszyscy widzą urlopy i wnioski kolegów. Zwolnienia lekarskie innych osób są pokazane jako „nieobecność”. Pasek kreskowany to wniosek, który czeka na decyzję.' })]);
+    return D.el('div', { class: 'cb lv-tiles' }, [head, grid, CB.legendBar('leave'),
+      who === 'me' ? selBar(state, ctx, me, now, year) : null]);
   }
 
   function kpi(label, value, sub, extra) {

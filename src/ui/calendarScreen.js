@@ -254,7 +254,7 @@
       }
       parts.push(grid);
       gridKeys(grid);
-      return D.el('div', { class: 'cb cv-wrap' }, parts.concat([D.el('p', { class: 't-meta cb-hint', text: 'Pasek to nieobecność: pełny kolor — potwierdzona, kreskowany — wniosek czeka na decyzję. Najedź na pasek lub terminy, żeby zobaczyć szczegóły.' })]));
+      return D.el('div', { class: 'cb cv-wrap' }, parts.concat([CB.legendBar('calendar')]));
     }
 
     /* ---------- widok: tydzień ---------- */
@@ -272,7 +272,7 @@
       var grid = D.el('div', { class: 'cb-wcols', attrs: { role: 'grid', 'aria-label': title } }, cols);
       gridKeys(grid);
       return D.el('div', { class: 'cb cb--week cv-week' }, [
-        lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid
+        lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid, CB.legendBar('calendar')
       ]);
     }
 
@@ -298,7 +298,7 @@
           return { cls: cls.trim(), tip: tipParts.join(' · '), onClick: function (k) { openDay(k); } };
         }, today));
       }
-      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'L4'], ['is-k-other', 'nieobecność (L4 innych osób)'], ['is-hol', 'święto'], ['is-ev', 'podkreślenie dnia: termin, wyjazd lub spotkanie']])])]);
+      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legendBar('calendar')])]);
     }
 
     /* ---------- panel dnia ---------- */

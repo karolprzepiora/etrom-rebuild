@@ -157,11 +157,7 @@
     });
     return D.el('div', { class: 'ts-cal' + (week ? ' is-week' : ' is-month'), attrs: { role: 'table', 'aria-label': 'Kalendarz czasu pracy' } }, [
       D.el('div', { class: 'ts-cal__grid', attrs: { role: 'rowgroup' } }, head.concat(cells)),
-      D.el('div', { class: 'ts-legend' }, [
-        D.el('span', { class: 'ts-legend__i is-vac', text: 'urlop (U, UŻ)' }),
-        D.el('span', { class: 'ts-legend__i is-sick', text: 'zwolnienie lekarskie (L4)' }),
-        D.el('span', { class: 'ts-legend__i is-hol', text: 'święto' })
-      ])
+      E.CalBars.legendBar('time')
     ]);
   }
 
