@@ -7,13 +7,14 @@
   var KEY = 'etrom.prefs.v1';
   var THEMES = ['system', 'light', 'dark'];
   var VIEWS = ['list', 'cards'];
-  var ACCENTS = ['standard', 'etrom', 'graphite', 'morski', 'lesny', 'granat'];
+  var ACCENTS = ['standard', 'etrom', 'graphite', 'morski', 'lesny', 'granat', 'lupek', 'fiolet', 'bursztyn', 'terakota', 'oliwka', 'blekit'];
   // Motywy kolorystyczne: tło okna, pasek boczny, nagłówki i przycisk główny.
-  var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet', 'etrom', 'sky', 'mint', 'peach', 'lilac'];
+  var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet', 'etrom', 'amber', 'sky', 'mint', 'peach', 'lilac', 'rose'];
   // Style całego wyglądu (Ustawienia → Wygląd). Aurora to dotychczasowy, z paletami; pozostałe mają własny charakter.
   // scheme: styl wymusza jasny/ciemny schemat (OLED i Filmowy są ciemne, Papier jasny); null = decyduje Motyw.
   var LOOKS = [
     { value: 'aurora', label: 'Aurora', hint: 'domyślny, z paletami', scheme: null },
+    { value: 'etrom', label: 'ETROM', hint: 'marka: ciemny pasek, jasne tło', scheme: 'light' },
     { value: 'oled', label: 'OLED Black', hint: 'czerń na ekrany OLED', scheme: 'dark' },
     { value: 'cinema', label: 'Filmowy', hint: 'kino i prezentacje', scheme: 'dark' },
     { value: 'paper', label: 'Papier', hint: 'jasny, matowy', scheme: 'light' }

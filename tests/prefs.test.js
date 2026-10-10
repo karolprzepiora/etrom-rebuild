@@ -24,7 +24,7 @@ test('wariant nurtu przyjmuje tylko znane nazwy, dawne nazwy przechodzą na obec
   assert.equal(Prefs.normalize({ accent: 'raspberry' }).accent, 'standard', 'usunięta malina wraca do stali');
   assert.equal(Prefs.normalize({ accent: 'graphite' }).accent, 'graphite');
   assert.equal(Prefs.normalize({ accent: 'topo' }).accent, 'graphite');
-  ['etrom', 'morski', 'lesny', 'granat'].forEach((a) => assert.equal(Prefs.normalize({ accent: a }).accent, a));
+  ['etrom', 'morski', 'lesny', 'granat', 'lupek', 'fiolet', 'bursztyn', 'terakota', 'oliwka', 'blekit'].forEach((a) => assert.equal(Prefs.normalize({ accent: a }).accent, a));
   assert.equal(Prefs.normalize({ palette: 'etrom' }).palette, 'etrom');
   assert.equal(Prefs.normalize({ accent: 'hydro' }).accent, 'standard');
   assert.equal(Prefs.normalize({ accent: 'neonowy' }).accent, 'standard');
@@ -190,17 +190,21 @@ test('ustawienia pulpitu: tylko poprawne identyfikatory, bez duplikatów, z limi
   assert.deepEqual(Prefs.normalize({ dash: 'zepsute' }).dash, { tiles: [], collapsed: [] });
 });
 
-test('styl wyglądu: znane style przechodzą, reszta wraca do Aurory; schemat wymuszają OLED, Filmowy i Papier', () => {
+test('styl wyglądu: znane style przechodzą, reszta wraca do Aurory; schemat wymuszają ETROM, OLED, Filmowy i Papier', () => {
   assert.equal(Prefs.normalize({}).look, 'aurora');
   assert.equal(Prefs.normalize({ look: 'oled' }).look, 'oled');
+  assert.equal(Prefs.normalize({ look: 'etrom' }).look, 'etrom');
   assert.equal(Prefs.normalize({ look: 'cinema' }).look, 'cinema');
   assert.equal(Prefs.normalize({ look: 'paper' }).look, 'paper');
   assert.equal(Prefs.normalize({ look: 'neon' }).look, 'aurora');
   assert.equal(Prefs.schemeOf('oled'), 'dark');
   assert.equal(Prefs.schemeOf('cinema'), 'dark');
   assert.equal(Prefs.schemeOf('paper'), 'light');
+  assert.equal(Prefs.schemeOf('etrom'), 'light');
+  assert.equal(Prefs.PALETTES.length, 12);
+  assert.equal(Prefs.ACCENTS.length, 12);
   assert.equal(Prefs.schemeOf('aurora'), null);
-  assert.deepEqual(Prefs.LOOKS.map((l) => l.value), ['aurora', 'oled', 'cinema', 'paper']);
+  assert.deepEqual(Prefs.LOOKS.map((l) => l.value), ['aurora', 'etrom', 'oled', 'cinema', 'paper']);
 });
 
 test('ochrona OLED: tylko true ją włącza', () => {

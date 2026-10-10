@@ -48,7 +48,7 @@ Później ta sama czynność, kopia zapasowa i usuwanie danych są w menu
   i projektu (Spacja na wierszu) bez opuszczania bieżącego widoku,
 - **zespół z obciążeniem**: otwarte zadania każdej osoby i jej funkcje w projektach; zarząd widzi dodatkowo obciążenie w procentach (średnia godzin z 4 tygodni wobec 40 h, pasek i godziny; przeciążenie, pełne obłożenie, wolna przepustowość),
 - **Ustawienia jako osobna strona** (`#/ustawienia`): sekcje Wygląd, Czas pracy, Skróty, Budżet i postęp (profile Zalecany, Ostrożny, Luźny i podgląd skutków progów), Kalendarz i urlopy (kierownictwo), Kopia zapasowa i dane,
-- **style wyglądu**: Aurora (domyślny, z paletami), OLED Black (czerń, opcjonalna ochrona przed wypaleniem), Filmowy (pasy kinowe, winieta, ziarno) i Papier (jasny, matowy); OLED i Filmowy są ciemne, Papier jasny, a Aurora słucha Motywu,
+- **style wyglądu**: Aurora (domyślny, z 12 paletami), ETROM (barwy marki: ciemny pasek, jasne pole pracy, róż i łupek z logo), OLED Black (czerń, opcjonalna ochrona przed wypaleniem), Filmowy (pasy kinowe, winieta, ziarno) i Papier (jasny, matowy); OLED i Filmowy są ciemne, Papier jasny, a Aurora słucha Motywu,
 - panel boczny zwijany klawiszem `[`, projekty przypięte i ostatnio otwierane,
 - dodawanie, edycja i usuwanie projektu, z walidacją przy polach
   (kod projektu musi być niepowtarzalny),
@@ -178,8 +178,8 @@ Widok tylko czyta stan i rysuje.
 ## Testy
 
 ```bash
-node --test tests/*.test.js     # 509 testów logiki i kontrastu barw, bez przeglądarki
-node tests/browser/smoke.js     # 460 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
+node --test tests/*.test.js     # 510 testów logiki i kontrastu barw, bez przeglądarki
+node tests/browser/smoke.js     # 461 sprawdzeń w Chromium, na adresie file://, z prawdziwą klawiaturą
 node tools/screenshot.js        # zrzuty: ekrany, motywy, 1440/1024/390 px, menu, panel, inspektor, 10 przypadków skrajnych miernika
 ```
 

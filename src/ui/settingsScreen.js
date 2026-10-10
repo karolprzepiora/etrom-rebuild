@@ -113,7 +113,7 @@
     }
 
     var hdr = UI.switchControl({ id: 'look-hdr', label: 'HDR', checked: prefs.hdr, attrs: { 'data-fk': 'look-hdr' }, onChange: function (on) { apply({ hdr: on }); } });
-    var tiles = UI.switchControl({ id: 'look-tiles', label: 'Kafle z połyskiem', checked: !!prefs.tilesFull, attrs: { 'data-fk': 'look-tiles' }, onChange: function (on) { apply({ tilesFull: on }); } });
+    var tiles = UI.switchControl({ id: 'look-tiles', label: 'Motyw z połyskiem', checked: !!prefs.tilesFull, attrs: { 'data-fk': 'look-tiles' }, onChange: function (on) { apply({ tilesFull: on }); } });
     var guard = UI.switchControl({ id: 'look-oled-guard', label: 'Ochrona OLED', checked: !!prefs.oledGuard, attrs: { 'data-fk': 'look-oled-guard' }, onChange: function (on) { apply({ oledGuard: on }); } });
     var density = UI.segmented({
       label: 'Gęstość', value: prefs.density || 'comfortable',
@@ -131,7 +131,7 @@
 
     return [
       card('Styl', [D.el('div', { class: 'look-cards', attrs: { role: 'group', 'aria-label': 'Styl wyglądu' } }, cards)],
-        'Styl zmienia charakter całej aplikacji. Aurora ma palety kolorów; OLED i Filmowy są ciemne, Papier jasny.'),
+        'Styl zmienia charakter całej aplikacji. Aurora ma palety kolorów, ETROM to barwy marki; OLED i Filmowy są ciemne, Papier jasny.'),
       D.el('div', { class: 'set-two' }, [
         card('Kolory', [
           row('Motyw', theme.node, forced ? 'styl ' + Prefs.LOOKS.filter(function (l) { return l.value === style; })[0].label + ' ma stały schemat' : ''),
@@ -141,7 +141,7 @@
         ]),
         card('Ekran i efekty', [
           row('', hdr.node, 'połysk i szersza gama barw (ekrany P3 i HDR)'),
-          row('', tiles.node, 'wyłączone = jednolity kolor, bez cieniowania'),
+          row('', tiles.node, 'projekty z gradientem i połyskiem; wyłączone = jednolity kolor'),
           style === 'oled' ? row('', guard.node, 'przesuwa układ o kilka pikseli i przygasza ekran po 3 minutach bez ruchu') : null,
           row('Gęstość', density.node),
           row('Kolor pracy w toku', D.el('div', { class: 'accent-swatches', attrs: { role: 'radiogroup', 'aria-label': 'Kolor bieżącej pracy' } }, accents))

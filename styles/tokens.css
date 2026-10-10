@@ -200,7 +200,7 @@
   --flow-ring:   light-dark(rgb(42 50 53 / 0.3), rgb(213 220 219 / 0.4));
 }
 
-/* Kolor pracy w toku: sześć wariantów (Ustawienia → Wygląd). Barwy ryzyka zostają bez zmian. */
+/* Kolor pracy w toku: dwanaście wariantów (Ustawienia → Wygląd). Barwy ryzyka zostają bez zmian. */
 :root[data-accent="etrom"] {
   --flow:        light-dark(#c23f86, #ee86bb);
   --flow-ink:    light-dark(#9c2d6b, #f4a9cf);
@@ -225,6 +225,42 @@
   --flow-ink:    light-dark(#2a3680, #b5bff6);
   --flow-wash:   light-dark(#e5e8f8, #151a3a);
   --flow-ring:   light-dark(rgb(59 76 174 / 0.34), rgb(142 156 238 / 0.42));
+}
+:root[data-accent="lupek"] {
+  --flow:        light-dark(#4f6b7a, #9fb6c3);
+  --flow-ink:    light-dark(#3b5260, #c0d0da);
+  --flow-wash:   light-dark(#e4ebef, #1b262d);
+  --flow-ring:   light-dark(rgb(79 107 122 / 0.34), rgb(159 182 195 / 0.42));
+}
+:root[data-accent="fiolet"] {
+  --flow:        light-dark(#7b4fb0, #b895e6);
+  --flow-ink:    light-dark(#5c3a8a, #d3bcf2);
+  --flow-wash:   light-dark(#efe7f8, #241838);
+  --flow-ring:   light-dark(rgb(123 79 176 / 0.34), rgb(184 149 230 / 0.42));
+}
+:root[data-accent="bursztyn"] {
+  --flow:        light-dark(#a8700f, #e0a840);
+  --flow-ink:    light-dark(#7d520a, #efc77a);
+  --flow-wash:   light-dark(#f8ecd5, #2e2108);
+  --flow-ring:   light-dark(rgb(168 112 15 / 0.34), rgb(224 168 64 / 0.42));
+}
+:root[data-accent="terakota"] {
+  --flow:        light-dark(#b5532f, #e88b66);
+  --flow-ink:    light-dark(#8a3b1f, #f2ae92);
+  --flow-wash:   light-dark(#f8e5dd, #301a12);
+  --flow-ring:   light-dark(rgb(181 83 47 / 0.34), rgb(232 139 102 / 0.42));
+}
+:root[data-accent="oliwka"] {
+  --flow:        light-dark(#6b7a2a, #b3c35e);
+  --flow-ink:    light-dark(#4d5a1c, #cbd88a);
+  --flow-wash:   light-dark(#eceed8, #222809);
+  --flow-ring:   light-dark(rgb(107 122 42 / 0.34), rgb(179 195 94 / 0.42));
+}
+:root[data-accent="blekit"] {
+  --flow:        light-dark(#2f6fd0, #7fb0f2);
+  --flow-ink:    light-dark(#1f52a3, #a8c9f6);
+  --flow-wash:   light-dark(#e0ebfa, #10213a);
+  --flow-ring:   light-dark(rgb(47 111 208 / 0.34), rgb(127 176 242 / 0.42));
 }
 
 @media (prefers-reduced-motion: reduce) {

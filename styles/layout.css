@@ -27,24 +27,27 @@
 }
 
 .workspace {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2-5);
   min-width: 0;
-  height: 3rem;
-  padding: 0 var(--space-2) 0 var(--space-1-5);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-2);
+  margin-bottom: var(--space-1);
   border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--line);
   transition: background-color var(--duration-fast);
 }
 .workspace:hover, .workspace[aria-expanded="true"] { background: var(--hover); }
 .workspace:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 /* Logo ETROM w przełączniku przestrzeni: pełne w panelu, sam znak po zwinięciu. */
-.brand-full, .brand-rail { display: flex; align-items: center; flex: 1; min-width: 0; }
-.brand-rail { display: none; flex: none; }
-.workspace .logo { --logo-h: 2.375rem; }
+.brand-full { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1-5); flex: 1; min-width: 0; }
+.brand-rail { display: none; align-items: center; min-width: 0; }
+.brand-tag { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.workspace .logo { --logo-h: 3.25rem; }
 .brand-rail .logo { --logo-h: 2rem; }
 .brand-sub { font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.workspace__chev { color: var(--ink-3); width: 14px; height: 14px; }
+.workspace__chev { position: absolute; top: var(--space-3); right: var(--space-2); color: var(--ink-3); width: 14px; height: 14px; }
 
 .sidebar__tools { display: flex; gap: var(--space-1); }
 .sidebar__search {
@@ -117,7 +120,7 @@
 .app--collapsed .brand-full, .app--collapsed .brand-text, .app--collapsed .workspace__chev, .app--collapsed .nav__label,
 .app--collapsed .nav__count, .app--collapsed .sidebar__label, .app--collapsed .sidebar__search .grow,
 .app--collapsed .sidebar__search .kbd, .app--collapsed .save-state span, .app--collapsed .nav__alert span { display: none; }
-.app--collapsed .workspace { padding: 0 var(--space-1); justify-content: center; }
+.app--collapsed .workspace { padding: var(--space-2) var(--space-1); justify-content: center; align-items: center; border-bottom-color: transparent; }
 .app--collapsed .brand-rail { display: flex; }
 .app--collapsed .sidebar__tools { flex-direction: column; }
 .app--collapsed .sidebar__search { flex: none; width: var(--control-md); padding: 0; justify-content: center; }

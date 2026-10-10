@@ -41,6 +41,8 @@ for x in range(w):
 mark_w += 1
 
 css = f"""/* Wygenerowane przez tools/build-logo.py — nie edytować ręcznie. */
+/* Warstwa barwna dostępna też dla innych styli (znak wodny w nagłówkach stylu ETROM). */
+:root {{ --logo-color-img: url("{uri(color)}"); --logo-ratio: {mark_w} / {h}; }}
 .logo {{
   --logo-h: 2.25rem;
   position: relative;
@@ -50,7 +52,7 @@ css = f"""/* Wygenerowane przez tools/build-logo.py — nie edytować ręcznie. 
   aspect-ratio: {w} / {h};
 }}
 .logo__color, .logo__ink {{ position: absolute; inset: 0; background-size: 100% 100%; background-repeat: no-repeat; }}
-.logo__color {{ background-image: url("{uri(color)}"); }}
+.logo__color {{ background-image: var(--logo-color-img); }}
 .logo__ink {{
   background-color: var(--ink);
   -webkit-mask: url("{uri(ink)}") center / 100% 100% no-repeat;

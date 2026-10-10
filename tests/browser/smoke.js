@@ -612,7 +612,7 @@ async function main() {
     await pressKey('enter');
     await sleep(300);
     check('polecenie z palety zmienia akcent', (await evaluate('return document.documentElement.getAttribute("data-accent");')) === 'graphite');
-    check('ustawienia mają sześć kolorów pracy w toku', (await evaluate('return window.ETROM.Prefs.ACCENTS.length;')) === 6);
+    check('ustawienia mają dwanaście kolorów pracy w toku', (await evaluate('return window.ETROM.Prefs.ACCENTS.length;')) === 12);
 
     await pressKey('k', CTRL);
     await pressKey('escape');
@@ -2215,7 +2215,11 @@ async function main() {
       await evaluate('return !document.documentElement.hasAttribute("data-palette") && !document.documentElement.hasAttribute("data-hdr");'));
     // ---- Ustawienia jako osobna strona, style wyglądu, profile budżetu ----
     check('Ustawienia: osobna strona z sekcjami (Wygląd, Czas pracy, Skróty, Budżet, Dane…)',
-      await evaluate('return location.hash === "#/ustawienia" && document.querySelectorAll(".set-nav__item").length >= 5 && !!document.querySelector("[data-fk=set-nav-budget]") && document.querySelectorAll(".look-card").length === 4;'));
+      await evaluate('return location.hash === "#/ustawienia" && document.querySelectorAll(".set-nav__item").length >= 5 && !!document.querySelector("[data-fk=set-nav-budget]") && document.querySelectorAll(".look-card").length === 5 && document.querySelectorAll(".pal-swatch").length === 12 && document.querySelectorAll(".accent-swatch").length === 12;'));
+    await click('[data-fk="look-style-etrom"]');
+    await sleep(300);
+    check('styl ETROM: jasne pole pracy, ciemny panel boczny z dużym logo i podpisem, wymuszony jasny schemat',
+      (await state('s.prefs.look')) === 'etrom' && await evaluate('const sb = document.querySelector(".sidebar"); const lg = document.querySelector(".workspace .logo"); return document.documentElement.getAttribute("data-look") === "etrom" && document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(255, 255, 255)" && /rgb\\(16, 20, 23\\)/.test(getComputedStyle(sb).backgroundImage) && lg.getBoundingClientRect().height >= 48 && !!document.querySelector(".brand-tag");'));
     await click('[data-fk="look-style-oled"]');
     await sleep(300);
     check('styl OLED Black: czarne tło, wymuszony ciemny schemat, palety wyłączone',

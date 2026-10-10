@@ -18,11 +18,17 @@
 
   var ACCENTS = [
     { value: 'standard', label: 'Nurt', color: '#2C7CA0' },
-    { value: 'etrom', label: 'Etrom', color: '#C23F86' },
+    { value: 'etrom', label: 'Różowy', color: '#C23F86' },
     { value: 'graphite', label: 'Grafit', color: '#3E4B49' },
     { value: 'morski', label: 'Morski', color: '#0B7285' },
     { value: 'lesny', label: 'Leśny', color: '#2F7D5B' },
-    { value: 'granat', label: 'Granat', color: '#3B4CAE' }
+    { value: 'granat', label: 'Granat', color: '#3B4CAE' },
+    { value: 'lupek', label: 'Łupek', color: '#5C7A8C' },
+    { value: 'fiolet', label: 'Fiolet', color: '#7B4FB0' },
+    { value: 'bursztyn', label: 'Bursztyn', color: '#A8700F' },
+    { value: 'terakota', label: 'Terakota', color: '#B5532F' },
+    { value: 'oliwka', label: 'Oliwka', color: '#6B7A2A' },
+    { value: 'blekit', label: 'Błękit', color: '#2F6FD0' }
   ];
 
   // Motywy kolorystyczne (podgląd w pigułce: dwa kolory aurory).
@@ -32,11 +38,13 @@
     { value: 'forest', label: 'Leśny', a: 'oklch(.6 .14 160)', b: 'oklch(.4 .12 195)' },
     { value: 'sunset', label: 'Zachód', a: 'oklch(.66 .16 38)', b: 'oklch(.42 .15 12)' },
     { value: 'violet', label: 'Fiolet', a: 'oklch(.6 .15 335)', b: 'oklch(.4 .14 288)' },
-    { value: 'etrom', label: 'Etrom', a: 'oklch(.62 .19 352)', b: 'oklch(.5 .04 235)' },
+    { value: 'etrom', label: 'Różowy', a: 'oklch(.62 .19 352)', b: 'oklch(.5 .04 235)' },
+    { value: 'amber', label: 'Bursztyn', a: 'oklch(.74 .14 80)', b: 'oklch(.45 .1 50)' },
     { value: 'sky', label: 'Niebo (jasny)', a: 'oklch(.9 .07 225)', b: 'oklch(.62 .13 262)' },
     { value: 'mint', label: 'Mięta (jasny)', a: 'oklch(.92 .07 170)', b: 'oklch(.64 .12 205)' },
     { value: 'peach', label: 'Brzoskwinia (jasny)', a: 'oklch(.92 .07 55)', b: 'oklch(.66 .15 15)' },
-    { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' }
+    { value: 'lilac', label: 'Lawenda (jasny)', a: 'oklch(.9 .07 312)', b: 'oklch(.6 .14 282)' },
+    { value: 'rose', label: 'Róża (jasny)', a: 'oklch(.9 .07 5)', b: 'oklch(.64 .16 345)' }
   ];
   var LOOK_DEFAULTS = { look: 'aurora', oledGuard: false, palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50 };
 
@@ -164,7 +172,7 @@
       class: 'workspace',
       attrs: { type: 'button', id: 'action-settings', 'aria-label': 'ETROM — ustawienia i dane', 'data-tooltip': 'Ustawienia i dane' }
     }, [
-      D.el('span', { class: 'brand-full' }, [logo(false)]),
+      D.el('span', { class: 'brand-full' }, [logo(false), D.el('span', { class: 'brand-tag', text: 'Zarządzanie projektami' })]),
       D.el('span', { class: 'brand-rail' }, [logo(true)]),
       Icons.icon('chevronsUpDown', 14)
     ]);

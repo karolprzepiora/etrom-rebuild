@@ -1,9 +1,45 @@
 /* ETROM — style wyglądu (Ustawienia → Wygląd → Styl).
    Aurora jest bazą (aurora.css) i nie potrzebuje żadnych reguł. Pozostałe style nadpisują tokeny i kilka powierzchni:
+     data-look="etrom"  — marka: ciemny panel boczny, jasne pole pracy, róż i łupek z logo
      data-look="oled"   — czysta czerń, kafle odcinają się linią i poświatą (ekrany OLED)
      data-look="cinema" — pasy kinowe, winieta, ziarno, serifowy nagłówek pulpitu
      data-look="paper"  — jasny, matowy, bez połysku
    Schemat jasny/ciemny wymusza skrypt (data-theme), więc tokeny poniżej są stałe. Ładowany po aurora.css. */
+
+/* ---------- ETROM ----------
+   Barwy marki: biel, czerń, róż #dc5799, łupek #78909c. Ciemny panel boczny jak w Aurorze, jasne pole pracy.
+   Schemat wymuszony jasny; panel boczny ma własne, ciemne tokeny. */
+html[data-look="etrom"] {
+  --canvas: #f3f5f6; --sheet: #fff; --raised: #fff; --wash: #f3f6f7; --wash-2: #e8edef; --hover: #e9eff2; --pressed: #dde6ea;
+  --line: #dbe2e6; --line-strong: #c1ccd2;
+  --ink: #0b0d0f; --ink-2: #323d44; --ink-3: #566873;
+  --brand: #dc5799; --au-bg: #f3f5f6; --au-base: #f3f5f6;
+}
+html[data-look="etrom"] .sidebar {
+  --ink: #fff; --ink-2: #e6ecef; --ink-3: #aab9c1; --ink-4: #8195a0;
+  --line: #2a3238; --line-strong: #3a444c; --hover: #1d252b; --pressed: #26313a; --wash: #161d22; --wash-2: #1f282e; --raised: #1f282e; --sheet: #161d22;
+  background: linear-gradient(180deg, #101417, #080a0c); box-shadow: none; color: #fff;
+}
+html[data-look="etrom"] .sidebar .logo__ink { background-color: #fff; }
+html[data-look="etrom"] .sidebar .workspace { border-bottom: 3px solid var(--brand); background: rgb(255 255 255 / .04); border-radius: 0; }
+html[data-look="etrom"] .sidebar .workspace:hover { background: rgb(255 255 255 / .08); }
+html[data-look="etrom"] .sidebar .nav__item[aria-current="page"] { background: rgb(255 255 255 / .09); box-shadow: inset 3px 0 0 var(--brand); }
+html[data-look="etrom"] .sheet { background: #fff; box-shadow: inset 0 0 0 1px #dbe2e6; }
+html[data-look="etrom"] .db-hero, html[data-look="etrom"] .page-header {
+  position: relative; overflow: hidden; color: #fff; box-shadow: none;
+  background: radial-gradient(34rem 16rem at 100% 0%, rgb(220 87 153 / .5), transparent 70%), linear-gradient(115deg, #1a2126, #0e1215);
+}
+html[data-look="etrom"] .page-header::before { display: none; }
+html[data-look="etrom"] .db-hero::after, html[data-look="etrom"] .page-header::after {
+  content: ""; position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .1;
+  width: 11rem; height: calc(11rem * 316 / 184);
+  background: var(--logo-color-img) left center / calc(100% * 1024 / 184) 100% no-repeat;
+}
+html[data-look="etrom"] .db-tile, html[data-look="etrom"] .db-card, html[data-look="etrom"] .ts-stat, html[data-look="etrom"] .an-card,
+html[data-look="etrom"] .tb-card, html[data-look="etrom"] .case-card, html[data-look="etrom"] .set-card, html[data-look="etrom"] .ts-calcard {
+  background: #fff; box-shadow: inset 0 0 0 1px #dbe2e6;
+}
+html[data-look="etrom"] .db-tile:hover { box-shadow: inset 0 0 0 1px var(--brand); }
 
 /* ---------- OLED Black ---------- */
 html[data-look="oled"] {

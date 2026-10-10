@@ -3859,7 +3859,7 @@
       { label: 'Motyw jasny', icon: 'sun', meta: now(prefs.theme === 'light'), run: function () { setPref({ theme: 'light' }); } },
       { label: 'Motyw ciemny', icon: 'moon', meta: now(prefs.theme === 'dark'), run: function () { setPref({ theme: 'dark' }); } },
       { label: 'Motyw jak w systemie', icon: 'monitor', meta: now(prefs.theme === 'system'), run: function () { setPref({ theme: 'system' }); } },
-    ].concat([['standard', 'nurt', 'water'], ['etrom', 'etrom logo magenta', 'sparkle'], ['graphite', 'grafit', 'datum'], ['morski', 'morski turkus', 'water'], ['lesny', 'leśny zieleń', 'water'], ['granat', 'granat indygo', 'water']].map(function (a) {
+    ].concat([['standard', 'nurt', 'water'], ['etrom', 'różowy etrom logo magenta', 'sparkle'], ['graphite', 'grafit', 'datum'], ['morski', 'morski turkus', 'water'], ['lesny', 'leśny zieleń', 'water'], ['granat', 'granat indygo', 'water'], ['lupek', 'łupek szary', 'datum'], ['fiolet', 'fiolet purpurowy', 'water'], ['bursztyn', 'bursztyn żółty', 'water'], ['terakota', 'terakota ceglasty', 'water'], ['oliwka', 'oliwka zieleń', 'water'], ['blekit', 'błękit niebieski', 'water']].map(function (a) {
       return { label: 'Kolor pracy w toku: ' + a[1].split(' ')[0], icon: a[2], meta: now(prefs.accent === a[0]), keywords: 'akcent barwy kolor ' + a[1], run: function () { setPref({ accent: a[0] }); } };
     })).concat([
       { label: 'Skróty klawiszowe', icon: 'keyboard', meta: '?', keywords: 'pomoc klawiatura', run: showShortcuts },
