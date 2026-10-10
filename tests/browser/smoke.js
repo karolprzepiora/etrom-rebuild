@@ -888,8 +888,8 @@ async function main() {
     // ---- Kalendarz: widoki, filtry, ustawienie widoczności ----
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ calAnchor: null, calDay: null }); window.ETROM.app.actions.setCal({ rail: "filters" }); return true;');
     await sleep(300);
-    check('kalendarz: panel warstw z zakresem, osobami, projektami i rodzajami oraz przełącznik 4 widoków (Dzień, Tydzień, Miesiąc, Rok)',
-      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".rl__side .lv-month") && v.querySelectorAll(".cv-panel__sec").length === 4 && v.querySelectorAll(".cv-bar .segmented__btn").length === 4 && v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-opt").length >= 4;'));
+    check('kalendarz: panel warstw z zakresem, osobami, projektami i rodzajami oraz przełącznik 5 widoków (Dzień, Tydzień, Miesiąc, Rok, Agenda)',
+      await evaluate('const v = document.getElementById("view-calendar"); return !!v.querySelector(".rl__side .lv-month") && v.querySelectorAll(".cv-panel__sec").length === 4 && v.querySelectorAll(".cv-bar .segmented__btn").length === 5 && v.querySelectorAll(".cv-stats .ts-stat").length === 4 && v.querySelectorAll(".cv-opt").length >= 4;'));
     await evaluate('window.ETROM.app.actions.setCal({ view: "day" }); return true;');
     await sleep(300);
     check('kalendarz: widok Dzień ma 4 kafle statystyk i trzy grupy (terminy, wyjazdy i spotkania, nieobecności)',
@@ -2391,6 +2391,58 @@ async function main() {
     check('kalendarz: legenda zależy od warstwy „Pokaż” (przy nieobecnościach bez wydarzeń), a miesiąc ma agendę na telefon',
       (await evaluate('const t = document.querySelector("#view-calendar .cb-lg__groups").textContent; return /urlop/.test(t) && !/termin/.test(t) && !!document.querySelector("#view-calendar [data-fk=cv-agenda]") && !!document.querySelector("#view-calendar [data-fk=cv-jump]");'))
       && await (async () => { await evaluate('window.ETROM.app.actions.setCal({ layer: "all" }); return true;'); await sleep(300); return evaluate('return /termin/.test(document.querySelector("#view-calendar .cb-lg__groups").textContent);'); })());
+    /* 38j. Urlopy: zasady (dni firmy, okresy zamknięte), rodzaje wniosków, eksport, lista dnia w widoku zespołu */
+    await evaluate('location.hash = "#/urlopy"; window.ETROM.app.actions.setLeave({ who: "me", view: "year", rail: "rules", year: new Date().getFullYear() }); return true;');
+    await sleep(400);
+    check('urlopy: zarząd ma panel „Zasady urlopów” i menu Eksport z kartą urlopową',
+      await evaluate('return !!document.querySelector("#view-leave [data-fk=lv-rules]") && !!document.querySelector("#view-leave [data-fk=lv-export-menu]");'));
+    await evaluate('const y = new Date().getFullYear(); window.ETROM.app.actions.saveLeaveSettings({ blackouts: [{ from: y + "-12-28", to: y + "-12-30", note: "inwentaryzacja" }], companyDays: [{ date: y + "-12-24", name: "Wigilia" }] }); return true;');
+    await sleep(300);
+    check('urlopy: okres zamknięty i dzień wolny firmy zapisują się w ustawieniach i działają jak święto',
+      await evaluate('const st = window.ETROM.app.store.getState().workspace.settings; const y = new Date().getFullYear(); return st.blackouts.length === 1 && st.companyDays.length === 1 && window.ETROM.Calendar.holidayName(y + "-12-24") === "Wigilia";'));
+    await evaluate('window.ETROM.app.actions.setLeave({ rail: "none" }); window.ETROM.app.actions.setMe("p-8"); return true;');
+    await sleep(300);
+    await evaluate('const y = new Date().getFullYear(); window.ETROM.app.actions.openLeaveRequest({ kind: "leave", from: y + "-12-29", to: y + "-12-29" }); return true;');
+    await sleep(400);
+    check('urlopy: formularz ma wybór rodzaju i ostrzega o okresie zamkniętym, a pracownik nie złoży wniosku',
+      (await evaluate('const c = document.querySelector("[data-fk=lv-closed]"); return !!document.getElementById("lv-kind") && !!c && /zamkni/i.test(c.textContent);'))
+      && await (async () => { await evaluate('document.getElementById("leave-form").requestSubmit(); return true;'); await sleep(350); return evaluate('const y = new Date().getFullYear(); return !window.ETROM.app.store.getState().workspace.absences.some(a => a.personId === "p-8" && a.from === y + "-12-29");'); })());
+    await evaluate('window.ETROM.app.actions.closeDrawer && window.ETROM.app.actions.closeDrawer(); window.ETROM.app.store.set({ leaveForm: null }); window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setLeave({ who: "team", view: "year", rail: "none" }); return true;');
+    await sleep(400);
+    check('urlopy: w roku zespołu kliknięcie dnia z nieobecnością otwiera listę osób',
+      await (async () => {
+        const has = await evaluate('const d = document.querySelector("#view-leave .lv-day.is-heat1, #view-leave .lv-day.is-heat2, #view-leave .lv-day.is-heat3, #view-leave .lv-day.is-pend"); if (!d) return false; d.click(); return true;');
+        if (!has) return false;
+        await sleep(350);
+        return evaluate('return !!document.querySelector("[data-fk=lv-daylist] .lv-dayrow");');
+      })());
+    await evaluate('window.ETROM.app.store.set({ leaveForm: null }); try { window.ETROM.Dialog.closeDrawer(); } catch (e) {} window.ETROM.app.actions.setLeave({ who: "me" }); return true;');
+
+    /* 38l. Czas: zamykanie tygodnia, blokada, mapa kompletności, zatwierdzenie */
+    await evaluate('window.ETROM.app.actions.setMe("p-8"); location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
+    await sleep(400);
+    check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd widzi mapę kompletności i go zatwierdza',
+      (await evaluate('const b = document.querySelector("[data-fk=ts-wk-close]"); if (!b) return false; b.click(); return true;'))
+      && await (async () => {
+        await sleep(350);
+        const locked = await evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l.length === 1 && l[0].personId === "p-8" && l[0].status === "submitted" && window.ETROM.WeekLock.isLocked(l, "p-8", l[0].week);');
+        if (!locked) return false;
+        await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
+        await sleep(400);
+        const map = await evaluate('return !!document.querySelector("[data-fk=ts-completeness]") && !!document.querySelector("[data-fk=ts-cm-approve]");');
+        if (!map) return false;
+        await evaluate('document.querySelector("[data-fk=ts-cm-approve]").click(); return true;');
+        await sleep(350);
+        return evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l[0].status === "approved";');
+      })());
+
+    /* 38m. Kalendarz: widok Agenda */
+    await evaluate('location.hash = "#/kalendarz"; window.ETROM.app.actions.setCal({ view: "agenda", layer: "all", rail: "none" }); return true;');
+    await sleep(400);
+    check('kalendarz: widok „Agenda” pokazuje listę dni na 30 dni',
+      await evaluate('return !!document.querySelector("#view-calendar [data-fk=cv-agenda]") && /Agenda/.test(document.querySelector("#view-calendar .cv-title").textContent);'));
+    await evaluate('window.ETROM.app.actions.setCal({ view: "month" }); return true;');
+
     await evaluate('window.ETROM.app.actions.setMe("p-8"); return true;');
     /* 38k. Zespół → Konta i role: tylko dyrekcja, kreator, hasło tymczasowe, stawki z historią */
     await evaluate('location.hash = "#/zespol"; return true;');

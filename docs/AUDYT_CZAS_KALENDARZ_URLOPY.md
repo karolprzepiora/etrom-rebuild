@@ -27,16 +27,16 @@
 11. (zrobione) Skróty klawiszowe widoków i strzałek we wszystkich trzech zakładkach.
 12. (zrobione) Etykiety „Pokaż” na telefonie nie zawijają się; agenda zamiast kafli miesiąca na telefonie.
 
-### Wartość dodana (średni)
-13. Urlop zaległy (ważny do 30 września), wymiar proporcjonalny dla nowych osób, opieka na dziecko (2 dni), okolicznościowy, bezpłatny; alert o wygasającym urlopie.
-14. Dni wolne firmowe (mostki) ustawiane przez zarząd; okresy zamknięte dla urlopów.
-15. Zespół w roku: osobno oczekujące wnioski, lista osób po kliknięciu dnia.
-16. Eksport karty urlopowej (CSV, potem .xlsx) dla księgowości.
-17. Czas: bilans narastający (nadgodziny, odbiór dnia wolnego), plan a wykonanie w tygodniu, „powtórz wczoraj”.
-18. Czas dla zarządu: kto nie uzupełnił zapisów (mapa kompletności tygodnia).
-19. Zamknięcie tygodnia i akceptacja lidera, blokada edycji po zamknięciu.
-20. Kalendarz: tworzenie wyjazdu przez kliknięcie lub przeciągnięcie w kalendarzu, widok „Agenda”.
-21. Dostępność: oznaczenia dni nie tylko kolorem (wzór lub litera).
+### Wartość dodana (średni). Punkty 13–21 wdrożone 10.10.2026
+13. (zrobione) Urlop zaległy (ważny do 30 września), wymiar proporcjonalny dla nowych osób, opieka na dziecko (2 dni), okolicznościowy, bezpłatny; alert o wygasającym urlopie.
+14. (zrobione) Dni wolne firmowe (mostki) ustawiane przez zarząd; okresy zamknięte dla urlopów.
+15. (zrobione) Zespół w roku: osobno oczekujące wnioski, lista osób po kliknięciu dnia.
+16. (zrobione) Eksport karty urlopowej (wydruk i CSV, menu jak w Czasie; .xlsx później) dla księgowości.
+17. (zrobione) Czas: bilans narastający (nadgodziny, odbiór dnia wolnego), plan a wykonanie w tygodniu, „powtórz wczoraj”.
+18. (zrobione) Czas dla zarządu: kto nie uzupełnił zapisów (mapa kompletności tygodnia).
+19. (zrobione) Zamknięcie tygodnia i akceptacja lidera, blokada edycji po zamknięciu.
+20. (zrobione) Kalendarz: tworzenie wyjazdu przez kliknięcie lub przeciągnięcie w kalendarzu, widok „Agenda”.
+21. (zrobione) Dostępność: oznaczenia dni nie tylko kolorem (wzór lub litera).
 
 ### Później (platforma)
 22. Subskrypcja kalendarza (webcal) zamiast jednorazowego .ics.

@@ -36,6 +36,8 @@
 
     var email = management ? UI.input({ id: 'pe-email', type: 'email', value: values.email, error: problems.email, maxlength: 120, placeholder: 'imie.nazwisko@firma.pl', autocomplete: 'off' }) : null;
     var leave = management ? UI.input({ id: 'pe-leave', type: 'number', value: values.leaveDays == null ? '' : String(values.leaveDays), error: problems.leaveDays, placeholder: '26', attrs: { min: '1', max: '60', step: '1', inputmode: 'numeric' } }) : null;
+    var hired = management ? UI.input({ id: 'pe-hired', type: 'date', value: values.hiredAt || '', error: problems.hiredAt }) : null;
+    var carry = management ? UI.input({ id: 'pe-carry', type: 'number', value: values.leaveCarryDays == null ? '' : String(values.leaveCarryDays), error: problems.leaveCarryDays, placeholder: '0', attrs: { min: '0', max: '60', step: '1', inputmode: 'numeric' } }) : null;
     var newRate = management ? UI.input({ id: 'pe-rate', type: 'number', value: values.newRate == null ? '' : String(values.newRate), error: problems.newRate, placeholder: 'np. 140', attrs: { min: '0', max: '10000', step: '5', inputmode: 'decimal' } }) : null;
     var rateFrom = management ? UI.input({ id: 'pe-rate-from', type: 'date', value: values.rateFrom || todayIso(), error: problems.rateFrom }) : null;
     var history = (values.rates || []).slice().reverse();
@@ -53,6 +55,8 @@
           cooperation: cooperation.value,
           email: email ? email.value : values.email,
           leaveDays: leave ? leave.value : values.leaveDays,
+          hiredAt: hired ? hired.value : values.hiredAt,
+          leaveCarryDays: carry ? carry.value : values.leaveCarryDays,
           newRate: newRate ? newRate.value : '',
           rateFrom: rateFrom ? rateFrom.value : ''
         });
@@ -70,7 +74,9 @@
           UI.field({ id: 'pe-role', label: 'Rola w organizacji', control: orgRole, error: problems.orgRole, hint: 'Dyrekcja widzi wszystkie projekty, stawki i wnioski urlopowe.' }),
           UI.field({ id: 'pe-coop', label: 'Forma współpracy', control: cooperation, error: problems.cooperation }),
           email ? UI.field({ id: 'pe-email', label: 'E-mail (login)', optional: true, control: email, error: problems.email, hint: 'Pod ten adres założysz konto w zakładce „Konta i role”.' }) : null,
-          leave ? UI.field({ id: 'pe-leave', label: 'Wymiar urlopu, dni w roku', optional: true, control: leave, error: problems.leaveDays, hint: 'Puste = 26 dni.' }) : null
+          leave ? UI.field({ id: 'pe-leave', label: 'Wymiar urlopu, dni w roku', optional: true, control: leave, error: problems.leaveDays, hint: 'Puste = 26 dni.' }) : null,
+          hired ? UI.field({ id: 'pe-hired', label: 'Data zatrudnienia', optional: true, control: hired, error: problems.hiredAt, hint: 'W roku zatrudnienia wymiar urlopu liczy się proporcjonalnie (1/12 za miesiąc).' }) : null,
+          carry ? UI.field({ id: 'pe-carry', label: 'Urlop zaległy na ' + new Date().getFullYear() + ', dni', optional: true, control: carry, error: problems.leaveCarryDays, hint: 'Dni z poprzedniego roku, do wykorzystania do 30 września.' }) : null
         ]),
         management ? D.el('hr', { class: 'form__divider' }) : null,
         management ? D.el('section', { class: 'form__section' }, [

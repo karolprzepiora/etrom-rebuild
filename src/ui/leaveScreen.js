@@ -102,7 +102,9 @@
       var inSel = sel && sel.from && key >= sel.from && key <= (sel.to || sel.from);
       var cls = CB.stripCls(kindAt, key);
       if (inSel && !wk && !hol) cls += ' is-selected';
-      return { cls: cls.trim(), tip: hol || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() + ' (kliknij, by zobaczyć szczegóły)' : ''), pressed: inSel, disabled: wk || !!hol, onClick: function (k) { if (rec) openDetail(rec, ctx, ctx.now); else ctx.actions.pickLeaveDay(k); } };
+      var bo = !wk && !hol && !rec ? A.blackoutAt(ctx.blackouts, key, key) : null;
+      if (bo) cls += ' is-closed';
+      return { cls: cls.trim(), tip: hol || (bo ? 'Okres zamknięty dla urlopów' + (bo.note ? ': ' + bo.note : '') : '') || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() + ' (kliknij, by zobaczyć szczegóły)' : ''), pressed: inSel, disabled: wk || !!hol || (!!bo && !ctx.management), onClick: function (k) { if (rec) openDetail(rec, ctx, ctx.now); else ctx.actions.pickLeaveDay(k); } };
     }, today);
   }
 
@@ -124,6 +126,19 @@
     return D.el('p', { class: 't-meta lv-selbar lv-selbar--hint', text: 'Kliknij pierwszy i ostatni dzień urlopu. Do wykorzystania: ' + days(Math.max(0, bal.free)) + ' z ' + bal.total + '.' });
   }
 
+  /** Lista osób nieobecnych (i z wnioskami) w wybranym dniu – panel boczny. */
+  function openDay(key, away, ctx) {
+    var rows = away.map(function (x) {
+      var pend = x.rec.status === 'pending';
+      var what = x.seen === 'who' ? 'nieobecność' : kindLabel(x.rec);
+      return D.el('li', { class: 'lv-dayrow' + (pend ? ' is-pend' : '') }, [
+        D.el('b', { text: Team.fullName(x.person) }),
+        D.el('span', { class: 't-meta', text: what + (pend ? ' · wniosek czeka na decyzję' : '') + ' · ' + range(x.rec.from, x.rec.to, ctx.now) })
+      ]);
+    });
+    E.Dialog.openDrawer({ title: range(key, key, ctx.now), subtitle: away.length + ' ' + E.Format.count(away.length, 'osoba', 'osoby', 'osób') + ' z urlopem lub wnioskiem', content: D.el('ul', { class: 'lv-daylist', attrs: { 'data-fk': 'lv-daylist' } }, rows) });
+  }
+
   /** Rok: własny (wybór dni) albo zespołu (ile osób nieobecnych w dniu). */
   function yearCalendar(state, ctx, me, now, who) {
     var lv = state.leave || {};
@@ -136,8 +151,12 @@
       for (var t = 0; t < 12; t += 1) {
         months.push(miniMonth(year, t, function (key, wk, hol) {
           if (wk || hol) return null;
-          var n = awayOn(list, active, key, me, projects, ctx.people).length;
-          return n ? { cls: 'is-heat' + Math.min(3, n), tip: n + ' ' + E.Format.count(n, 'osoba nieobecna', 'osoby nieobecne', 'osób nieobecnych') } : null;
+          var away = awayOn(list, active, key, me, projects, ctx.people);
+          var n = away.filter(function (x) { return x.rec.status !== 'pending'; }).length;
+          var pn = away.length - n;
+          if (!n && !pn) return null;
+          var tip = (n ? n + ' ' + E.Format.count(n, 'osoba nieobecna', 'osoby nieobecne', 'osób nieobecnych') : '') + (pn ? (n ? ' · ' : '') + pn + ' ' + E.Format.count(pn, 'wniosek czeka', 'wnioski czekają', 'wniosków czeka') : '');
+          return { cls: (n ? 'is-heat' + Math.min(3, n) : '') + (pn ? ' is-pend' : ''), tip: tip + ' (kliknij po listę)', onClick: function (k) { openDay(k, away, ctx); } };
         }, Cal.isoOf(now)));
       }
       return D.el('div', { class: 'lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legendBar('team')])]);
@@ -319,7 +338,8 @@
   function requestForm(draft, errors, handlers, info) {
     var v = draft || {};
     var problems = errors || {};
-    var kind = { value: 'leave', addEventListener: function () {} };
+    var kind = UI.select({ id: 'lv-kind', value: v.kind && A.isLeaveKind(v.kind) ? v.kind : 'leave', options: Object.keys(A.LEAVE_KINDS).map(function (k) { return { value: k, label: A.LEAVE_KINDS[k] }; }) });
+    var closed = D.el('p', { class: 'field__error', attrs: { 'data-fk': 'lv-closed', role: 'status' } });
     var from = UI.input({ id: 'lv-from', type: 'date', value: v.from || '', error: problems.from });
     var to = UI.input({ id: 'lv-to', type: 'date', value: v.to || '', error: problems.to });
     var onDemand = UI.checkbox({ id: 'lv-ondemand', label: 'Urlop na żądanie', hint: 'Limit ' + A.ON_DEMAND_LIMIT + ' dni w roku. Pozostało: ' + Math.max(0, info.onDemandLeft), checked: v.onDemand === true });
@@ -337,7 +357,12 @@
       if (!from.value || !to.value) { count.textContent = ''; return; }
       var n = Cal.workdaysIn(from.value, to.value);
       var left = info.free - n;
-      count.textContent = workdays(n) + ' (bez weekendów i świąt)' + (kind.value === 'leave' ? (left >= 0 ? ' · po wniosku zostanie ' + days(left) : ' · brakuje ' + days(-left)) : '');
+      var tail = kind.value === 'leave' ? (left >= 0 ? ' · po wniosku zostanie ' + days(left) : ' · brakuje ' + days(-left))
+        : (kind.value === 'childcare' ? ' · limit w roku: pozostało ' + days(Math.max(0, info.childcareLeft)) : ' · nie zmniejsza puli urlopu wypoczynkowego');
+      count.textContent = workdays(n) + ' (bez weekendów i świąt)' + tail;
+      var bo = to.value >= from.value && A.blackoutAt ? A.blackoutAt(info.blackouts, from.value, to.value) : null;
+      closed.textContent = bo ? 'Okres zamknięty dla urlopów (' + range(bo.from, bo.to, new Date()) + (bo.note ? ': ' + bo.note : '') + ').' + (info.auto ? ' Jako zarząd możesz mimo to zapisać urlop.' : ' Wniosek zostanie odrzucony.') : '';
+      onDemand.hidden = kind.value !== 'leave';
     }
     from.addEventListener('change', function () { if (!to.value || to.value < from.value) to.value = from.value; recount(); });
     to.addEventListener('change', recount);
@@ -349,8 +374,10 @@
       onCancel: handlers.onCancel,
       onSubmit: function () { handlers.onSubmit({ from: from.value, to: to.value, kind: kind.value, note: note.value, onDemand: kind.value === 'leave' && onDemand.querySelector('input').checked }); },
       body: [
+        UI.field({ id: 'lv-kind', label: 'Rodzaj', control: kind }),
         D.el('div', { class: 'form__row' }, [UI.field({ id: 'lv-from', label: 'Od', control: from, error: problems.from }), UI.field({ id: 'lv-to', label: 'Do (włącznie)', control: to, error: problems.to })]),
         count,
+        closed,
         preview,
         problems.onDemand ? D.el('p', { class: 'field__error', text: problems.onDemand }) : null,
         onDemand,
@@ -456,10 +483,79 @@
     }));
   }
 
+  /** Menu „Eksport” – to samo miejsce i styl co w Czasie. */
+  function exportMenu(ctx, management) {
+    var tools = D.el('div', { class: 'ts-export' }, [
+      UI.button({ label: 'Eksport', icon: 'download', iconRight: 'chevronDown', variant: 'secondary', attrs: { 'data-fk': 'lv-export-menu' }, class: 'ts-export__btn' })
+    ]);
+    E.Menu.bind(tools.firstChild, function () {
+      var items = [
+        { type: 'label', label: 'Karta urlopowa' },
+        { label: 'Karta urlopowa – wydruk', icon: 'download', onSelect: function () { ctx.actions.exportLeaveCard('print', 'me'); } },
+        { label: 'Karta urlopowa – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportLeaveCard('csv', 'me'); } }
+      ];
+      if (management) items = items.concat([
+        { type: 'label', label: 'Cały zespół' },
+        { label: 'Zestawienie zespołu – wydruk', icon: 'download', onSelect: function () { ctx.actions.exportLeaveCard('print', 'team'); } },
+        { label: 'Zestawienie zespołu – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportLeaveCard('csv', 'team'); } }
+      ]);
+      return { label: 'Eksport urlopów', items: items };
+    });
+    return tools;
+  }
+
+  /** Zaległy urlop przepada po 30 września: przypomnienie w ostatnich 90 dniach i po terminie. */
+  function carryBanner(bal, ref, now, shownYear) {
+    if (!bal.carry || shownYear !== now.getFullYear()) return null;
+    var deadline = bal.carryDeadline;
+    var today = Cal.isoOf(now);
+    var left = bal.carryLeft;
+    if (left <= 0) return null;
+    var d = Math.round((Cal.parse(deadline) - Cal.parse(today)) / 86400000);
+    if (d < 0) return D.el('div', { class: 'lv-notice is-no', attrs: { role: 'status', 'data-fk': 'lv-carry' } }, [D.el('span', { class: 'lv-notice__t', text: 'Urlop zaległy przepadł z dniem 30 września (' + days(left) + ' niewykorzystane).' })]);
+    if (d > 90) return null;
+    return D.el('div', { class: 'lv-notice is-no', attrs: { role: 'status', 'data-fk': 'lv-carry' } }, [D.el('span', { class: 'lv-notice__t', text: 'Urlop zaległy (' + days(left) + ') trzeba wykorzystać do 30 września – zostało ' + d + ' ' + E.Format.count(d, 'dzień', 'dni', 'dni') + '.' })]);
+  }
+
+  /** Panel zarządu: dni wolne firmy, okresy zamknięte dla urlopów, widoczność nieobecności. */
+  function rulesPanel(state, ctx) {
+    var st = state.workspace.settings || {};
+    var company = st.companyDays || [];
+    var blackouts = st.blackouts || [];
+    var save = ctx.actions.saveLeaveSettings;
+    var cDate = UI.input({ id: 'lv-cd-date', type: 'date' });
+    var cName = UI.input({ id: 'lv-cd-name', maxlength: 60, placeholder: 'np. mostek majowy' });
+    var bFrom = UI.input({ id: 'lv-bo-from', type: 'date' });
+    var bTo = UI.input({ id: 'lv-bo-to', type: 'date' });
+    var bNote = UI.input({ id: 'lv-bo-note', maxlength: 80, placeholder: 'np. inwentaryzacja' });
+    var vis = UI.select({ id: 'lv-vis', value: st.absenceVisibility || 'who', options: Object.keys(A.VISIBILITY).map(function (k) { return { value: k, label: A.VISIBILITY[k] }; }) });
+    vis.addEventListener('change', function () { save({ absenceVisibility: vis.value }); });
+    function listOf(arr, label, remove) {
+      return arr.length ? D.el('ul', { class: 'lv-rules__list' }, arr.map(function (x, i) {
+        return D.el('li', null, [D.el('span', { text: label(x) }), UI.iconButton({ icon: 'close', label: 'Usuń', size: 'sm', onClick: function () { remove(i); } })]);
+      })) : D.el('p', { class: 't-meta', text: 'Brak.' });
+    }
+    return D.el('div', { class: 'lv-rules', attrs: { 'data-fk': 'lv-rules' } }, [
+      D.el('h4', { text: 'Dni wolne firmy (mostki)' }),
+      D.el('p', { class: 't-meta', text: 'Liczą się jak święto: nie zmniejszają puli urlopu i nie wchodzą do norm czasu pracy.' }),
+      listOf(company, function (x) { return range(x.date, x.date, ctx.now) + ' · ' + x.name; }, function (i) { save({ companyDays: company.filter(function (_, j) { return j !== i; }) }); }),
+      UI.field({ id: 'lv-cd-date', label: 'Dzień', control: cDate }), UI.field({ id: 'lv-cd-name', label: 'Nazwa', optional: true, control: cName }),
+      UI.button({ label: 'Dodaj dzień wolny', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-cd-add' }, onClick: function () { if (cDate.value) save({ companyDays: company.concat([{ date: cDate.value, name: cName.value }]) }); } }),
+      D.el('h4', { text: 'Okresy zamknięte dla urlopów' }),
+      D.el('p', { class: 't-meta', text: 'Pracownicy nie złożą w nich wniosku. Zarząd może zapisać urlop mimo to.' }),
+      listOf(blackouts, function (x) { return range(x.from, x.to, ctx.now) + (x.note ? ' · ' + x.note : ''); }, function (i) { save({ blackouts: blackouts.filter(function (_, j) { return j !== i; }) }); }),
+      D.el('div', { class: 'form__row' }, [UI.field({ id: 'lv-bo-from', label: 'Od', control: bFrom }), UI.field({ id: 'lv-bo-to', label: 'Do', control: bTo })]),
+      UI.field({ id: 'lv-bo-note', label: 'Powód', optional: true, control: bNote }),
+      UI.button({ label: 'Dodaj okres', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-bo-add' }, onClick: function () { if (bFrom.value && bTo.value && bTo.value >= bFrom.value) save({ blackouts: blackouts.concat([{ from: bFrom.value, to: bTo.value, note: bNote.value }]) }); } }),
+      D.el('h4', { text: 'Widoczność nieobecności w zespole' }),
+      UI.field({ id: 'lv-vis', label: 'Co widzą inni', control: vis })
+    ]);
+  }
+
   /* ---------- Ekran ---------- */
   function view(state, ctx) {
     /* Urlopy pokazują tylko urlopy i L4. Szkolenia i inne wyjazdy to „wyjazd lub spotkanie” w Kalendarzu. */
-    state = Object.assign({}, state, { workspace: Object.assign({}, state.workspace, { absences: (state.workspace.absences || []).filter(function (a) { return a.kind === 'leave' || a.kind === 'sick'; }) }) });
+    state = Object.assign({}, state, { workspace: Object.assign({}, state.workspace, { absences: (state.workspace.absences || []).filter(function (a) { return A.isLeaveKind(a.kind) || a.kind === 'sick'; }) }) });
     var people = state.workspace.people || [];
     var me = Team.findPerson(people, state.prefs.me);
     if (!me) return { summary: 'Urlopy i nieobecności zespołu.', body: E.Welcome.card(state, ctx, 'Urlopy pokazują Twoje saldo i wnioski. Wybierz, kim jesteś.') };
@@ -473,7 +569,7 @@
     var mode = lv.view === 'month' ? 'month' : 'year';
     var pendingN = pendingFor(state, me);
     var vctx = {
-      people: people, actions: ctx.actions, me: me, management: management, now: now,
+      people: people, actions: ctx.actions, me: me, management: management, now: now, blackouts: (state.workspace.settings || {}).blackouts || [],
       /* Podgląd wpływu bez cudzych L4: do kolizji liczą się tylko urlopy. */
       impact: function (a) { return A.impact(a, { projects: projects, people: people, absences: (state.workspace.absences || []).filter(function (x) { return x.kind === 'leave'; }) }); }
     };
@@ -502,12 +598,13 @@
       (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null
       ]),
       D.el('span', { class: 'lv-bar__fill' }),
+      exportMenu(ctx, management),
       UI.button({ label: 'Zgłoś L4', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'lv-sick' }, onClick: function () { ctx.actions.openSickReport(); } }),
       UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
 
     var pct = bal.total ? Math.round(bal.left / bal.total * 100) : 0;
     var stats = D.el('div', { class: 'ts-stats lv-stats-row' }, [
-      kpi('Pozostało' + (shownYear !== now.getFullYear() ? ' w ' + shownYear : ''), days(bal.left), 'z ' + bal.total + ' · ' + pct + '%', D.el('div', { class: 'lv-meter' }, [D.el('i', { style: { width: Math.max(0, Math.min(100, pct)) + '%' } })])),
+      kpi('Pozostało' + (shownYear !== now.getFullYear() ? ' w ' + shownYear : ''), days(bal.left), 'z ' + bal.total + (bal.carry ? ' (w tym ' + bal.carry + ' zaległych)' : '') + ' · ' + pct + '%', D.el('div', { class: 'lv-meter' }, [D.el('i', { style: { width: Math.max(0, Math.min(100, pct)) + '%' } })])),
       kpi('Wykorzystano', days(bal.used), 'zaplanowano ' + bal.planned + (bal.sick ? ' · zwolnienia ' + bal.sick : '')),
       kpi('Na żądanie', bal.onDemandUsed + ' z ' + bal.onDemandLimit, 'pozostało ' + Math.max(0, bal.onDemandLimit - bal.onDemandUsed)),
       kpi('Wnioski', String(bal.pending ? bal.pending : 0), bal.pending ? 'czeka na decyzję' : 'nic nie czeka')
@@ -520,10 +617,11 @@
       ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, Object.assign({}, vctx, { mine: true }), now); }))
       : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })] }];
     if (canInbox) items.push({ id: 'inbox', title: 'Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), label: 'Do akceptacji', icon: 'check', tone: 'violet', badge: pendingN ? String(pendingN) : '', late: !!pendingN, side: [inbox(state, vctx, me, now)] });
+    if (management) items.push({ id: 'rules', title: 'Zasady urlopów', icon: 'settings', tone: 'violet', side: [rulesPanel(state, vctx)] });
     var railPref = lv.rail || 'none';
     var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
     return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
-      UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [noticeBanners(state, vctx, me, now), stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])].filter(Boolean), onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
+      UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [noticeBanners(state, vctx, me, now), carryBanner(bal, ref, now, shownYear), stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])].filter(Boolean), onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */

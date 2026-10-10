@@ -11,6 +11,8 @@
   var TL = E.TimeLog;
   var TS = E.Timesheet;
   var Plan = E.Plan;
+  var Cal = E.Calendar;
+  var WL = E.WeekLock;
   var Team = E.Team;
   var Budget = E.Budget;
   var Identity = E.Identity;
@@ -101,8 +103,8 @@
   function signed(minutes) { return (minutes < 0 ? '−' : '+') + hm(Math.abs(minutes)); }
   function signedLong(minutes) { return (minutes < 0 ? '−' : '+') + TL.duration(Math.abs(minutes)); }
 
-  var ABS_TAG = { leave: 'U', sick: 'L4', training: 'Szk', other: 'OP' };
-  var ABS_NAME = { leave: 'Urlop', sick: 'Zwolnienie lekarskie', training: 'Szkolenie', other: 'Inna nieobecność' };
+  var ABS_TAG = { leave: 'U', sick: 'L4', training: 'Szk', other: 'OP', childcare: 'OD', occasional: 'UO', unpaid: 'UB' };
+  var ABS_NAME = { leave: 'Urlop', sick: 'Zwolnienie lekarskie', training: 'Szkolenie', other: 'Inna nieobecność', childcare: 'Opieka nad dzieckiem', occasional: 'Urlop okolicznościowy', unpaid: 'Urlop bezpłatny' };
 
   function card(title, subtitle, body, cls) {
     return D.el('section', { class: 'an-card ' + (cls || '') }, [
@@ -274,12 +276,75 @@
       D.el('p', { class: 't-meta', text: todays.length ? 'Dziś działa też pomiar czasu. Ustaw godziny wyjazdu, a reszta dnia policzy się z rejestratora.' : 'Bez pomiaru czasu wyjazd liczy się jako pełny dzień pracy. Jeśli jechałeś krócej, ustaw godziny wyjazdu.' }),
       UI.button({ label: 'Zmień godziny wyjazdu', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-trip-edit' }, onClick: function () { ctx.actions.openTrip(trip.tripId); } })
     ]) : null;
+    var repeat = !todays.length && !(today && (today.weekend || today.holiday)) && key <= keyOf(now)
+      ? UI.button({ label: 'Powtórz wpisy z poprzedniego dnia', icon: 'plus', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-repeat' }, onClick: function () { ctx.actions.repeatDay(key); } }) : null;
     var side = D.el('section', { class: 'an-card ts-calcard ts-day-view' }, [
       D.el('div', { class: 'ts-day-view__main' }, [
         E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true, date: past ? key : null, title: past ? 'Zapisane tego dnia' : null, target: target })
       ])
     ]);
-    return { body: [seg, stats, tripCard, side].filter(Boolean), summary: (past ? dayTitle(date, offset) : 'Dziś') + ' · ' + TL.duration(minutes) + (target ? ' z ' + TL.duration(target) : '') };
+    return { body: [seg, stats, tripCard, repeat ? D.el('div', { class: 'ts-repeat' }, [repeat]) : null, side].filter(Boolean), summary: (past ? dayTitle(date, offset) : 'Dziś') + ' · ' + TL.duration(minutes) + (target ? ' z ' + TL.duration(target) : '') };
+  }
+
+  var MARK = { ok: ['✓', 'norma'], warn: ['!', 'brakuje do godziny'], bad: ['✕', 'brakuje więcej niż godziny'], off: ['–', 'brak oceny'], run: ['…', 'dzień trwa'] };
+  var DAYS5 = ['pn', 'wt', 'śr', 'cz', 'pt'];
+
+  /** Pasek zamknięcia tygodnia: status, zamknięcie, zatwierdzenie lub zwrot. Blokada edycji działa w akcjach czasu. */
+  function weekBar(state, ctx, sheet, me, personId, now) {
+    var monday = Cal.isoOf(sheet.period.from);
+    if (monday > Cal.isoOf(now)) return null;
+    var locks = state.workspace.timeLocks || [];
+    var lock = WL.find(locks, personId, monday);
+    var projects = state.workspace.projects || [];
+    var mgmt = Budget.isManagement(me.id, state.workspace.people || []);
+    var own = personId === me.id;
+    var canDecide = WL.canDecide(me.id, personId, projects, mgmt);
+    var status = lock ? WL.STATUS[lock.status] : 'otwarty';
+    var parts = [D.el('span', { class: 'ts-wk__t' }, [D.el('b', { text: 'Tydzień: ' }), D.el('span', { class: 'ts-wk__s is-' + (lock ? lock.status : 'open'), text: status })])];
+    if (lock && lock.status === 'returned' && lock.note) parts.push(D.el('span', { class: 't-meta', text: lock.note }));
+    var btn = function (label, fk, variant, fn) { return UI.button({ label: label, variant: variant, size: 'sm', attrs: { 'data-fk': fk }, onClick: fn }); };
+    var a = ctx.actions;
+    if (!lock || lock.status === 'returned') { if (own || mgmt) parts.push(btn(lock ? 'Zamknij ponownie' : 'Zamknij tydzień', 'ts-wk-close', 'secondary', function () { a.closeWeek(monday, personId); })); }
+    else if (lock.status === 'submitted') {
+      if (own) parts.push(btn('Cofnij zgłoszenie', 'ts-wk-reopen', 'ghost', function () { a.reopenWeek(personId, monday); }));
+      if (canDecide) { parts.push(btn('Zatwierdź', 'ts-wk-approve', 'primary', function () { a.decideWeek(personId, monday, 'approve'); })); parts.push(btn('Zwróć do poprawy', 'ts-wk-return', 'ghost', function () { a.decideWeek(personId, monday, 'return'); })); }
+    } else if (canDecide) parts.push(btn('Otwórz ponownie', 'ts-wk-reopen', 'ghost', function () { a.reopenWeek(personId, monday); }));
+    return D.el('div', { class: 'ts-wk', attrs: { 'data-fk': 'ts-week-bar', role: 'status' } }, parts);
+  }
+
+  /** Mapa kompletności tygodnia dla zarządu i liderów: kto uzupełnił czas, kto czeka na zatwierdzenie. */
+  function completenessCard(state, ctx, sheet, me, now) {
+    var people = (state.workspace.people || []).filter(function (p) { return p.active !== false; });
+    var projects = state.workspace.projects || [];
+    var mgmt = Budget.isManagement(me.id, state.workspace.people || []);
+    var led = {};
+    projects.forEach(function (p) { if (p.team && p.team.leader === me.id) (p.stages || []).forEach(function (st) { (st.tasks || []).forEach(function (t) { (t.assignees || []).forEach(function (id) { led[id] = 1; }); }); }); });
+    var list = people.filter(function (p) { return p.id !== me.id && (mgmt || led[p.id]); });
+    if (!list.length) return null;
+    var monday = Cal.isoOf(sheet.period.from);
+    if (monday > Cal.isoOf(now)) return null;
+    var rows = WL.completeness(state.workspace.entries || [], list, monday, now, { target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [], locks: state.workspace.timeLocks || [] });
+    var head = D.el('div', { class: 'ts-cm__row ts-cm__head' }, [D.el('span', { text: 'Osoba' })].concat(DAYS5.map(function (d) { return D.el('span', { text: d }); }), [D.el('span', { text: 'Razem' }), D.el('span', { text: 'Tydzień' })]));
+    var body = rows.map(function (r) {
+      var person = Team.findPerson(state.workspace.people || [], r.personId);
+      var lock = r.lock;
+      var can = lock && lock.status === 'submitted' && WL.canDecide(me.id, r.personId, projects, mgmt);
+      return D.el('div', { class: 'ts-cm__row', dataset: { id: r.personId } }, [
+        D.el('span', { class: 'truncate', text: person ? Team.fullName(person) : r.personId })
+      ].concat(r.days.map(function (d) {
+        var key = d.absent ? 'off' : (d.state in MARK ? d.state : 'off');
+        var label = d.absent ? (d.absent === 'sick' ? 'L4' : 'U') : (d.holiday ? 'Ś' : MARK[key][0]);
+        return D.el('span', { class: 'ts-cm__c is-' + (d.absent ? (d.absent === 'sick' ? 'sick' : 'leave') : (d.holiday ? 'hol' : key)), text: label, attrs: { 'data-tooltip': d.key + ' · ' + (d.absent ? (d.absent === 'sick' ? 'zwolnienie' : 'urlop') : (d.holiday ? 'święto' : MARK[key][1] + ' · ' + TL.duration(d.minutes))), 'aria-label': d.key + ': ' + (d.absent ? 'nieobecność' : (d.holiday ? 'święto' : MARK[key][1])) } });
+      }), [
+        D.el('span', { class: 't-num', text: TL.duration(r.total) }),
+        D.el('span', { class: 'ts-cm__st' }, [
+          D.el('span', { class: 'ts-wk__s is-' + (lock ? lock.status : 'open'), text: lock ? WL.STATUS[lock.status] : 'otwarty' }),
+          can ? UI.button({ label: 'Zatwierdź', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-cm-approve' }, onClick: function () { ctx.actions.decideWeek(r.personId, monday, 'approve'); } }) : null,
+          can ? UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'ts-cm-return' }, onClick: function () { ctx.actions.decideWeek(r.personId, monday, 'return'); } }) : null
+        ])
+      ]));
+    });
+    return card('Kompletność czasu · ' + sheet.period.title, 'Kto uzupełnił tydzień. Znaki: ✓ norma, ! brakuje do godziny, ✕ brakuje więcej, – bez oceny.', D.el('div', { class: 'ts-cm', attrs: { 'data-fk': 'ts-completeness' } }, [head].concat(body)));
   }
 
   function sheetView(state, ctx, person, now) {
@@ -295,17 +360,30 @@
     var counts = sheet.counts;
     var absentTotal = sheet.absentDays + counts.holidays;
     var balance = sheet.balance;
+    var year = TS.cumulative(state.workspace.entries || [], personId, now, { target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
+    var planText = '';
+    if (state.timeMode === 'week' && !(Number(state.timeOffset) || 0)) {
+      try {
+        var pl = E.Plan.build({ projects: state.workspace.projects || [], people: [who], entries: state.workspace.entries || [], now: now, target: state.prefs.dayTarget, weeks: 1, offsetWeeks: 0, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
+        var prow = pl.rows[0];
+        var pcell = prow && prow.weeks[0];
+        if (pcell && pcell.start === sheet.period.from.getTime() && pcell.planned) planText = ' · plan: jeszcze ' + String(Math.round(pcell.planned * 10) / 10).replace('.', ',') + ' h zadań';
+      } catch (err) { planText = ''; }
+    }
     var body = [
       controls(state, ctx, canPick, people, personId, sheet),
       D.el('div', { class: 'ts-stats' }, [
-        stat('Przepracowano', TL.duration(sheet.total), sheet.target ? 'z normy ' + TL.duration(sheet.target) + ' · ' + pct + '%' : 'bez normy w tym okresie', sheet.target ? D.el('span', { class: 'ts-meter' }, [D.el('i', { style: { width: Math.min(100, pct) + '%' } })]) : null),
-        stat('Bilans minut', balance ? signedLong(balance) : '0 min', balance < 0 ? 'brakuje do normy w rozliczonych dniach' : (balance > 0 ? 'nadwyżka w rozliczonych dniach' : 'norma wypełniona co do minuty')),
+        stat('Przepracowano', TL.duration(sheet.total), (sheet.target ? 'z normy ' + TL.duration(sheet.target) + ' · ' + pct + '%' : 'bez normy w tym okresie') + planText, sheet.target ? D.el('span', { class: 'ts-meter' }, [D.el('i', { style: { width: Math.min(100, pct) + '%' } })]) : null),
+        stat('Bilans minut', balance ? signedLong(balance) : '0 min', (balance < 0 ? 'brakuje do normy' : (balance > 0 ? 'nadwyżka' : 'norma co do minuty')) + ' · od stycznia: ' + (year ? signedLong(year) : '0 min')),
         stat('Dni z zapisem', sheet.activeDays + ' z ' + (sheet.workdays - sheet.absentDays), 'średnio ' + (avg ? TL.duration(avg) : '—') + ' dziennie'),
         stat('Nieobecności', absentTotal ? absentTotal + (absentTotal === 1 ? ' dzień' : ' dni') : 'brak', sheet.rows.length ? F2(sheet.rows.length, 'projekt', 'projekty', 'projektów') + ' w okresie' : 'brak zapisu', absencePills(counts))
       ]),
+      state.timeMode === 'week' ? weekBar(state, ctx, sheet, me, personId, now) : null,
       D.el('section', { class: 'an-card ts-calcard' }, [calendar(sheet, ctx)]),
+      state.timeMode === 'week' ? completenessCard(state, ctx, sheet, me, now) : null,
       sheet.rows.length ? card('Projekty w okresie', 'Kliknij strzałkę, aby zobaczyć zadania.', projectList(sheet, state, ctx)) : UI.emptyState({ icon: 'clock', title: 'Brak zapisanego czasu w tym okresie', text: 'Włącz zegar przy zadaniu (▶), dopisz czas z menu zadania albo zaznacz przedział na osi dnia w Mojej pracy.' })
     ];
+    body = body.filter(Boolean);
     return { body: body, sheet: sheet, summary: sheet.period.title + ' · ' + TL.duration(sheet.total) + (sheet.target ? ' z ' + TL.duration(sheet.target) : '') };
   }
 

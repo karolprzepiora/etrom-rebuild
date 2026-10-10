@@ -169,7 +169,7 @@
       d.diff = (d.state === 'ok' || d.state === 'warn' || d.state === 'bad') ? d.minutes - target : null;
       if (d.diff !== null) balance += d.diff;
       normTotal += d.norm;
-      if (info) { counts[info.kind] = (counts[info.kind] || 0) + 1; if (info.onDemand) counts.onDemand += 1; }
+      if (info) { var ck = Object.prototype.hasOwnProperty.call(counts, info.kind) ? info.kind : 'leave'; counts[ck] = (counts[ck] || 0) + 1; if (info.onDemand) counts.onDemand += 1; }
       else if (d.holiday && !d.weekend) counts.holidays += 1;
     });
     // Tygodnie (pon–ndz) przecinające okres: etykieta ISO i sumy.
@@ -192,6 +192,17 @@
   }
 
   /** Jedna komórka CSV (średnik jako separator). */
+  /** Bilans narastający od 1 stycznia roku `now` do dziś: suma różnic dni rozliczonych z norm miesięcy. */
+  function cumulative(entries, personId, now, options) {
+    var o = options || {};
+    var ref = now instanceof Date ? now : new Date(now);
+    var total = 0;
+    for (var back = -ref.getMonth(); back <= 0; back += 1) {
+      total += build(entries, personId, ref, Object.assign({}, o, { mode: 'month', offset: back })).balance;
+    }
+    return total;
+  }
+
   function cell(value) {
     var text = value === null || value === undefined ? '' : String(value);
     return /[";\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
@@ -248,7 +259,7 @@
     return out;
   }
 
-  var api = { period: period, build: build, csv: csv, summaryRows: summaryRows, entryRows: entryRows, hours: hours };
+  var api = { cumulative: cumulative, period: period, build: build, csv: csv, summaryRows: summaryRows, entryRows: entryRows, hours: hours };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Timesheet = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

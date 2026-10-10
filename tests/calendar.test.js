@@ -42,3 +42,15 @@ test('wpisywanie dat: skróty, dni tygodnia, daty z kropką', () => {
   assert.equal(C.parseInput('abc', base), null);
   assert.equal(C.parseInput('  ', base), '');
 });
+
+test('dni wolne firmy liczą się jak święta, dopóki są ustawione', () => {
+  const C = require('../src/core/calendar.js');
+  assert.equal(C.isWorkday('2026-05-04'), true);
+  C.setExtraHolidays([{ date: '2026-05-04', name: 'Majówka' }]);
+  assert.equal(C.holidayName('2026-05-04'), 'Majówka');
+  assert.equal(C.isCompanyDay('2026-05-04'), true);
+  assert.equal(C.isCompanyDay('2026-05-03'), false);
+  assert.equal(C.workdaysIn('2026-05-04', '2026-05-05'), 1);
+  C.setExtraHolidays([]);
+  assert.equal(C.isWorkday('2026-05-04'), true);
+});

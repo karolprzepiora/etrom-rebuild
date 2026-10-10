@@ -9,6 +9,7 @@
     '12-24': 'Wigilia', '12-25': 'Boże Narodzenie', '12-26': 'Drugi dzień Świąt'
   };
   var cache = {};
+  var extra = {}; // dni wolne firmy ustawione przez zarząd: { 'RRRR-MM-DD': nazwa }
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function isoOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -42,7 +43,13 @@
     return map;
   }
 
-  function holidayName(iso) { return holidays(Number(iso.slice(0, 4)))[iso] || ''; }
+  /** Dni wolne firmy (mostki, dni zamknięcia): traktowane jak święta w liczeniu dni roboczych. list: [{ date, name }]. */
+  function setExtraHolidays(list) {
+    extra = {};
+    (Array.isArray(list) ? list : []).forEach(function (d) { if (d && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) extra[d.date] = d.name || 'Dzień wolny firmy'; });
+  }
+  function isCompanyDay(iso) { return !!extra[iso] && !holidays(Number(iso.slice(0, 4)))[iso]; }
+  function holidayName(iso) { return holidays(Number(iso.slice(0, 4)))[iso] || extra[iso] || ''; }
   function isHoliday(iso) { return !!holidayName(iso); }
   function isWeekend(iso) { var w = parse(iso).getDay(); return w === 0 || w === 6; }
   function isWorkday(iso) { return !isWeekend(iso) && !isHoliday(iso); }
@@ -123,6 +130,7 @@
   }
 
   var api = {
+    setExtraHolidays: setExtraHolidays, isCompanyDay: isCompanyDay,
     parseInput: parseInput,
     isoOf: isoOf, parse: parse, addDays: addDays, easter: easter, holidays: holidays, holidayName: holidayName,
     isHoliday: isHoliday, isWeekend: isWeekend, isWorkday: isWorkday, workdaysIn: workdaysIn,

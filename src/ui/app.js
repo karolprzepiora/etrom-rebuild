@@ -333,7 +333,8 @@
           id: person.id, firstName: person.firstName, lastName: person.lastName,
           position: person.position, orgRole: person.orgRole, cooperation: person.cooperation,
           hourlyCost: person.hourlyCost || 0, rates: person.rates || [], email: person.email || '',
-          leaveDays: person.leaveDays || ''
+          leaveDays: person.leaveDays || '', hiredAt: person.hiredAt || '',
+          leaveCarryDays: person.leaveCarry && person.leaveCarry.year === new Date().getFullYear() ? person.leaveCarry.days : ''
         },
         errors: {}
       }
@@ -418,7 +419,7 @@
       next.hourlyCost = prev.hourlyCost || 0;
       next.rates = prev.rates || [];
       if (!mgmt) {
-        next.orgRole = prev.orgRole; next.email = prev.email || ''; next.leaveDays = prev.leaveDays || null;
+        next.orgRole = prev.orgRole; next.email = prev.email || ''; next.leaveDays = prev.leaveDays || null; next.hiredAt = prev.hiredAt || ''; next.leaveCarry = prev.leaveCarry || null;
       } else {
         rated = applyRate(next, values);
         if (rated.error) errors[rated.field] = rated.error;
@@ -431,7 +432,7 @@
         if ((prev.leaveDays || null) !== (next.leaveDays || null)) entries.push({ action: 'leave.change', target: prev.id, detail: (next.leaveDays || 26) + ' dni' });
       }
     } else if (!mgmt) {
-      next.orgRole = 'member'; next.hourlyCost = 0; next.email = ''; next.leaveDays = null;
+      next.orgRole = 'member'; next.hourlyCost = 0; next.email = ''; next.leaveDays = null; next.hiredAt = ''; next.leaveCarry = null;
     }
     if (Object.keys(errors).length) {
       store.set({ personForm: { draft: values, errors: errors } });
@@ -1269,6 +1270,7 @@
       Toast.show({ message: 'Zadanie jest zakończone. Cofnij je do „Do wykonania”, żeby dalej zapisywać czas.', tone: 'info', timeout: 5000 });
       return;
     }
+    if (weekLocked(me, E.Calendar.isoOf(new Date()))) return;
     var result = TL.start(entries(), { personId: me, projectId: projectId, stageId: stageId, taskId: taskId, label: task.name }, new Date());
     setEntries(function () { return result.entries; });
     // Praca nad zadaniem oznacza, że jest w toku.
@@ -1431,6 +1433,8 @@
     }
     if (form.mode === 'edit') {
       var patch = values.from || values.to ? { from: values.from, to: values.to, note: values.note } : { hours: values.hours, note: values.note };
+      var editing = entries().filter(function (e) { return e.id === form.entryId; })[0];
+      if (editing && weekLocked(editing.personId, TL.dayKey(editing.start))) return;
       var upd = TL.update(entries(), form.entryId, patch, now);
       if (!upd.valid) { fail(upd.errors); return; }
       setEntries(function () { return upd.entries; });
@@ -1443,6 +1447,7 @@
       if (parts.length !== 3) { fail({ time: 'Wybierz zadanie.' }); return; }
       target = { projectId: Number(parts[0]), stageId: parts[1], taskId: parts[2] };
     }
+    if (weekLocked(me, values.date)) return;
     var task = taskOf(target.projectId, target.stageId, target.taskId);
     var added = TL.addManual(entries(), {
       personId: me, projectId: target.projectId, stageId: target.stageId, taskId: target.taskId,
@@ -1454,11 +1459,82 @@
     Toast.show({ message: 'Dopisano ' + TL.duration(TL.minutes(added.entry)) + '.', tone: 'success', timeout: 3500 });
   }
 
+  /** Zablokowany tydzień (zgłoszony lub zatwierdzony): wpisy nie podlegają zmianom. */
+  function weekLocked(personId, dayIso) {
+    if (!E.WeekLock.isLocked(store.getState().workspace.timeLocks || [], personId, dayIso)) return false;
+    Toast.show({ message: 'Ten tydzień jest zamknięty. Poproś o zwrot do poprawy (lider lub zarząd), aby go edytować.', tone: 'danger', timeout: 6000 });
+    return true;
+  }
+
+  function closeWeek(dayIso, personId) {
+    var me = currentMe();
+    var who = personId || me;
+    if (!who) { requireMe(); return; }
+    if (who !== me && !E.Budget.isManagement(me, people())) { Toast.show({ message: 'Tydzień zamyka jego właściciel.', tone: 'danger' }); return; }
+    var mgmt = E.Budget.isManagement(who, people());
+    var res = E.WeekLock.submit(store.getState().workspace.timeLocks || [], who, dayIso, new Date(), mgmt);
+    if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
+    updateWorkspace(function (ws) { return Object.assign({}, ws, { timeLocks: res.locks }); });
+    Toast.show({ message: mgmt ? 'Tydzień zamknięty i zatwierdzony.' : 'Tydzień zamknięty. Czeka na zatwierdzenie lidera lub zarządu.', tone: 'success', timeout: 4500 });
+  }
+
+  function decideWeek(personId, monday, verdict, note) {
+    var me = currentMe();
+    if (!E.WeekLock.canDecide(me, personId, store.getState().workspace.projects || [], E.Budget.isManagement(me, people()))) { Toast.show({ message: 'Tego tygodnia nie możesz rozpatrzyć.', tone: 'danger' }); return; }
+    var res = E.WeekLock.decide(store.getState().workspace.timeLocks || [], personId, monday, verdict, me, note || (verdict === 'return' ? 'Popraw wpisy i zamknij tydzień ponownie.' : ''), new Date());
+    if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
+    updateWorkspace(function (ws) { return Object.assign({}, ws, { timeLocks: res.locks }); });
+    Toast.show({ message: verdict === 'approve' ? 'Tydzień zatwierdzony.' : 'Tydzień zwrócony do poprawy.', tone: 'success', timeout: 3500 });
+  }
+
+  function reopenWeek(personId, monday) {
+    var me = currentMe();
+    var cur = E.WeekLock.find(store.getState().workspace.timeLocks || [], personId, monday);
+    var own = me === personId && cur && cur.status === 'submitted';
+    if (!own && !E.WeekLock.canDecide(me, personId, store.getState().workspace.projects || [], E.Budget.isManagement(me, people())) && !(me === personId && cur && cur.status === 'returned')) { Toast.show({ message: 'Nie możesz otworzyć tego tygodnia.', tone: 'danger' }); return; }
+    var res = E.WeekLock.reopen(store.getState().workspace.timeLocks || [], personId, monday);
+    if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
+    updateWorkspace(function (ws) { return Object.assign({}, ws, { timeLocks: res.locks }); });
+    Toast.show({ message: 'Tydzień otwarty do edycji.', tone: 'success', timeout: 3500 });
+  }
+
+  /** „Powtórz wczoraj”: kopiuje wpisy z poprzedniego dnia z zapisem (do 7 dni wstecz) na pusty dzień. */
+  function repeatDay(toKey) {
+    var me = currentMe();
+    if (!me && !requireMe()) return;
+    var now = new Date();
+    var list = entries();
+    if (weekLocked(me, toKey)) return;
+    if (TL.forDay(list, me, now, toKey).length) { Toast.show({ message: 'Ten dzień ma już wpisy.', tone: 'danger' }); return; }
+    var src = null;
+    var cursor = toKey;
+    for (var i = 0; i < 7 && !src; i += 1) {
+      cursor = E.Calendar.addDays(cursor, -1);
+      var found = TL.forDay(list, me, now, cursor).filter(function (e) { return e.end; });
+      if (found.length) src = { key: cursor, list: found };
+    }
+    if (!src) { Toast.show({ message: 'Nie ma wpisów z ostatnich 7 dni do powtórzenia.', tone: 'info' }); return; }
+    var added = 0;
+    var current = list;
+    src.list.sort(function (a, b) { return Date.parse(a.start) - Date.parse(b.start); }).forEach(function (e) {
+      var same = TL.dayKey(e.start) === TL.dayKey(e.end);
+      var res = TL.addManual(current, {
+        personId: me, projectId: e.projectId, stageId: e.stageId, taskId: e.taskId, label: e.label || '', date: toKey,
+        hours: same ? undefined : TL.hoursOf(TL.minutes(e)), from: same ? TL.clockOf(Date.parse(e.start)) : '', to: same ? TL.clockOf(Date.parse(e.end)) : '', note: e.note || ''
+      }, now);
+      if (res.valid) { current = res.entries; added += 1; }
+    });
+    if (!added) { Toast.show({ message: 'Nie udało się powtórzyć wpisów (kolidują albo wypadają w przyszłości).', tone: 'danger' }); return; }
+    setEntries(function () { return current; });
+    Toast.show({ message: 'Powtórzono ' + added + ' ' + F.count(added, 'wpis', 'wpisy', 'wpisów') + ' z ' + src.key.slice(8, 10) + '.' + src.key.slice(5, 7) + '.', tone: 'success', timeout: 4000 });
+  }
+
   function deleteEntry(entryId) {
     var list = entries();
     var index = list.findIndex(function (e) { return e.id === entryId; });
     if (index < 0) return;
     var removed = list[index];
+    if (weekLocked(removed.personId, TL.dayKey(removed.start))) return;
     setEntries(function (current) { return TL.remove(current, entryId); });
     Toast.show({
       message: 'Usunięto wpis ' + TL.duration(TL.minutes(removed)) + '.',
@@ -2054,12 +2130,12 @@
     updateWorkspace(function (workspace) { return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, trips: producer(workspace.trips || []) }); });
   }
 
-  function openTrip(id, day) {
+  function openTrip(id, day, dayTo) {
     var me = currentMe();
     if (!me) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
     var found = id ? (store.getState().workspace.trips || []).filter(function (t) { return t.id === id; })[0] : null;
     var iso = day || E.Absences.isoOf(new Date());
-    store.set({ tripForm: { draft: found ? Object.assign({}, found) : { personIds: [me], kind: 'field', from: iso, to: iso, place: '', projectId: null, note: '', notify: false }, errors: {},
+    store.set({ tripForm: { draft: found ? Object.assign({}, found) : { personIds: [me], kind: 'field', from: iso, to: dayTo && dayTo >= iso ? dayTo : iso, place: '', projectId: null, note: '', notify: false }, errors: {},
       readOnly: !!found && !E.Trips.canEdit(me, found, people(), store.getState().workspace.projects || []) } });
   }
 
@@ -2233,7 +2309,7 @@
       Toast.show({ message: who === me ? 'Zgłoszono L4. Życzymy zdrowia.' : 'Zapisano L4 osoby z zespołu', tone: 'success', timeout: 4000 });
       return;
     }
-    var res = E.Absences.request(store.getState().workspace.absences || [], Object.assign({}, values, { personId: me }), people(), { by: me, autoApprove: management, now: new Date() });
+    var res = E.Absences.request(store.getState().workspace.absences || [], Object.assign({}, values, { personId: me }), people(), { by: me, autoApprove: management, override: management, blackouts: (store.getState().workspace.settings || {}).blackouts || [], now: new Date() });
     if (!res.valid) { store.set({ leaveForm: Object.assign({}, form, { draft: values, errors: res.errors }) }); return; }
     setAbsences(function () { return res.list; });
     store.set({ leaveForm: null, leave: Object.assign({}, store.getState().leave || {}, { sel: null, tab: 'mine' }) });
@@ -3562,6 +3638,45 @@
   }
 
   /** Ewidencja czasu pracy za miesiąc (wariant 1: rzeczywisty czas, wariant 2: ewidencja 8:00–16:00) jako wydruk/PDF albo CSV. */
+  function exportLeaveCard(format, scope) {
+    var state = store.getState();
+    var now = new Date();
+    var meId = state.prefs.me;
+    var mgmt = E.Budget.isManagement(meId, people());
+    var year = Number((state.leave || {}).year) || now.getFullYear();
+    if ((state.leave || {}).view === 'month') year = new Date(now.getFullYear(), now.getMonth() + (Number((state.leave || {}).monthOffset) || 0), 1).getFullYear();
+    var list = state.workspace.absences || [];
+    var teamScope = scope === 'team';
+    if (teamScope && !mgmt) { Toast.show({ message: 'Zestawienie całego zespołu udostępnia zarząd.', tone: 'danger' }); return; }
+    var person = Team.findPerson(people(), meId);
+    if (!teamScope && !person) { Toast.show({ message: 'Wybierz, kim jesteś.', tone: 'danger' }); return; }
+    var meta = { generatedAt: now.getDate() + '.' + (now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + TL.clockOf(now.getTime()), autoPrint: format === 'print' };
+    var card = teamScope ? null : E.LeaveCard.build(list, person, year, now);
+    var cards = teamScope ? E.LeaveCard.team(list, people(), year, now) : null;
+    var base = (teamScope ? 'zestawienie-urlopow-' : 'karta-urlopowa-') + year;
+    if (format === 'csv') {
+      var rows = teamScope ? E.LeaveCard.teamCsvRows(cards, year) : E.LeaveCard.csvRows(card, meta);
+      var csvUrl = URL.createObjectURL(new Blob([E.Timesheet.csv(rows)], { type: 'text/csv;charset=utf-8' }));
+      var link = D.el('a', { attrs: { href: csvUrl, download: base + '.csv' } });
+      document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(csvUrl);
+      Toast.show({ message: 'Pobrano ' + base + '.csv', tone: 'success', timeout: 4000 });
+      return;
+    }
+    var url = URL.createObjectURL(new Blob([teamScope ? E.LeaveCard.teamHtml(cards, year, meta) : E.LeaveCard.html(card, meta)], { type: 'text/html;charset=utf-8' }));
+    var win = window.open(url, '_blank');
+    if (!win) {
+      var dl = D.el('a', { attrs: { href: url, download: base + '.html' } });
+      document.body.appendChild(dl); dl.click(); document.body.removeChild(dl);
+      Toast.show({ message: 'Przeglądarka zablokowała okno wydruku – pobrano plik ' + base + '.html. Otwórz go i wybierz „Drukuj → Zapisz jako PDF”.', tone: 'info', timeout: 8000 });
+    } else Toast.show({ message: 'Otwieram okno wydruku. Wybierz „Zapisz jako PDF”, aby dostać plik.', tone: 'info', timeout: 5000 });
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  function saveLeaveSettings(patch) {
+    if (!E.Budget.isManagement(store.getState().prefs.me, people())) { Toast.show({ message: 'Zasady urlopów ustawia zarząd.', tone: 'danger' }); return; }
+    updateWorkspace(function (ws) { return Object.assign({}, ws, { settings: E.Absences.normalizeSettings(Object.assign({}, ws.settings, patch)) }); });
+  }
+
   function exportRecord(variant, format, personId) {
     var state = store.getState();
     var now = new Date();
@@ -3747,6 +3862,10 @@
     },
     exportTime: exportTime,
     exportRecord: exportRecord,
+    exportLeaveCard: exportLeaveCard,
+    closeWeek: closeWeek, decideWeek: decideWeek, reopenWeek: reopenWeek,
+    repeatDay: repeatDay,
+    saveLeaveSettings: saveLeaveSettings,
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
     setAnalysisTab: function (tab) { store.set({ analysisTab: tab }); },
     openAnalysisProject: function (id) { store.set({ analysisProject: id, analysisTab: 'projects' }); },
@@ -4409,7 +4528,7 @@
       settings.title = mgmt ? 'Nowy urlop' : 'Wniosek urlopowy';
       settings.subtitle = mgmt ? 'Jako zarząd zapisujesz urlop od razu, bez akceptacji.' : 'Wniosek trafia do zarządu. Po akceptacji urlop pojawi się w Planie.';
       settings.content = E.LeaveScreen.requestForm(current.draft, current.errors, { onSubmit: submitLeaveRequest, onCancel: function () { store.set({ leaveForm: null }); } },
-        { free: balL.free, onDemandLeft: balL.onDemandLimit - balL.onDemandUsed - balL.onDemandPending, auto: mgmt,
+        { free: balL.free, childcareLeft: E.Absences.CHILDCARE_LIMIT - balL.childcare, blackouts: ((state.workspace.settings || {}).blackouts) || [], onDemandLeft: balL.onDemandLimit - balL.onDemandUsed - balL.onDemandPending, auto: mgmt,
           impact: function (from, to) { return E.Absences.impact({ id: '', personId: meL.id, from: from, to: to }, { projects: state.workspace.projects || [], people: people(), absences: (state.workspace.absences || []).filter(function (x) { return x.kind === 'leave'; }) }); } });
       }
     } else if (current === state.caseForm) {
@@ -4603,6 +4722,8 @@
   }
 
   function renderAll(state) {
+    /* Dni wolne firmy ustawione przez zarząd liczą się jak święta we wszystkich kalendarzach. */
+    E.Calendar.setExtraHolidays(state.workspace && state.workspace.settings ? state.workspace.settings.companyDays : []);
     E.Identity.setColors(state.workspace && state.workspace.projects);
     renderNotice(state);
     renderScreen(visibleState(state));
@@ -4637,7 +4758,7 @@
       var Cal = E.Calendar;
       var anchor = state.calAnchor || Cal.isoOf(new Date());
       var d = Cal.parse(anchor);
-      var next = mode === 'day' ? Cal.addDays(anchor, dir) : (mode === 'week' ? Cal.addDays(anchor, 7 * dir) : (mode === 'year' ? Cal.isoOf(new Date(d.getFullYear() + dir, d.getMonth(), 1)) : Cal.isoOf(new Date(d.getFullYear(), d.getMonth() + dir, 1))));
+      var next = mode === 'agenda' ? Cal.addDays(anchor, 30 * dir) : mode === 'day' ? Cal.addDays(anchor, dir) : (mode === 'week' ? Cal.addDays(anchor, 7 * dir) : (mode === 'year' ? Cal.isoOf(new Date(d.getFullYear() + dir, d.getMonth(), 1)) : Cal.isoOf(new Date(d.getFullYear(), d.getMonth() + dir, 1))));
       store.set({ calAnchor: next, calDay: null });
       return done();
     }
@@ -4698,7 +4819,7 @@
       if (event.key === 'n' || event.key === 'N') { event.preventDefault(); goTo('analysis'); return; }
     }
     if (route === 'calendar' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      var calKeys = { m: 'month', w: 'week', r: 'year', z: 'day' };
+      var calKeys = { m: 'month', w: 'week', r: 'year', z: 'day', a: 'agenda' };
       var ck = String(event.key).toLowerCase();
       if (calKeys[ck]) { event.preventDefault(); setCal({ view: calKeys[ck] }); return; }
       if (ck === 'd') { event.preventDefault(); store.set({ calAnchor: null, calDay: null }); return; }

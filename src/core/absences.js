@@ -7,9 +7,14 @@
   var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
   var Team = node ? require('./team.js') : root.ETROM.Team;
 
-  var KINDS = { leave: 'Urlop', sick: 'Zwolnienie', training: 'Szkolenie', other: 'Inna nieobecność' };
+  var KINDS = { leave: 'Urlop', sick: 'Zwolnienie', training: 'Szkolenie', other: 'Inna nieobecność', childcare: 'Opieka nad dzieckiem', occasional: 'Urlop okolicznościowy', unpaid: 'Urlop bezpłatny' };
+  /** Rodzaje urlopu (wniosek i zatwierdzenie jak przy urlopie). Tylko „leave” zmniejsza pulę urlopu wypoczynkowego. */
+  var LEAVE_KINDS = { leave: 'Urlop wypoczynkowy', childcare: 'Opieka nad dzieckiem (art. 188 KP, 2 dni w roku)', occasional: 'Urlop okolicznościowy', unpaid: 'Urlop bezpłatny' };
+  var CHILDCARE_LIMIT = 2;
+  var CARRY_DEADLINE = '-09-30';
+  function isLeaveKind(kind) { return Object.prototype.hasOwnProperty.call(LEAVE_KINDS, kind); }
   /** Rodzaje do wyboru w formularzach: szkolenia i inne wyjazdy zgłasza się jako wyjazd lub spotkanie. */
-  var FORM_KINDS = { leave: 'Urlop', sick: 'Zwolnienie' };
+  var FORM_KINDS = { leave: 'Urlop', childcare: 'Opieka nad dzieckiem', occasional: 'Urlop okolicznościowy', unpaid: 'Urlop bezpłatny', sick: 'Zwolnienie' };
   var STATUS = { pending: 'Oczekuje', approved: 'Zaakceptowany', rejected: 'Odrzucony' };
   var DEFAULT_LEAVE_DAYS = 26;
   var ON_DEMAND_LIMIT = 4;
@@ -41,7 +46,7 @@
         requestedBy: str(a.requestedBy, 40), requestedAt: stamp(a.requestedAt),
         decidedBy: str(a.decidedBy, 40), decidedAt: stamp(a.decidedAt), decisionNote: str(a.decisionNote, 200),
         opinions: opinions,
-        cancelRequest: a.cancelRequest && typeof a.cancelRequest === 'object' && kind === 'leave' ? { by: str(a.cancelRequest.by, 40), at: stamp(a.cancelRequest.at), note: str(a.cancelRequest.note, 200) } : null,
+        cancelRequest: a.cancelRequest && typeof a.cancelRequest === 'object' && isLeaveKind(kind) ? { by: str(a.cancelRequest.by, 40), at: stamp(a.cancelRequest.at), note: str(a.cancelRequest.note, 200) } : null,
         notice: NOTICES[a.notice] ? a.notice : '', noticeNote: str(a.noticeNote, 200)
       };
     }).filter(Boolean).map(function (a, i, all) {
@@ -113,9 +118,25 @@
     return to < from ? null : { from: from, to: to };
   }
 
-  function entitlementOf(person) {
+  function entitlementOf(person, year) {
     var n = person && Number(person.leaveDays);
-    return Number.isFinite(n) && n > 0 && n <= 60 ? Math.round(n) : DEFAULT_LEAVE_DAYS;
+    var base = Number.isFinite(n) && n > 0 && n <= 60 ? Math.round(n) : DEFAULT_LEAVE_DAYS;
+    var hired = person && typeof person.hiredAt === 'string' && isDay(person.hiredAt) ? person.hiredAt : '';
+    if (!hired || year === undefined) return base;
+    var hy = Number(hired.slice(0, 4));
+    if (year < hy) return 0;
+    if (year > hy) return base;
+    /* W roku zatrudnienia: 1/12 wymiaru za każdy przepracowany miesiąc, zaokrąglone w górę do pełnego dnia. */
+    var m = Number(hired.slice(5, 7));
+    var d = Number(hired.slice(8, 10));
+    var months = 12 - m + (d === 1 ? 1 : 0);
+    return Math.ceil(base * months / 12);
+  }
+
+  /** Urlop zaległy z poprzedniego roku wpisany osobie (ważny do 30 września roku, którego dotyczy). */
+  function carryOf(person, year) {
+    var c = person && person.leaveCarry;
+    return c && Number(c.year) === year && Number(c.days) > 0 ? Math.min(60, Math.round(Number(c.days))) : 0;
   }
 
   /**
@@ -128,13 +149,15 @@
     var todayIso = isoOf(ref);
     var first = year + '-01-01';
     var last = year + '-12-31';
-    var out = { year: year, total: entitlementOf(person), used: 0, planned: 0, pending: 0, left: 0, free: 0, onDemandUsed: 0, onDemandPending: 0, onDemandLimit: ON_DEMAND_LIMIT, sick: 0, training: 0 };
+    var carry = carryOf(person, year);
+    var out = { year: year, entitlement: entitlementOf(person, year), carry: carry, carryLeft: 0, carryDeadline: year + CARRY_DEADLINE, childcare: 0, total: entitlementOf(person, year) + carry, used: 0, planned: 0, pending: 0, left: 0, free: 0, onDemandUsed: 0, onDemandPending: 0, onDemandLimit: ON_DEMAND_LIMIT, sick: 0, training: 0 };
     (list || []).forEach(function (a) {
       if (!person || a.personId !== person.id || a.status === 'rejected') return;
       var c = clip(a, first, last);
       if (!c) return;
       var n = Cal.workdaysIn(c.from, c.to);
       if (!n) return;
+      if (a.kind === 'childcare') out.childcare += n;
       if (a.status === 'pending') {
         if (a.kind === 'leave') { out.pending += n; if (a.onDemand) out.onDemandPending += n; }
         return;
@@ -149,10 +172,26 @@
     });
     out.left = out.total - out.used - out.planned;
     out.free = out.left - out.pending;
+    if (carry) {
+      /* Zaległy urlop wykorzystuje się najpierw: ile z niego zostaje po urlopach do 30 września (łącznie z wnioskami). */
+      var cutoff = out.carryDeadline;
+      var byDeadline = 0;
+      (list || []).forEach(function (a) {
+        if (!person || a.personId !== person.id || a.status === 'rejected' || a.kind !== 'leave') return;
+        var c = clip(a, first, cutoff);
+        if (c) byDeadline += Cal.workdaysIn(c.from, c.to);
+      });
+      out.carryLeft = Math.max(0, carry - byDeadline);
+    }
     return out;
   }
 
   function overlaps(a, from, to) { return a.from <= to && a.to >= from; }
+
+  /** Okres zamknięty dla urlopów, który zahacza o podany zakres (albo undefined). */
+  function blackoutAt(list, from, to) {
+    return (list || []).filter(function (b) { return b && b.from <= to && b.to >= from; })[0];
+  }
 
   /**
    * Nowy wniosek. Składający go zarząd dostaje od razu decyzję „zaakceptowany”; pozostali czekają na zarząd.
@@ -170,6 +209,17 @@
       var n = Cal.workdaysIn(d.from, d.to);
       if (!n) errors.to = 'W tym zakresie nie ma dni roboczych.';
       else if (current.some(function (a) { return a.personId === d.personId && a.status !== 'rejected' && a.id !== d.id && overlaps(a, d.from, d.to); })) errors.from = 'W tym terminie masz już wniosek lub nieobecność.';
+      else if (isLeaveKind(d.kind) && !o.override && blackoutAt(o.blackouts, d.from, d.to)) {
+        var bo = blackoutAt(o.blackouts, d.from, d.to);
+        errors.from = 'Okres zamknięty dla urlopów (' + bo.from + ' – ' + bo.to + (bo.note ? ': ' + bo.note : '') + '). Skontaktuj się z zarządem.';
+      }
+      else if (d.kind === 'childcare') {
+        for (var cy = Number(d.from.slice(0, 4)); cy <= Number(d.to.slice(0, 4)) && !errors.to; cy += 1) {
+          var cc = clip(d, cy + '-01-01', cy + '-12-31');
+          var cn = Cal.workdaysIn(cc.from, cc.to);
+          if (cn && balance(current.filter(function (a) { return a.id !== d.id; }), person, new Date(cy + '-06-15T12:00:00')).childcare + cn > CHILDCARE_LIMIT) errors.to = 'Opieka nad dzieckiem: limit ' + CHILDCARE_LIMIT + ' dni w roku (art. 188 KP).';
+        }
+      }
       else if (d.kind === 'leave') {
         /* Wniosek na przełomie roku liczy się osobno w puli każdego roku. */
         var others = current.filter(function (a) { return a.id !== d.id; });
@@ -323,7 +373,15 @@
 
   function normalizeSettings(raw) {
     var src = raw && typeof raw === 'object' ? raw : {};
-    return { absenceVisibility: VISIBILITY[src.absenceVisibility] ? src.absenceVisibility : 'who' };
+    var seen = {};
+    var company = (Array.isArray(src.companyDays) ? src.companyDays : []).filter(function (d) {
+      if (!d || !isDay(d.date) || seen[d.date]) return false;
+      seen[d.date] = true;
+      return true;
+    }).slice(0, 80).map(function (d) { return { date: d.date, name: str(d.name, 60) || 'Dzień wolny firmy' }; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var blackouts = (Array.isArray(src.blackouts) ? src.blackouts : []).filter(function (b) { return b && isDay(b.from) && isDay(b.to) && b.to >= b.from; })
+      .slice(0, 30).map(function (b) { return { from: b.from, to: b.to, note: str(b.note, 120) }; }).sort(function (a, b) { return a.from < b.from ? -1 : 1; });
+    return { absenceVisibility: VISIBILITY[src.absenceVisibility] ? src.absenceVisibility : 'who', companyDays: company, blackouts: blackouts };
   }
 
   /**
@@ -339,7 +397,7 @@
     return absence.kind === 'sick' ? 'who' : 'full';
   }
 
-  var api = { withdrawCancel: withdrawCancel, cancellable: cancellable, requestCancel: requestCancel, decideCancel: decideCancel, acknowledge: acknowledge, notices: notices, updateSick: updateSick, VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
+  var api = { LEAVE_KINDS: LEAVE_KINDS, CHILDCARE_LIMIT: CHILDCARE_LIMIT, isLeaveKind: isLeaveKind, carryOf: carryOf, blackoutAt: blackoutAt, withdrawCancel: withdrawCancel, cancellable: cancellable, requestCancel: requestCancel, decideCancel: decideCancel, acknowledge: acknowledge, notices: notices, updateSick: updateSick, VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

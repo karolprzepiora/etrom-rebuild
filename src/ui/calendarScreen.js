@@ -19,7 +19,7 @@
   var DOW_FULL = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
   var MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
   var MONTHS_NOM = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
-  var VIEWS = [{ value: 'day', label: 'Dzień' }, { value: 'week', label: 'Tydzień' }, { value: 'month', label: 'Miesiąc' }, { value: 'year', label: 'Rok' }];
+  var VIEWS = [{ value: 'day', label: 'Dzień' }, { value: 'week', label: 'Tydzień' }, { value: 'month', label: 'Miesiąc' }, { value: 'year', label: 'Rok' }, { value: 'agenda', label: 'Agenda' }];
   var MAX_CHIPS = 3;
 
   function n2(n) { return n < 10 ? '0' + n : String(n); }
@@ -43,7 +43,7 @@
     var now = new Date();
     var today = Cal.isoOf(now);
     var cal = state.prefs.cal || {};
-    var mode = cal.view === 'day' || cal.view === 'week' || cal.view === 'year' ? cal.view : 'month';
+    var mode = cal.view === 'day' || cal.view === 'week' || cal.view === 'year' || cal.view === 'agenda' ? cal.view : 'month';
     var management = E.Budget.isManagement(me.id, people);
     var visibility = (state.workspace.settings || {}).absenceVisibility;
     var anchor = state.calAnchor && /^\d{4}-\d{2}-\d{2}$/.test(state.calAnchor) ? state.calAnchor : today;
@@ -60,6 +60,7 @@
     if (mode === 'month') { input.year = year; input.month = month; title = cap(MONTHS_NOM[month]) + ' ' + year; }
     else if (mode === 'day') { input.range = { from: anchor, to: anchor }; title = cap(longDay(anchor)) + ' ' + year; }
     else if (mode === 'week') { var mon = monday(anchor); input.range = { from: mon, to: Cal.addDays(mon, 6) }; title = weekTitle(input.range.from, input.range.to); }
+    else if (mode === 'agenda') { input.range = { from: anchor, to: Cal.addDays(anchor, 29) }; title = 'Agenda: 30 dni od ' + anchor.slice(8, 10) + '.' + anchor.slice(5, 7); }
     else { input.range = { from: iso(year, 0, 1), to: iso(year, 11, 31) }; title = String(year); }
     var data = CV.build(input);
     var byKey = {};
@@ -85,11 +86,12 @@
       var next;
       if (mode === 'day') next = Cal.addDays(anchor, dir);
       else if (mode === 'week') next = Cal.addDays(anchor, 7 * dir);
+      else if (mode === 'agenda') next = Cal.addDays(anchor, 30 * dir);
       else if (mode === 'year') next = iso(year + dir, month, 1);
       else next = iso(new Date(year, month + dir, 1).getFullYear(), new Date(year, month + dir, 1).getMonth(), 1);
       ctx.actions.setTime({ calAnchor: next, calDay: null });
     }
-    var unit = { day: 'dzień', month: 'miesiąc', week: 'tydzień', year: 'rok' }[mode];
+    var unit = { day: 'dzień', month: 'miesiąc', week: 'tydzień', year: 'rok', agenda: '30 dni' }[mode];
     var switcher = UI.segmented({ label: 'Widok kalendarza', value: mode, items: VIEWS, onChange: function (v) { if (v === 'day') ctx.actions.setTime({ calAnchor: null, calDay: null }); ctx.actions.setCal({ view: v }); } });
     var hiddenCount = (cal.hiddenPeople || []).length + (cal.hiddenProjects || []).length + (cal.hiddenKinds || []).length + (cal.scope && cal.scope !== CV.defaultScope(management) ? 1 : 0);
     var addBtn = UI.button({ label: 'Wyjazd lub spotkanie', variant: 'primary', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-add' }, onClick: function () { ctx.actions.openTrip(null, selected); } });
@@ -153,6 +155,22 @@
     function tileAttrs(c) {
       return { role: 'gridcell', tabindex: c.key === selected ? '0' : '-1', 'data-k': c.key, 'data-day': c.key, 'aria-label': longDay(c.key) + (c.holiday ? ', ' + c.holiday : '') + (c.events.length ? ', ' + c.events.length + ' wpisów' : ''), 'aria-selected': String(c.key === selected) };
     }
+    /** Przeciągnięcie po dniach (miesiąc, tydzień) otwiera formularz wyjazdu z zakresem od–do. */
+    function dragCreate(grid) {
+      var start = null;
+      var suppress = false;
+      function dayOf(e) { var t = e.target && e.target.closest ? e.target.closest('[data-day]') : null; return t ? t.getAttribute('data-day') : null; }
+      grid.addEventListener('pointerdown', function (e) { if (e.button === 0 && !(e.target.closest && e.target.closest('button, a, .cb-bar, .cb-chip, .cb-card'))) start = dayOf(e); else start = null; });
+      grid.addEventListener('pointerup', function (e) {
+        var from = start; start = null;
+        var to = dayOf(e);
+        if (!from || !to || from === to) return;
+        suppress = true;
+        window.setTimeout(function () { suppress = false; }, 0);
+        ctx.actions.openTrip(null, from < to ? from : to, from < to ? to : from);
+      });
+      grid.addEventListener('click', function (e) { if (suppress) { e.stopPropagation(); e.preventDefault(); } }, true);
+    }
     function gridKeys(grid) {
       grid.addEventListener('keydown', function (e) {
         var cur = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-k');
@@ -179,7 +197,8 @@
     function absLabel(ev, p) {
       var who = p ? Team.fullName(p).split(' ')[0] + ' ' + (Team.fullName(p).split(' ')[1] || '').charAt(0) + '.' : ev.title;
       var k = CB.kindOf(ev.absKind, ev.pending);
-      return who.replace(/ \.$/, '') + ' · ' + (k === 'other' && ev.absKind === 'training' ? 'szkolenie' : CB.TEXT[k]);
+      var extra = { training: 'szkolenie', childcare: 'opieka nad dzieckiem', occasional: 'urlop okolicznościowy', unpaid: 'urlop bezpłatny' }[ev.absKind];
+      return who.replace(/ \.$/, '') + ' · ' + (extra && !ev.pending ? extra : CB.TEXT[k]);
     }
     /** Jeden pasek na całą nieobecność w widocznych komórkach (z danych CalView), przycinany później do tygodnia. */
     function barsFrom(cells) {
@@ -246,7 +265,14 @@
           }).concat(items.map(function (e) { return D.el('li', null, [chipNode(e)]); })))
         ]));
       });
-      return D.el('div', { class: 'cv-agenda', attrs: { 'data-fk': 'cv-agenda' } }, days.length ? days : [D.el('p', { class: 'cv-empty', text: 'Nic nie jest zaplanowane w tym miesiącu.' })]);
+      return D.el('div', { class: 'cv-agenda', attrs: { 'data-fk': 'cv-agenda' } }, days.length ? days : [D.el('p', { class: 'cv-empty', text: 'Nic nie jest zaplanowane w tym zakresie.' })]);
+    }
+
+    /** Widok „Agenda”: lista dni z wpisami na 30 dni od wybranego dnia, na każdym ekranie. */
+    function agendaView() {
+      var node = agenda();
+      node.classList.add('cv-agenda--page');
+      return D.el('div', { class: 'cb cv-wrap' }, [node, CB.legendBar('calendar', { layer: layer })]);
     }
 
     /* ---------- widok: miesiąc ---------- */
@@ -272,6 +298,7 @@
       }
       parts.push(grid);
       gridKeys(grid);
+      dragCreate(grid);
       parts.push(agenda());
       return D.el('div', { class: 'cb cv-wrap' }, parts.concat([CB.legendBar('calendar', { layer: layer })]));
     }
@@ -290,6 +317,7 @@
       });
       var grid = D.el('div', { class: 'cb-wcols', attrs: { role: 'grid', 'aria-label': title } }, cols);
       gridKeys(grid);
+      dragCreate(grid);
       return D.el('div', { class: 'cb cb--week cv-week' }, [
         lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid, CB.legendBar('calendar', { layer: layer })
       ]);
@@ -424,7 +452,7 @@
     }
     function F(n, a, b, c) { return E.Format.count(n, a, b, c); }
 
-    var main = mode === 'day' ? dayView() : mode === 'month' ? monthGrid() : mode === 'week' ? weekView() : yearView();
+    var main = mode === 'agenda' ? agendaView() : mode === 'day' ? dayView() : mode === 'month' ? monthGrid() : mode === 'week' ? weekView() : yearView();
     var items = [{ id: 'filters', title: 'Filtry i warstwy', icon: 'filter', tone: 'accent', badge: hiddenCount ? String(hiddenCount) : '', side: filtersSide }];
     if (mode === 'month' || mode === 'week') items.push({ id: 'day', title: 'Wybrany dzień i najbliższe terminy', label: 'Dzień', icon: 'calendar', tone: 'violet', side: daySide() });
     if (data.conflicts.length) items.push({ id: 'warn', title: 'Uwaga w tym zakresie', icon: 'alert', tone: 'warn', badge: String(data.conflicts.length), late: true, side: warnSide() });

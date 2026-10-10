@@ -207,3 +207,48 @@ test('zmiana L4: skracanie, przedłużanie i kolizje', () => {
   assert.equal(A.updateSick(list, 'u1', { from: '2026-10-14', to: '2026-10-15' }, people).valid, false);
   assert.ok(A.updateSick(list, 's1', { from: '2026-10-09', to: '2026-10-05' }, people).errors.to);
 });
+
+test('nowe rodzaje urlopu nie ruszają puli wypoczynkowej, a opieka nad dzieckiem ma limit 2 dni w roku', () => {
+  const now = new Date('2026-10-10T10:00:00');
+  const ppl = [{ id: 'p-1', leaveDays: 26 }];
+  const ok = A.request([], { personId: 'p-1', from: '2026-11-02', to: '2026-11-03', kind: 'childcare' }, ppl, { now });
+  assert.equal(ok.valid, true);
+  assert.equal(A.balance(ok.list, ppl[0], now).left, 26);
+  assert.equal(A.balance(ok.list, ppl[0], now).childcare, 2);
+  const over = A.request(ok.list, { personId: 'p-1', from: '2026-11-10', to: '2026-11-10', kind: 'childcare' }, ppl, { now });
+  assert.equal(over.valid, false);
+  assert.match(over.errors.to, /art\. 188/);
+  assert.equal(A.request([], { personId: 'p-1', from: '2026-11-02', to: '2026-11-13', kind: 'unpaid' }, ppl, { now }).valid, true);
+  assert.equal(A.request([], { personId: 'p-1', from: '2026-11-02', to: '2026-11-03', kind: 'occasional' }, ppl, { now }).valid, true);
+});
+
+test('wymiar proporcjonalny w roku zatrudnienia i urlop zaległy z terminem 30 września', () => {
+  const now = new Date('2026-06-10T10:00:00');
+  assert.equal(A.entitlementOf({ leaveDays: 26, hiredAt: '2026-04-01' }, 2026), 20); // 9 miesięcy: 26 × 9/12 = 19,5 → 20
+  assert.equal(A.entitlementOf({ leaveDays: 26, hiredAt: '2026-04-15' }, 2026), 18); // 8 miesięcy: 26 × 8/12 = 17,33 → 18
+  assert.equal(A.entitlementOf({ leaveDays: 26, hiredAt: '2025-04-15' }, 2026), 26);
+  assert.equal(A.entitlementOf({ leaveDays: 26, hiredAt: '2027-01-04' }, 2026), 0);
+  const person = { id: 'p-1', leaveDays: 26, leaveCarry: { year: 2026, days: 5 } };
+  const list = [{ id: 'u1', personId: 'p-1', from: '2026-07-06', to: '2026-07-08', kind: 'leave', status: 'approved' }];
+  const bal = A.balance(list, person, now);
+  assert.equal(bal.total, 31);
+  assert.equal(bal.carry, 5);
+  assert.equal(bal.carryLeft, 2);
+  assert.equal(bal.carryDeadline, '2026-09-30');
+  assert.equal(A.carryOf(person, 2027), 0);
+});
+
+test('okresy zamknięte blokują urlop pracownika, ale nie zarząd, a ustawienia się normalizują', () => {
+  const now = new Date('2026-10-10T10:00:00');
+  const ppl = [{ id: 'p-1', leaveDays: 26 }];
+  const blackouts = [{ from: '2026-12-14', to: '2026-12-18', note: 'inwentaryzacja' }];
+  const blocked = A.request([], { personId: 'p-1', from: '2026-12-15', to: '2026-12-15', kind: 'leave' }, ppl, { now, blackouts });
+  assert.equal(blocked.valid, false);
+  assert.match(blocked.errors.from, /inwentaryzacja/);
+  assert.equal(A.request([], { personId: 'p-1', from: '2026-12-15', to: '2026-12-15', kind: 'leave' }, ppl, { now, blackouts, override: true }).valid, true);
+  assert.equal(A.request([], { personId: 'p-1', from: '2026-12-15', to: '2026-12-15', kind: 'sick' }, ppl, { now, blackouts }).valid, true);
+  const s = A.normalizeSettings({ companyDays: [{ date: '2026-05-02', name: 'Majówka' }, { date: 'zle' }, { date: '2026-05-02', name: 'dubel' }], blackouts: [{ from: '2026-12-18', to: '2026-12-14' }, { from: '2026-12-14', to: '2026-12-18', note: 'x' }] });
+  assert.equal(s.companyDays.length, 1);
+  assert.equal(s.blackouts.length, 1);
+  assert.equal(s.absenceVisibility, 'who');
+});

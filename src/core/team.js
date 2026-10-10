@@ -70,6 +70,15 @@
       if (!Accounts.validEmail(email)) errors.email = 'Podaj poprawny adres e-mail.';
       else if (Accounts.emailTaken(list, email, ignoreId)) errors.email = 'Ten adres jest już przypisany do innej osoby.';
     }
+    var hiredAt = text(data.hiredAt);
+    if (hiredAt && !/^\d{4}-\d{2}-\d{2}$/.test(hiredAt)) errors.hiredAt = 'Podaj datę zatrudnienia.';
+    var carryRaw = data.leaveCarryDays == null ? '' : String(data.leaveCarryDays).trim().replace(',', '.');
+    var carryDays = 0;
+    if (carryRaw !== '') {
+      carryDays = Number(carryRaw);
+      if (!Number.isFinite(carryDays) || carryDays < 0 || carryDays > 60) errors.leaveCarryDays = 'Podaj liczbę dni od 0 do 60.';
+      else carryDays = Math.round(carryDays);
+    }
     var leaveRaw = data.leaveDays == null ? '' : String(data.leaveDays).trim().replace(',', '.');
     var leaveDays = null;
     if (leaveRaw !== '') {
@@ -114,7 +123,9 @@
         cooperation: cooperation,
         hourlyCost: hourlyCost,
         email: email,
-        leaveDays: leaveDays
+        leaveDays: leaveDays,
+        hiredAt: hiredAt,
+        leaveCarry: carryDays > 0 ? { year: new Date().getFullYear(), days: carryDays } : null
       }
     };
   }
@@ -146,6 +157,8 @@
       cooperation: Object.prototype.hasOwnProperty.call(COOPERATION, cooperation) ? cooperation : 'internal',
       hourlyCost: Number.isFinite(Number(raw.hourlyCost)) && Number(raw.hourlyCost) > 0 && Number(raw.hourlyCost) <= 10000 ? Math.round(Number(raw.hourlyCost) * 100) / 100 : 0,
       leaveDays: Number.isFinite(Number(raw.leaveDays)) && Number(raw.leaveDays) > 0 && Number(raw.leaveDays) <= 60 ? Math.round(Number(raw.leaveDays)) : null,
+      hiredAt: typeof raw.hiredAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.hiredAt) ? raw.hiredAt : '',
+      leaveCarry: raw.leaveCarry && Number(raw.leaveCarry.year) > 2000 && Number(raw.leaveCarry.days) > 0 && Number(raw.leaveCarry.days) <= 60 ? { year: Number(raw.leaveCarry.year), days: Math.round(Number(raw.leaveCarry.days)) } : null,
       email: Accounts.validEmail(raw.email) ? Accounts.normEmail(raw.email) : '',
       account: Accounts.normalizeAccount(raw.account),
       rates: Accounts.normalizeRates(raw.rates),

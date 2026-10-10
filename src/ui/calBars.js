@@ -13,7 +13,7 @@
   /** Rodzaj paska z danych nieobecności: pending → req, urlop → leave, zwolnienie → sick, reszta → other. */
   function kindOf(absKind, pending) {
     if (pending) return 'req';
-    if (absKind === 'leave') return 'leave';
+    if (absKind === 'leave' || (E.Absences && E.Absences.isLeaveKind(absKind))) return 'leave';
     if (absKind === 'sick') return 'sick';
     return 'other';
   }
@@ -117,6 +117,7 @@
     req: { c: 'is-req', t: '12', short: 'wniosek czeka', name: 'Wniosek', desc: 'kreskowany, czeka na decyzję' },
     sick: { c: 'is-sick', t: '12', short: 'L4', name: 'L4', desc: 'zwolnienie lekarskie' },
     other: { c: 'is-other', t: '12', short: 'nieobecny', name: 'Nieobecny', desc: 'L4 innej osoby (bez podania powodu)' },
+    closed: { c: 'is-closed', t: '12', short: 'zamknięte', name: 'Okres zamknięty', desc: 'bez urlopów, ustala zarząd' },
     hol: { c: 'is-hol', t: '1', short: 'święto', name: 'Święto', desc: 'dzień wolny ustawowo' },
     today: { c: 'is-today', t: '14', short: 'dziś', name: 'Dziś', desc: 'obramowanie dnia' },
     dl: { c: 'is-ul is-dl', t: '12', short: 'termin', name: 'Termin lub zadanie', desc: 'karteczka w kolorze projektu' },
@@ -134,8 +135,8 @@
   };
   var GROUPS = {
     calendar: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }, { title: 'Wydarzenia', items: ['dl', 'trip', 'meet'] }],
-    leave: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'today'] }],
-    team: [{ title: 'Nieobecnych osób', items: ['n1', 'n2', 'n3'] }, { title: 'Dni', items: ['hol', 'today'] }],
+    leave: [{ title: 'Nieobecności', items: ['leave', 'req', 'sick', 'other'] }, { title: 'Dni', items: ['hol', 'closed', 'today'] }],
+    team: [{ title: 'Nieobecnych osób', items: ['n1', 'n2', 'n3'] }, { title: 'Wnioski', items: ['req'] }, { title: 'Dni', items: ['hol', 'today'] }],
     time: [{ title: 'Godziny dnia', items: ['ok', 'warn', 'bad'] }, { title: 'Nieobecności', items: ['tLeave', 'tSick'] }, { title: 'Dni', items: ['tHol', 'today'] }]
   };
 
