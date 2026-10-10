@@ -113,7 +113,7 @@
     // Wyjazd lub spotkanie w dniu pracy: godziny wyjazdu (domyślnie 8:00–16:00) liczą się jako czas pracy tam, gdzie nie było rejestratora.
     if ((o.trips || []).length) days.forEach(function (d, i) {
       if (d.weekend || d.holiday || d.future || gone[Absences.isoOf(new Date(d.date))]) return;
-      var win = Trips().windowOn(o.trips, personId, d.key);
+      var win = Trips().windowOn(o.trips, personId, d.key, d.today && now instanceof Date ? now.getHours() * 60 + now.getMinutes() : null);
       if (!win) return;
       var spans = (entries || []).filter(function (e) { return e.personId === personId && TL.dayKey(e.start) === d.key; }).map(function (e) {
         var a = new Date(Date.parse(e.start));
@@ -121,7 +121,7 @@
         return { a: a.getHours() * 60 + a.getMinutes(), b: TL.dayKey(b.getTime()) === d.key ? b.getHours() * 60 + b.getMinutes() : 24 * 60 };
       });
       var extra = Trips().uncovered(win, spans);
-      d.trip = { tripId: win.tripId, place: win.place, from: win.from, to: win.to, minutes: win.minutes, credited: extra, custom: win.custom };
+      d.trip = { tripId: win.tripId, place: win.place, from: win.from, to: win.to, minutes: win.minutes, planned: win.planned, credited: extra, custom: win.custom };
       if (extra <= 0) return;
       if (!firstKey || d.key < firstKey) firstKey = d.key;
       d.minutes += extra;

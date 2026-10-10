@@ -23,6 +23,16 @@
   function keyOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   /** Dzień oglądany w widoku Dzień: dziś przesunięte o `offset` dni (0 = dziś, ujemne = wstecz). */
   function shownDay(now, offset) { return new Date(now.getFullYear(), now.getMonth(), now.getDate() + Math.min(0, Number(offset) || 0), 12); }
+  /** Przesunięcie okresu (dni, tygodnie albo miesiące od dziś) potrzebne, by pokazać wskazany dzień. */
+  function offsetFor(mode, iso) {
+    var now = new Date();
+    var d = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)), 12);
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+    if (mode === 'month') return (d.getFullYear() - today.getFullYear()) * 12 + d.getMonth() - today.getMonth();
+    if (mode === 'day') return Math.min(0, Math.round((d - today) / 86400000));
+    var mon = function (x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate() - ((x.getDay() + 6) % 7), 12); };
+    return Math.round((mon(d) - mon(today)) / (7 * 86400000));
+  }
   function dayTitle(d, offset) { return (offset ? '' : 'Dziś · ') + DAYS_FULL[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_GEN[d.getMonth()] + (offset ? ' ' + d.getFullYear() : ''); }
 
   function h(minutes) { return minutes ? TS.hours(minutes) : ''; }
@@ -63,7 +73,7 @@
       return D.el('div', { class: 'ts-bar' }, [seg.node,
         D.el('div', { class: 'ts-nav', attrs: { role: 'group', 'aria-label': 'Przesuń dzień' } }, [
           UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni dzień', attrs: { 'data-fk': 'ts-prev' }, onClick: function () { a.setTime({ timeOffset: dOff - 1 }); } }),
-          D.el('h2', { class: 'ts-title', text: dayTitle(shown, dOff), attrs: { 'data-fk': 'ts-day-title' } }),
+          D.el('h2', { class: 'ts-title', attrs: { 'data-fk': 'ts-day-title' } }, [E.CalBars.dateJump({ text: dayTitle(shown, dOff), value: keyOf(shown), fk: 'ts-jump', onPick: function (v) { a.setTime({ timeOffset: offsetFor('day', v) }); } })]),
           UI.iconButton({ icon: 'chevronRight', label: 'Następny dzień', disabled: dOff >= 0, attrs: { 'data-fk': 'ts-next' }, onClick: function () { a.setTime({ timeOffset: Math.min(0, dOff + 1) }); } }),
           dOff !== 0 ? UI.button({ label: 'Dziś', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-today' }, onClick: function () { a.setTime({ timeOffset: 0 }); } }) : null
         ])
@@ -75,7 +85,7 @@
       select,
       D.el('div', { class: 'ts-nav', attrs: { role: 'group', 'aria-label': 'Przesuń okres' } }, [
         UI.iconButton({ icon: 'chevronLeft', label: mode === 'month' ? 'Poprzedni miesiąc' : 'Poprzedni tydzień', attrs: { 'data-fk': 'ts-prev' }, onClick: function () { a.setTime({ timeOffset: offset - 1 }); } }),
-        D.el('h2', { class: 'ts-title', text: title }),
+        D.el('h2', { class: 'ts-title' }, [E.CalBars.dateJump({ text: title, value: keyOf(new Date()), fk: 'ts-jump', onPick: function (v) { a.setTime({ timeOffset: offsetFor(mode, v) }); } })]),
         UI.iconButton({ icon: 'chevronRight', label: mode === 'month' ? 'Następny miesiąc' : 'Następny tydzień', attrs: { 'data-fk': 'ts-next' }, onClick: function () { a.setTime({ timeOffset: offset + 1 }); } }),
         offset !== 0 ? UI.button({ label: mode === 'month' ? 'Ten miesiąc' : 'Ten tydzień', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-today' }, onClick: function () { a.setTime({ timeOffset: 0 }); } }) : null
       ])
@@ -259,7 +269,7 @@
     var tripCard = trip ? D.el('section', { class: 'an-card ts-trip', attrs: { 'data-fk': 'ts-trip' } }, [
       D.el('div', { class: 'ts-trip__t' }, [
         D.el('b', { text: 'Wyjazd · ' + trip.place }),
-        D.el('span', { class: 't-meta', text: trip.from + '–' + trip.to + ' · ' + TL.duration(trip.minutes) + (trip.credited ? ' (doliczone do czasu pracy: ' + TL.duration(trip.credited) + ')' : (todays.length ? ' (pokrywa je rejestrator)' : '')) })
+        D.el('span', { class: 't-meta', text: trip.from + '–' + trip.to + ' · ' + TL.duration(trip.planned || trip.minutes) + (trip.credited ? ' (doliczone do czasu pracy: ' + TL.duration(trip.credited) + (trip.planned && trip.credited < trip.planned && !todays.length ? ', reszta po godzinie ' + trip.to : '') + ')' : (todays.length ? ' (pokrywa je rejestrator)' : (trip.planned && !trip.minutes ? ' (jeszcze się nie zaczął)' : ''))) })
       ]),
       D.el('p', { class: 't-meta', text: todays.length ? 'Dziś działa też pomiar czasu. Ustaw godziny wyjazdu, a reszta dnia policzy się z rejestratora.' : 'Bez pomiaru czasu wyjazd liczy się jako pełny dzień pracy. Jeśli jechałeś krócej, ustaw godziny wyjazdu.' }),
       UI.button({ label: 'Zmień godziny wyjazdu', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-trip-edit' }, onClick: function () { ctx.actions.openTrip(trip.tripId); } })

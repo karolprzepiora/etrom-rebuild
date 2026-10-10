@@ -1969,3 +1969,25 @@ button.cb-bar { cursor: pointer; }
 
 /* Telefon: tydzień w Czasie to lista dni, więc nagłówek z nazwami dni zostaje ukryty (nazwa dnia jest w każdej komórce) */
 @media (max-width: 48rem) { .ts-cal.is-week .ts-cal__dh { display: none; } }
+
+/* Tytuł okresu jako „skocz do daty” */
+.cb-jump { position: relative; font: inherit; color: inherit; background: none; border: 0; padding: 0 .35rem; margin: 0 -.35rem; border-radius: 8px; cursor: pointer; text-decoration: underline dotted transparent; text-underline-offset: 4px; }
+.cb-jump:hover, .cb-jump:focus-visible { text-decoration-color: var(--ink-3); background: color-mix(in srgb, var(--ink-3) 8%, transparent); }
+.cb-jump__in { position: absolute; left: 0; bottom: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+
+/* Telefon: miesiąc w Kalendarzu jako agenda (lista dni z wpisami), przełącznik warstw przewijany w poziomie */
+.cv-agenda { display: none; }
+.cv-ag__day { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 14%, transparent); }
+.cv-ag__h { justify-self: start; font: inherit; font-weight: 800; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); }
+.cv-ag__day.is-today .cv-ag__h { color: var(--leave); }
+.cv-ag__l { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cv-ag__abs { padding: 4px 10px; border-radius: 8px; font-size: .8rem; font-weight: 700; color: #fff; background: var(--cb-other); }
+.cv-ag__abs.is-leave { background: var(--leave); } .cv-ag__abs.is-sick { background: var(--alarm); }
+.cv-ag__abs.is-req { background: color-mix(in srgb, var(--leave) 16%, var(--sheet)); color: var(--ink); border: 1.5px solid var(--leave); }
+@media (max-width: 48rem) {
+  .cv-wrap .cb-dow, .cv-wrap .cb-grid { display: none; }
+  .cv-agenda { display: grid; }
+  .cb-layers { flex-wrap: nowrap; overflow-x: auto; }
+  .cb-layers .segmented { flex-wrap: nowrap; }
+  .cb-layers .segmented__btn { white-space: nowrap; }
+}

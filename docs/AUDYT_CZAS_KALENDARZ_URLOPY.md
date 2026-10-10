@@ -20,12 +20,12 @@
 6. (zrobione) Podgląd wpływu przy składaniu wniosku (kto jeszcze nieobecny, terminy etapów) dla pracownika, nie tylko dla decydenta.
 7. (zrobione) Powiadomienia o decyzji (Skrzynka lub Aktualności, potem e-mail).
 
-### Szybkie wygrane (niski koszt)
-8. Legenda reaguje na wybraną warstwę („Pokaż”).
-9. Wyjazd w bieżącym dniu liczony do czasu pracy dopiero od godziny rozpoczęcia, z podziałem na zaplanowane i zrealizowane.
-10. Skok do daty (klik w tytuł otwiera wybór daty) w trzech zakładkach.
-11. Skróty klawiszowe widoków i strzałek we wszystkich trzech zakładkach.
-12. Etykiety „Pokaż” na telefonie nie zawijają się; agenda zamiast kafli miesiąca na telefonie.
+### Szybkie wygrane (niski koszt). Punkty 8–12 wdrożone 10.10.2026
+8. (zrobione) Legenda reaguje na wybraną warstwę („Pokaż”).
+9. (zrobione) Wyjazd w bieżącym dniu liczony do czasu pracy dopiero od godziny rozpoczęcia, z podziałem na zaplanowane i zrealizowane.
+10. (zrobione) Skok do daty (klik w tytuł otwiera wybór daty) w trzech zakładkach.
+11. (zrobione) Skróty klawiszowe widoków i strzałek we wszystkich trzech zakładkach.
+12. (zrobione) Etykiety „Pokaż” na telefonie nie zawijają się; agenda zamiast kafli miesiąca na telefonie.
 
 ### Wartość dodana (średni)
 13. Urlop zaległy (ważny do 30 września), wymiar proporcjonalny dla nowych osób, opieka na dziecko (2 dni), okolicznościowy, bezpłatny; alert o wygasającym urlopie.

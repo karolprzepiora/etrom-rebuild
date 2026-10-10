@@ -493,7 +493,11 @@
     var toolbar = D.el('div', { class: 'ts-bar lv-bar' }, [whoSeg.node, viewSeg.node,
       D.el('div', { class: 'ts-nav', attrs: { role: 'group', 'aria-label': 'Przesuń okres' } }, [
       UI.iconButton({ icon: 'chevronLeft', label: mode === 'year' ? 'Poprzedni rok' : 'Poprzedni miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-prev' }, onClick: function () { shift(-1); } }),
-      D.el('h2', { class: 'ts-title', text: title }),
+      D.el('h2', { class: 'ts-title' }, [CB.dateJump({ text: title, value: mode === 'year' ? year + '-' + n2(now.getMonth() + 1) + '-' + n2(now.getDate()) : iso(base.getFullYear(), base.getMonth(), 1), fk: 'lv-jump', onPick: function (v) {
+        var d = Cal.parse(v);
+        if (mode === 'year') ctx.actions.setLeave({ year: d.getFullYear(), sel: null });
+        else ctx.actions.setLeave({ monthOffset: (d.getFullYear() - now.getFullYear()) * 12 + d.getMonth() - now.getMonth() });
+      } })]),
       UI.iconButton({ icon: 'chevronRight', label: mode === 'year' ? 'Następny rok' : 'Następny miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-next' }, onClick: function () { shift(1); } }),
       (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null
       ]),

@@ -62,3 +62,13 @@ test('godziny wyjazdu: domyślnie 8:00–16:00, własne po zapisie; rejestrator 
   assert.equal(T.uncovered(win, [{ a: 8 * 60, b: 10 * 60 }]), 360);
   assert.equal(T.uncovered(win, [{ a: 7 * 60, b: 9 * 60 }, { a: 8 * 60 + 30, b: 12 * 60 }, { a: 15 * 60, b: 18 * 60 }]), 180);
 });
+
+test('okno wyjazdu dziś liczy się tylko do bieżącej godziny', () => {
+  const res = T.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-12', place: 'Lipnica' }, [{ id: 'p-1' }]);
+  const at = (h) => T.windowOn(res.list, 'p-1', '2026-10-12', h * 60);
+  assert.equal(at(7).minutes, 0);
+  assert.equal(at(10).minutes, 120);
+  assert.equal(at(10).planned, 480);
+  assert.equal(at(18).minutes, 480);
+  assert.equal(T.windowOn(res.list, 'p-1', '2026-10-12').minutes, 480);
+});

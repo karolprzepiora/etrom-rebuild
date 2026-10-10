@@ -98,7 +98,7 @@
       UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni ' + unit, size: 'sm', attrs: { 'data-fk': 'cv-prev' }, onClick: function () { shift(-1); } }),
       UI.iconButton({ icon: 'chevronRight', label: 'Następny ' + unit, size: 'sm', attrs: { 'data-fk': 'cv-next' }, onClick: function () { shift(1); } }),
       UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'cv-today', 'data-tooltip': 'D' }, onClick: function () { ctx.actions.setTime({ calAnchor: null, calDay: null }); } }),
-      D.el('h2', { class: 'cv-title', text: title }),
+      D.el('h2', { class: 'cv-title' }, [CB.dateJump({ text: title, value: anchor, fk: 'cv-jump', onPick: function (v) { ctx.actions.setTime({ calAnchor: v, calDay: v }); } })]),
       D.el('span', { class: 'cv-bar__fill' }),
       UI.button({ label: '.ics', variant: 'secondary', size: 'sm', icon: 'download', attrs: { 'data-fk': 'cv-ics', 'data-tooltip': 'Pobierz widoczny zakres do kalendarza w telefonie lub Outlooku' }, onClick: function () { ctx.actions.exportIcs(data.items, 'ETROM'); } }),
       addBtn
@@ -231,6 +231,24 @@
       return D.el('div', { class: 'cb-layers', attrs: { 'data-fk': 'cv-layers' } }, [D.el('span', { class: 'cb-layers__l', text: 'Pokaż' }), seg.node]);
     }
 
+    /** Telefon: zamiast małych kafli miesiąc jako lista dni z wpisami (kafle chowa CSS). */
+    function agenda() {
+      var days = [];
+      data.cells.forEach(function (c) {
+        if (c.out) return;
+        var abs = showAbs ? c.events.filter(function (e) { return e.kind === 'absence'; }) : [];
+        var items = dayItems(c);
+        if (!abs.length && !items.length) return;
+        days.push(D.el('section', { class: 'cv-ag__day' + (c.today ? ' is-today' : '') }, [
+          D.el('button', { class: 'cv-ag__h', attrs: { type: 'button', 'data-fk': 'cv-ag-day' }, on: { click: function () { openDay(c.key); } } }, [longDay(c.key) + (c.holiday ? ' · ' + c.holiday : '')]),
+          D.el('ul', { class: 'cv-ag__l' }, abs.map(function (e) {
+            return D.el('li', { class: 'cv-ag__abs is-' + CB.kindOf(e.absKind, e.pending), text: absLabel(e, byPerson[e.personId]) });
+          }).concat(items.map(function (e) { return D.el('li', null, [chipNode(e)]); })))
+        ]));
+      });
+      return D.el('div', { class: 'cv-agenda', attrs: { 'data-fk': 'cv-agenda' } }, days.length ? days : [D.el('p', { class: 'cv-empty', text: 'Nic nie jest zaplanowane w tym miesiącu.' })]);
+    }
+
     /* ---------- widok: miesiąc ---------- */
     function monthGrid() {
       var parts = [D.el('div', { class: 'cb-dow' }, DOW.map(function (n) { return D.el('span', { text: n.toLowerCase(), attrs: { role: 'columnheader' } }); }))];
@@ -254,7 +272,8 @@
       }
       parts.push(grid);
       gridKeys(grid);
-      return D.el('div', { class: 'cb cv-wrap' }, parts.concat([CB.legendBar('calendar')]));
+      parts.push(agenda());
+      return D.el('div', { class: 'cb cv-wrap' }, parts.concat([CB.legendBar('calendar', { layer: layer })]));
     }
 
     /* ---------- widok: tydzień ---------- */
@@ -272,7 +291,7 @@
       var grid = D.el('div', { class: 'cb-wcols', attrs: { role: 'grid', 'aria-label': title } }, cols);
       gridKeys(grid);
       return D.el('div', { class: 'cb cb--week cv-week' }, [
-        lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid, CB.legendBar('calendar')
+        lane ? D.el('div', { class: 'cb-lanehead', text: 'Nieobecni w tym tygodniu' }) : null, lane, grid, CB.legendBar('calendar', { layer: layer })
       ]);
     }
 
@@ -298,7 +317,7 @@
           return { cls: cls.trim(), tip: tipParts.join(' · '), onClick: function (k) { openDay(k); } };
         }, today));
       }
-      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legendBar('calendar')])]);
+      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legendBar('calendar', { layer: layer })])]);
     }
 
     /* ---------- panel dnia ---------- */

@@ -139,14 +139,26 @@
     time: [{ title: 'Godziny dnia', items: ['ok', 'warn', 'bad'] }, { title: 'Nieobecności', items: ['tLeave', 'tSick'] }, { title: 'Dni', items: ['tHol', 'today'] }]
   };
 
+  /** Grupy legendy dla rodzaju kalendarza; przy wybranej warstwie „Pokaż” zostają tylko pasujące oznaczenia. */
+  function groupsFor(kind, opts) {
+    var all = GROUPS[kind] || GROUPS.calendar;
+    var layer = opts && opts.layer;
+    if (kind !== 'calendar' || !layer || layer === 'all') return all;
+    if (layer === 'abs') return all.filter(function (g) { return g.title !== 'Wydarzenia'; });
+    var keep = layer === 'dl' ? ['dl'] : ['trip', 'meet'];
+    return all.filter(function (g) { return g.title !== 'Nieobecności'; }).map(function (g) {
+      return g.title === 'Wydarzenia' ? { title: g.title, items: g.items.filter(function (k) { return keep.indexOf(k) >= 0; }) } : g;
+    });
+  }
+
   function symbol(key) {
     var it = ITEMS[key];
     return D.el('span', { class: 'cb-sy ' + it.c, attrs: { 'aria-hidden': 'true' }, text: it.t });
   }
 
   /** Okno „Legenda”: trzy kolumny z miniaturą, nazwą i jednym zdaniem objaśnienia. */
-  function legendBody(kind) {
-    var cols = (GROUPS[kind] || GROUPS.calendar).map(function (g) {
+  function legendBody(kind, opts) {
+    var cols = groupsFor(kind, opts).map(function (g) {
       return D.el('section', { class: 'cb-lgcol' }, [D.el('h3', { text: g.title })].concat(g.items.map(function (k) {
         var it = ITEMS[k];
         return D.el('div', { class: 'cb-lgrow' }, [symbol(k), D.el('span', null, [D.el('b', { text: it.name }), D.el('small', { text: it.desc })])]);
@@ -156,18 +168,28 @@
   }
 
   /** Legenda pod kalendarzem: jedna linia grup + przycisk „Legenda” z objaśnieniami. kind: calendar | leave | team | time. */
-  function legendBar(kind) {
-    var groups = (GROUPS[kind] || GROUPS.calendar).map(function (g) {
+  function legendBar(kind, opts) {
+    var groups = groupsFor(kind, opts).map(function (g) {
       return D.el('div', { class: 'cb-lg__g' }, [D.el('i', { text: g.title })].concat(g.items.map(function (k) {
         return D.el('span', { class: 'cb-lg__i' }, [symbol(k), D.el('span', { text: ITEMS[k].short })]);
       })));
     });
     var help = E.UI.button({
       label: 'Legenda', variant: 'ghost', size: 'sm', icon: 'info', attrs: { 'data-fk': 'cb-legend-open', 'aria-haspopup': 'dialog' },
-      onClick: function () { E.Dialog.openDrawer({ title: 'Legenda', subtitle: 'Znaczenie kolorów i oznaczeń w kalendarzu.', content: legendBody(kind) }); }
+      onClick: function () { E.Dialog.openDrawer({ title: 'Legenda', subtitle: 'Znaczenie kolorów i oznaczeń w kalendarzu.', content: legendBody(kind, opts) }); }
     });
     return D.el('div', { class: 'cb-lg', attrs: { 'data-fk': 'cb-legend' } }, [D.el('div', { class: 'cb-lg__groups' }, groups), help]);
   }
 
-  E.CalBars = { kindOf: kindOf, weekRow: weekRow, lanes: lanes, stripCls: stripCls, top: top, legendBar: legendBar, TEXT: TEXT };
+  /** Tytuł okresu jako przycisk „skocz do daty”: klik otwiera wybór daty, wybór wywołuje onPick('YYYY-MM-DD'). */
+  function dateJump(o) {
+    var input = D.el('input', { class: 'cb-jump__in', attrs: { type: 'date', value: o.value || '', tabindex: '-1', 'aria-hidden': 'true' } });
+    input.addEventListener('change', function () { if (input.value) o.onPick(input.value); });
+    return D.el('button', {
+      class: 'cb-jump', attrs: { type: 'button', 'aria-label': 'Skocz do daty: ' + o.text, 'data-tooltip': 'Skocz do daty', 'data-fk': o.fk || 'cb-jump' },
+      on: { click: function () { try { input.showPicker(); } catch (e) { input.focus(); input.click(); } } }
+    }, [D.el('span', { text: o.text }), input]);
+  }
+
+  E.CalBars = { dateJump: dateJump, kindOf: kindOf, weekRow: weekRow, lanes: lanes, stripCls: stripCls, top: top, legendBar: legendBar, TEXT: TEXT };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

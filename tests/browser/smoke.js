@@ -2381,7 +2381,17 @@ async function main() {
     check('czas: „poprzedni dzień” pokazuje wcześniejszy dzień z przyciskiem „Dziś”, a dopisanie czasu ma datę tego dnia',
       (await evaluate('const t = document.querySelector("[data-fk=ts-day-title]").textContent; return !/Dziś ·/.test(t) && !!document.querySelector("#view-time [data-fk=ts-today]");'))
       && await (async () => { await evaluate('document.querySelector("#view-time [data-fk=time-add]").click(); return true;'); await sleep(350); const ok = await evaluate('const d = document.getElementById("tm-date"); return !!d && d.value !== "" && d.value < new Date().toISOString().slice(0, 10);'); await evaluate('window.ETROM.app.store.set({ timeForm: null }); return true;'); return ok; })());
-    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: 0 }); window.ETROM.app.actions.setMe("p-8"); return true;');
+    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: 0 }); return true;');
+    await sleep(300);
+    check('czas: tytuł okresu to „skocz do daty”, a strzałka ← na klawiaturze cofa tydzień',
+      (await evaluate('return !!document.querySelector("#view-time [data-fk=ts-jump] input[type=date]");'))
+      && await (async () => { await evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })); return true;'); await sleep(300); return evaluate('return window.ETROM.app.store.getState().timeOffset === -1;'); })());
+    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: 0 }); location.hash = "#/kalendarz"; window.ETROM.app.actions.setCal({ view: "month", layer: "abs", rail: "none" }); return true;');
+    await sleep(400);
+    check('kalendarz: legenda zależy od warstwy „Pokaż” (przy nieobecnościach bez wydarzeń), a miesiąc ma agendę na telefon',
+      (await evaluate('const t = document.querySelector("#view-calendar .cb-lg__groups").textContent; return /urlop/.test(t) && !/termin/.test(t) && !!document.querySelector("#view-calendar [data-fk=cv-agenda]") && !!document.querySelector("#view-calendar [data-fk=cv-jump]");'))
+      && await (async () => { await evaluate('window.ETROM.app.actions.setCal({ layer: "all" }); return true;'); await sleep(300); return evaluate('return /termin/.test(document.querySelector("#view-calendar .cb-lg__groups").textContent);'); })());
+    await evaluate('window.ETROM.app.actions.setMe("p-8"); return true;');
     /* 38k. Zespół → Konta i role: tylko dyrekcja, kreator, hasło tymczasowe, stawki z historią */
     await evaluate('location.hash = "#/zespol"; return true;');
     await sleep(300);

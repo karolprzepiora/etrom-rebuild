@@ -4623,6 +4623,44 @@
 
   var pendingG = false;
 
+  /** Skróty Kalendarza, Czasu i Urlopów: ← → zmieniają okres, D wraca do dziś, litery wybierają widok. Zwraca true, gdy klawisz obsłużono. */
+  function handlePeriodKeys(route, event, state) {
+    var key = String(event.key);
+    var lower = key.toLowerCase();
+    var dir = key === 'ArrowLeft' ? -1 : (key === 'ArrowRight' ? 1 : 0);
+    var inGrid = event.target && event.target.closest && event.target.closest('[data-k]');
+    if (dir && (event.defaultPrevented || inGrid)) return false;
+    function done() { event.preventDefault(); return true; }
+    if (route === 'calendar') {
+      if (!dir) return false;
+      var mode = ((state.prefs.cal || {}).view) || 'month';
+      var Cal = E.Calendar;
+      var anchor = state.calAnchor || Cal.isoOf(new Date());
+      var d = Cal.parse(anchor);
+      var next = mode === 'day' ? Cal.addDays(anchor, dir) : (mode === 'week' ? Cal.addDays(anchor, 7 * dir) : (mode === 'year' ? Cal.isoOf(new Date(d.getFullYear() + dir, d.getMonth(), 1)) : Cal.isoOf(new Date(d.getFullYear(), d.getMonth() + dir, 1))));
+      store.set({ calAnchor: next, calDay: null });
+      return done();
+    }
+    if (route === 'time') {
+      var tm = state.timeMode === 'month' ? 'month' : (state.timeMode === 'day' ? 'day' : 'week');
+      var views = { z: 'day', w: 'week', m: 'month' };
+      if (views[lower]) { store.set({ timeMode: views[lower], timeOffset: 0 }); return done(); }
+      if (lower === 'd') { store.set({ timeOffset: 0 }); return done(); }
+      if (!dir) return false;
+      var off = (state.timeOffset || 0) + dir;
+      store.set({ timeOffset: tm === 'day' ? Math.min(0, off) : off });
+      return done();
+    }
+    var lv = state.leave || {};
+    var lmode = lv.view === 'month' ? 'month' : 'year';
+    if (lower === 'm' || lower === 'r') { setLeave({ view: lower === 'm' ? 'month' : 'year', sel: null }); return done(); }
+    if (lower === 'd') { setLeave({ monthOffset: 0, year: new Date().getFullYear() }); return done(); }
+    if (!dir) return false;
+    if (lmode === 'year') setLeave({ year: (Number(lv.year) || new Date().getFullYear()) + dir, sel: null });
+    else setLeave({ monthOffset: (Number(lv.monthOffset) || 0) + dir });
+    return done();
+  }
+
   function onKeydown(event) {
     if (event.defaultPrevented) return;
 
@@ -4664,6 +4702,9 @@
       var ck = String(event.key).toLowerCase();
       if (calKeys[ck]) { event.preventDefault(); setCal({ view: calKeys[ck] }); return; }
       if (ck === 'd') { event.preventDefault(); store.set({ calAnchor: null, calDay: null }); return; }
+    }
+    if ((route === 'calendar' || route === 'time' || route === 'leave') && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+      if (handlePeriodKeys(route, event, state)) return;
     }
     if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); toggleTimerKey(); return; }
     if (event.key === 'g' || event.key === 'G') {

@@ -76,12 +76,16 @@
    * Godziny wyjazdu osoby w dniu `iso` (domyślnie 8:00–16:00, jak norma dnia): { tripId, place, projectId, from, to, fromMin, toMin, minutes } albo null.
    * Wyjazd w czasie pracy zastępuje rejestrator tylko tam, gdzie rejestratora nie było (patrz `uncovered`).
    */
-  function windowOn(list, personId, iso) {
+  function windowOn(list, personId, iso, nowMin) {
     var t = onDay(list, iso, personId)[0];
     if (!t) return null;
     var from = t.timeFrom || DEFAULT_FROM;
     var to = t.timeTo || DEFAULT_TO;
-    return { tripId: t.id, place: t.place, kind: t.kind, projectId: t.projectId, custom: !!t.timeFrom, from: from, to: to, fromMin: clockMin(from), toMin: clockMin(to), minutes: clockMin(to) - clockMin(from) };
+    var fromMin = clockMin(from);
+    var fullTo = clockMin(to);
+    /* Dziś liczy się tylko to, co już minęło: `nowMin` (minuta doby) przycina koniec okna. */
+    var toMin = typeof nowMin === 'number' ? Math.max(fromMin, Math.min(fullTo, nowMin)) : fullTo;
+    return { tripId: t.id, place: t.place, kind: t.kind, projectId: t.projectId, custom: !!t.timeFrom, from: from, to: to, fromMin: fromMin, toMin: toMin, minutes: toMin - fromMin, planned: fullTo - fromMin };
   }
 
   /** Minuty okna wyjazdu, których nie pokrywają przedziały z rejestratora ([{ a, b }] w minutach doby). */

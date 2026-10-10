@@ -63,7 +63,7 @@
         from: '', to: '', breakMinutes: 0, projects: [], absenceCode: '', title: '', onDemand: false, future: key > todayKey, norm: 0
       };
       // Wyjazd lub spotkanie: godziny wyjazdu (domyślnie 8:00–16:00) to zwykła praca, bez wzmianki o wyjeździe.
-      var win = !weekend && !holiday && !info && key <= todayKey && (opt.trips || []).length ? Trips().windowOn(opt.trips, personId, key) : null;
+      var win = !weekend && !holiday && !info && key <= todayKey && (opt.trips || []).length ? Trips().windowOn(opt.trips, personId, key, key === todayKey ? new Date(nowMs).getHours() * 60 + new Date(nowMs).getMinutes() : null) : null;
       var extra = 0;
       if (win) {
         var spans = list.map(function (e) {
