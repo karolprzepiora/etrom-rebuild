@@ -162,7 +162,16 @@ test('skrzynka: bez dodatkowych źródeł działa jak dawniej, a ekran pomija za
   assert.equal(screen.total, 0, 'praca własna nie liczy się do Skrzynki');
   const lead = Inbox.forScreen(Inbox.build('p-1', [p], [], NOW, {}, [], { orders: [], people: PEOPLE, absences: [] }));
   assert.equal(lead.total, 1);
-  assert.deepEqual(Object.keys(lead.counts).sort(), ['approve', 'leave', 'mail', 'order', 'project']);
+  assert.deepEqual(Object.keys(lead.counts).sort(), ['approve', 'leave', 'mail', 'order', 'project', 'timeweek']);
+});
+
+test('skrzynka: zgłoszony tydzień czasu trafia do zarządu, nie do właściciela', () => {
+  const locks = [{ id: 'p-2:2026-10-05', personId: 'p-2', week: '2026-10-05', status: 'submitted' }, { id: 'p-3:2026-10-05', personId: 'p-3', week: '2026-10-05', status: 'approved' }];
+  const extra = { orders: [], people: PEOPLE, absences: [], timeLocks: locks };
+  const mgmt = Inbox.build('p-1', [project()], [], NOW, {}, [], extra).items.filter((i) => i.kind === 'timeweek');
+  assert.equal(mgmt.length, 1);
+  assert.equal(mgmt[0].lock.personId, 'p-2');
+  assert.equal(Inbox.build('p-2', [project()], [], NOW, {}, [], extra).items.filter((i) => i.kind === 'timeweek').length, 0);
 });
 
 test('skrzynka: odłożona pozycja ukrywa się także dla zleceń i wniosków', () => {

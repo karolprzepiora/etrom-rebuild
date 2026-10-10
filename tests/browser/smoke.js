@@ -2421,13 +2421,17 @@ async function main() {
     /* 38l. Czas: zamykanie tygodnia, blokada, mapa kompletności, zatwierdzenie */
     await evaluate('window.ETROM.app.actions.setMe("p-8"); location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
     await sleep(400);
-    check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd widzi mapę kompletności i go zatwierdza',
+    check('czas: pracownik zamyka tydzień, tydzień dostaje blokadę, a zarząd dostaje pozycję w Skrzynce, widzi mapę kompletności i go zatwierdza',
       (await evaluate('const b = document.querySelector("[data-fk=ts-wk-close]"); if (!b) return false; b.click(); return true;'))
       && await (async () => {
         await sleep(350);
         const locked = await evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l.length === 1 && l[0].personId === "p-8" && l[0].status === "submitted" && window.ETROM.WeekLock.isLocked(l, "p-8", l[0].week);');
         if (!locked) return false;
-        await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
+        await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/skrzynka"; return true;');
+        await sleep(400);
+        const inb = await evaluate('return !!document.querySelector("#view-inbox [data-kind=timeweek] [data-fk^=inbox-week-ok-]");');
+        if (!inb) return false;
+        await evaluate('location.hash = "#/czas"; window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: -1 }); return true;');
         await sleep(400);
         const map = await evaluate('return !!document.querySelector("[data-fk=ts-completeness]") && !!document.querySelector("[data-fk=ts-cm-approve]");');
         if (!map) return false;

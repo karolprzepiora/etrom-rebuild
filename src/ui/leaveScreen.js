@@ -598,7 +598,6 @@
       (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null
       ]),
       D.el('span', { class: 'lv-bar__fill' }),
-      exportMenu(ctx, management),
       UI.button({ label: 'Zgłoś L4', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'lv-sick' }, onClick: function () { ctx.actions.openSickReport(); } }),
       UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
 
@@ -620,7 +619,7 @@
     if (management) items.push({ id: 'rules', title: 'Zasady urlopów', icon: 'settings', tone: 'violet', side: [rulesPanel(state, vctx)] });
     var railPref = lv.rail || 'none';
     var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
-    return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
+    return { tools: exportMenu(ctx, management), summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
       UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [noticeBanners(state, vctx, me, now), carryBanner(bal, ref, now, shownYear), stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])].filter(Boolean), onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
   }
 

@@ -532,7 +532,8 @@
 
     var entries = TimeLog.normalizeEntries(source.entries, projects.map(function (project) { return project.id; }));
     var mail = Mail.normalizeEntries(source.mail, projects.map(function (project) { return project.id; }));
-    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: Absences.normalize(source.absences), trips: Trips.normalize(source.trips), orders: Orders.normalize(source.orders), settings: Absences.normalizeSettings(source.settings), timeLocks: (typeof module !== 'undefined' && module.exports ? require('./weeklock.js') : root.ETROM.WeekLock).normalize(source.timeLocks), audit: Accounts.normalizeAudit(source.audit), cases: Cases.normalize(source.cases, projects.map(function (project) { return project.id; })) };
+    var legacy = Absences.splitLegacy(Absences.normalize(source.absences));
+    return { version: WORKSPACE_VERSION, projects: projects, people: people, entries: entries, mail: mail, social: Social.normalize(source.social), library: Library.normalize(source.library), absences: legacy.absences, trips: Trips.normalize((Array.isArray(source.trips) ? source.trips : []).concat(legacy.trips)), orders: Orders.normalize(source.orders), settings: Absences.normalizeSettings(source.settings), timeLocks: (typeof module !== 'undefined' && module.exports ? require('./weeklock.js') : root.ETROM.WeekLock).normalize(source.timeLocks), audit: Accounts.normalizeAudit(source.audit), cases: Cases.normalize(source.cases, projects.map(function (project) { return project.id; })) };
   }
 
   function emptyWorkspace() {

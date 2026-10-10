@@ -12,7 +12,7 @@
 
 ## Lista optymalizacji (priorytet)
 ### Przed domknięciem (wysoki). Punkty 2–7 wdrożone 10.10.2026
-1. Migracja starych szkoleń i „innych” nieobecności do wyjazdów (dziś są szare w Kalendarzu, a ukryte w Urlopach).
+1. (zrobione) Migracja starych szkoleń i „innych” nieobecności do wyjazdów (dziś są szare w Kalendarzu, a ukryte w Urlopach).
 2. (zrobione) Anulowanie zatwierdzonego, przyszłego urlopu (prośba do zarządu, zarząd może od razu).
 3. (zrobione) Edycja i skracanie L4 („wróciłem wcześniej”, „przedłuż”).
 4. (zrobione) Klik w własny pasek lub wniosek w Urlopach otwiera szczegóły (wycofaj, anuluj, zmień).

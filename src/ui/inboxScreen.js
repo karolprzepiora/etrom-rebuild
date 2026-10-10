@@ -14,12 +14,13 @@
   var Inbox = E.Inbox;
   var Team = E.Team;
 
-  var ICONS = { approve: 'checkCircle', order: 'checklist', leave: 'leave', mail: 'mail', project: 'alertCircle', returned: 'alert' };
+  var ICONS = { approve: 'checkCircle', order: 'checklist', leave: 'leave', timeweek: 'clock', mail: 'mail', project: 'alertCircle', returned: 'alert' };
   var TABS = [
     { value: 'all', label: 'Wszystko' },
     { value: 'approve', label: 'Zatwierdzenia' },
     { value: 'order', label: 'Zlecenia' },
     { value: 'leave', label: 'Urlopy' },
+    { value: 'timeweek', label: 'Czas pracy' },
     { value: 'mail', label: 'Pisma' },
     { value: 'project', label: 'Projekty' }
   ];
@@ -36,7 +37,7 @@
     var me = Team.findPerson(state.workspace.people || [], state.prefs.me);
     if (!me) return null;
     var raw = Inbox.build(me.id, state.workspace.projects, state.workspace.mail, now, state.prefs.snoozed, state.workspace.entries, {
-      orders: state.workspace.orders || [], people: state.workspace.people || [], absences: state.workspace.absences || []
+      timeLocks: state.workspace.timeLocks || [], orders: state.workspace.orders || [], people: state.workspace.people || [], absences: state.workspace.absences || []
     });
     var screen = Inbox.forScreen(raw);
     return { me: me, items: screen.items, snoozed: screen.snoozed, counts: screen.counts, total: screen.total, urgent: screen.urgent };
@@ -59,6 +60,12 @@
 
   function openItem(item, actions) {
     if (item.kind === 'order') { actions.setOrders({ tab: 'mine' }); root.location.hash = '#/zlecenia'; return; }
+    if (item.kind === 'timeweek') {
+      var wk = Math.round((root.ETROM.Calendar.parse(item.lock.week) - root.ETROM.Calendar.parse(root.ETROM.WeekLock.mondayOf(root.ETROM.Calendar.isoOf(new Date())))) / (7 * 86400000));
+      actions.setTime({ timeMode: 'week', timeOffset: wk, timePerson: item.lock.personId });
+      root.location.hash = '#/czas';
+      return;
+    }
     if (item.kind === 'leave') { actions.setLeave({ who: 'me', rail: 'inbox' }); root.location.hash = '#/urlopy'; return; }
     if (item.task) actions.inspect({ kind: 'task', projectId: item.project.id, stageId: item.stage.id, taskId: item.task.id });
     else if (item.kind === 'mail') actions.openMailCard(item.entry.id);
@@ -96,6 +103,14 @@
     }
     if (item.kind === 'order') {
       return [UI.button({ label: 'Otwórz zlecenie', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-order-' + item.order.id }, onClick: function () { openItem(item, actions); } })];
+    }
+    if (item.kind === 'timeweek') {
+      var lk = item.lock;
+      return [
+        UI.button({ label: 'Zatwierdź', icon: 'check', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-week-ok-' + lk.id }, onClick: function () { actions.decideWeek(lk.personId, lk.week, 'approve'); } }),
+        UI.button({ label: 'Zwróć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-week-no-' + lk.id }, onClick: function () { actions.decideWeek(lk.personId, lk.week, 'return'); } }),
+        UI.button({ label: 'Otwórz tydzień', variant: 'ghost', size: 'sm', onClick: function () { openItem(item, actions); } })
+      ];
     }
     if (item.kind === 'leave') {
       var id = item.absence.id;

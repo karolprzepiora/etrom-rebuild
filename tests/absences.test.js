@@ -252,3 +252,20 @@ test('okresy zamknięte blokują urlop pracownika, ale nie zarząd, a ustawienia
   assert.equal(s.blackouts.length, 1);
   assert.equal(s.absenceVisibility, 'who');
 });
+
+test('migracja: dawne szkolenia i inne nieobecności stają się wyjazdami, urlopy i L4 zostają', () => {
+  const Model = require('../src/core/model.js');
+  const list = [
+    { id: 'a1', personId: 'p-1', kind: 'training', from: '2026-03-02', to: '2026-03-03', status: 'approved', note: 'Szkolenie BHP' },
+    { id: 'a2', personId: 'p-1', kind: 'other', from: '2026-04-01', to: '2026-04-01', status: 'approved' },
+    { id: 'a3', personId: 'p-1', kind: 'leave', from: '2026-05-04', to: '2026-05-05', status: 'approved' },
+    { id: 'a4', personId: 'p-1', kind: 'training', from: '2026-06-01', to: '2026-06-01', status: 'rejected' }
+  ];
+  const ws = Model.normalizeWorkspace({ absences: list, trips: [] });
+  assert.deepEqual(ws.absences.map((a) => a.id), ['a3']);
+  assert.equal(ws.trips.length, 2);
+  assert.equal(ws.trips[0].place, 'Szkolenie BHP');
+  assert.equal(ws.trips[1].place, 'Poza biurem');
+  const again = Model.normalizeWorkspace(ws);
+  assert.equal(again.trips.length, 2, 'ponowna normalizacja nie dubluje');
+});

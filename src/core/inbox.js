@@ -13,19 +13,21 @@
   var Orders = node ? require('./orders.js') : root.ETROM.Orders;
   var Absences = node ? require('./absences.js') : root.ETROM.Absences;
   var Budget = node ? require('./budget.js') : root.ETROM.Budget;
+  var Calendar = node ? require('./calendar.js') : root.ETROM.Calendar;
 
   var KINDS = {
     approve: { label: 'Do zatwierdzenia', order: 0 },
     order: { label: 'Zlecenie do wykonania', order: 1 },
     leave: { label: 'Wniosek do decyzji', order: 2 },
+    timeweek: { label: 'Tydzień czasu do zatwierdzenia', order: 2.5 },
     mail: { label: 'Pismo czeka na odpowiedź', order: 3 },
     project: { label: 'Projekt w alarmie', order: 4 },
     returned: { label: 'Zwrócone do poprawy', order: 5 }
   };
-  var KIND_ORDER = ['approve', 'order', 'leave', 'mail', 'project', 'returned'];
+  var KIND_ORDER = ['approve', 'order', 'leave', 'timeweek', 'mail', 'project', 'returned'];
   // Skrzynka = to, czego czekają ode mnie inni. Zadania zwrócone do poprawy to moja własna praca,
   // więc zostają w „Mojej pracy” i nie wchodzą na ekran Skrzynki ani do jej licznika.
-  var SCREEN_KINDS = ['approve', 'order', 'leave', 'mail', 'project'];
+  var SCREEN_KINDS = ['approve', 'order', 'leave', 'timeweek', 'mail', 'project'];
   var MAX_SNOOZED = 200;
 
   function dateKey(now) {
@@ -68,6 +70,23 @@
         detail: (Orders.KINDS[o.kind] || 'Zlecenie') + ' · od ' + (from ? Team.fullName(from) : 'kogoś') + ' · ' + Orders.ageText(Orders.elapsedMs(o, ref)),
         why: 'Ktoś zlecił Ci to jako osobny krok. Zamknij zlecenie albo przekaż je dalej na ekranie Zleceń.',
         days: null, urgent: Orders.tone(o, ref) === 'late'
+      };
+    });
+  }
+
+  /** Tygodnie czasu pracy zgłoszone do zatwierdzenia: zarząd albo lider projektu osoby. */
+  function weekItems(personId, locks, people, projects, ref) {
+    var WL = typeof module !== 'undefined' && module.exports ? require('./weeklock.js') : root.ETROM.WeekLock;
+    var management = Budget.isManagement(personId, people || []);
+    return (locks || []).filter(function (l) { return l.status === 'submitted' && WL.canDecide(personId, l.personId, projects || [], management); }).map(function (l) {
+      var who = Team.findPerson(people || [], l.personId);
+      var end = Calendar.addDays(l.week, 6);
+      return {
+        key: 'week:' + l.id, kind: 'timeweek', lock: l, project: null,
+        title: (who ? Team.fullName(who) : 'Osoba') + ' · tydzień ' + shortDay(l.week) + '–' + shortDay(end),
+        detail: 'Czas pracy zamknięty przez pracownika',
+        why: 'Zatwierdź tydzień albo zwróć go do poprawy. Do decyzji wpisy są zablokowane.',
+        days: null, urgent: false
       };
     });
   }
@@ -140,7 +159,7 @@
     }
 
     if (personId && extra) {
-      all = all.concat(orderItems(personId, extra.orders, extra.people, projects, ref), leaveItems(personId, extra.absences, extra.people, projects, ref));
+      all = all.concat(orderItems(personId, extra.orders, extra.people, projects, ref), leaveItems(personId, extra.absences, extra.people, projects, ref), weekItems(personId, extra.timeLocks, extra.people, projects, ref));
     }
 
     all.sort(function (a, b) {

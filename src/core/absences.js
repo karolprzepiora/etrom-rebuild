@@ -397,7 +397,21 @@
     return absence.kind === 'sick' ? 'who' : 'full';
   }
 
-  var api = { LEAVE_KINDS: LEAVE_KINDS, CHILDCARE_LIMIT: CHILDCARE_LIMIT, isLeaveKind: isLeaveKind, carryOf: carryOf, blackoutAt: blackoutAt, withdrawCancel: withdrawCancel, cancellable: cancellable, requestCancel: requestCancel, decideCancel: decideCancel, acknowledge: acknowledge, notices: notices, updateSick: updateSick, VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
+  /** Migracja: dawne szkolenia i „inne” nieobecności stają się wyjazdami (Kalendarz), a w Urlopach zostają tylko urlopy i L4.
+      Zwraca { absences, trips } – wyjazdy w formie surowej, do znormalizowania przez Trips. */
+  function splitLegacy(list) {
+    var keep = [];
+    var trips = [];
+    (Array.isArray(list) ? list : []).forEach(function (a) {
+      if (a && (a.kind === 'training' || a.kind === 'other')) {
+        if (a.status === 'rejected') return;
+        trips.push({ personIds: [a.personId], kind: a.kind, from: a.from, to: a.to, place: String(a.note || '').trim() || (a.kind === 'training' ? 'Szkolenie' : 'Poza biurem'), note: '', createdBy: 'migracja', createdAt: a.decidedAt || a.createdAt || '' });
+      } else keep.push(a);
+    });
+    return { absences: keep, trips: trips };
+  }
+
+  var api = { splitLegacy: splitLegacy, LEAVE_KINDS: LEAVE_KINDS, CHILDCARE_LIMIT: CHILDCARE_LIMIT, isLeaveKind: isLeaveKind, carryOf: carryOf, blackoutAt: blackoutAt, withdrawCancel: withdrawCancel, cancellable: cancellable, requestCancel: requestCancel, decideCancel: decideCancel, acknowledge: acknowledge, notices: notices, updateSick: updateSick, VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

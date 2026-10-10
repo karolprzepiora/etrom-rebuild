@@ -1223,10 +1223,35 @@
     return store.getState().workspace.entries || [];
   }
 
+  /** Zapis wpisów czasu. Zamknięty tydzień (zgłoszony lub zatwierdzony) jest chroniony tu, niezależnie od ścieżki, która go zmienia;
+      dokończenie zegara uruchomionego przed zamknięciem jest dozwolone. */
   function setEntries(producer) {
+    var ws = store.getState().workspace;
+    var locks = ws.timeLocks || [];
+    var before = ws.entries || [];
+    var next = producer(before);
+    if (locks.length) {
+      var byId = {};
+      before.forEach(function (e) { byId[e.id] = e; });
+      var nextIds = {};
+      var blocked = null;
+      next.forEach(function (e) {
+        nextIds[e.id] = 1;
+        var old = byId[e.id];
+        if (old && JSON.stringify(old) === JSON.stringify(e)) return;
+        if (old && !old.end) return;
+        if (E.WeekLock.isLocked(locks, e.personId, TL.dayKey(e.start))) blocked = e;
+      });
+      before.forEach(function (e) { if (!nextIds[e.id] && e.end && E.WeekLock.isLocked(locks, e.personId, TL.dayKey(e.start))) blocked = e; });
+      if (blocked) {
+        Toast.show({ message: 'Ten tydzień jest zamknięty. Poproś o zwrot do poprawy (lider lub zarząd), aby go edytować.', tone: 'danger', timeout: 6000 });
+        return false;
+      }
+    }
     updateWorkspace(function (workspace) {
-      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, entries: producer(workspace.entries || []) });
+      return Object.assign({}, workspace, { version: Model.WORKSPACE_VERSION, entries: next });
     });
+    return true;
   }
 
   function currentMe() {
@@ -1471,6 +1496,7 @@
     var who = personId || me;
     if (!who) { requireMe(); return; }
     if (who !== me && !E.Budget.isManagement(me, people())) { Toast.show({ message: 'Tydzień zamyka jego właściciel.', tone: 'danger' }); return; }
+    if (TL.running(entries(), who)) { Toast.show({ message: 'Najpierw zatrzymaj zegar, potem zamknij tydzień.', tone: 'danger' }); return; }
     var mgmt = E.Budget.isManagement(who, people());
     var res = E.WeekLock.submit(store.getState().workspace.timeLocks || [], who, dayIso, new Date(), mgmt);
     if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
@@ -4374,6 +4400,7 @@
   function renderLeave(state) {
     var screen = E.LeaveScreen.view(state, { actions: actions });
     nodes.leaveSummary.textContent = screen.summary;
+    D.render(nodes.leaveTools, screen.tools ? [screen.tools] : []);
     D.patch(nodes.leaveBody, [screen.body]);
   }
 
@@ -4947,6 +4974,7 @@
     nodes.analysisBody = D.byId('analysis-body');
     nodes.timeSummary = D.byId('time-summary');
     nodes.timeTools = D.byId('time-tools');
+    nodes.leaveTools = D.byId('leave-tools');
     nodes.timeBody = D.byId('time-body');
     nodes.fileInput = D.byId('import-file');
     nodes.views = { orders: D.byId('view-orders'), dashboard: D.byId('view-dashboard'), projects: D.byId('view-projects'), project: D.byId('view-project'), team: D.byId('view-team'), library: D.byId('view-library'), plan: D.byId('view-plan'), review: D.byId('view-review'), calendar: D.byId('view-calendar'), leave: D.byId('view-leave'), mywork: D.byId('view-mywork'), inbox: D.byId('view-inbox'), feed: D.byId('view-feed'), analysis: D.byId('view-analysis'), time: D.byId('view-time') };
