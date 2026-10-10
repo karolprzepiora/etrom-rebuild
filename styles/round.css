@@ -1,0 +1,40 @@
+/* Jeden standard kształtu: kapsuły dla wszystkiego, co jest etykietą, paskiem, przyciskiem lub znacznikiem;
+   duże, zaokrąglone płaszczyzny dla kart i list. Ładowany jako ostatni. */
+
+/* ---- kapsuły: etykiety, przyciski, znaczniki, paski ---- */
+.btn, .icon-btn, .badge, .count, .kbd, .skip-link, .case-card__ask,
+.kb-chip, .kb-step, .preview__chip, .pf-view__remove,
+.cb-chip, .cb-bar, .cb-sy, .tb-cell, .lv-day:not(.is-strip), .pb-trip,
+.dribbon__seg, .dribbon__track, .ts-cm__c, .tabs__tab, .table__sort { border-radius: 999px; }
+.pb-bar__clip { border-radius: 999px; }
+.ch-bar { rx: 6px; ry: 6px; }
+.trow__name:focus-visible, .project-link:focus-visible, .person__link:focus-visible { border-radius: 999px; }
+.hy-tip { border-radius: 14px; }
+
+/* ---- płaszczyzny: karty, kafle, panele, listy ---- */
+.db-card, .db-tile, .an-card, .an-tile, .an-detail, .an-focus__b, .tb-req, .ac-card, .ac-role, .ac-rates,
+.bp-stage, .lb-stage, .enow, .mail-list, .pd-attention, .pd-stat, .pd-kpi, .case-card, .set-card { border-radius: 24px; }
+.set-nav__item, .look-card { border-radius: 999px; }
+.look-card { border-radius: 22px; }
+.look-card__img { border-radius: 14px; }
+.mail-list, .table-wrap, .table, .set-group, .an-cal, .msec .mrows { overflow: hidden; }
+.table-wrap, .set-group, .set-card { border-radius: 24px; }
+.mail-list { border-radius: 26px; }
+.mrow, .trow, .pcard, .db-tile { border-radius: 22px; }
+.pd-attention__item { border-radius: 999px; }
+textarea, .fd__textarea { border-radius: 18px; }
+select, .fd__select, .input { border-radius: 999px; }
+
+/* ---- Plan i Moja praca ---- */
+.pb-scroll, .pb-person { border-radius: 26px; }
+.pb-real__d i { border-radius: 999px; }
+.pb-row--now, .pb-row--now .pb-label { border-radius: 26px 0 0 26px; }
+.pb-row--casehead .pb-label, .pb-row--case .pb-label, .pb-label--case { border-radius: 26px 0 0 26px; }
+.pb-label .pb-now { border-radius: 999px; }
+.msec--late, .mywork .msec { border-radius: 24px; }
+.sheet { border-radius: 30px; }
+
+/* ---- akcenty stanu: pełny obrys zamiast krawędzi z jednej strony ---- */
+:root:root .an-tile--bad { box-shadow: inset 0 0 0 1.5px var(--alarm); }
+:root:root .an-tile--warn { box-shadow: inset 0 0 0 1.5px var(--warn); }
+:root:root .an-card--fin { box-shadow: inset 0 0 0 1.5px var(--flow); }

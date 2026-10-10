@@ -126,10 +126,10 @@
   --space-16: 4rem;
 
   /* ---------- Promienie: rosną razem ze skalą elementu ---------- */
-  --radius-xs: 4px;       /* plakietki, pola wyboru, klawisze */
-  --radius-sm: 7px;       /* przyciski, pola, pozycje nawigacji i menu */
-  --radius-md: 10px;      /* płaszczyzny, menu, okna */
-  --radius-lg: 14px;      /* arkusz roboczy, inspektor */
+  --radius-xs: 8px;       /* plakietki, pola wyboru, klawisze */
+  --radius-sm: 12px;       /* przyciski, pola, pozycje nawigacji i menu */
+  --radius-md: 18px;      /* płaszczyzny, menu, okna */
+  --radius-lg: 26px;      /* arkusz roboczy, inspektor */
   --radius-full: 999px;
 
   /* ---------- Rozmiary ---------- */

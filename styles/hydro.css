@@ -31,7 +31,7 @@
 .hy-line { position: relative; height: 3.5rem; cursor: pointer; }
 .hy-cap { position: absolute; top: 1.25rem; height: 1rem; overflow: hidden; border-radius: 999px; background: var(--hy-track); }
 .hy-cap__fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--hy-fill); }
-.hy-cap__gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2.4px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2.4px 6px); }
+.hy-cap__gap { border-radius: 999px; border-left: 2px solid transparent; background-clip: padding-box; box-sizing: border-box; position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2.4px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2.4px 6px); }
 .hy-r.is-closed .hy-cap__fill { background: var(--ink-4); }
 
 .hy-n { position: absolute; top: .6rem; transform: translateX(-50%); height: 2.3rem; display: inline-flex; align-items: center; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--sheet); color: var(--hy-ink); font: inherit; font-family: var(--font-display); font-size: 1.4rem; letter-spacing: -.05em; box-shadow: 0 0 0 1px var(--hy-ink); cursor: pointer; transition: box-shadow .2s, background .2s, color .2s; }
