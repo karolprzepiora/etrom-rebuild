@@ -2270,6 +2270,14 @@ async function main() {
     await sleep(300);
     check('urlopy: pracownik bez zespołu nie ma „Do akceptacji”, ma saldo i przycisk wniosku',
       await evaluate('return !/Do akceptacji/.test(document.getElementById("view-leave").textContent) && !!document.querySelector(".lv-stats-row") && /Złóż wniosek/.test(document.querySelector("[data-fk=lv-new]").textContent);'));
+    await evaluate('document.querySelector("[data-fk=lv-sick]").click(); return true;');
+    await sleep(400);
+    check('urlopy: „Zgłoś L4” otwiera formularz bez wyboru osoby dla pracownika',
+      await evaluate('return !!document.getElementById("leave-form") && !document.getElementById("lv-person") && /Zgłoś L4/.test(document.getElementById("leave-form").textContent + document.body.textContent);'));
+    await evaluate('document.getElementById("lv-from").value = "2026-11-02"; document.getElementById("lv-from").dispatchEvent(new Event("change")); document.getElementById("leave-form").requestSubmit(); return true;');
+    await sleep(400);
+    check('urlopy: L4 zapisuje się od razu jako zaakceptowane i nie rusza puli urlopu',
+      await evaluate('const a = window.ETROM.app.store.getState().workspace.absences.filter(x => x.personId === "p-8" && x.kind === "sick" && x.from === "2026-11-02"); return a.length === 1 && a[0].status === "approved";'));
     await evaluate('window.ETROM.app.actions.openLeaveRequest({ from: "2026-12-14", to: "2026-12-15", kind: "leave" }); return true;');
     await sleep(400);
     await evaluate('document.getElementById("leave-form").requestSubmit(); return true;');

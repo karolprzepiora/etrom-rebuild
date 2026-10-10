@@ -354,6 +354,35 @@
     return form;
   }
 
+  /* ---------- Formularz zgłoszenia L4 ---------- */
+  function sickForm(draft, errors, handlers, info) {
+    var v = draft || {};
+    var problems = errors || {};
+    var person = info.canPick ? UI.select({ id: 'lv-person', value: v.personId || '', options: info.people.map(function (p) { return { value: p.id, label: Team.fullName(p) }; }) }) : null;
+    var from = UI.input({ id: 'lv-from', type: 'date', value: v.from || '', error: problems.from });
+    var to = UI.input({ id: 'lv-to', type: 'date', value: v.to || '', error: problems.to });
+    var note = UI.input({ id: 'lv-note', value: v.note || '', maxlength: 200, placeholder: 'np. numer zwolnienia (nie wpisuj diagnozy)' });
+    var count = D.el('p', { class: 't-meta', attrs: { 'data-fk': 'lv-days', 'aria-live': 'polite' } });
+    function recount() { count.textContent = from.value && to.value ? workdays(Cal.workdaysIn(from.value, to.value)) + ' (bez weekendów i świąt). L4 nie zmniejsza puli urlopu.' : ''; }
+    from.addEventListener('change', function () { if (!to.value || to.value < from.value) to.value = from.value; recount(); });
+    to.addEventListener('change', recount);
+    recount();
+    var form = E.Dialog.drawerForm({
+      id: 'leave-form',
+      submitLabel: 'Zgłoś L4',
+      onCancel: handlers.onCancel,
+      onSubmit: function () { handlers.onSubmit({ personId: person ? person.value : '', from: from.value, to: to.value, note: note.value }); },
+      body: [
+        person ? UI.field({ id: 'lv-person', label: 'Osoba', control: person, error: problems.personId }) : null,
+        D.el('div', { class: 'form__row' }, [UI.field({ id: 'lv-from', label: 'Od', control: from, error: problems.from }), UI.field({ id: 'lv-to', label: 'Do (włącznie)', control: to, error: problems.to })]),
+        count,
+        UI.field({ id: 'lv-note', label: 'Uwaga', optional: true, control: note })
+      ]
+    });
+    window.setTimeout(function () { from.focus(); }, 0);
+    return form;
+  }
+
   /* ---------- Ekran ---------- */
   function view(state, ctx) {
     var people = state.workspace.people || [];
@@ -385,6 +414,7 @@
       UI.iconButton({ icon: 'chevronRight', label: mode === 'year' ? 'Następny rok' : 'Następny miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-next' }, onClick: function () { shift(1); } }),
       (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null,
       D.el('span', { class: 'lv-bar__fill' }),
+      UI.button({ label: 'Zgłoś L4', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'lv-sick' }, onClick: function () { ctx.actions.openSickReport(); } }),
       UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
 
     var pct = bal.total ? Math.round(bal.left / bal.total * 100) : 0;
@@ -421,5 +451,5 @@
     }).length;
   }
 
-  E.LeaveScreen = { miniMonth: miniMonth, kindLabel: kindLabel, view: view, requestForm: requestForm, pendingFor: pendingFor, range: range };
+  E.LeaveScreen = { miniMonth: miniMonth, kindLabel: kindLabel, view: view, requestForm: requestForm, sickForm: sickForm, pendingFor: pendingFor, range: range };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

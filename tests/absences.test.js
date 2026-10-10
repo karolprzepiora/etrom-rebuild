@@ -136,3 +136,18 @@ test('widoczność wniosku: właściciel, zarząd i lider projektu osoby', () =>
   assert.equal(A.canSee('p-3', a, projects, people), true);
   assert.equal(A.canSee('p-2', a, projects, people), false);
 });
+
+test('L4 zgłoszone od razu: zaakceptowane, nie zużywa urlopu, innym pokazuje tylko „nieobecny”', () => {
+  const people = [{ id: 'p-1', firstName: 'A', lastName: 'B' }, { id: 'p-2', firstName: 'C', lastName: 'D' }];
+  const res = A.request([], { personId: 'p-1', from: '2026-10-12', to: '2026-10-14', kind: 'sick' }, people, { by: 'p-1', autoApprove: true, now: new Date('2026-10-12T08:00:00') });
+  assert.equal(res.valid, true);
+  assert.equal(res.absence.status, 'approved');
+  assert.equal(res.absence.kind, 'sick');
+  const bal = A.balance(res.list, people[0], new Date('2026-10-12T12:00:00'));
+  assert.equal(bal.sick, 3);
+  assert.equal(bal.used, 0);
+  assert.equal(bal.left, bal.total);
+  assert.equal(A.peek('p-2', res.absence, [], people), 'who');
+  const again = A.request(res.list, { personId: 'p-1', from: '2026-10-13', to: '2026-10-13', kind: 'sick' }, people, { by: 'p-1', autoApprove: true });
+  assert.equal(again.valid, false);
+});
