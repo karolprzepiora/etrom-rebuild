@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">
+<title>Kompletność czasu – warianty</title>
+<link rel="stylesheet" href="../../styles/fonts.css"><link rel="stylesheet" href="../../styles/tokens.css"><link rel="stylesheet" href="../../styles/base.css">
+<link rel="stylesheet" href="../../styles/components.css"><link rel="stylesheet" href="../../styles/analysis.css"><link rel="stylesheet" href="../../styles/aurora.css"><link rel="stylesheet" href="../../styles/leave.css">
+<style>
+body{padding:24px;width:1180px;background:transparent;margin:0}
+.v{margin-bottom:28px}
+.v>h2{margin:0 0 4px;font-size:var(--fs-md)}
+.mk-sub{margin:0 0 12px;color:var(--ink-3);font-size:var(--fs-sm)}
+.mk-d{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;font-weight:700;font-size:13px;background:var(--wash)}
+.mk-d.ok{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good-ink)}
+.mk-d.warn{background:color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn-ink)}
+.mk-d.bad{background:color-mix(in srgb,var(--alarm) 18%,transparent);color:var(--alarm-ink)}
+.mk-d.abs{background:color-mix(in srgb,var(--flow) 18%,transparent);color:var(--flow-ink);font-size:11px}
+.mk-d.off{color:var(--ink-4)}
+.mk-days{display:flex;gap:5px}
+.mk-lbl{display:flex;gap:5px;font-size:11px;color:var(--ink-3);font-weight:600}.mk-lbl span{width:30px;text-align:center}
+.mk-name{font-weight:600}.mk-meta{font-size:var(--fs-xs);color:var(--ink-3)}
+.mk-meter{height:6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}.mk-meter i{display:block;height:100%;border-radius:99px;background:var(--flow)}
+.mk-meter.ok i{background:var(--good)}.mk-meter.bad i{background:var(--alarm)}.mk-meter.warn i{background:var(--warn)}
+/* A */
+.mk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mk-tile{display:grid;gap:10px;padding:14px;border-radius:16px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line)}
+.mk-tile__h{display:flex;align-items:center;gap:10px}.mk-tile__h .mk-name{flex:1}
+.mk-tile__f{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.mk-tile.is-bad{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--alarm) 45%,var(--line))}
+/* B */
+.mk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.mk-row{display:grid;grid-template-columns:2rem minmax(10rem,1.2fr) auto minmax(12rem,1.3fr) auto;gap:14px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line)}
+.mk-row:hover{background:var(--wash)}.mk-row .acts{display:flex;gap:6px}
+.mk-fold{display:flex;align-items:center;gap:8px;padding:12px 6px;color:var(--ink-2);font-size:var(--fs-sm);font-weight:600}
+/* C */
+.mk-tbl{display:grid}
+.mk-tr{display:grid;grid-template-columns:2rem minmax(9rem,1.1fr) 360px 6.5rem 9rem 1fr;gap:14px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line)}
+.mk-tr.h{font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.mk-cols{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;height:44px;position:relative}
+.mk-cols::before{content:"";position:absolute;left:0;right:0;bottom:calc(44px*.8);border-top:1px dashed var(--line-strong)}
+.mk-col{border-radius:6px 6px 3px 3px;background:var(--good);min-height:3px}
+.mk-col.warn{background:var(--warn)}.mk-col.bad{background:var(--alarm);opacity:.75}.mk-col.abs{background:color-mix(in srgb,var(--flow) 55%,transparent)}.mk-col.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line-strong);height:4px !important}
+.mk-colh{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+/* D */
+.mk-dcols{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.mk-dc{display:grid;gap:10px;align-content:start;padding:14px;border-radius:16px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line);min-height:210px}
+.mk-dc h3{margin:0;font-size:var(--fs-sm);display:flex;justify-content:space-between;align-items:baseline}
+.mk-who{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm)}
+.mk-allok{display:flex;gap:8px;align-items:center;color:var(--good-ink);font-weight:600;font-size:var(--fs-sm)}
+.mk-btns{display:flex;gap:8px;margin-top:12px}
+</style></head><body>
+<script>
+const P=[['Tomasz T.','TT',270,'cały tydzień',5],['Piotr T.','PT',330,'śr, cz, pt',3],['Olga T.','OT',40,'wt, śr',2],['Jan T.','JT',210,'pt',1]];
+const av=(p,s=26)=>`<span class="avatar" style="--avatar-h:${p[2]};--size:${s}px">${p[1]}</span>`;
+const dn=(n)=>n===1?'1 dzień':n+' dni';
+document.write(`
+<div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">
+
+<section id="E" class="v an-card" style="width:380px;margin:0"><h2>E · Kafel „Czas: luki”</h2><p class="mk-sub">Mały kafel do Pulpitu albo bocznego panelu w Czasie. Tylko problemy, maksymalnie trzy osoby.</p>
+<div class="ts-stat" style="margin-bottom:10px"><span class="ts-stat__l">Luki w czasie · tydzień 5–11 paź</span><span class="ts-stat__v">4 osoby</span><span class="ts-stat__s">12 dni bez wpisu</span></div>
+${P.slice(0,3).map(p=>`<div class="mk-row" style="grid-template-columns:2rem 1fr auto;padding:8px 2px">${av(p,28)}<div><div class="mk-name">${p[0]}</div><div class="mk-meta">brak: ${p[3]}</div></div><span class="badge badge--${p[4]>=3?'danger':'warning'}">${dn(p[4])}</span></div>`).join('')}
+<div class="mk-fold" style="padding:8px 2px">+ jeszcze 1 osoba</div>
+<div class="mk-btns" style="margin-top:6px"><button class="btn btn--secondary btn--sm">Przypomnij wszystkim</button><button class="btn btn--ghost btn--sm">Pełna lista</button></div></section>
+
+<section id="F" class="v an-card" style="width:700px;margin:0"><h2>F · Pasek ostrzeżenia nad kalendarzem</h2><p class="mk-sub">Jedna linia w stylu pasków „zaległy urlop”. Znika, gdy wszyscy mają komplet; kliknięcie rozwija listę.</p>
+<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:color-mix(in srgb,var(--alarm) 9%,var(--sheet));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--alarm) 35%,var(--line))">
+<span class="mk-d bad">!</span><span style="flex:1;font-size:var(--fs-sm)"><b>4 osoby mają luki w czasie</b> w tym tygodniu: Tomasz T. (5 dni), Piotr T. (3), Olga T. (2) i 1 inna.</span>
+<button class="btn btn--ghost btn--sm">Pokaż</button><button class="btn btn--secondary btn--sm">Przypomnij</button></div>
+<p class="mk-sub" style="margin:14px 0 8px">Po kliknięciu „Pokaż” (rozwinięte):</p>
+<div style="padding:6px 14px;border-radius:14px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line)">
+${P.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">${av(p)}<span class="mk-name" style="width:7rem">${p[0]}</span><span class="mk-meta" style="flex:1">brak: ${p[3]}</span><button class="btn btn--ghost btn--sm">Otwórz tydzień</button></div>`).join('').replace(/border-bottom:1px solid var\(--line\)">(?!.*border-bottom.*$)/,'">')}
+</div></section>
+
+<section id="G" class="v an-card" style="width:560px;margin:0"><h2>G · Chipy w nagłówku Czasu</h2><p class="mk-sub">Najlżejsza wersja: pasek chipów obok przełącznika widoków. Każdy chip to osoba z luką, klik otwiera jej tydzień.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="mk-meta" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em">Luki w czasie</span>
+${P.map(p=>`<button class="btn btn--secondary btn--sm" style="gap:6px;padding-left:5px">${av(p,20)}${p[0]} <span class="badge badge--${p[4]>=3?'danger':'warning'}" style="margin-left:2px">${p[4]}</span></button>`).join('')}
+<button class="btn btn--ghost btn--sm">Przypomnij</button></div></section>
+</div>`);
+</script></body></html>
