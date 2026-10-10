@@ -226,9 +226,17 @@
     return { valid: true, errors: {}, entries: entries.map(function (e) { return e === target ? next : e; }), entry: next };
   }
 
+  /** Czy zegar osoby można cofnąć: tylko gdy tego samego dnia był już wcześniejszy wpis (pierwszy start dnia jest nienaruszalny). */
+  function canShiftStart(entries, personId) {
+    var run = running(entries, personId);
+    if (!run) return false;
+    var day = dayKey(time(run.start));
+    return (entries || []).some(function (e) { return e.personId === personId && e.id !== run.id && e.end && dayKey(time(e.start)) === day && time(e.end) <= time(run.start); });
+  }
+
   /**
-   * Cofnięcie startu trwającego zegara („zacząłem 15 minut temu”).
-   * Start nie może wejść na wcześniejszy wpis osoby ani cofnąć się przed początek tego samego dnia.
+   * Cofnięcie startu trwającego zegara („zacząłem chwilę temu”) – tylko w ciągu dnia, po wcześniejszym wpisie tej samej osoby.
+   * Pierwszy zegar dnia startuje o rzeczywistej godzinie i nie da się go cofnąć. Start nie wejdzie też na poprzedni wpis.
    * @returns {{valid: boolean, error?: string, entries: Array, entry: Object|null, shifted: number}} shifted: o ile minut faktycznie cofnięto
    */
   function shiftStart(entries, personId, minutes, now) {
@@ -237,17 +245,18 @@
     var back = Math.round(Number(minutes));
     if (!run) return { valid: false, error: 'Zegar nie chodzi.', entries: list, entry: null, shifted: 0 };
     if (!Number.isFinite(back) || back <= 0) return { valid: false, error: 'Podaj, o ile minut cofnąć start.', entries: list, entry: null, shifted: 0 };
+    if (!canShiftStart(list, personId)) return { valid: false, error: 'Pierwszy zegar dnia startuje o rzeczywistej godzinie – nie można go cofnąć.', entries: list, entry: null, shifted: 0 };
     var oldStart = time(run.start);
-    var floor = new Date(oldStart); floor.setHours(0, 0, 0, 0);
-    var limit = floor.getTime();
+    var limit = 0;
+    var day = dayKey(oldStart);
     list.forEach(function (e) {
-      if (e.personId !== personId || e.id === run.id || !e.end) return;
+      if (e.personId !== personId || e.id === run.id || !e.end || dayKey(time(e.start)) !== day) return;
       var end = time(e.end);
       if (end <= oldStart && end > limit) limit = end;
     });
     var next = Math.max(limit, oldStart - back * 60000);
     var shifted = Math.round((oldStart - next) / 60000);
-    if (shifted <= 0) return { valid: false, error: 'Wcześniej jest już inny wpis albo początek dnia.', entries: list, entry: null, shifted: 0 };
+    if (shifted <= 0) return { valid: false, error: 'Wcześniej jest już inny wpis.', entries: list, entry: null, shifted: 0 };
     var entry = Object.assign({}, run, { start: new Date(next).toISOString(), updatedAt: new Date(nowMs(now)).toISOString() });
     return { valid: true, entries: list.map(function (e) { return e === run ? entry : e; }), entry: entry, shifted: shifted };
   }
@@ -465,6 +474,7 @@
     clockLabel: clockLabel,
     isoWeek: isoWeek,
     shiftStart: shiftStart,
+    canShiftStart: canShiftStart,
     weekDays: weekDays,
     gaps: gaps,
     normalizeEntries: normalizeEntries

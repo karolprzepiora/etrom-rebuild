@@ -61,12 +61,21 @@
       var confirmBtn = button(settings.confirm || 'Potwierdź', settings.tone === 'danger' ? 'danger-solid' : 'primary',
         { 'data-dialog-confirm': '' }, function () { dialog.close('ok'); });
 
+      // Opcjonalne zaznaczenie „oświadczam…”: przycisk potwierdzenia działa dopiero po jego zaznaczeniu.
+      var tick = null;
+      if (settings.check) {
+        tick = D.el('input', { attrs: { type: 'checkbox', id: 'dialog-check', 'data-fk': 'dialog-check' } });
+        confirmBtn.disabled = true;
+        tick.addEventListener('change', function () { confirmBtn.disabled = !tick.checked; });
+      }
       D.append(dialog, [
         D.el('div', { class: 'dialog__card' }, [
           D.el('div', { class: 'dialog__head' }, [
             D.el('h2', { class: 'dialog__title', text: settings.title || 'Potwierdź', attrs: { id: 'dialog-title' } }),
             D.el('p', { class: 'dialog__text', text: settings.message || '', attrs: { id: 'dialog-text' } })
           ]),
+          settings.details ? D.el('div', { class: 'dialog__details' }, settings.details) : null,
+          tick ? D.el('label', { class: 'dialog__check', attrs: { for: 'dialog-check' } }, [tick, D.el('span', { text: settings.check })]) : null,
           D.el('div', { class: 'dialog__actions' }, [cancelBtn, confirmBtn])
         ])
       ]);

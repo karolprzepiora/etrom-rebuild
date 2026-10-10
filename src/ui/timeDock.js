@@ -135,6 +135,7 @@
         })
       };
     });
+    var canBack = TL.canShiftStart(ctx.state.workspace.entries || [], ctx.me);
     var more = UI.button({ label: 'Przełącz', variant: 'secondary', size: 'sm', iconRight: 'chevronDown', attrs: { 'data-fk': 'switch-menu' } });
     Menu.bind(more.nodeType ? more : more.node, function () {
       var list = (a.openTasks ? a.openTasks() : []).filter(function (c) { return !a.isTiming(c.ref.projectId, c.ref.stageId, c.ref.taskId); }).slice(0, 12);
@@ -157,7 +158,7 @@
       ]),
       E.Timer.budgetChip(ctx.budget && ctx.budget(run)),
       D.el('time', { class: 'tdock__time t-num timer-pill__time', text: TL.clock(now - startMs), attrs: { 'data-timer-start': String(startMs), 'aria-hidden': 'true' } }),
-      back, more,
+      canBack ? back : null, more,
       UI.button({ label: 'Stop', icon: 'stop', size: 'sm', attrs: { 'data-fk': 'timer-stop' }, class: 'tdock__stop', onClick: function () { a.stopTimer(); } })
     ]);
   }

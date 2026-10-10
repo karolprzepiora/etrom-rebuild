@@ -3475,6 +3475,48 @@
     Toast.show({ message: 'Pobrano ' + name, tone: 'success', timeout: 4000 });
   }
 
+  /** Ewidencja czasu pracy za miesiąc (wariant 1: rzeczywisty czas, wariant 2: ewidencja 8:00–16:00) jako wydruk/PDF albo CSV. */
+  function exportRecord(variant, format, personId) {
+    var state = store.getState();
+    var now = new Date();
+    var pid = personId || state.prefs.me;
+    var person = Team.findPerson(people(), pid);
+    var period = E.Timesheet.period(now, state.timeMode === 'month' ? 'month' : 'week', state.timeMode === 'month' ? state.timeOffset : 0);
+    var ref = state.timeMode === 'month' ? period.from : (state.timeMode === 'week' ? E.Timesheet.period(now, 'week', state.timeOffset).from : now);
+    var projectOf = function (id) { var p = findProject(id); return { code: p ? p.code : String(id), name: p ? p.name : '' }; };
+    var record = E.WorkRecord.build(state.workspace.entries || [], pid, now, { year: ref.getFullYear(), month: ref.getMonth(), absences: state.workspace.absences || [], target: state.prefs.dayTarget, project: projectOf });
+    var meta = { personName: person ? Team.fullName(person) : '', generatedAt: now.getDate() + '.' + (now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + TL.clockOf(now.getTime()), autoPrint: format === 'print' };
+    var run = function () {
+      var doc = variant === 2 ? E.WorkRecord.normative(record) : record;
+      var base = (variant === 2 ? 'ewidencja-czasu-pracy-' : 'zestawienie-czasu-pracy-') + record.from.slice(0, 7);
+      if (format === 'csv') {
+        var csvUrl = URL.createObjectURL(new Blob([E.Timesheet.csv(E.WorkRecord.csvRows(doc, variant, meta))], { type: 'text/csv;charset=utf-8' }));
+        var link = D.el('a', { attrs: { href: csvUrl, download: base + '.csv' } });
+        document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(csvUrl);
+        Toast.show({ message: 'Pobrano ' + base + '.csv', tone: 'success', timeout: 4000 });
+        return;
+      }
+      var url = URL.createObjectURL(new Blob([E.WorkRecord.html(doc, variant, Object.assign({}, meta, { confirmedBy: currentMe() ? Team.fullName(Team.findPerson(people(), currentMe())) : '' }))], { type: 'text/html;charset=utf-8' }));
+      var win = window.open(url, '_blank');
+      if (!win) {
+        var dl = D.el('a', { attrs: { href: url, download: base + '.html' } });
+        document.body.appendChild(dl); dl.click(); document.body.removeChild(dl);
+        Toast.show({ message: 'Przeglądarka zablokowała okno wydruku – pobrano plik ' + base + '.html. Otwórz go i wybierz „Drukuj → Zapisz jako PDF”.', tone: 'info', timeout: 8000 });
+      } else Toast.show({ message: 'Otwieram okno wydruku. Wybierz „Zapisz jako PDF”, aby dostać plik.', tone: 'info', timeout: 5000 });
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    };
+    if (variant !== 2) { run(); return; }
+    var diffs = E.WorkRecord.differences(record);
+    var list = diffs.slice(0, 8).map(function (d) { return D.el('li', { text: d.label + ' ' + d.number + '.: zapisano ' + TL.duration(d.actual) + ' (' + (d.diff < 0 ? 'brakuje ' : 'nadwyżka ') + TL.duration(Math.abs(d.diff)) + ')' }); });
+    Dialog.confirm({
+      title: 'Ewidencja czasu pracy – ' + record.title,
+      message: 'W tym wariancie każdy dzień z pracą ma ' + TL.duration(record.target) + ' od 8:00. Dokument ma odpowiadać faktycznie przepracowanemu czasowi.',
+      details: diffs.length ? [D.el('b', { text: diffs.length + (diffs.length === 1 ? ' dzień różni się' : ' dni różni się') + ' od zapisów czasu:' }), D.el('ul', null, list.concat(diffs.length > 8 ? [D.el('li', { text: '… i ' + (diffs.length - 8) + ' więcej' })] : []))] : [D.el('span', { text: 'Zapisy zgadzają się z normą we wszystkich dniach z pracą.' })],
+      check: 'Potwierdzam, że godziny w ewidencji odpowiadają faktycznie przepracowanemu czasowi.',
+      confirm: format === 'csv' ? 'Pobierz CSV' : 'Otwórz do wydruku'
+    }).then(function (ok) { if (ok) run(); });
+  }
+
   function importJson(file) {
     var reader = new FileReader();
     reader.onload = function () {
@@ -3617,6 +3659,7 @@
       store.set({ timeOpen: open });
     },
     exportTime: exportTime,
+    exportRecord: exportRecord,
     setAnalysisProject: function (id) { store.set({ analysisProject: id }); },
     setAnalysisTab: function (tab) { store.set({ analysisTab: tab }); },
     openAnalysisProject: function (id) { store.set({ analysisProject: id, analysisTab: 'projects' }); },

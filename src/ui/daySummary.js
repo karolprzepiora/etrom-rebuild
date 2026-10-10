@@ -17,7 +17,8 @@
   function dur(min) { return TL.duration(Math.round(min)); }
 
   /** @param {Object} summary wynik DaySummary.build @param {{actions: Object}} ctx */
-  function card(summary, ctx) {
+  function card(summary, ctx, opts) {
+    var compact = !!(opts && opts.compact);
     var s = summary;
     var line = s.state === 'ok'
       ? (s.minutes > s.target ? 'Cel dnia osiągnięty, +' + dur(s.minutes - s.target) : 'Cel dnia osiągnięty')
@@ -28,10 +29,10 @@
         D.el('h2', { class: 'msec__title', text: 'Podsumowanie dnia' }),
         D.el('span', { class: 'dsum__pill', text: VERDICT[s.state] })
       ]),
-      D.el('p', { class: 'dsum__big t-num' }, [D.el('b', { text: dur(s.minutes) }), D.el('span', { text: ' z ' + dur(s.target) })]),
-      D.el('p', { class: 'dsum__line', text: line }),
+      compact ? null : D.el('p', { class: 'dsum__big t-num' }, [D.el('b', { text: dur(s.minutes) }), D.el('span', { text: ' z ' + dur(s.target) })]),
+      compact ? null : D.el('p', { class: 'dsum__line', text: line }),
       weekLine ? D.el('p', { class: 'dsum__week is-' + (s.week.state || 'off'), text: weekLine }) : null,
-      s.tasks.length ? D.el('div', { class: 'dsum__sec' }, [
+      s.tasks.length && !compact ? D.el('div', { class: 'dsum__sec' }, [
         D.el('h3', { class: 'dsum__h', text: 'Dziś pracowałeś nad' }),
         D.el('ul', { class: 'dsum__tasks' }, s.tasks.slice(0, 4).map(function (t) {
           return D.el('li', null, [D.el('span', { class: 'dsum__code', style: E.Identity.hueStyle(t.code), text: t.code }), D.el('span', { class: 'dsum__name truncate', text: t.name }), D.el('span', { class: 't-num t-muted', text: dur(t.minutes) })]);

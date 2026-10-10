@@ -768,12 +768,13 @@ async function main() {
     await go('#/czas');
     check('zapisany czas pojawia się w bloku „Zapisany czas dziś”',
       await evaluate('return document.querySelectorAll(".erow").length >= 1 && /min|h/.test(document.querySelector(".etoday__total").textContent);'));
-    check('panel „Dzisiaj” pokazuje podział na projekty i pasek celu dnia',
-      await evaluate('return document.querySelectorAll(".etoday .eproj__row").length >= 1 && !!document.querySelector(".etoday .dmtrack--big");'));
+    check('panel „Dzisiaj” pokazuje pasek celu dnia i wpisy, a podziału na projekty nie powtarza',
+      await evaluate('return !!document.querySelector(".etoday .dmtrack--big") && !document.querySelector(".etoday .eproj__row") && document.querySelectorAll(".etoday .erow").length >= 1;'));
     check('„Moja praca” nie ma już panelu czasu ani podsumowania dnia, a Czas w trybie „Dzień” ma wpisy i podsumowanie',
       await evaluate('return !!document.querySelector("#view-time .etoday") && !!document.querySelector("#view-time [data-fk=day-summary]") && !document.querySelector(".etoday .eweek") && !!document.querySelector(".dribbon");'));
-    check('po zatrzymaniu pojawia się „Wznów” ostatniego zadania',
-      await evaluate('return !!document.querySelector(".etoday__resume");'));
+    check('po zatrzymaniu pasek czasu podpowiada „Wznów” ostatniego zadania',
+      await evaluate('const i = document.querySelector("[data-fk=dock-input]"); i.focus(); return true;') && (await sleep(200), await evaluate('return /Wznów:/.test(document.querySelector(".tdock__pop").textContent);')));
+    await evaluate('document.querySelector("[data-fk=dock-input]").blur(); return true;');
     await pressKey('t');
     await sleep(300);
     check('klawisz T wznawia ostatnie zadanie', (await state('(s.workspace.entries || []).filter(e => !e.end && e.personId === s.prefs.me).length')) === 1);
@@ -1345,6 +1346,14 @@ async function main() {
     await sleep(200);
     check('menu eksportu ma podsumowanie i listę wpisów',
       await evaluate('return [...document.querySelectorAll("[role=menuitem]")].filter(x => /Podsumowanie okresu|Wszystkie wpisy/.test(x.textContent)).length === 2;'));
+    check('menu eksportu ma ewidencję czasu pracy w dwóch wariantach (wydruk/PDF i CSV)',
+      await evaluate('return [...document.querySelectorAll("[role=menuitem]")].filter(x => /^Wariant [12] ·/.test(x.textContent)).length === 4;'));
+    await evaluate('[...document.querySelectorAll("[role=menuitem]")].find(x => /Wariant 2 .* Excel/.test(x.textContent)).click(); return true;');
+    await sleep(300);
+    check('wariant 2 ewidencji wymaga potwierdzenia: przycisk działa dopiero po zaznaczeniu oświadczenia',
+      await evaluate('const b = document.querySelector("[data-dialog-confirm]"); const c = document.querySelector("[data-fk=dialog-check]"); if (!b || !c || !b.disabled) return false; c.click(); return !b.disabled;'));
+    await evaluate('document.querySelector("[data-dialog-cancel]").click(); return true;');
+    await sleep(200);
     await pressKey('escape');
     await go('#/moja-praca');
 
@@ -2088,8 +2097,8 @@ async function main() {
     }
     await evaluate('ETROM.app.actions.setTime({ timeMode: "day" }); return true;');
     await go('#/czas');
-    check('Czas (Dzień) ma kartę „Podsumowanie dnia”: godziny względem celu, zadania z dziś i terminy z upływem czasu',
-      await evaluate('const c = document.querySelector("[data-fk=day-summary]"); return !!c && !!c.querySelector(".dsum__pill") && /\\d/.test(c.querySelector(".dsum__big").textContent);'));
+    check('Czas (Dzień) ma kartę „Podsumowanie dnia” bez powtórzeń: ocena dnia, tydzień i terminy z upływem czasu',
+      await evaluate('const c = document.querySelector("[data-fk=day-summary]"); return !!c && !!c.querySelector(".dsum__pill") && !c.querySelector(".dsum__big") && !c.querySelector(".dsum__tasks");'));
     await evaluate('ETROM.app.actions.setTime({ timeMode: "week" }); return true;');
     await go('#/moja-praca');
     check('pracownik w Tygodniach nie widzi obciążenia ani godzin planu, tylko termin, upływ czasu i własną rejestrację',

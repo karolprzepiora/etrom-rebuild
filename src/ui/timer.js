@@ -524,10 +524,10 @@
       ]),
       meterTrack(parts, now, 'dmtrack--big'),
       D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + hoursLabel(DAY_TARGET)) }),
-      parts.length ? projectShares(parts) : null,
-      resumeButton(ctx),
+      parts.length && !ctx.noShares ? projectShares(parts) : null,
+      ctx.noResume ? null : resumeButton(ctx),
       entries.length
-        ? D.el('details', { class: 'etoday__log', attrs: entries.length <= 4 ? { open: 'open' } : {} }, [
+        ? D.el('details', { class: 'etoday__log', attrs: entries.length <= 4 || ctx.openLog ? { open: 'open' } : {} }, [
             D.el('summary', { class: 'etoday__logsum', text: 'Wpisy (' + entries.length + ')' }),
             D.el('ul', { class: 'erows' }, entries.map(function (entry) { return entryRow(entry, ctx); }))
           ])
@@ -682,5 +682,5 @@
     for (var b = 0; b < bigs.length; b += 1) refreshMeter(bigs[b], now);
   }
 
-  E.Timer = { budgetChip: budgetChip, setTarget: setTarget, nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
+  E.Timer = { dayAxis: dayAxis, budgetChip: budgetChip, setTarget: setTarget, nowClock: nowClock, dayMeter: dayMeter, hm: hm, timerButton: timerButton, pill: pill, todayBlock: todayBlock, timeForm: timeForm, tick: tick };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

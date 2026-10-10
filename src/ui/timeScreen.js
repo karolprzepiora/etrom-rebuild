@@ -219,8 +219,12 @@
     var minutes = TL.sum(todays, now);
     var seg = controls(Object.assign({}, state, { timeMode: 'day' }), ctx, false, [], me.id, null);
     var side = D.el('div', { class: 'ts-day-view' }, [
-      E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true }),
-      E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions })
+      D.el('div', { class: 'ts-day-view__main' }, [
+        E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true })
+      ]),
+      D.el('div', { class: 'ts-day-view__side' }, [
+        E.DaySummary.card(E.DaySummary.build({ entries: state.workspace.entries || [], projects: state.workspace.projects || [], personId: me.id, now: now, target: state.prefs.dayTarget, absences: state.workspace.absences || [] }), { actions: ctx.actions }, { compact: true })
+      ])
     ]);
     return { body: [seg, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
   }
@@ -267,11 +271,18 @@
     var part = sheetView(state, ctx, me, now);
     var personId = Budget.isManagement(me.id, state.workspace.people || []) && state.timePerson && Team.findPerson(state.workspace.people || [], state.timePerson) ? state.timePerson : me.id;
     var tools = D.el('div', { class: 'ts-export' }, [
-      UI.button({ label: 'Pobierz CSV', icon: 'download', variant: 'secondary', attrs: { 'data-fk': 'ts-export-menu' }, class: 'ts-export__btn' })
+      UI.button({ label: 'Eksport', icon: 'download', iconRight: 'chevronDown', variant: 'secondary', attrs: { 'data-fk': 'ts-export-menu' }, class: 'ts-export__btn' })
     ]);
     E.Menu.bind(tools.firstChild, function () {
       return {
-        label: 'Eksport karty czasu', items: [
+        label: 'Eksport czasu pracy', items: [
+          { type: 'label', label: 'Ewidencja za miesiąc (do księgowości)' },
+          { label: 'Wariant 1 · rzeczywisty czas – wydruk / PDF', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'print', personId); } },
+          { label: 'Wariant 1 · rzeczywisty czas – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(1, 'csv', personId); } },
+          { label: 'Wariant 2 · ewidencja 8:00–16:00 – wydruk / PDF', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'print', personId); } },
+          { label: 'Wariant 2 · ewidencja 8:00–16:00 – Excel (CSV)', icon: 'download', onSelect: function () { ctx.actions.exportRecord(2, 'csv', personId); } },
+          { type: 'separator' },
+          { type: 'label', label: 'Dane do rozliczeń' },
           { label: 'Podsumowanie okresu (projekty i zadania × dni)', icon: 'download', onSelect: function () { ctx.actions.exportTime('summary', personId); } },
           { label: 'Wszystkie wpisy okresu (do rozliczeń)', icon: 'download', onSelect: function () { ctx.actions.exportTime('entries', personId); } }
         ]

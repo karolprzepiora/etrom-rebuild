@@ -1693,3 +1693,10 @@ body.has-dock .toasts { bottom: 6.5rem; }
 .tdock .icon-btn, .tdock .tdock__back { flex: none; color: #fff; background: rgb(255 255 255 / .14); }
 .tdock .icon-btn:hover { background: rgb(255 255 255 / .24); }
 .tdock .timer-pill__budget { color: #fff; background: rgb(255 255 255 / .14); box-shadow: none; }
+.ts-day-view { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ts-day-view__main, .ts-day-view__side { min-width: 0; }
+@media (max-width: 62rem) { .ts-day-view { grid-template-columns: 1fr; } }
+.dialog__details { margin: var(--space-3) 0; padding: var(--space-3); border-radius: 12px; background: var(--wash); font-size: var(--fs-sm); max-height: 12rem; overflow: auto; }
+.dialog__details ul { margin: var(--space-2) 0 0; padding-left: 1.1rem; }
+.dialog__check { display: flex; align-items: flex-start; gap: var(--space-3); margin: var(--space-3) 0; font-weight: 600; cursor: pointer; }
+.dialog__check input { margin-top: 3px; flex: none; }
