@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">
+<title>Kompletność czasu – warianty</title>
+<link rel="stylesheet" href="../../styles/fonts.css"><link rel="stylesheet" href="../../styles/tokens.css"><link rel="stylesheet" href="../../styles/base.css">
+<link rel="stylesheet" href="../../styles/components.css"><link rel="stylesheet" href="../../styles/analysis.css"><link rel="stylesheet" href="../../styles/aurora.css"><link rel="stylesheet" href="../../styles/leave.css">
+<style>
+body{padding:24px;width:1180px;margin:0}
+.v{margin-bottom:28px}
+.v>h2{margin:0 0 4px;font-size:var(--fs-md)}
+.mk-sub{margin:0 0 12px;color:var(--ink-3);font-size:var(--fs-sm)}
+.mk-d{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;font-weight:700;font-size:13px;background:var(--wash)}
+.mk-d.ok{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good-ink)}
+.mk-d.warn{background:color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn-ink)}
+.mk-d.bad{background:color-mix(in srgb,var(--alarm) 18%,transparent);color:var(--alarm-ink)}
+.mk-d.abs{background:color-mix(in srgb,var(--flow) 18%,transparent);color:var(--flow-ink);font-size:11px}
+.mk-d.off{color:var(--ink-4)}
+.mk-days{display:flex;gap:5px}
+.mk-lbl{display:flex;gap:5px;font-size:11px;color:var(--ink-3);font-weight:600}.mk-lbl span{width:30px;text-align:center}
+.mk-name{font-weight:600}.mk-meta{font-size:var(--fs-xs);color:var(--ink-3)}
+.mk-meter{height:6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}.mk-meter i{display:block;height:100%;border-radius:99px;background:var(--flow)}
+.mk-meter.ok i{background:var(--good)}.mk-meter.bad i{background:var(--alarm)}.mk-meter.warn i{background:var(--warn)}
+/* A */
+.mk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mk-tile{display:grid;gap:10px;padding:14px;border-radius:16px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line)}
+.mk-tile__h{display:flex;align-items:center;gap:10px}.mk-tile__h .mk-name{flex:1}
+.mk-tile__f{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.mk-tile.is-bad{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--alarm) 45%,var(--line))}
+/* B */
+.mk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.mk-row{display:grid;grid-template-columns:2rem minmax(10rem,1.2fr) auto minmax(12rem,1.3fr) auto;gap:14px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line)}
+.mk-row:hover{background:var(--wash)}.mk-row .acts{display:flex;gap:6px}
+.mk-fold{display:flex;align-items:center;gap:8px;padding:12px 6px;color:var(--ink-2);font-size:var(--fs-sm);font-weight:600}
+/* C */
+.mk-tbl{display:grid}
+.mk-tr{display:grid;grid-template-columns:2rem minmax(9rem,1.1fr) 360px 6.5rem 9rem 1fr;gap:14px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line)}
+.mk-tr.h{font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.mk-cols{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;height:44px;position:relative}
+.mk-cols::before{content:"";position:absolute;left:0;right:0;bottom:calc(44px*.8);border-top:1px dashed var(--line-strong)}
+.mk-col{border-radius:6px 6px 3px 3px;background:var(--good);min-height:3px}
+.mk-col.warn{background:var(--warn)}.mk-col.bad{background:var(--alarm);opacity:.75}.mk-col.abs{background:color-mix(in srgb,var(--flow) 55%,transparent)}.mk-col.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line-strong);height:4px !important}
+.mk-colh{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+/* D */
+.mk-dcols{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.mk-dc{display:grid;gap:10px;align-content:start;padding:14px;border-radius:16px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line);min-height:210px}
+.mk-dc h3{margin:0;font-size:var(--fs-sm);display:flex;justify-content:space-between;align-items:baseline}
+.mk-who{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm)}
+.mk-allok{display:flex;gap:8px;align-items:center;color:var(--good-ink);font-weight:600;font-size:var(--fs-sm)}
+.mk-btns{display:flex;gap:8px;margin-top:12px}
+</style></head><body>
+<script>
+const P=[
+ ['Anna Testowa','AT',32,[['ok',8],['ok',8],['abs',0],['ok',8],['ok',8]],150,32],
+ ['Ewa Testowa','ET',40,[['ok',8],['ok',8],['ok',8],['ok',8],['ok',8]],190,40],
+ ['Jan Testowy','JT',32,[['ok',8],['ok',8],['ok',8],['ok',8],['bad',0]],210,40],
+ ['Olga Testowa','OT',23,[['ok',8],['bad',0],['bad',0],['ok',8],['warn',7]],40,40],
+ ['Piotr Testowy','PT',16,[['ok',8],['ok',8],['bad',0],['bad',0],['bad',0]],330,40],
+ ['Marta Testowa','MT',41,[['ok',8],['ok',9],['ok',8],['ok',8],['ok',8]],20,40],
+ ['Tomasz Testowy','TT',2,[['bad',0],['bad',0],['bad',0],['bad',0],['bad',0]],270,40]
+];
+const D=['pn','wt','śr','cz','pt'];
+const G={ok:'✓',warn:'!',bad:'✕',abs:'U',off:'–'};
+const days=(p)=>'<div class="mk-days">'+p[3].map(d=>`<span class="mk-d ${d[0]}">${G[d[0]]}</span>`).join('')+'</div>';
+const av=(p)=>`<span class="avatar" style="--avatar-h:${p[4]};--size:30px">${p[1]}</span>`;
+const miss=(p)=>p[3].map((d,i)=>d[0]==='bad'?D[i]:null).filter(Boolean);
+const hm=(h)=>Math.floor(h)+' h';
+const css=(p)=>{const r=p[2]/p[5];return r>=.97?'ok':r>=.75?'warn':'bad'};
+const sorted=[...P].sort((a,b)=>miss(b).length-miss(a).length);
+document.write(`
+<section class="v an-card" id="A"><h2>Wariant A · Kafelki osób</h2><p class="mk-sub">Każda osoba to karta jak kafle statystyk w Czasie: pasek postępu do normy tygodnia, pięć znaków dni, jedna linia „czego brakuje”.</p>
+<div class="mk-grid">${sorted.map(p=>`<div class="mk-tile ${miss(p).length>=3?'is-bad':''}"><div class="mk-tile__h">${av(p)}<span class="mk-name">${p[0]}</span><span class="badge badge--${miss(p).length>=3?'danger':miss(p).length?'warning':'success'}">${miss(p).length?(miss(p).length===1?'brakuje 1 dnia':'brakuje '+miss(p).length+' dni'):'komplet'}</span></div>
+<div class="mk-lbl">${D.map(d=>`<span>${d}</span>`).join('')}</div>${days(p)}
+<div><div class="mk-meter ${css(p)}"><i style="width:${Math.min(100,p[2]/p[5]*100)}%"></i></div><div class="mk-meta" style="margin-top:4px">${p[2]} h z ${p[5]} h · otwarty</div></div>
+<div class="mk-tile__f"><span class="mk-meta">${miss(p).length?'Brak: '+miss(p).join(', '):'Czeka na zamknięcie'}</span><button class="btn btn--secondary btn--sm">${miss(p).length?'Przypomnij':'Zatwierdź'}</button></div></div>`).join('')}</div></section>
+
+<section class="v an-card" id="B"><h2>Wariant B · Do uzupełnienia (lista działań)</h2><p class="mk-sub">Jak Skrzynka: na górze podsumowanie, niżej tylko osoby z lukami i przyciski. Kompletne tygodnie schowane pod zwijanym wierszem.</p>
+<div class="mk-stats"><div class="ts-stat"><span class="ts-stat__l">Do uzupełnienia</span><span class="ts-stat__v">4 osoby</span><span class="ts-stat__s">z 7 w tygodniu 5–11 października</span></div>
+<div class="ts-stat"><span class="ts-stat__l">Brakujące dni</span><span class="ts-stat__v">12</span><span class="ts-stat__s">z 34 dni do uzupełnienia</span></div>
+<div class="ts-stat"><span class="ts-stat__l">Zamknięte tygodnie</span><span class="ts-stat__v">2 z 7</span><span class="ts-stat__s">1 czeka na zatwierdzenie</span></div>
+<div class="ts-stat"><span class="ts-stat__l">Najdłuższa luka</span><span class="ts-stat__v">Tomasz T.</span><span class="ts-stat__s">cały tydzień, 2 h zapisane</span></div></div>
+${sorted.filter(p=>miss(p).length).map(p=>`<div class="mk-row">${av(p)}<div><div class="mk-name">${p[0]}</div><div class="mk-meta">brakuje: ${miss(p).join(', ')} · ${p[2]} h z ${p[5]} h</div></div>${days(p)}<div><div class="mk-meter ${css(p)}"><i style="width:${p[2]/p[5]*100}%"></i></div></div><div class="acts"><button class="btn btn--ghost btn--sm">Otwórz tydzień</button><button class="btn btn--secondary btn--sm">Przypomnij</button></div></div>`).join('')}
+<div class="mk-fold">▸ Kompletne (3): Anna, Ewa, Marta Testowa · czekają na zamknięcie tygodnia</div></section>
+
+<section class="v an-card" id="C"><h2>Wariant C · Słupki tygodnia</h2><p class="mk-sub">Zamiast znaków: pięć słupków na osobę (wysokość = godziny, linia przerywana = norma dnia). Luki widać od razu jako „puste ramki”, a kolor i kształt nie są jedynym nośnikiem.</p>
+<div class="mk-tbl"><div class="mk-tr h"><span></span><span>Osoba</span><span class="mk-colh">${D.map(d=>`<span>${d}</span>`).join('')}</span><span>Razem</span><span>Norma</span><span>Status</span></div>
+${sorted.map(p=>`<div class="mk-tr">${av(p)}<span class="mk-name">${p[0]}</span><div class="mk-cols">${p[3].map(d=>`<div class="mk-col ${d[0]==='bad'?'none':d[0]}" style="height:${d[0]==='bad'?4:Math.min(100,(d[1]+(p[2]>50?1:0))/8*80)}%"></div>`).join('')}</div><b class="t-num">${p[2]} h</b><div class="mk-meter ${css(p)}"><i style="width:${Math.min(100,p[2]/p[5]*100)}%"></i></div><span><span class="badge badge--${miss(p).length>=3?'danger':miss(p).length?'warning':'success'}">${miss(p).length?(miss(p).length===1?'brakuje 1 dnia':'brakuje '+miss(p).length+' dni'):'komplet'}</span></span></div>`).join('')}</div></section>
+
+<section class="v an-card" id="D"><h2>Wariant D · Dni w kolumnach</h2><p class="mk-sub">Odwrócone pytanie: „kto nie uzupełnił wtorku?”. Każdy dzień to kolumna z licznikiem i listą osób z luką; zielony ✓ „wszyscy” tam, gdzie nic nie brakuje.</p>
+<div class="mk-dcols">${D.map((d,i)=>{const m=P.filter(p=>p[3][i][0]==='bad'||p[3][i][0]==='warn');const done=P.length-m.length;return `<div class="mk-dc"><h3><span>${['poniedziałek','wtorek','środa','czwartek','piątek'][i]}</span><span class="mk-meta t-num">${done} z ${P.length}</span></h3><div class="mk-meter ${done===P.length?'ok':done>=6?'warn':'bad'}"><i style="width:${done/P.length*100}%"></i></div>${m.length?m.map(p=>`<div class="mk-who">${av(p)}<span>${p[0].split(' ')[0]} ${p[0].split(' ')[1][0]}.</span></div>`).join(''):'<div class="mk-allok"><span class="mk-d ok">✓</span>wszyscy uzupełnili</div>'}</div>`}).join('')}</div>
+<div class="mk-btns"><button class="btn btn--secondary btn--sm">Przypomnij wszystkim z lukami (4)</button><button class="btn btn--ghost btn--sm">Pokaż jako tabelę</button></div></section>
+`);
+</script></body></html>
