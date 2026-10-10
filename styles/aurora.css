@@ -1907,3 +1907,7 @@ button.cb-bar { cursor: pointer; }
 .cb--week .cb-lanes, .cb--week .cb-wcols { grid-template-columns: var(--cb-cols); }
 .cb-card { overflow-wrap: break-word; word-break: normal; hyphens: auto; font-size: 11px; }
 .cb-card .cb-chip__c { font-size: 9px; }
+
+/* Kalendarz: stary kontener .cv-wrap miał ramkę i overflow, przez co ucinał nagłówek dni tygodnia */
+.cb.cv-wrap { overflow: visible; background: none; box-shadow: none; border-radius: 0; }
+.cb-dow { padding-top: 2px; }
