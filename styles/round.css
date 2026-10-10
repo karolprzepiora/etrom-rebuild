@@ -38,3 +38,28 @@ select, .fd__select, .input { border-radius: 999px; }
 :root:root .an-tile--bad { box-shadow: inset 0 0 0 1.5px var(--alarm); }
 :root:root .an-tile--warn { box-shadow: inset 0 0 0 1.5px var(--warn); }
 :root:root .an-card--fin { box-shadow: inset 0 0 0 1.5px var(--flow); }
+
+/* ---- każdy wpis to osobna kapsuła z odstępem ---- */
+.mail-list { border: 0; background: transparent; gap: .6rem; overflow: visible; }
+.mrow2, .mrow2:last-child { border: 0; border-radius: 26px; background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); padding-inline: var(--space-4); }
+.mrow2:hover { background: var(--wash); }
+
+.pb-row--task, .pb-row--case, .pb-row--now {
+  margin: 5px 0; border-top: 0; border-radius: 26px; overflow: hidden;
+  background: var(--sheet); box-shadow: none; border: 1px solid var(--line);
+}
+.pb-row--case { background: color-mix(in srgb, var(--flow) 8%, var(--sheet)); border-color: transparent; }
+.pb-row--now { background: color-mix(in oklab, var(--good) 11%, var(--sheet)); border: 1.5px solid var(--good); }
+.pb-row--task .pb-label, .pb-row--case .pb-label, .pb-row--now .pb-label, .pb-label--case { border-radius: 26px 0 0 26px; box-shadow: none; }
+.pb-row--casehead { margin: 8px 0 0; border-radius: 26px 26px 0 0; overflow: hidden; }
+.pb-grp { margin: 10px 0 4px; border-radius: 999px; border: 0; }
+.pb-grp > span { padding-inline: var(--space-3); }
+.pb-row--case { border-color: var(--line); }
+.pb-row--casehead { border-radius: 26px; margin: 10px 0 4px; }
+.pb-row--task > *, .pb-row--case > *, .pb-row--now > * { border-top: 0; border-bottom: 0; }
+.pb-row--task .pb-track, .pb-row--case .pb-track, .pb-row--now .pb-track { border: 0; }
+.pb-row--task, .pb-row--case, .pb-row--now { margin-block: 7px; }
+.pb-grp { margin-inline: 0; background: var(--wash); overflow: hidden; }
+:root:root .pb-row--task, :root:root .pb-row--case, :root:root .pb-row--now { margin-block: 8px; border: 1px solid var(--line); }
+:root:root .pb-row--now { border: 1.5px solid var(--good); }
+:root:root .pb-row--task .pb-track { background-image: none; }
