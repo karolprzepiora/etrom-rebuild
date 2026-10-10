@@ -67,7 +67,7 @@
       hiddenPeople: list(src.hiddenPeople, function (x) { return typeof x === 'string' && /^p-\d+$/.test(x); }),
       hiddenProjects: list(src.hiddenProjects, function (x) { return Number.isSafeInteger(x) && x > 0; }),
       hiddenKinds: list(src.hiddenKinds, function (x) { return ['deadline', 'task', 'absence', 'trip'].indexOf(x) >= 0; }),
-      rail: ['filters', 'day', 'warn', 'none'].indexOf(src.rail) >= 0 ? src.rail : 'day',
+      rail: ['filters', 'day', 'warn', 'none'].indexOf(src.rail) >= 0 ? src.rail : 'none',
       layer: ['abs', 'dl', 'trip'].indexOf(src.layer) >= 0 ? src.layer : 'all'
     };
   }
@@ -83,7 +83,7 @@
     // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
     return {
       theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
-      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
+      groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
       cal: cleanCal(null), dash: cleanDash(null)
     };
   }
@@ -127,7 +127,7 @@
       projectView: viewId(source),
       sidebarCollapsed: source.sidebarCollapsed === true,
       railCollapsed: source.railCollapsed === true,
-      collapsedRails: (Array.isArray(source.collapsedRails) ? source.collapsedRails : []).filter(function (id, i, a) { return typeof id === 'string' && /^[a-z-]{1,24}$/.test(id) && a.indexOf(id) === i; }).slice(0, 12),
+      collapsedRails: (Array.isArray(source.collapsedRails) ? source.collapsedRails : ['time', 'mywork', 'mycases', 'feed']).filter(function (id, i, a) { return typeof id === 'string' && /^[a-z-]{1,24}$/.test(id) && a.indexOf(id) === i; }).slice(0, 12),
       palette: PALETTES.indexOf(source.palette) >= 0 ? source.palette : 'ocean',
       hdr: source.hdr !== false,
       tilesFull: source.tilesFull === true,

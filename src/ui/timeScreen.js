@@ -124,6 +124,10 @@
       children.push(D.el('span', { class: 'ts-day__h t-num is-none', text: '—' }));
       tip += ' · brak zapisu' + (d.norm ? ', brakuje ' + TL.duration(d.norm) : '');
     } else if (d.today && !d.minutes) tip += ' · dziś jeszcze bez zapisu';
+    if (d.trip) {
+      tip += ' · wyjazd: ' + d.trip.place + ' (' + d.trip.from + '–' + d.trip.to + (d.trip.credited ? ', doliczono ' + TL.duration(d.trip.credited) : '') + ')';
+      if (!tag) children.push(D.el('span', { class: 'ts-day__trip truncate', text: 'Wyjazd · ' + d.trip.place }));
+    }
     if (tag) children.push(tag);
     return D.el('div', { class: cls, attrs: { role: 'cell', 'data-tooltip': tip, 'data-day': d.key } }, children);
   }
@@ -212,7 +216,11 @@
   /** Dzień: wszystko, co zapisano dziś (oś dnia, luki, wpisy, podsumowanie). Zegar włącza się paskiem na dole. */
   function dayView(state, ctx, me, now) {
     var todays = TL.forDay(state.workspace.entries || [], me.id, now);
-    var minutes = TL.sum(todays, now);
+    var base = TL.sum(todays, now);
+    var todaySheet = TS.build(state.workspace.entries || [], me.id, now, { mode: 'week', offset: 0, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
+    var today = todaySheet.days.filter(function (d) { return d.today; })[0];
+    var trip = today && today.trip ? today.trip : null;
+    var minutes = base + (trip ? trip.credited : 0);
     var seg = controls(Object.assign({}, state, { timeMode: 'day' }), ctx, false, [], me.id, null);
     var target = state.prefs.dayTarget || 480;
     var left = Math.max(0, target - minutes);
@@ -226,12 +234,20 @@
       stat('Wpisy', String(todays.length), todays.length ? 'zapisanych odcinków czasu' : 'brak zapisu'),
       stat('Projekty', String(nProj), nProj ? F2(nProj, 'projekt', 'projekty', 'projektów') + ' dziś' : 'brak zapisu')
     ]);
+    var tripCard = trip ? D.el('section', { class: 'an-card ts-trip', attrs: { 'data-fk': 'ts-trip' } }, [
+      D.el('div', { class: 'ts-trip__t' }, [
+        D.el('b', { text: 'Wyjazd · ' + trip.place }),
+        D.el('span', { class: 't-meta', text: trip.from + '–' + trip.to + ' · ' + TL.duration(trip.minutes) + (trip.credited ? ' (doliczone do czasu pracy: ' + TL.duration(trip.credited) + ')' : (todays.length ? ' (pokrywa je rejestrator)' : '')) })
+      ]),
+      D.el('p', { class: 't-meta', text: todays.length ? 'Dziś działa też pomiar czasu. Ustaw godziny wyjazdu, a reszta dnia policzy się z rejestratora.' : 'Bez pomiaru czasu wyjazd liczy się jako pełny dzień pracy. Jeśli jechałeś krócej, ustaw godziny wyjazdu.' }),
+      UI.button({ label: 'Zmień godziny wyjazdu', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-trip-edit' }, onClick: function () { ctx.actions.openTrip(trip.tripId); } })
+    ]) : null;
     var side = D.el('section', { class: 'an-card ts-calcard ts-day-view' }, [
       D.el('div', { class: 'ts-day-view__main' }, [
         E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true })
       ])
     ]);
-    return { body: [seg, stats, side], summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
+    return { body: [seg, stats, tripCard, side].filter(Boolean), summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
   }
 
   function sheetView(state, ctx, person, now) {
@@ -241,7 +257,7 @@
     var personId = canPick && state.timePerson && Team.findPerson(people, state.timePerson) ? state.timePerson : me.id;
     var who = Team.findPerson(people, personId);
     if (state.timeMode === 'day') return dayView(state, ctx, me, now);
-    var sheet = TS.build(state.workspace.entries || [], personId, now, { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [] });
+    var sheet = TS.build(state.workspace.entries || [], personId, now, { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
     var pct = sheet.target ? Math.round(sheet.total / sheet.target * 100) : 0;
     var avg = sheet.activeDays ? Math.round(sheet.total / sheet.activeDays) : 0;
     var counts = sheet.counts;

@@ -10,6 +10,10 @@
   var KINDS = { field: 'Teren', meeting: 'Spotkanie', training: 'Szkolenie', other: 'Inne' };
 
   function isDay(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v + 'T00:00:00')); }
+  var DEFAULT_FROM = '08:00';
+  var DEFAULT_TO = '16:00';
+  function isClock(v) { return typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v); }
+  function clockMin(v) { return Number(v.slice(0, 2)) * 60 + Number(v.slice(3, 5)); }
   function str(v, n) { return typeof v === 'string' ? v.trim().slice(0, n) : ''; }
   function stamp(v) { return typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : ''; }
 
@@ -24,6 +28,8 @@
       return {
         id: id, personIds: ids, kind: KINDS[t.kind] ? t.kind : 'field', from: t.from, to: t.to,
         place: str(t.place, 120), projectId: typeof t.projectId === 'string' && t.projectId ? t.projectId : null,
+        timeFrom: isClock(t.timeFrom) && isClock(t.timeTo) && clockMin(t.timeTo) > clockMin(t.timeFrom) ? t.timeFrom : '',
+        timeTo: isClock(t.timeFrom) && isClock(t.timeTo) && clockMin(t.timeTo) > clockMin(t.timeFrom) ? t.timeTo : '',
         note: str(t.note, 300), notify: t.notify === true, createdBy: str(t.createdBy, 40), createdAt: stamp(t.createdAt)
       };
     }).filter(Boolean).map(function (t, i, all) {
@@ -42,6 +48,7 @@
     if (!isDay(d.to)) errors.to = 'Podaj datę końca.';
     else if (isDay(d.from) && d.to < d.from) errors.to = 'Koniec nie może być przed początkiem.';
     if (!str(d.place, 120)) errors.place = 'Podaj miejsce.';
+    if ((d.timeFrom || d.timeTo) && !(isClock(d.timeFrom) && isClock(d.timeTo) && clockMin(d.timeTo) > clockMin(d.timeFrom))) errors.timeTo = 'Godziny wyjazdu: „do” musi być po „od”.';
     return { valid: Object.keys(errors).length === 0, errors: errors };
   }
 
@@ -52,7 +59,7 @@
     var existing = data.id ? current.filter(function (t) { return t.id === data.id; })[0] : null;
     var row = Object.assign({}, existing || { createdBy: byId || '', createdAt: (now instanceof Date ? now : new Date()).toISOString() }, {
       id: data.id || '', personIds: data.personIds, kind: data.kind, from: data.from, to: data.to, place: data.place,
-      projectId: data.projectId || null, note: data.note || '', notify: data.notify === true
+      projectId: data.projectId || null, timeFrom: data.timeFrom || '', timeTo: data.timeTo || '', note: data.note || '', notify: data.notify === true
     });
     var next = data.id ? current.map(function (t) { return t.id === data.id ? row : t; }) : current.concat([row]);
     return { valid: true, errors: {}, list: normalize(next) };
@@ -63,6 +70,27 @@
   /** Wyjazdy obejmujące dzień `iso` (opcjonalnie tylko osoby `personId`). */
   function onDay(list, iso, personId) {
     return (list || []).filter(function (t) { return t.from <= iso && t.to >= iso && (!personId || t.personIds.indexOf(personId) >= 0); });
+  }
+
+  /**
+   * Godziny wyjazdu osoby w dniu `iso` (domyślnie 8:00–16:00, jak norma dnia): { tripId, place, projectId, from, to, fromMin, toMin, minutes } albo null.
+   * Wyjazd w czasie pracy zastępuje rejestrator tylko tam, gdzie rejestratora nie było (patrz `uncovered`).
+   */
+  function windowOn(list, personId, iso) {
+    var t = onDay(list, iso, personId)[0];
+    if (!t) return null;
+    var from = t.timeFrom || DEFAULT_FROM;
+    var to = t.timeTo || DEFAULT_TO;
+    return { tripId: t.id, place: t.place, kind: t.kind, projectId: t.projectId, custom: !!t.timeFrom, from: from, to: to, fromMin: clockMin(from), toMin: clockMin(to), minutes: clockMin(to) - clockMin(from) };
+  }
+
+  /** Minuty okna wyjazdu, których nie pokrywają przedziały z rejestratora ([{ a, b }] w minutach doby). */
+  function uncovered(win, intervals) {
+    var parts = (intervals || []).map(function (i) { return [Math.max(win.fromMin, i.a), Math.min(win.toMin, i.b)]; }).filter(function (i) { return i[1] > i[0]; }).sort(function (x, y) { return x[0] - y[0]; });
+    var covered = 0;
+    var edge = win.fromMin;
+    parts.forEach(function (i) { var a = Math.max(i[0], edge); if (i[1] > a) { covered += i[1] - a; edge = i[1]; } });
+    return win.minutes - covered;
   }
 
   function leaderOfPerson(viewerId, personId, projects) {
@@ -92,7 +120,7 @@
     return trip.personIds.every(function (id) { return id === viewerId || leaderOfPerson(viewerId, id, projects); });
   }
 
-  var api = { KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, onDay: onDay, canAddFor: canAddFor, assignable: assignable, canEdit: canEdit };
+  var api = { KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, onDay: onDay, windowOn: windowOn, uncovered: uncovered, DEFAULT_FROM: DEFAULT_FROM, DEFAULT_TO: DEFAULT_TO, canAddFor: canAddFor, assignable: assignable, canEdit: canEdit };
   if (node) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Trips = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

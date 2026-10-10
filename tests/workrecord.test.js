@@ -67,3 +67,12 @@ test('zgodność z kartą czasu: ta sama suma minut co Timesheet.build dla miesi
   assert.equal(rec().totals.minutes, sheet.total);
   assert.equal(rec().totals.norm, sheet.target);
 });
+
+test('wyjazd bez rejestratora w ewidencji to zwykła praca 8:00–16:00, bez wzmianki o wyjeździe', () => {
+  const Trips = require('../src/core/trips.js');
+  const trips = Trips.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-12', place: 'Lipnica' }, [{ id: 'p-1' }], 'p-1', new Date()).list;
+  const rec = W.build([], 'p-1', new Date(2026, 9, 20, 12), { year: 2026, month: 9, trips });
+  const day = rec.days.find((d) => d.key === '2026-10-12');
+  assert.deepEqual([day.kind, day.from, day.to, day.minutes, day.projects.length], ['work', '08:00', '16:00', 480, 0]);
+  assert.equal(JSON.stringify(day).includes('Lipnica'), false);
+});

@@ -27,6 +27,8 @@
     var to = UI.input({ id: 'tr-to', type: 'date', value: v.to || '', error: problems.to });
     var place = UI.input({ id: 'tr-place', value: v.place || '', maxlength: 120, placeholder: 'np. Lipnica, urząd gminy', error: problems.place });
     var project = UI.select({ id: 'tr-project', value: v.projectId || '', options: [{ value: '', label: 'Bez projektu' }].concat(projects.map(function (p) { return { value: p.id, label: p.code + ' · ' + p.name }; })) });
+    var tFrom = UI.input({ id: 'tr-tfrom', type: 'time', value: v.timeFrom || '', error: problems.timeTo });
+    var tTo = UI.input({ id: 'tr-tto', type: 'time', value: v.timeTo || '' });
     var note = UI.input({ id: 'tr-note', value: v.note || '', maxlength: 300, placeholder: 'np. pomiary, odbiór' });
     var notify = UI.checkbox({ id: 'tr-notify', label: 'Powiadom Lidera projektu', checked: v.notify === true });
     from.addEventListener('change', function () { if (!to.value || to.value < from.value) to.value = from.value; });
@@ -49,7 +51,7 @@
       onSubmit: function () {
         handlers.onSubmit({
           id: v.id || '', personIds: people.length > 1 ? picked() : people.map(function (p) { return p.id; }),
-          kind: kindSel.value, from: from.value, to: to.value, place: place.value, projectId: project.value || null, note: note.value,
+          kind: kindSel.value, from: from.value, to: to.value, place: place.value, projectId: project.value || null, timeFrom: tFrom.value, timeTo: tTo.value, note: note.value,
           notify: !!(notify.querySelector ? notify.querySelector('input').checked : notify.checked)
         });
       },
@@ -60,11 +62,15 @@
           UI.field({ id: 'tr-to', label: 'Do (włącznie)', control: to, error: problems.to })
         ]),
         UI.field({ id: 'tr-place', label: 'Miejsce', control: place, error: problems.place }),
+        D.el('div', { class: 'form__row' }, [
+          UI.field({ id: 'tr-tfrom', label: 'Godziny od', optional: true, control: tFrom, error: problems.timeTo }),
+          UI.field({ id: 'tr-tto', label: 'Godziny do', optional: true, control: tTo })
+        ]),
         who,
         UI.field({ id: 'tr-project', label: 'Projekt', optional: true, control: project }),
         UI.field({ id: 'tr-note', label: 'Notatka', optional: true, control: note }),
         notify,
-        D.el('p', { class: 't-meta', text: 'Wyjazd nie zmienia godzin w planie ani licznika czasu — pokazuje tylko, gdzie będziesz.' }),
+        D.el('p', { class: 't-meta', text: 'Bez rejestratora wyjazd liczy się w Czasie jako 8 godzin (8:00–16:00). Gdy włączysz też pomiar czasu, ustaw tu godziny wyjazdu, a pozostały czas policzy rejestrator.' }),
         editing && handlers.onDelete ? UI.button({ label: 'Usuń wyjazd', variant: 'ghost', size: 'sm', attrs: { type: 'button', 'data-fk': 'tr-delete' }, onClick: handlers.onDelete }) : null
       ]
     });

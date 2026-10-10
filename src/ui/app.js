@@ -172,6 +172,8 @@
     } else if (changedScreen) {
       patch.inspector = null;
     }
+    // Wejście do Kalendarza zawsze zaczyna od dnia bieżącego, a nie od ostatnio klikniętego.
+    if (changedScreen && route.name === 'calendar') { patch.calAnchor = null; patch.calDay = null; }
     // Powrót z projektu na listę: nazwa wraca do swojego wiersza.
     if (state.route.name === 'project' && route.name === 'projects') titleReturn = state.route.projectId;
 
@@ -3478,7 +3480,7 @@
     var state = store.getState();
     var now = new Date();
     var pid = personId || state.prefs.me;
-    var options = { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget };
+    var options = { mode: state.timeMode, offset: state.timeOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] };
     var projectOf = function (id) { var p = findProject(id); return p ? { code: p.code, name: p.name } : { code: String(id), name: '' }; };
     var rows = kind === 'entries'
       ? E.Timesheet.entryRows(state.workspace.entries || [], pid, now, options, function (entry) {
@@ -3507,7 +3509,7 @@
     var period = E.Timesheet.period(now, state.timeMode === 'month' ? 'month' : 'week', state.timeMode === 'month' ? state.timeOffset : 0);
     var ref = state.timeMode === 'month' ? period.from : (state.timeMode === 'week' ? E.Timesheet.period(now, 'week', state.timeOffset).from : now);
     var projectOf = function (id) { var p = findProject(id); return { code: p ? p.code : String(id), name: p ? p.name : '' }; };
-    var record = E.WorkRecord.build(state.workspace.entries || [], pid, now, { year: ref.getFullYear(), month: ref.getMonth(), absences: state.workspace.absences || [], target: state.prefs.dayTarget, project: projectOf });
+    var record = E.WorkRecord.build(state.workspace.entries || [], pid, now, { year: ref.getFullYear(), month: ref.getMonth(), absences: state.workspace.absences || [], trips: state.workspace.trips || [], target: state.prefs.dayTarget, project: projectOf });
     var meta = { personName: person ? Team.fullName(person) : '', generatedAt: now.getDate() + '.' + (now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + TL.clockOf(now.getTime()), autoPrint: format === 'print' };
     var run = function () {
       var doc = variant === 2 ? E.WorkRecord.normative(record) : record;

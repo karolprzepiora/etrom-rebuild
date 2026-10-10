@@ -13,7 +13,7 @@ function fakeBackend(initial) {
   };
 }
 
-const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: [], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'day', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
+const BASE = { theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [], groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0, cal: { view: 'month', scope: '', hiddenPeople: [], hiddenProjects: [], hiddenKinds: [], rail: 'none', layer: 'all' }, dash: { tiles: [], collapsed: [] } };
 const withBase = (patch) => Object.assign({}, BASE, patch);
 
 test('domyślnie motyw idzie za systemem, a projekty pokazują się jako lista', () => {
@@ -163,7 +163,7 @@ test('cel dnia i koniec dnia pracy: granice i format', () => {
 
 test('collapsedRails: tylko poprawne, niepowtarzalne identyfikatory paneli', () => {
   assert.deepEqual(Prefs.normalize({ collapsedRails: ['mywork', 'mywork', 'time', 5, 'Zły Id!'] }).collapsedRails, ['mywork', 'time']);
-  assert.deepEqual(Prefs.normalize({ collapsedRails: 'x' }).collapsedRails, []);
+  assert.deepEqual(Prefs.normalize({ collapsedRails: 'x' }).collapsedRails, ['time', 'mywork', 'mycases', 'feed']);
 });
 
 test('tilesFull: domyślnie spokojne kafle, tylko true włącza pełny kolor', () => {

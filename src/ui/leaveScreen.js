@@ -395,7 +395,7 @@
     var leader = projects.some(function (p) { return p.team && p.team.leader === me.id; });
     var canInbox = management || leader;
     var who = lv.who === 'team' ? 'team' : 'me';
-    var mode = lv.view === 'year' ? 'year' : 'month';
+    var mode = lv.view === 'month' ? 'month' : 'year';
     var pendingN = pendingFor(state, me);
     var vctx = { people: people, actions: ctx.actions };
     var list = state.workspace.absences || [];
@@ -432,7 +432,7 @@
       ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, { people: people, actions: ctx.actions, mine: true }, now); }))
       : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })] }];
     if (canInbox) items.push({ id: 'inbox', title: 'Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), label: 'Do akceptacji', icon: 'check', tone: 'violet', badge: pendingN ? String(pendingN) : '', late: !!pendingN, side: [inbox(state, vctx, me, now)] });
-    var railPref = lv.rail || (canInbox && pendingN ? 'inbox' : 'mine');
+    var railPref = lv.rail || 'none';
     var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
     return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
       UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])], onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };

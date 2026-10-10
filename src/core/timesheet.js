@@ -7,6 +7,7 @@
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
   var Absences = node ? require('./absences.js') : root.ETROM.Absences;
   var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
+  function Trips() { return node ? require('./trips.js') : root.ETROM.Trips; }
 
   var DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
@@ -108,6 +109,32 @@
       task.minutes += m;
       task.cells[i] += m;
       if (entry.label) task.label = entry.label;
+    });
+    // Wyjazd lub spotkanie w dniu pracy: godziny wyjazdu (domyślnie 8:00–16:00) liczą się jako czas pracy tam, gdzie nie było rejestratora.
+    if ((o.trips || []).length) days.forEach(function (d, i) {
+      if (d.weekend || d.holiday || d.future || gone[Absences.isoOf(new Date(d.date))]) return;
+      var win = Trips().windowOn(o.trips, personId, d.key);
+      if (!win) return;
+      var spans = (entries || []).filter(function (e) { return e.personId === personId && TL.dayKey(e.start) === d.key; }).map(function (e) {
+        var a = new Date(Date.parse(e.start));
+        var b = new Date(e.end ? Date.parse(e.end) : (now instanceof Date ? now.getTime() : Date.now()));
+        return { a: a.getHours() * 60 + a.getMinutes(), b: TL.dayKey(b.getTime()) === d.key ? b.getHours() * 60 + b.getMinutes() : 24 * 60 };
+      });
+      var extra = Trips().uncovered(win, spans);
+      d.trip = { tripId: win.tripId, place: win.place, from: win.from, to: win.to, minutes: win.minutes, credited: extra, custom: win.custom };
+      if (extra <= 0) return;
+      if (!firstKey || d.key < firstKey) firstKey = d.key;
+      d.minutes += extra;
+      if (win.projectId) {
+        var pid = String(win.projectId);
+        var row = rows[pid];
+        if (!row) { row = rows[pid] = { projectId: win.projectId, minutes: 0, cells: days.map(function () { return 0; }), tasks: {}, taskOrder: [] }; order.push(pid); }
+        row.minutes += extra; row.cells[i] += extra;
+        var tk = '|trip-' + win.tripId;
+        var task = row.tasks[tk];
+        if (!task) { task = row.tasks[tk] = { stageId: '', taskId: 'trip-' + win.tripId, label: 'Wyjazd · ' + win.place, minutes: 0, cells: days.map(function () { return 0; }) }; row.taskOrder.push(tk); }
+        task.minutes += extra; task.cells[i] += extra;
+      }
     });
     var list = order.map(function (k) {
       var row = rows[k];

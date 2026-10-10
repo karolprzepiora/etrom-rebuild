@@ -90,7 +90,7 @@
       ctx.actions.setTime({ calAnchor: next, calDay: null });
     }
     var unit = { day: 'dzień', month: 'miesiąc', week: 'tydzień', year: 'rok' }[mode];
-    var switcher = UI.segmented({ label: 'Widok kalendarza', value: mode, items: VIEWS, onChange: function (v) { ctx.actions.setCal({ view: v }); } });
+    var switcher = UI.segmented({ label: 'Widok kalendarza', value: mode, items: VIEWS, onChange: function (v) { if (v === 'day') ctx.actions.setTime({ calAnchor: null, calDay: null }); ctx.actions.setCal({ view: v }); } });
     var hiddenCount = (cal.hiddenPeople || []).length + (cal.hiddenProjects || []).length + (cal.hiddenKinds || []).length + (cal.scope && cal.scope !== CV.defaultScope(management) ? 1 : 0);
     var addBtn = UI.button({ label: 'Wyjazd lub spotkanie', variant: 'primary', size: 'sm', icon: 'plus', attrs: { 'data-fk': 'cv-add' }, onClick: function () { ctx.actions.openTrip(null, selected); } });
     var toolbar = D.el('div', { class: 'cv-bar' }, [
@@ -200,13 +200,13 @@
     function chipNode(ev) {
       var t = chipType(ev);
       var tip = (ev.code ? ev.code + ' · ' : '') + ev.title + (ev.project ? ' · ' + ev.project : '') + (ev.sub ? ' · ' + ev.sub : '');
-      return D.el('button', { class: 'cb-chip cv-ev is-' + t + (ev.warn ? ' is-warn' : ''), attrs: { type: 'button', 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
+      return D.el('button', { class: 'cb-chip cv-ev is-' + t + (ev.warn ? ' is-warn' : '') + (ev.code && t !== 'trip' && t !== 'meet' ? ' has-hue' : ''), style: ev.code && t !== 'trip' && t !== 'meet' ? E.Identity.hueStyle(ev.code) : null, attrs: { type: 'button', 'data-tooltip': tip, 'aria-label': tip, 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
         ev.code && t !== 'trip' && t !== 'meet' ? D.el('b', { class: 'cb-chip__c', text: ev.code }) : null, D.el('span', { class: 'truncate', text: ev.title })
       ]);
     }
     function cardNode(ev) {
       var t = chipType(ev);
-      return D.el('button', { class: 'cb-card cv-ev is-' + t + (ev.warn ? ' is-warn' : ''), attrs: { type: 'button', 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
+      return D.el('button', { class: 'cb-card cv-ev is-' + t + (ev.warn ? ' is-warn' : '') + (ev.code && t !== 'trip' && t !== 'meet' ? ' has-hue' : ''), style: ev.code && t !== 'trip' && t !== 'meet' ? E.Identity.hueStyle(ev.code) : null, attrs: { type: 'button', 'data-fk': 'cv-ev-' + ev.kind }, on: { click: function (e) { e.stopPropagation(); openEvent(ev); } } }, [
         ev.code && t !== 'trip' && t !== 'meet' ? D.el('b', { class: 'cb-chip__c', text: ev.code }) : null,
         D.el('span', { class: 'cb-card__t', text: ev.title }),
         ev.project || (t === 'trip' || t === 'meet') && ev.sub ? D.el('small', { class: 'truncate', text: ev.project || ev.sub }) : null
@@ -298,7 +298,7 @@
           return { cls: cls.trim(), tip: tipParts.join(' · '), onClick: function (k) { openDay(k); } };
         }, today));
       }
-      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'L4'], ['is-k-other', 'nieobecność (L4 innych osób)'], ['is-hol', 'święto'], ['is-ev', 'kropka pod dniem: termin, wyjazd lub spotkanie']])])]);
+      return D.el('div', { class: 'cv-year lv-yearcal' }, [D.el('div', { class: 'lv-months' }, months), D.el('div', { class: 'lv-foot' }, [CB.legend([['is-k-leave', 'urlop'], ['is-k-req', 'wniosek czeka na decyzję'], ['is-k-sick', 'L4'], ['is-k-other', 'nieobecność (L4 innych osób)'], ['is-hol', 'święto'], ['is-ev', 'podkreślenie dnia: termin, wyjazd lub spotkanie']])])]);
     }
 
     /* ---------- panel dnia ---------- */
@@ -407,7 +407,7 @@
     var items = [{ id: 'filters', title: 'Filtry i warstwy', icon: 'filter', tone: 'accent', badge: hiddenCount ? String(hiddenCount) : '', side: filtersSide }];
     if (mode === 'month' || mode === 'week') items.push({ id: 'day', title: 'Wybrany dzień i najbliższe terminy', label: 'Dzień', icon: 'calendar', tone: 'violet', side: daySide() });
     if (data.conflicts.length) items.push({ id: 'warn', title: 'Uwaga w tym zakresie', icon: 'alert', tone: 'warn', badge: String(data.conflicts.length), late: true, side: warnSide() });
-    var railPref = cal.rail || 'day';
+    var railPref = cal.rail || 'none';
     var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
     var total = data.cells.reduce(function (n, c) { return n + (c.out ? 0 : c.events.filter(function (e) { return e.kind !== 'absence' && e.kind !== 'trip'; }).length); }, 0);
     return {

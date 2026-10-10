@@ -46,3 +46,19 @@ test('uprawnienia: sobie każdy, innym Lider i Dyrekcja', () => {
   assert.equal(T.canEdit('p-1', trip, people, projects), true);
   assert.equal(T.canEdit('p-3', trip, people, projects), true);
 });
+
+test('godziny wyjazdu: domyślnie 8:00–16:00, własne po zapisie; rejestrator ma pierwszeństwo tam, gdzie był włączony', () => {
+  const people = [{ id: 'p-1' }];
+  const res = T.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-13', place: 'Lipnica' }, people, 'p-1', new Date());
+  const win = T.windowOn(res.list, 'p-1', '2026-10-12');
+  assert.deepEqual([win.from, win.to, win.minutes, win.custom], ['08:00', '16:00', 480, false]);
+  assert.equal(T.windowOn(res.list, 'p-1', '2026-10-14'), null);
+  assert.equal(T.windowOn(res.list, 'p-2', '2026-10-12'), null);
+  const own = T.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-12', place: 'Lipnica', timeFrom: '09:00', timeTo: '13:00' }, people, 'p-1', new Date());
+  const w2 = T.windowOn(own.list, 'p-1', '2026-10-12');
+  assert.deepEqual([w2.from, w2.to, w2.minutes, w2.custom], ['09:00', '13:00', 240, true]);
+  assert.equal(T.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-12', place: 'X', timeFrom: '15:00', timeTo: '09:00' }, people, 'p-1', new Date()).valid, false);
+  assert.equal(T.uncovered(win, []), 480);
+  assert.equal(T.uncovered(win, [{ a: 8 * 60, b: 10 * 60 }]), 360);
+  assert.equal(T.uncovered(win, [{ a: 7 * 60, b: 9 * 60 }, { a: 8 * 60 + 30, b: 12 * 60 }, { a: 15 * 60, b: 18 * 60 }]), 180);
+});

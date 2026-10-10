@@ -11,6 +11,7 @@
   var TL = node ? require('./timelog.js') : root.ETROM.TimeLog;
   var Absences = node ? require('./absences.js') : root.ETROM.Absences;
   var Cal = node ? require('./calendar.js') : root.ETROM.Calendar;
+  function Trips() { return node ? require('./trips.js') : root.ETROM.Trips; }
 
   var DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   var DAYS_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
@@ -61,9 +62,23 @@
         key: key, number: d, dow: dow, label: DAYS[dow], long: DAYS_LONG[dow], kind: 'idle', minutes: Math.round(minutes),
         from: '', to: '', breakMinutes: 0, projects: [], absenceCode: '', title: '', onDemand: false, future: key > todayKey, norm: 0
       };
+      // Wyjazd lub spotkanie: godziny wyjazdu (domyślnie 8:00–16:00) to zwykła praca, bez wzmianki o wyjeździe.
+      var win = !weekend && !holiday && !info && key <= todayKey && (opt.trips || []).length ? Trips().windowOn(opt.trips, personId, key) : null;
+      var extra = 0;
+      if (win) {
+        var spans = list.map(function (e) {
+          var a = new Date(Date.parse(e.start));
+          var b = new Date(e.end ? Date.parse(e.end) : nowMs);
+          return { a: a.getHours() * 60 + a.getMinutes(), b: TL.dayKey(b.getTime()) === key ? b.getHours() * 60 + b.getMinutes() : 24 * 60 };
+        });
+        extra = Trips().uncovered(win, spans);
+        if (extra > 0) minutes += extra;
+        row.minutes = Math.round(minutes);
+      }
       if (minutes > 0) {
-        var startMs = Date.parse(list[0].start);
-        var endMs = list.reduce(function (m, e) { return Math.max(m, e.end ? Date.parse(e.end) : nowMs); }, 0);
+        var startMs = list.length ? Date.parse(list[0].start) : new Date(year, month, d, 0, win.fromMin).getTime();
+        var endMs = list.length ? list.reduce(function (m, e) { return Math.max(m, e.end ? Date.parse(e.end) : nowMs); }, 0) : new Date(year, month, d, 0, win.toMin).getTime();
+        if (win && extra > 0) { startMs = Math.min(startMs, new Date(year, month, d, 0, win.fromMin).getTime()); endMs = Math.max(endMs, new Date(year, month, d, 0, win.toMin).getTime()); }
         row.kind = 'work';
         row.from = TL.clockOf(startMs);
         row.to = TL.clockOf(endMs);

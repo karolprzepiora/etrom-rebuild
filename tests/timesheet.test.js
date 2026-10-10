@@ -132,3 +132,21 @@ test('build: norma bez urlopu i chorobowego, bilans co do minuty, liczniki i tyg
   assert.equal(m.weeks.length, 5, 'październik 2026 obejmuje 5 tygodni ISO');
   assert.equal(m.weeks[0].indices.length, 4, 'pierwszy tydzień zaczyna się w czwartek');
 });
+
+test('wyjazd bez rejestratora daje pełne 8 h, a przy rejestratorze tylko godziny spoza niego', () => {
+  const Trips = require('../src/core/trips.js');
+  const people = [{ id: 'p-1' }];
+  const trips = Trips.save([], { personIds: ['p-1'], kind: 'field', from: '2026-10-12', to: '2026-10-13', place: 'Lipnica' }, people, 'p-1', new Date()).list;
+  const now = at(2026, 10, 14, 12);
+  const none = TS.build([], 'p-1', now, { mode: 'week', offset: 0, trips });
+  const mon = none.days.find((d) => d.key === '2026-10-12');
+  assert.equal(mon.minutes, 480);
+  assert.equal(mon.trip.place, 'Lipnica');
+  assert.equal(none.total, 960);
+  const withTimer = [mk('e1', 'p-1', 1, 't1', at(2026, 10, 13, 8), at(2026, 10, 13, 10))];
+  const tue = TS.build(withTimer, 'p-1', now, { mode: 'week', offset: 0, trips }).days.find((d) => d.key === '2026-10-13');
+  assert.equal(tue.minutes, 480);
+  assert.equal(tue.trip.credited, 360);
+  const future = TS.build([], 'p-1', at(2026, 10, 12, 7), { mode: 'week', offset: 0, trips }).days.find((d) => d.key === '2026-10-13');
+  assert.equal(future.minutes, 0);
+});

@@ -649,6 +649,8 @@ async function main() {
       await evaluate('const t = [...document.querySelectorAll(".mywork__main .msec__title")].map(n => n.textContent); return t.length > 0 && t.every(x => ["Wymaga reakcji","Po terminie","Dziś","W tym tygodniu","Później","Bez terminu"].includes(x)) && !!document.querySelector(".mrow__project") && !!document.querySelector(".mrow .tdue, .mrow .due--none");'));
     check('pasek boczny pokazuje licznik pracy osoby',
       await evaluate('return /^\\d+$/.test(document.querySelector("[data-screen=mywork] .nav__count").textContent);'));
+    await evaluate('const b = document.querySelector("[data-fk=rail-mywork]"); if (b && b.getAttribute("aria-expanded") !== "true") b.click(); return true;');
+    await sleep(300);
     check('moje projekty pokazują funkcję i licznik dni do końca',
       await evaluate('return document.querySelectorAll(".mproject").length > 0 && !!document.querySelector(".mproject .countdown");'));
     await click('.mrow .trow__name');
@@ -871,6 +873,8 @@ async function main() {
       await evaluate('const v = document.getElementById("view-review"); return v.querySelectorAll(".rv-sec").length === 7 && !!document.querySelector(".nav a[href=\\"#/przeglad\\"]") && v.querySelectorAll(".rv-row").length >= 1;'));
     await go('#/kalendarz');
     await sleep(300);
+    await evaluate('window.ETROM.app.actions.setCal({ rail: "day" }); return true;');
+    await sleep(300);
     check('ekran „Kalendarz”: miesiąc w wierszach tygodni z paskami nieobecności, wybrany dzień i lista najbliższych terminów',
       await evaluate('const v = document.getElementById("view-calendar"); const n = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); return !v.hidden && v.querySelectorAll(".cb-day").length === n && v.querySelectorAll(".cb-bg").length >= n && v.querySelectorAll(".cb-day.is-today").length === 1 && !!v.querySelector(".cb-layers") && !!v.querySelector(".rl__side") && !!document.querySelector(".nav a[href=\\"#/kalendarz\\"]");'));
     const calTitle = await evaluate('return document.querySelector(".cv-title").textContent;');
@@ -961,7 +965,17 @@ async function main() {
     await sleep(300);
     check('kalendarz: kliknięcie dnia w Miesiącu otwiera ten dzień w widoku Dzień',
       (await state('s.prefs.cal.view')) === 'day' && await evaluate('return !!document.querySelector("#view-calendar .cv-day, #view-calendar .cv-dgroup");'));
+    await go('#/pulpit');
+    await go('#/kalendarz');
+    await sleep(300);
+    check('kalendarz: po powrocie widok Dzień pokazuje dzień bieżący, nie ostatnio kliknięty', (await state('s.calAnchor')) === null && (await state('s.calDay')) === null);
     await evaluate('window.ETROM.app.actions.setCal({ view: "month" }); return true;');
+    await go('#/czas');
+    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "day" }); return true;');
+    await sleep(300);
+    check('czas: wyjazd bez pomiaru daje w Dniu 8 h i przycisk zmiany godzin wyjazdu',
+      await evaluate('const dow = new Date().getDay(); if (dow === 0 || dow === 6) return true; const c = document.querySelector("[data-fk=ts-trip]"); return !!c && /8 h/.test(document.getElementById("view-time").textContent) && /08:00–16:00/.test(c.textContent) && !!c.querySelector("[data-fk=ts-trip-edit]");'));
+    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "week" }); return true;');
     await go('#/urlopy');
     await sleep(300);
     check('urlopy: legenda nie zawiera szkoleń',
@@ -2270,8 +2284,12 @@ async function main() {
     await sleep(400);
     check('urlopy: ekran widoczny, w menu licznik wniosków do akceptacji przy „Urlopy” (nie ma „Urlopów zespołu”)',
       await evaluate('const n = document.querySelector("[data-screen=leave] .nav__count"); return !document.getElementById("view-leave").hidden && !!n && !n.hidden && Number(n.textContent) >= 1 && !document.querySelector("[data-screen=leaveteam]");'));
+    await evaluate('window.ETROM.app.actions.setLeave({ view: "month", rail: "mine" }); return true;');
+    await sleep(300);
     check('urlopy: jedna zakładka z kaflami, przełącznikami Ja/Zespół i Miesiąc/Rok, saldem oraz „Moje wnioski”',
       await evaluate('const v = document.getElementById("view-leave"); return v.querySelectorAll(".lv-bar .segmented__btn").length === 4 && v.querySelectorAll(".lv-c").length >= 28 && v.querySelectorAll(".lv-stats-row .ts-stat").length === 4 && !!v.querySelector("[data-fk=rail-mine]");'));
+    await evaluate('window.ETROM.app.actions.setLeave({ rail: "inbox" }); return true;');
+    await sleep(300);
     check('urlopy: „Do akceptacji” jest w tej samej zakładce, z wnioskami, wpływem na plan i przyciskami decyzji',
       await evaluate('const c = document.querySelectorAll(".lv-inbox"); return c.length >= 2 && [...c].every(x => /WPŁYW NA PLAN/.test(x.textContent)) && !!document.querySelector("[data-fk=lv-approve]") && !!document.querySelector("[data-fk=lv-reject]");'));
     const leaveId = await evaluate('return document.querySelector(".lv-inbox").dataset.id;');
