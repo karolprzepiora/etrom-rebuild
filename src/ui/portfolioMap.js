@@ -48,7 +48,8 @@
         risk ? E.Flow.stateButton(project, ctx, { text: health.reasons[0].text + (health.reasons.length > 1 ? ' · +' + (health.reasons.length - 1) : ''), className: 'pf-reason pf-reason--' + health.level }) : null,
         D.el('div', { class: 'hy-det__act' }, [
           UI.button({ label: 'Otwórz projekt', variant: 'primary', size: 'sm', onClick: function () { ctx.actions.openProject(project.id); } }),
-          team.length ? Avatar.avatarStack(team, { max: 5, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Bez zespołu' })
+          team.length ? Avatar.avatarStack(team, { max: 5, size: 'sm' }) : D.el('span', { class: 't-muted', text: 'Bez zespołu' }),
+          E.ProjectList.moreButton(project, ctx.actions)
         ])
       ]),
       D.el('div', { class: 'hy-fact' }, [
@@ -82,17 +83,27 @@
     var w = Math.max(.8, e - s);
     var elapsed = hasSpan ? Math.max(0, Math.min(100, (now.getTime() - start) / (end - start) * 100)) : null;
     var fillEnd = s + w * pct / 100;
-    var behind = hasSpan && elapsed > pct && !done && tn > fillEnd;
+    var behind = hasSpan && elapsed - pct > 1.5 && !done && tn > fillEnd;
     var parts = split(project);
     var open = openId === project.id;
+    var risk = health.level === 'alarm' || health.level === 'warning';
+    var tipLines = [project.name];
+    var meta = [];
+    if (Number.isFinite(end)) meta.push('umowa do ' + fmtDate(project.deadline));
+    meta.push('postęp ' + pct + '%');
+    if (!done && Number.isFinite(end) && end < now.getTime()) {
+      var late = Math.max(1, Math.round((now.getTime() - end) / DAY));
+      meta.push('po terminie o ' + late + ' ' + (late === 1 ? 'dzień' : 'dni'));
+    }
     var chip = D.el('button', {
       class: 'hy-n',
-      attrs: { type: 'button', 'aria-expanded': String(open), 'aria-label': 'Projekt ' + project.code + ': ' + project.name + '. ' + (open ? 'Zwiń właściwości' : 'Rozwiń właściwości'), 'data-fk': 'hy-' + project.id },
+      attrs: { type: 'button', 'aria-expanded': String(open), 'aria-label': 'Projekt ' + project.code + ': ' + project.name + ', ' + meta.join(', ') + '. ' + (open ? 'Zwiń właściwości' : 'Rozwiń właściwości'), 'data-fk': 'hy-' + project.id },
       style: { left: e + '%' }
     }, [
+      risk ? D.el('span', { class: 'hy-n__ic', attrs: { 'aria-hidden': 'true' }, text: '!' }) : null,
       parts[0] ? D.el('i', { text: parts[0] }) : null,
       D.el('b', { class: 't-num', text: parts[1] }),
-      D.el('span', { class: 'hy-tip', text: project.name })
+      D.el('span', { class: 'hy-tip' }, [D.el('strong', { text: project.name }), D.el('span', { text: meta.join(' · ') })])
     ]);
     var node = D.el('div', {
       class: 'hy-r level-' + health.level + (done ? ' is-closed' : '') + (open ? ' is-open' : ''),
@@ -138,6 +149,7 @@
     sorted.forEach(function (p) { var y = year2(p); if (!by[y]) { by[y] = []; years.push(y); } by[y].push(p); });
 
     var grid = [];
+    var labels = [];
     var cur = new Date(mn); cur.setDate(1);
     for (var guard = 0; guard < 80; guard += 1) {
       cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
@@ -145,7 +157,7 @@
       if (cur.getMonth() % 3) continue;
       var x = P(cur.getTime());
       grid.push(D.el('span', { class: 'hy-gl', style: { left: x + '%' } }));
-      if (Math.abs(x - tn) > 2.6) grid.push(D.el('span', { class: 'hy-gt' + (cur.getMonth() === 0 ? ' is-year' : ''), style: { left: 'calc(' + x + '% + 5px)' }, text: cur.getMonth() === 0 ? String(cur.getFullYear()) : MONTHS[cur.getMonth()] }));
+      if (Math.abs(x - tn) > 2.6) labels.push(D.el('span', { class: 'hy-gt' + (cur.getMonth() === 0 ? ' is-year' : ''), style: { left: 'calc(' + x + '% + 5px)' }, text: cur.getMonth() === 0 ? String(cur.getFullYear()) : MONTHS[cur.getMonth()] }));
     }
 
     var alarms = visible.filter(function (p) { return Insight.health(p, now).level === 'alarm'; }).length;
@@ -162,10 +174,8 @@
         D.el('p', { class: 'hy-sub', text: plural(visible.length) + ' · ' + alarms + ' w alarmie · ' + warns + ' z ostrzeżeniem' })
       ]),
       D.el('div', { class: 'hy-stage' }, [
-        D.el('div', { class: 'hy-axis', attrs: { 'aria-hidden': 'true' } }, grid.concat([
-          D.el('span', { class: 'hy-today', style: { left: tn + '%' } }),
-          D.el('span', { class: 'hy-tpill', style: { left: tn + '%' }, text: 'dziś' })
-        ])),
+        D.el('div', { class: 'hy-axis', attrs: { 'aria-hidden': 'true' } }, grid.concat([D.el('span', { class: 'hy-today', style: { left: tn + '%' } })])),
+        D.el('div', { class: 'hy-ruler', attrs: { title: 'Numer projektu stoi w miejscu końca umowy; różowa kreska to dziś; kreskowanie pokazuje, ile pracy brakuje do upływu czasu umowy.' } }, labels.concat([D.el('span', { class: 'hy-tpill', style: { left: tn + '%' }, text: 'dziś' })])),
         D.el('div', { class: 'hy-body' }, body)
       ])
     ]);

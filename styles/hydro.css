@@ -11,10 +11,11 @@
 .hy-stage { position: relative; margin-top: 1.6rem; }
 .hy-axis { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .hy-gl { position: absolute; top: 1.9rem; bottom: 0; width: 1px; background: color-mix(in oklab, var(--hy-ink) 7%, transparent); }
-.hy-gt { position: absolute; top: .45rem; font-size: .72rem; color: var(--hy-mut); }
+.hy-gt { position: absolute; top: .55rem; font-size: .72rem; color: var(--hy-mut); }
 .hy-gt.is-year { color: var(--hy-ink); font-weight: 700; }
-.hy-today { position: absolute; top: 1.7rem; bottom: 0; width: 2px; margin-left: -1px; background: var(--hy-today); box-shadow: 0 0 calc(10px * var(--hdr, 1)) color-mix(in oklab, var(--hy-today) 55%, transparent); }
-.hy-tpill { position: absolute; top: 0; transform: translateX(-50%); background: var(--hy-today); color: #fff; font-size: .72rem; font-weight: 700; padding: .2rem .75rem; border-radius: 999px; }
+.hy-today { position: absolute; top: 1.5rem; bottom: 0; width: 2px; margin-left: -1px; background: var(--hy-today); box-shadow: 0 0 calc(10px * var(--hdr, 1)) color-mix(in oklab, var(--hy-today) 55%, transparent); }
+.hy-tpill { position: absolute; top: .2rem; transform: translateX(-50%); background: var(--hy-today); color: #fff; font-size: .72rem; font-weight: 700; padding: .2rem .75rem; border-radius: 999px; }
+.hy-ruler { position: sticky; top: 0; z-index: 3; height: 1.9rem; margin-bottom: -1.9rem; background: var(--sheet); }
 .hy-body { position: relative; z-index: 1; padding-top: 1.9rem; }
 
 .hy-yh { position: relative; height: 5rem; margin-top: .9rem; border-bottom: 1.5px solid var(--hy-ink); }
@@ -76,3 +77,12 @@ html[data-look="aurora"] .hy { --hy-fill: linear-gradient(90deg, oklch(.42 .12 v
 html[data-look="cinema"] .hy { --hy-fill: color-mix(in oklab, var(--ink), var(--flow) 22%); }
 html[data-look="paper"] .hy { --hy-fill: color-mix(in oklab, var(--ink), var(--flow) 35%); }
 html[data-look="oled"] .hy { --hy-fill: var(--ink); }
+
+/* ikona stanu w pastylce numeru: alarm i ostrzeżenie widać także bez koloru */
+.hy-n__ic { display: inline-grid; place-items: center; width: 1.05rem; height: 1.05rem; margin-right: .45rem; border-radius: 50%; background: var(--alarm); color: #fff; font: 800 .72rem/1 var(--font-text, inherit); letter-spacing: 0; }
+.hy-r.level-warning .hy-n__ic { background: var(--warn); }
+.hy-r.is-open .hy-n__ic { background: #fff; color: var(--alarm); }
+.hy-r.is-open.level-warning .hy-n__ic { color: var(--warn-ink); }
+.hy-tip { text-align: left; font-family: var(--font-text, inherit); }
+.hy-tip strong { display: block; font-weight: 650; }
+.hy-tip span { display: block; opacity: .85; margin-top: .1rem; }

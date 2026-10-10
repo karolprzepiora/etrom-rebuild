@@ -250,6 +250,17 @@ async function main() {
     await sleep(300);
     check('Portfel: ponowne kliknięcie zwija', (await evaluate('return document.querySelectorAll("#project-list .hy-r.is-open").length;')) === 0);
     check('Portfel: nazwa projektu jest podpowiedzią numeru', (await evaluate('return document.querySelector("#project-list .hy-r .hy-tip").textContent.length > 3;')));
+    check('Portfel: podpowiedź ma nazwę i postęp', (await evaluate('return /postęp \\d+%/.test(document.querySelector("#project-list .hy-r .hy-tip").textContent);')));
+    check('Portfel: oś czasu jest przyklejona i ma wyjaśnienie', (await evaluate('const r = document.querySelector("#project-list .hy-ruler"); return !!r && getComputedStyle(r).position === "sticky" && r.title.length > 20;')));
+    await evaluate('document.querySelector("#project-list .hy-n").focus(); return true;');
+    await pressKey('j');
+    await sleep(150);
+    check('Portfel: J przesuwa fokus na kolejny numer', (await evaluate('return document.activeElement.classList.contains("hy-n");')));
+    await click('.hy-r[data-project-code="2606"] .hy-n');
+    await sleep(300);
+    check('Portfel: rozwinięty wiersz ma menu działań', (await evaluate('return !!document.querySelector(".hy-r.is-open .hy-det .row-actions");')));
+    await click('.hy-r[data-project-code="2606"] .hy-n');
+    await sleep(300);
     await evaluate('window.ETROM.app.actions.setPref({ view: "list" }); return true;');
     await sleep(200);
     check('widok tabeli nadal działa: 12 wierszy', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 12);

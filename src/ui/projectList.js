@@ -412,7 +412,7 @@
     var span = Number.isFinite(start) && Number.isFinite(end) && end > start;
     var elapsed = span ? Math.max(0, Math.min(100, (now.getTime() - start) / (end - start) * 100)) : null;
     var closed = project.status === 'done';
-    var gap = span && !closed && elapsed > pct;
+    var gap = span && !closed && elapsed - pct > 1.5;
     var text = 'Postęp ' + pct + '%' + (span ? ' · upłynęło ' + Math.round(elapsed) + '% czasu umowy' : '');
     return D.el('div', { class: 'pm' + (closed ? ' is-closed' : ''), attrs: { role: 'img', 'aria-label': text, 'data-tooltip': text } }, [
       D.el('span', { class: 'pm__cap' }, [
@@ -701,6 +701,7 @@
     COLUMNS: COLUMNS,
     projectHref: projectHref,
     timeRibbon: timeRibbon,
+    moreButton: moreButton,
     dueCell: dueCell,
     meter: meter,
     numeral: numeral,

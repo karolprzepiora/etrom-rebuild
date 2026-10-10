@@ -4972,7 +4972,7 @@
       return;
     }
     if (route === 'projects' && (event.key === 'j' || event.key === 'J' || event.key === 'k' || event.key === 'K')) {
-      var links = Array.prototype.slice.call(nodes.list.querySelectorAll('.project-link'));
+      var links = Array.prototype.slice.call(nodes.list.querySelectorAll(nodes.list.querySelector('.hy') ? '.hy-n' : '.project-link'));
       if (links.length) {
         event.preventDefault();
         var at = links.indexOf(document.activeElement);
