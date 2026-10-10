@@ -55,6 +55,7 @@
     if (!isDay(d.to)) errors.to = 'Podaj datę końca.';
     else if (isDay(d.from) && d.to < d.from) errors.to = 'Koniec nie może być przed początkiem.';
     if (!KINDS[d.kind]) errors.kind = 'Wybierz rodzaj nieobecności.';
+    else if (!errors.from && !errors.to && !Cal.workdaysIn(d.from, d.to)) errors.to = 'W tym zakresie nie ma dni roboczych.';
     return { valid: Object.keys(errors).length === 0, errors: errors };
   }
 
@@ -166,9 +167,16 @@
       if (!n) errors.to = 'W tym zakresie nie ma dni roboczych.';
       else if (current.some(function (a) { return a.personId === d.personId && a.status !== 'rejected' && a.id !== d.id && overlaps(a, d.from, d.to); })) errors.from = 'W tym terminie masz już wniosek lub nieobecność.';
       else if (d.kind === 'leave') {
-        var bal = balance(current.filter(function (a) { return a.id !== d.id; }), person, new Date(d.from + 'T12:00:00'));
-        if (n > bal.free) errors.to = 'Brakuje dni urlopu: do wykorzystania ' + Math.max(0, bal.free) + ', wniosek obejmuje ' + n + '.';
-        else if (d.onDemand === true && bal.onDemandUsed + bal.onDemandPending + n > ON_DEMAND_LIMIT) errors.onDemand = 'Limit urlopu na żądanie to ' + ON_DEMAND_LIMIT + ' dni w roku.';
+        /* Wniosek na przełomie roku liczy się osobno w puli każdego roku. */
+        var others = current.filter(function (a) { return a.id !== d.id; });
+        for (var y = Number(d.from.slice(0, 4)); y <= Number(d.to.slice(0, 4)) && !errors.to && !errors.onDemand; y += 1) {
+          var c = clip(d, y + '-01-01', y + '-12-31');
+          var ny = Cal.workdaysIn(c.from, c.to);
+          if (!ny) continue;
+          var bal = balance(others, person, new Date(y + '-06-15T12:00:00'));
+          if (ny > bal.free) errors.to = 'Brakuje dni urlopu w ' + y + ' r.: do wykorzystania ' + Math.max(0, bal.free) + ', wniosek obejmuje ' + ny + '.';
+          else if (d.onDemand === true && bal.onDemandUsed + bal.onDemandPending + ny > ON_DEMAND_LIMIT) errors.onDemand = 'Limit urlopu na żądanie to ' + ON_DEMAND_LIMIT + ' dni w roku.';
+        }
       }
     }
     if (Object.keys(errors).length) return { valid: false, errors: errors, list: current };

@@ -384,13 +384,15 @@
     function stats() {
       var inR = data.cells.filter(function (c) { return !c.out; });
       var dl = 0, absDays = 0, pend = 0, minPresent = null, minKey = null, tripIds = {}, trips = 0, meets = 0;
+      /* Najmniejsza obsada patrzy w przód: dni, które już minęły, nie mówią nic o planowaniu. */
+      var hasFuture = inR.some(function (c) { return c.key >= today; });
       inR.forEach(function (c) {
         c.events.forEach(function (e) {
           if (e.kind === 'trip') { if (!tripIds[e.tripId]) { tripIds[e.tripId] = 1; if (e.tripKind !== 'field') meets += 1; else trips += 1; } }
           else if (e.kind === 'absence') { if (e.pending) pend += 1; else if (c.workday) absDays += 1; }
           else dl += 1;
         });
-        if (c.workday && c.total && (minPresent === null || c.present < minPresent)) { minPresent = c.present; minKey = c.key; }
+        if (c.workday && c.total && (!hasFuture || c.key >= today) && (minPresent === null || c.present < minPresent)) { minPresent = c.present; minKey = c.key; }
       });
       var one = mode === 'day';
       var tot = inR[0] ? inR[0].total : 0;

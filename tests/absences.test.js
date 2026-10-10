@@ -151,3 +151,21 @@ test('L4 zgłoszone od razu: zaakceptowane, nie zużywa urlopu, innym pokazuje t
   const again = A.request(res.list, { personId: 'p-1', from: '2026-10-13', to: '2026-10-13', kind: 'sick' }, people, { by: 'p-1', autoApprove: true });
   assert.equal(again.valid, false);
 });
+
+test('wniosek urlopowy na przełomie roku liczy się osobno w puli każdego roku', () => {
+  const ppl = [{ id: 'p-1', leaveDays: 5 }];
+  const base = [{ id: 'a1', personId: 'p-1', from: '2026-12-14', to: '2026-12-17', kind: 'leave', status: 'approved' }];
+  const now = new Date('2026-10-10T10:00:00');
+  /* 2026: zostaje 1 dzień (31.12), 2027: 4 stycznia to pierwszy dzień roboczy → po jednym dniu w każdej puli */
+  const ok = A.request(base, { personId: 'p-1', from: '2026-12-31', to: '2027-01-04', kind: 'leave' }, ppl, { now });
+  assert.equal(ok.valid, true);
+  const bad = A.request(base, { personId: 'p-1', from: '2026-12-30', to: '2027-01-04', kind: 'leave' }, ppl, { now });
+  assert.equal(bad.valid, false);
+  assert.match(bad.errors.to, /2026/);
+});
+
+test('zapis nieobecności bez dni roboczych (sama sobota i niedziela) jest odrzucany', () => {
+  const r = A.save([], { personId: 'p-1', from: '2026-10-10', to: '2026-10-11', kind: 'leave' }, people);
+  assert.equal(r.valid, false);
+  assert.ok(r.errors.to);
+});

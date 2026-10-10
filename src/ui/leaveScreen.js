@@ -395,27 +395,32 @@
     var pendingN = pendingFor(state, me);
     var vctx = { people: people, actions: ctx.actions };
     var list = state.workspace.absences || [];
-    var bal = A.balance(list, me, now);
     var off = Number(lv.monthOffset) || 0;
     var base = new Date(now.getFullYear(), now.getMonth() + off, 1);
     var year = Number(lv.year) || now.getFullYear();
+    /* Kafle sald dotyczą oglądanego roku: przeszły liczy się w całości jako wykorzystany, przyszły jako zaplanowany. */
+    var shownYear = lv.view === 'month' ? base.getFullYear() : year;
+    var ref = shownYear === now.getFullYear() ? now : (shownYear < now.getFullYear() ? new Date(shownYear, 11, 31, 12) : new Date(shownYear, 0, 1, 12));
+    var bal = A.balance(list, me, ref);
     var title = mode === 'year' ? String(year) : MONTHS[base.getMonth()][0].toUpperCase() + MONTHS[base.getMonth()].slice(1) + ' ' + base.getFullYear();
     function shift(dir) { if (mode === 'year') ctx.actions.setLeave({ year: year + dir, sel: null }); else ctx.actions.setLeave({ monthOffset: off + dir }); }
 
     var whoSeg = UI.segmented({ label: 'Czyje urlopy', value: who, items: [{ value: 'me', label: 'Ja' }, { value: 'team', label: 'Zespół' }], onChange: function (v) { ctx.actions.setLeave({ who: v, sel: null }); } });
     var viewSeg = UI.segmented({ label: 'Zakres kalendarza', value: mode, items: [{ value: 'month', label: 'Miesiąc' }, { value: 'year', label: 'Rok' }], onChange: function (v) { ctx.actions.setLeave({ view: v, sel: null }); } });
     var toolbar = D.el('div', { class: 'ts-bar lv-bar' }, [whoSeg.node, viewSeg.node,
+      D.el('div', { class: 'ts-nav', attrs: { role: 'group', 'aria-label': 'Przesuń okres' } }, [
       UI.iconButton({ icon: 'chevronLeft', label: mode === 'year' ? 'Poprzedni rok' : 'Poprzedni miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-prev' }, onClick: function () { shift(-1); } }),
       D.el('h2', { class: 'ts-title', text: title }),
       UI.iconButton({ icon: 'chevronRight', label: mode === 'year' ? 'Następny rok' : 'Następny miesiąc', size: 'sm', attrs: { 'data-fk': 'lv-next' }, onClick: function () { shift(1); } }),
-      (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null,
+      (mode === 'month' && off) || (mode === 'year' && year !== now.getFullYear()) ? UI.button({ label: 'Dziś', variant: 'ghost', size: 'sm', onClick: function () { ctx.actions.setLeave({ monthOffset: 0, year: now.getFullYear() }); } }) : null
+      ]),
       D.el('span', { class: 'lv-bar__fill' }),
       UI.button({ label: 'Zgłoś L4', variant: 'secondary', icon: 'plus', attrs: { 'data-fk': 'lv-sick' }, onClick: function () { ctx.actions.openSickReport(); } }),
       UI.button({ label: management ? 'Dodaj urlop' : 'Złóż wniosek', variant: 'primary', icon: 'plus', attrs: { 'data-fk': 'lv-new' }, onClick: function () { ctx.actions.openLeaveRequest({ kind: 'leave' }); } })]);
 
     var pct = bal.total ? Math.round(bal.left / bal.total * 100) : 0;
     var stats = D.el('div', { class: 'ts-stats lv-stats-row' }, [
-      kpi('Pozostało', days(bal.left), 'z ' + bal.total + ' · ' + pct + '%', D.el('div', { class: 'lv-meter' }, [D.el('i', { style: { width: Math.max(0, Math.min(100, pct)) + '%' } })])),
+      kpi('Pozostało' + (shownYear !== now.getFullYear() ? ' w ' + shownYear : ''), days(bal.left), 'z ' + bal.total + ' · ' + pct + '%', D.el('div', { class: 'lv-meter' }, [D.el('i', { style: { width: Math.max(0, Math.min(100, pct)) + '%' } })])),
       kpi('Wykorzystano', days(bal.used), 'zaplanowano ' + bal.planned + (bal.sick ? ' · zwolnienia ' + bal.sick : '')),
       kpi('Na żądanie', bal.onDemandUsed + ' z ' + bal.onDemandLimit, 'pozostało ' + Math.max(0, bal.onDemandLimit - bal.onDemandUsed)),
       kpi('Wnioski', String(bal.pending ? bal.pending : 0), bal.pending ? 'czeka na decyzję' : 'nic nie czeka')

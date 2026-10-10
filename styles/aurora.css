@@ -1887,7 +1887,7 @@ button.cb-bar { cursor: pointer; }
 .lv-day.is-k-req.is-e { box-shadow: inset 0 1.5px 0 var(--leave), inset 0 -1.5px 0 var(--leave), inset -1.5px 0 0 var(--leave); }
 .lv-day.is-k-req.is-s.is-e { box-shadow: inset 0 0 0 1.5px var(--leave); }
 .lv-day.has-ev { position: relative; }
-.lv-day.has-ev::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 16px; height: 4px; margin-left: -8px; border-radius: 3px; background: var(--k, var(--ink-3)); box-shadow: 0 0 0 1.5px var(--sheet, #fff); right: auto; top: auto; }
+.lv-day.has-ev::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 16px; height: 4px; margin-left: -8px; border-radius: 3px; background: var(--k, var(--ink-3)); box-shadow: 0 0 0 1.5px var(--mo-bg, var(--sheet, #fff)); right: auto; top: auto; }
 .lv-day.has-ev-dl { --k: light-dark(#334155, #cbd5e1); } .lv-day.has-ev-trip { --k: var(--trip); } .lv-day.has-ev-meet { --k: light-dark(#c4811a, #e7a947); }
 .cb-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--ink-2); }
 .cb-legend li { display: flex; align-items: center; gap: 6px; }
@@ -1958,3 +1958,14 @@ button.cb-bar { cursor: pointer; }
 .cb-sy.is-n1 { background: color-mix(in srgb, var(--leave) 20%, var(--sheet)); }
 .cb-sy.is-n2 { background: color-mix(in srgb, var(--leave) 48%, var(--sheet)); }
 .cb-sy.is-n3 { background: var(--leave); color: #fff; }
+
+/* Widoki roczne: każdy miesiąc na delikatnie szarym podkładzie */
+.lv-months > .lv-month, .cv-year .lv-months > .lv-month {
+  --mo-bg: color-mix(in srgb, var(--ink-3, #6b7280) 8%, var(--sheet));
+  background: var(--mo-bg);
+  border-radius: 14px;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+/* Telefon: tydzień w Czasie to lista dni, więc nagłówek z nazwami dni zostaje ukryty (nazwa dnia jest w każdej komórce) */
+@media (max-width: 48rem) { .ts-cal.is-week .ts-cal__dh { display: none; } }
