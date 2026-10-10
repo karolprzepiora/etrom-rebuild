@@ -2224,12 +2224,12 @@ async function main() {
       await evaluate('return !!document.getElementById("look-oled-guard");') && (await (async () => { await click('#look-oled-guard'); await sleep(250); return evaluate('return document.documentElement.getAttribute("data-oled-guard") === "true" && window.ETROM.app.store.getState().prefs.oledGuard === true;'); })()));
     await click('[data-fk="look-style-cinema"]');
     await sleep(300);
-    check('styl Filmowy: pasy kinowe (38 px) i ciemny schemat; ochrona OLED wyłączona poza stylem OLED',
-      await evaluate('return document.documentElement.getAttribute("data-look") === "cinema" && getComputedStyle(document.body, "::before").height === "38px" && !document.documentElement.hasAttribute("data-oled-guard") && !document.getElementById("look-oled-guard");'));
+    check('styl Filmowy: pasy kinowe (38 px), serifowy tytuł nagłówka i ciemny schemat; ochrona OLED wyłączona poza stylem OLED',
+      await evaluate('return document.documentElement.getAttribute("data-look") === "cinema" && getComputedStyle(document.body, "::before").height === "38px" && !document.documentElement.hasAttribute("data-oled-guard") && !document.getElementById("look-oled-guard") && /Georgia/.test(getComputedStyle(document.querySelector("#view-settings .t-page-title")).fontFamily);'));
     await click('[data-fk="look-style-paper"]');
     await sleep(300);
-    check('styl Papier: wymuszony jasny schemat i ciepłe, matowe tło arkusza',
-      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(251, 248, 240)";'));
+    check('styl Papier: wymuszony jasny schemat, ciepłe tło arkusza i matowy nagłówek ekranu',
+      await evaluate('return document.documentElement.getAttribute("data-theme") === "light" && getComputedStyle(document.querySelector(".sheet")).backgroundColor === "rgb(251, 248, 240)" && getComputedStyle(document.querySelector("#view-settings .page-header")).backgroundColor === "rgb(47, 93, 107)";'));
     await click('[data-fk="look-style-aurora"]');
     await sleep(300);
     check('powrót do stylu Aurora zdejmuje atrybut stylu, a schemat wraca do wyboru z Motywu (tu: ciemny)',

@@ -22,6 +22,16 @@ html[data-look="oled"] .db-tile__v { text-shadow: 0 0 calc(18px * var(--hdr)) cu
 html[data-look="oled"] .nav__item[aria-current="page"] { background: #0d0e10; box-shadow: inset 0 0 0 1px #26282c; }
 html[data-look="oled"] .sidebar__search, html[data-look="oled"] .sidebar__create { background: #050506; }
 
+/* Nagłówek ekranu (Projekty, Czas, Kalendarz…): czerń z cienką poświatą zamiast niebieskiego pasa */
+html[data-look="oled"] .page-header {
+  background: radial-gradient(34rem 14rem at 98% -40%, oklch(.45 calc(.15 * var(--k)) var(--au-h1) / .5), transparent 70%), #000;
+  box-shadow: inset 0 0 0 1px oklch(.7 calc(.14 * var(--k)) var(--au-h1) / .5), 0 0 calc(40px * var(--hdr)) -14px oklch(.65 calc(.16 * var(--k)) var(--au-h1) / .5);
+}
+html[data-look="oled"] .page-header::before { opacity: .5; }
+html[data-look="oled"] .ts-stat, html[data-look="oled"] .an-card, html[data-look="oled"] .tb-card, html[data-look="oled"] .case-card,
+html[data-look="oled"] .set-card, html[data-look="oled"] .lv-card--inbox, html[data-look="oled"] .ts-calcard { background: #040405; box-shadow: inset 0 0 0 1px #1d1f22; }
+html[data-look="oled"] .ts-stat__v { text-shadow: 0 0 calc(14px * var(--hdr)) currentColor; }
+
 /* Ochrona przed wypaleniem: stałe elementy przesuwają się o kilka pikseli, a po bezczynności ekran przygasa. */
 html[data-oled-guard] .app { transform: translate(var(--shift-x, 0px), var(--shift-y, 0px)); transition: transform 4s linear, opacity 2.5s ease; }
 html[data-oled-guard][data-idle] .app { opacity: .28; }
@@ -57,17 +67,35 @@ html[data-look="cinema"] .db-tile__k { color: oklch(.78 .08 70); letter-spacing:
   html[data-look="cinema"] .app { margin-top: 0; height: 100dvh; }
 }
 
+/* Nagłówek ekranu: ta sama gradacja co plansza Pulpitu, serifowy tytuł i wąski pas światła */
+html[data-look="cinema"] .page-header { background: linear-gradient(115deg, oklch(.3 .07 220), oklch(.24 .06 235) 50%, oklch(.4 .09 55)); }
+html[data-look="cinema"] .page-header::before { opacity: .35; }
+html[data-look="cinema"] .page-header::after {
+  content: ""; position: absolute; left: -10%; right: -10%; top: 62%; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, oklch(.85 .12 225), transparent); filter: blur(1px);
+  box-shadow: 0 0 calc(26px * var(--hdr)) 5px oklch(.7 .15 225 / .5); opacity: .7;
+}
+html[data-look="cinema"] .page-header .t-page-title, html[data-look="cinema"] .page-header h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: .01em; }
+html[data-look="cinema"] .ts-stat, html[data-look="cinema"] .an-card, html[data-look="cinema"] .tb-card, html[data-look="cinema"] .case-card,
+html[data-look="cinema"] .set-card, html[data-look="cinema"] .ts-calcard { background: oklch(.17 .012 240 / .85); box-shadow: inset 0 0 0 1px oklch(.7 .06 70 / .2); }
+html[data-look="cinema"] .ts-stat__l, html[data-look="cinema"] .set-card__title { color: oklch(.78 .08 70); letter-spacing: .12em; }
+
 /* ---------- Papier ---------- */
 html[data-look="paper"] {
   --canvas: #e7dfcf; --sheet: #fbf8f0; --raised: #fffdf8; --wash: #f4efe3; --wash-2: #ece5d4; --hover: #efe8d8; --pressed: #e4dcc7;
   --line: #e1d8c3; --line-strong: #cbbfa3;
-  --ink: #2a251d; --ink-2: #53493a; --ink-3: #6e6351;
-  --flow: #2f6f86; --flow-ink: #245a6d; --flow-wash: #e1eef1; --brand: #c4457f;
+  --ink: #2a251d; --ink-2: #4d4435; --ink-3: #685d4b;
+  --flow: #2f6f86; --flow-ink: #245a6d; --flow-wash: #e1eef1; --brand: #c4457f; --warn: #a56000;
   --au-bg: #e7dfcf; --au-base: #e7dfcf; --hdr: 0;
 }
 html[data-look="paper"] .sidebar { background: #2b3a3f; box-shadow: none; }
 html[data-look="paper"] .sheet { background: #fbf8f0; box-shadow: 0 1px 0 #d6ccb4, 0 0 0 1px #d9cfb8; }
 html[data-look="paper"] .db-hero { background: #2f5d6b; box-shadow: none; }
 html[data-look="paper"] .db-tile, html[data-look="paper"] .db-card { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
-html[data-look="paper"] .db-tile__v { font-family: Georgia, 'Times New Roman', serif; }
+html[data-look="paper"] .db-tile__v, html[data-look="paper"] .ts-stat__v { font-family: Georgia, 'Times New Roman', serif; }
+/* Nagłówek ekranu: matowy łupek bez poświaty i prążków */
+html[data-look="paper"] .page-header { background: #2f5d6b; box-shadow: none; }
+html[data-look="paper"] .page-header::before { display: none; }
+html[data-look="paper"] .ts-stat, html[data-look="paper"] .an-card, html[data-look="paper"] .tb-card, html[data-look="paper"] .case-card,
+html[data-look="paper"] .set-card, html[data-look="paper"] .ts-calcard { background: #fffdf8; box-shadow: inset 0 0 0 1px #e1d8c3; }
 @media (prefers-reduced-motion: reduce) { html[data-oled-guard] .app { transition: none; } }
