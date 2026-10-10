@@ -29,7 +29,7 @@
     workspace: Model.emptyWorkspace(),
     route: { name: 'projects' },
     screen: 'projects',
-    filters: { query: '', status: 'all', sort: 'manual', dir: 'asc', person: 'all', health: 'all', horizon: 0 },
+    filters: { query: '', status: 'all', sort: 'code', dir: 'desc', person: 'all', health: 'all', horizon: 0 },
     teamFilters: { query: '', role: 'all', showInactive: false },
     teamTab: 'board',
     teamStatus: 'all',
@@ -3859,6 +3859,7 @@
       { label: 'Przejdź do skrzynki', icon: 'mail', meta: now(state.route.name === 'inbox'), keywords: 'skrzynka czeka na mnie zatwierdzenia zlecenia wnioski urlopowe pisma reakcje decyzje', run: function () { goTo('inbox'); } },
       { label: 'Przejdź do mojej pracy', icon: 'checklist', meta: now(state.route.name === 'mywork'), keywords: 'moje zadania dziś termin tydzień po terminie', run: function () { goTo('mywork'); } },
       { label: 'Przejdź do zespołu', icon: 'people', meta: now(state.route.name === 'team'), keywords: 'ekran osoby katalog', run: function () { goTo('team'); } },
+      { label: 'Widok: portfel na osi czasu', icon: 'chart', meta: now(prefs.view === 'portfolio'), keywords: 'oś czasu hydrogram numery', run: function () { goTo('projects'); setView('portfolio'); } },
       { label: 'Widok: tabela', icon: 'list', meta: now(prefs.view === 'list'), keywords: 'lista wiersze', run: function () { goTo('projects'); setView('list'); } },
       { label: 'Widok: karty', icon: 'grid', meta: now(prefs.view === 'cards'), keywords: 'kafelki', run: function () { goTo('projects'); setView('cards'); } },
       { label: 'Motyw jasny', icon: 'sun', meta: now(prefs.theme === 'light'), run: function () { setPref({ theme: 'light' }); } },
@@ -4234,7 +4235,7 @@
       label: 'Sposób wyświetlania',
       iconsOnly: true,
       value: store.getState().prefs.view,
-      items: [{ value: 'list', icon: 'list', title: 'Widok tabeli' }, { value: 'cards', icon: 'grid', title: 'Widok kart' }],
+      items: [{ value: 'portfolio', icon: 'chart', title: 'Portfel na osi czasu' }, { value: 'list', icon: 'list', title: 'Widok tabeli' }, { value: 'cards', icon: 'grid', title: 'Widok kart' }],
       onChange: setView
     });
 
@@ -4389,6 +4390,8 @@
         text: 'Żaden projekt nie spełnia wybranych warunków. Zmień frazę albo wyczyść filtry.',
         actions: [UI.button({ label: 'Wyczyść filtry', variant: 'secondary', onClick: clearFilters })]
       })]);
+    } else if (state.prefs.view === 'portfolio') {
+      content = E.PortfolioMap.view(visible, ctx);
     } else if (state.prefs.view === 'cards') {
       content = E.ProjectList.cards(visible, ctx);
     } else {
@@ -4981,7 +4984,7 @@
       return;
     }
     if (event.key === 'v' || event.key === 'V') {
-      if (route === 'projects') { event.preventDefault(); setView(state.prefs.view === 'list' ? 'cards' : 'list'); return; }
+      if (route === 'projects') { event.preventDefault(); setView({ portfolio: 'list', list: 'cards', cards: 'portfolio' }[state.prefs.view] || 'portfolio'); return; }
       if (route === 'project' && state.route.tab === 'zadania') { event.preventDefault(); setPref({ taskView: state.prefs.taskView === 'kanban' ? 'list' : 'kanban' }); return; }
     }
     if (event.key === '[') { event.preventDefault(); toggleSidebar(); return; }

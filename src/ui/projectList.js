@@ -219,7 +219,7 @@
       on: { change: function (event) { ctx.actions.selectProjects([project.id], event.target.checked); } }
     });
     var cells = {
-      code: D.el('span', { class: 'pf-codecell' }, [D.el('span', { class: 'pf-num pf-num--pill t-num' }, [project.code]), E.KindArt.icon(E.Kinds.of(project), E.Kinds.label(E.Kinds.of(project)))]),
+      code: D.el('span', { class: 'pf-codecell' }, [D.el('span', { class: 'pf-num pf-num--pill t-num' }, [project.code])]),
       time: timeRibbon(project, now) || D.el('span', { class: 't-muted', text: '—' }),
       name: nameCell(project, health, hidden, ctx),
       team: leaderCell(project, ctx),
@@ -416,7 +416,6 @@
         }
       }
     }, [
-      E.KindArt.art(E.Kinds.of(project)),
       D.el('div', { class: 'pc__top' }, [
         D.el('span', { class: 'pc__num t-num', text: '#' + project.code }),
         risk ? D.el('span', { class: 'pc__state pc__state--' + health.level }, [Sig.datum(health.level, { size: 12, label: false }), D.el('span', { text: health.level === 'alarm' ? 'Alarm' : 'Uwaga' })]) : (done ? D.el('span', { class: 'pc__state pc__state--done', text: 'Zakończony' }) : null),
@@ -671,6 +670,8 @@
     COLUMNS: COLUMNS,
     projectHref: projectHref,
     timeRibbon: timeRibbon,
+    dueCell: dueCell,
+    signalsCell: signalsCell,
     projectMenuItems: projectMenuItems,
     PAGE_SIZE: PAGE_SIZE
   };

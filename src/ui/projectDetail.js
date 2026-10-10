@@ -160,7 +160,6 @@
     var health = Insight.health(project, now);
     return D.el('header', { class: 'pd-head' }, [
       D.el('div', { class: 'pd-hero', style: E.Identity.hueStyle(project.code) }, [
-        E.KindArt.art(E.Kinds.of(project)),
         D.el('div', { class: 'pd-head__id' }, [
           D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + project.code }),
           statusControl(project, ctx)

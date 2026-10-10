@@ -6,7 +6,7 @@
 
   var KEY = 'etrom.prefs.v1';
   var THEMES = ['system', 'light', 'dark'];
-  var VIEWS = ['list', 'cards'];
+  var VIEWS = ['portfolio', 'list', 'cards'];
   var ACCENTS = ['standard', 'etrom', 'graphite', 'morski', 'lesny', 'granat', 'lupek', 'fiolet', 'bursztyn', 'terakota', 'oliwka', 'blekit'];
   // Motywy kolorystyczne: tło okna, pasek boczny, nagłówki i przycisk główny.
   var PALETTES = ['ocean', 'graphite', 'forest', 'sunset', 'violet', 'etrom', 'amber', 'sky', 'mint', 'peach', 'lilac', 'rose'];
@@ -111,9 +111,9 @@
   }
 
   function defaults() {
-    // Lista jest domyślna: przy dziesiątkach projektów skanuje się ją szybciej niż karty.
+    // Portfel na osi czasu jest domyślny; tabela zostaje jako widok roboczy.
     return {
-      theme: 'system', view: 'list', accent: 'standard', hiddenColumns: [],
+      theme: 'system', view: 'portfolio', accent: 'standard', hiddenColumns: [],
       groupBy: 'none', density: 'comfortable', taskView: 'list', detailsOpen: true, projectView: 'all', customViews: [], sidebarCollapsed: false, railCollapsed: false, dockCompact: false, collapsedRails: ['time', 'mywork', 'mycases', 'feed'], palette: 'ocean', look: 'etrom', oledGuard: false, hdr: true, tilesFull: false, colorBy: 'number', vivid: 100, contrast: 50, dayTarget: 480, dayEnd: '17:00', pinned: [], recent: [], me: null, snoozed: {}, progressMethod: 'auto', workingWeight: 50, forecastWarn: 10, forecastAlarm: 25, reservePct: 15, minProgress: 10, hourlyCost: 0,
       cal: cleanCal(null), dash: cleanDash(null)
     };
@@ -147,7 +147,7 @@
     var hidden = Array.isArray(source.hiddenColumns) ? source.hiddenColumns : [];
     return {
       theme: THEMES.indexOf(source.theme) >= 0 ? source.theme : 'system',
-      view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'list',
+      view: VIEWS.indexOf(source.view) >= 0 ? source.view : 'portfolio',
       accent: ACCENTS.indexOf(accent) >= 0 ? accent : 'standard',
       hiddenColumns: COLUMNS.filter(function (key) { return hidden.indexOf(key) >= 0; }),
       groupBy: GROUPS.indexOf(source.groupBy) >= 0 ? source.groupBy : 'none',

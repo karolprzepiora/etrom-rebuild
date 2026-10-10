@@ -238,7 +238,21 @@ async function main() {
     await click('#empty-demo');
     await sleep(200);
     check('dane przykładowe dodają 12 projektów', (await cardCount()) === 12, 'było ' + (await cardCount()));
-    check('domyślny widok listy to tabela', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 12);
+    check('domyślny widok to Portfel na osi czasu: 12 wierszy z numerami', (await evaluate('return document.querySelectorAll("#project-list .hy-r").length;')) === 12 && (await evaluate('return document.querySelectorAll("#project-list .hy-n").length;')) === 12);
+    check('Portfel: najwyższy numer na górze, rok jako sekcja', (await evaluate('return document.querySelector("#project-list .hy-yh b").textContent + "|" + document.querySelector("#project-list .hy-r").dataset.projectCode;')) === '26|2612');
+    await click('.hy-r[data-project-code="2604"] .hy-n');
+    await sleep(700);
+    check('Portfel: kliknięcie numeru rozwija właściwości (jeden naraz)', (await evaluate('return document.querySelectorAll("#project-list .hy-r.is-open").length;')) === 1 && (await evaluate('return document.querySelector(".hy-r.is-open .hy-n").getAttribute("aria-expanded");')) === 'true' && (await evaluate('return getComputedStyle(document.querySelector(".hy-r.is-open .hy-det__in")).opacity;')) === '1');
+    await click('.hy-r[data-project-code="2606"] .hy-n');
+    await sleep(300);
+    check('Portfel: otwarcie innego numeru zwija poprzedni', (await evaluate('return [...document.querySelectorAll("#project-list .hy-r.is-open")].map(r => r.dataset.projectCode).join(",");')) === '2606');
+    await click('.hy-r[data-project-code="2606"] .hy-n');
+    await sleep(300);
+    check('Portfel: ponowne kliknięcie zwija', (await evaluate('return document.querySelectorAll("#project-list .hy-r.is-open").length;')) === 0);
+    check('Portfel: nazwa projektu jest podpowiedzią numeru', (await evaluate('return document.querySelector("#project-list .hy-r .hy-tip").textContent.length > 3;')));
+    await evaluate('window.ETROM.app.actions.setPref({ view: "list" }); return true;');
+    await sleep(200);
+    check('widok tabeli nadal działa: 12 wierszy', (await evaluate('return document.querySelectorAll("#project-list .table__row").length;')) === 12);
 
     check('każdy projekt przykładowy ma komplet etapów ze standardu w katalogowej kolejności',
       await state('s.workspace.projects.every(p => p.stages.length === window.ETROM.Catalog.stagesFor("full", window.ETROM.Catalog.defaultProcedures("full")).length)'));
@@ -272,8 +286,12 @@ async function main() {
     check('powrót do wszystkich statusów', (await cardCount()) === 12);
 
     /* 7. Sortowanie: domyślnie wg ręcznej kolejności zarządu (priorytet), bez grup; po numerze i w obu kierunkach na żądanie */
+    const defOrder = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
+    check('domyślnie projekty stoją wg numeru, najwyższy na górze', defOrder === '2612,2611,2610,2609,2608,2607,2606,2605,2604,2603,2602,2601' && (await state('s.filters.sort')) === 'code' && (await state('s.filters.dir')) === 'desc', defOrder);
+    await openMenu('#tb-sort', 'manual');
+    await sleep(250);
     const order = await evaluate('return [...document.querySelectorAll("#project-list [data-project-code]")].map(c => c.dataset.projectCode).join(",");');
-    check('lista domyślnie stoi w ręcznej kolejności zarządu (pilniejsze wyżej), bez grup',
+    check('„Moja kolejność” ustawia ręczną kolejność zarządu (pilniejsze wyżej), bez grup',
       order === '2602,2601,2606,2607,2610,2603,2604,2609,2612,2605,2608,2611' && (await state('s.filters.sort')) === 'manual' && (await state('s.prefs.groupBy')) === 'none' && (await evaluate('return document.querySelectorAll("#project-list .group-row").length;')) === 0, 'kolejność: ' + order);
     const gripFirst = await evaluate('const g = document.querySelector(".rowgrip"); return g ? g.getAttribute("data-fk") : "";');
     if (gripFirst) {
@@ -322,7 +340,9 @@ async function main() {
     await pressKey('v');
     check('V przełącza widok listy projektów na karty', (await state('s.prefs.view')) === 'cards');
     await pressKey('v');
-    check('V przełącza z powrotem na tabelę', (await state('s.prefs.view')) === 'list');
+    check('V z kart wraca do Portfela', (await state('s.prefs.view')) === 'portfolio');
+    await pressKey('v');
+    check('V z Portfela przechodzi na tabelę', (await state('s.prefs.view')) === 'list');
 
     /* 7a. Zapisane widoki listy: zakładki zawężają listę, wybór zostaje w ustawieniach */
     await click('[data-fk="view-attention"]');
