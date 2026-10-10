@@ -2,17 +2,11 @@
    Biała powierzchnia, tusz, ostre linie. Różowy tylko dla „dziś”, czerwień i bursztyn tylko dla ryzyka.
    Połysk („Motyw z połyskiem”) i HDR podkręcają tylko numery i linię „dziś”. */
 
-.hy { --hy-ink: var(--ink); --hy-mut: var(--ink-3); --hy-rule: var(--line); --hy-track: var(--wash-2); --hy-today: var(--brand); padding: var(--space-4) var(--space-5) var(--space-6); }
+.hy { --hy-ink: var(--ink); --hy-mut: var(--ink-3); --hy-rule: var(--line); --hy-track: var(--wash-2); --hy-today: var(--flow); --hy-fill: var(--ink); padding: var(--space-4) var(--space-5) var(--space-6); }
 .hy-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 .hy-title { margin: 0; font-family: var(--font-display); font-size: 2.1rem; font-weight: 300; letter-spacing: -.045em; line-height: 1.05; }
 .hy-title b { font-weight: 750; }
 .hy-sub { margin: 0; color: var(--hy-mut); font-size: var(--text-sm, .875rem); }
-.hy-leg { display: flex; gap: 1.1rem; font-size: .76rem; color: var(--hy-mut); }
-.hy-leg > span { display: inline-flex; align-items: center; gap: .4rem; }
-.hy-leg i { display: inline-block; width: 1.4rem; height: .5rem; }
-.hy-leg__fill { background: var(--hy-ink); border-radius: 2px; }
-.hy-leg__gap { background: repeating-linear-gradient(135deg, var(--alarm) 0 2px, transparent 2px 5px); }
-.hy-leg__num { width: .9rem !important; height: .8rem !important; border-radius: 3px; box-shadow: 0 0 0 1.5px var(--hy-ink); }
 
 .hy-stage { position: relative; margin-top: 1.6rem; }
 .hy-axis { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
@@ -34,7 +28,7 @@
 .hy-line { position: relative; height: 3.5rem; cursor: pointer; }
 .hy-b { position: absolute; top: 1.35rem; height: .75rem; }
 .hy-b--track { background: var(--hy-track); border-radius: 2px; }
-.hy-b--fill { background: var(--hy-ink); border-radius: 2px 0 0 2px; }
+.hy-b--fill { background: var(--hy-fill); border-radius: 2px 0 0 2px; }
 .hy-b--gap { background: repeating-linear-gradient(135deg, var(--alarm) 0 2.4px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2.4px 6px); }
 .hy-r.is-closed .hy-b--fill { background: var(--ink-4); }
 
@@ -66,12 +60,17 @@ html:not([data-hdr="off"]) .hy-r.level-alarm .hy-n, html:not([data-hdr="off"]) .
 .hy-fact__v { font-size: 1.2rem; font-weight: 650; letter-spacing: -.02em; }
 .hy-fact__s { margin-top: .25rem; font-size: .76rem; color: var(--hy-mut); }
 .hy-mini { position: relative; height: 4px; margin-top: .6rem; background: var(--hy-track); }
-.hy-mini u { position: absolute; inset: 0 auto 0 0; background: var(--hy-ink); }
+.hy-mini u { position: absolute; inset: 0 auto 0 0; background: var(--hy-fill); }
 .hy-mini s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--hy-today); }
 @media (max-width: 52rem) {
   .hy-det__in { grid-template-columns: 1fr 1fr; }
   .hy-det__main { grid-column: 1 / -1; }
-  .hy-leg { display: none; }
   .hy-yh b { font-size: 3.4rem; }
 }
 @media (prefers-reduced-motion: reduce) { .hy-r, .hy-det__in, .hy-n { transition: none; } }
+
+/* Barwy wg stylu: linia „dziś” bierze kolor pracy w toku (--flow), postęp — barwę stylu. */
+html[data-look="aurora"] .hy { --hy-fill: linear-gradient(90deg, oklch(.42 .12 var(--au-h1, 235)), oklch(.62 .13 var(--au-h1, 200))); }
+html[data-look="cinema"] .hy { --hy-fill: color-mix(in oklab, var(--ink), var(--flow) 22%); }
+html[data-look="paper"] .hy { --hy-fill: color-mix(in oklab, var(--ink), var(--flow) 35%); }
+html[data-look="oled"] .hy { --hy-fill: var(--ink); }

@@ -162,12 +162,7 @@
 
     return D.el('section', { class: 'hy', attrs: { 'aria-label': 'Portfel projektów na osi czasu' } }, [
       D.el('div', { class: 'hy-head' }, [
-        D.el('p', { class: 'hy-sub', text: plural(visible.length) + ' · ' + alarms + ' w alarmie · ' + warns + ' z ostrzeżeniem' }),
-        D.el('div', { class: 'hy-leg', attrs: { 'aria-hidden': 'true' } }, [
-          D.el('span', null, [D.el('i', { class: 'hy-leg__fill' }), D.el('span', { text: 'postęp' })]),
-          D.el('span', null, [D.el('i', { class: 'hy-leg__gap' }), D.el('span', { text: 'za planem' })]),
-          D.el('span', null, [D.el('i', { class: 'hy-leg__num' }), D.el('span', { text: 'numer = koniec umowy' })])
-        ])
+        D.el('p', { class: 'hy-sub', text: plural(visible.length) + ' · ' + alarms + ' w alarmie · ' + warns + ' z ostrzeżeniem' })
       ]),
       D.el('div', { class: 'hy-stage' }, [
         D.el('div', { class: 'hy-axis', attrs: { 'aria-hidden': 'true' } }, grid.concat([
