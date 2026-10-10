@@ -596,7 +596,7 @@ async function main() {
       cardsCheck.cards === cardsCheck.projects && cardsCheck.bars === 0, JSON.stringify(cardsCheck));
 
     check('kafle K1: numer jako typografia, nazwa i pasek, sekcja roku, bez grafiki rodzaju',
-      await evaluate('return document.querySelectorAll(".pcard.kc .pf-num--num").length === window.ETROM.app.store.getState().workspace.projects.length && document.querySelectorAll(".pcard.kc .kb").length === document.querySelectorAll(".pcard.kc").length && document.querySelector(".kc-year__head b").textContent === "26" && !document.querySelector(".kind-art, .kind-icon") && document.querySelector(".pcard.kc .pf-num--num").textContent.length === 4;'));
+      await evaluate('return document.querySelectorAll(".pcard.kc .pf-num--num").length === window.ETROM.app.store.getState().workspace.projects.length && document.querySelectorAll(".pcard.kc .pm").length === document.querySelectorAll(".pcard.kc").length && document.querySelector(".kc-year__head b").textContent === "26" && !document.querySelector(".kind-art, .kind-icon") && document.querySelector(".pcard.kc .pf-num--num").textContent.length === 4;'));
     check('kafle K1: kolor projektu nie wypełnia kafla (białe tło arkusza)',
       await evaluate('var c = getComputedStyle(document.querySelector(".pcard.kc")); return c.backgroundColor !== "rgba(0, 0, 0, 0)" && !/oklch|hsl\\(/.test(c.backgroundImage) ;'));
 

@@ -10,16 +10,17 @@ tr.level-alarm .pf-num--num, .kc.level-alarm .pf-num--num { color: var(--alarm-i
 tr.level-warning .pf-num--num, .kc.level-warning .pf-num--num { color: var(--warn-ink); }
 tr.is-closed .pf-num--num, .kc.is-closed .pf-num--num { color: var(--ink-4); }
 
-/* ---------- Pasek: postęp, luka do upływu czasu, „dziś” ---------- */
-.kb { position: relative; height: .5rem; border-radius: 2px; background: var(--wash-2); }
-.kb__fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px 0 0 2px; background: var(--ink); }
-.kb__gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2px 5px); }
-.kb__now { position: absolute; top: -.25rem; bottom: -.25rem; width: 2px; margin-left: -1px; background: var(--flow); }
-.kb.is-closed .kb__fill { background: var(--ink-4); }
+/* ---------- Pasek-kapsuła: postęp, luka do upływu czasu, „dziś” ---------- */
+.pm { position: relative; height: .6rem; }
+.pm__cap { position: absolute; inset: 0; overflow: hidden; border-radius: 999px; background: var(--wash-2); }
+.pm__fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--ink); }
+.pm__gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2px 5px); }
+.pm__now { position: absolute; top: -.2rem; bottom: -.2rem; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--flow); }
+.pm.is-closed .pm__fill { background: var(--ink-4); }
 
 /* ---------- Kafle K1 ---------- */
 .pcard-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr)); gap: var(--space-3); }
-.pcard.kc { display: block; position: relative; padding: 1rem 1.1rem .95rem; border-radius: 12px; color: var(--ink); background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; overflow: visible; filter: none; transform: none; }
+.pcard.kc { display: block; position: relative; padding: 1rem 1.2rem 1.05rem; border-radius: 18px; color: var(--ink); background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; overflow: visible; filter: none; transform: none; }
 .pcard.kc:hover { box-shadow: inset 0 0 0 1px var(--ink); transform: none; }
 .pcard.kc.level-alarm { box-shadow: inset 0 0 0 1.5px var(--alarm); }
 .pcard.kc.level-warning { box-shadow: inset 0 0 0 1.5px var(--warn); }
@@ -36,7 +37,7 @@ html[data-tiles="full"] .pcard.kc.level-warning { box-shadow: inset 0 0 0 1.5px 
 .kc__name { margin: .55rem 0 0; font-family: var(--font-text); font-size: .86rem; font-weight: 500; line-height: 1.3; }
 .kc__name a { display: block; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
 .kc__name a:hover { color: var(--ink); text-decoration: none; }
-.kc .kb { margin-top: .9rem; }
+.kc .pm { margin-top: .9rem; }
 .kc-years { gap: var(--space-4); }
 .kc-year__head { position: relative; height: 4.2rem; margin-bottom: 1rem; border-bottom: 1.5px solid var(--ink); }
 .kc-year__head b { position: absolute; left: 0; bottom: -.1rem; font-family: var(--font-display); font-size: 3.8rem; font-weight: 200; letter-spacing: -.06em; line-height: 1; font-feature-settings: 'tnum'; }

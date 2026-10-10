@@ -22,17 +22,18 @@
 .hy-yh b { position: absolute; left: 0; bottom: -.15rem; font-family: var(--font-display); font-size: 4.4rem; font-weight: 200; letter-spacing: -.06em; line-height: 1; font-feature-settings: 'tnum'; }
 .hy-yh em { position: absolute; right: 0; bottom: .5rem; font-style: normal; font-size: .76rem; color: var(--hy-mut); }
 
-.hy-r { position: relative; display: grid; grid-template-rows: 3.5rem 0fr; border-bottom: 1px solid var(--hy-rule); transition: grid-template-rows .5s cubic-bezier(.7, 0, .2, 1), background .2s; }
-.hy-r.is-open { grid-template-rows: 3.5rem 1fr; background: color-mix(in oklab, var(--hy-ink) 3%, var(--sheet)); }
-.hy-r:not(.is-open):hover { background: color-mix(in oklab, var(--hy-ink) 3%, transparent); }
+.hy-r { position: relative; isolation: isolate; display: grid; grid-template-rows: 3.5rem 0fr; transition: grid-template-rows .5s cubic-bezier(.7, 0, .2, 1); }
+.hy-r::before { content: ""; position: absolute; z-index: -1; inset: 2px -.7rem; border-radius: 26px; background: var(--wash); opacity: 0; transition: opacity .25s; }
+.hy-r.is-open { grid-template-rows: 3.5rem 1fr; }
+.hy-r.is-open::before { opacity: 1; box-shadow: inset 0 0 0 1px var(--line); }
+.hy-r:not(.is-open):hover::before { opacity: .55; }
 .hy-line { position: relative; height: 3.5rem; cursor: pointer; }
-.hy-b { position: absolute; top: 1.35rem; height: .75rem; }
-.hy-b--track { background: var(--hy-track); border-radius: 2px; }
-.hy-b--fill { background: var(--hy-fill); border-radius: 2px 0 0 2px; }
-.hy-b--gap { background: repeating-linear-gradient(135deg, var(--alarm) 0 2.4px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2.4px 6px); }
-.hy-r.is-closed .hy-b--fill { background: var(--ink-4); }
+.hy-cap { position: absolute; top: 1.25rem; height: 1rem; overflow: hidden; border-radius: 999px; background: var(--hy-track); }
+.hy-cap__fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--hy-fill); }
+.hy-cap__gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2.4px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2.4px 6px); }
+.hy-r.is-closed .hy-cap__fill { background: var(--ink-4); }
 
-.hy-n { position: absolute; top: .6rem; transform: translateX(-50%); height: 2.3rem; display: inline-flex; align-items: center; padding: 0 .6rem; border: 0; border-radius: 6px; background: var(--sheet); color: var(--hy-ink); font: inherit; font-family: var(--font-display); font-size: 1.4rem; letter-spacing: -.05em; box-shadow: 0 0 0 1px var(--hy-ink); cursor: pointer; transition: box-shadow .2s, background .2s, color .2s; }
+.hy-n { position: absolute; top: .6rem; transform: translateX(-50%); height: 2.3rem; display: inline-flex; align-items: center; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--sheet); color: var(--hy-ink); font: inherit; font-family: var(--font-display); font-size: 1.4rem; letter-spacing: -.05em; box-shadow: 0 0 0 1px var(--hy-ink); cursor: pointer; transition: box-shadow .2s, background .2s, color .2s; }
 .hy-n i { font-style: normal; font-weight: 200; opacity: .55; margin-right: .1em; }
 .hy-n b { font-weight: 700; }
 .hy-n:hover { box-shadow: 0 0 0 2px var(--hy-ink); }
@@ -41,16 +42,17 @@ html[data-tiles="full"] .hy-n { background: linear-gradient(180deg, color-mix(in
 .hy-r.level-alarm .hy-n { color: var(--alarm-ink); box-shadow: 0 0 0 1.5px var(--alarm); }
 .hy-r.level-warning .hy-n { color: var(--warn-ink); box-shadow: 0 0 0 1.5px var(--warn); }
 .hy-r.is-closed .hy-n { color: var(--ink-4); box-shadow: 0 0 0 1px var(--line-strong); }
-.hy-r.is-open .hy-n { background: var(--hy-ink); color: var(--sheet); box-shadow: none; }
-.hy-r.is-open.level-alarm .hy-n { background: var(--alarm); color: #fff; }
-.hy-r.is-open.level-warning .hy-n { background: var(--warn); color: #fff; }
-html:not([data-hdr="off"]) .hy-r.level-alarm .hy-n, html:not([data-hdr="off"]) .hy-r.level-alarm.is-open .hy-n { box-shadow: 0 0 0 1.5px var(--alarm), 0 0 calc(18px * var(--hdr, 1)) -4px var(--alarm); }
+.hy-r.is-open .hy-n { background: oklch(.5 .15 var(--hue, 250)); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.28 * var(--hdr, 1))); }
+.hy-r.is-open.level-alarm .hy-n { box-shadow: 0 0 0 2px var(--wash), 0 0 0 4px var(--alarm); }
+.hy-r.is-open.level-warning .hy-n { box-shadow: 0 0 0 2px var(--wash), 0 0 0 4px var(--warn); }
+.hy-r.is-open.is-closed .hy-n { filter: saturate(.4); }
+html:not([data-hdr="off"]) .hy-r.level-alarm .hy-n { box-shadow: 0 0 0 1.5px var(--alarm), 0 0 calc(18px * var(--hdr, 1)) -4px var(--alarm); }
 .hy-tip { position: absolute; bottom: calc(100% + .4rem); left: 50%; transform: translateX(-50%); max-width: 22rem; width: max-content; background: var(--inverse); color: var(--on-inverse); font: 500 .75rem/1.3 var(--font-text, inherit); letter-spacing: 0; padding: .35rem .6rem; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 4; white-space: normal; text-align: center; }
 .hy-n:hover .hy-tip, .hy-n:focus-visible .hy-tip { opacity: 1; }
 .hy-r.is-open .hy-tip { display: none; }
 
 .hy-det { overflow: hidden; min-height: 0; }
-.hy-det__in { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.6rem; padding: .3rem .6rem 1.3rem 0; opacity: 0; transition: opacity .3s; }
+.hy-det__in { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.6rem; padding: .3rem 1.2rem 1.4rem .4rem; opacity: 0; transition: opacity .3s; }
 .hy-r.is-open .hy-det__in { opacity: 1; transition: opacity .4s .2s; }
 .hy-det__name { margin: 0; font-size: 1.25rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; }
 .hy-det__name a { color: inherit; }
@@ -59,8 +61,8 @@ html:not([data-hdr="off"]) .hy-r.level-alarm .hy-n, html:not([data-hdr="off"]) .
 .hy-fact__k { font-size: .74rem; color: var(--hy-mut); margin-bottom: .3rem; }
 .hy-fact__v { font-size: 1.2rem; font-weight: 650; letter-spacing: -.02em; }
 .hy-fact__s { margin-top: .25rem; font-size: .76rem; color: var(--hy-mut); }
-.hy-mini { position: relative; height: 4px; margin-top: .6rem; background: var(--hy-track); }
-.hy-mini u { position: absolute; inset: 0 auto 0 0; background: var(--hy-fill); }
+.hy-mini { position: relative; height: .5rem; margin-top: .6rem; border-radius: 999px; background: var(--hy-track); }
+.hy-mini u { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--hy-fill); }
 .hy-mini s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--hy-today); }
 @media (max-width: 52rem) {
   .hy-det__in { grid-template-columns: 1fr 1fr; }

@@ -38,10 +38,6 @@
     return Number.isFinite(t) ? F.date(new Date(t).toISOString().slice(0, 10)) : '—';
   }
 
-  function bar(cls, left, width) {
-    return D.el('span', { class: 'hy-b ' + cls, style: { left: left + '%', width: width + '%' } });
-  }
-
   function details(project, ctx, now, health, pct, elapsed) {
     var risk = health.level === 'alarm' || health.level === 'warning';
     var team = Team.projectPeople(project.team).map(function (id) { return Team.findPerson(ctx.people, id); }).filter(Boolean);
@@ -104,9 +100,10 @@
       style: E.Identity.hueStyle(project.code)
     }, [
       D.el('div', { class: 'hy-line' }, [
-        hasSpan ? bar('hy-b--track', s, w) : null,
-        hasSpan && pct > 0 ? bar('hy-b--fill', s, w * pct / 100) : null,
-        behind ? bar('hy-b--gap', fillEnd, Math.min(tn, e) - fillEnd) : null,
+        hasSpan ? D.el('span', { class: 'hy-cap', style: { left: s + '%', width: w + '%' } }, [
+          pct > 0 ? D.el('span', { class: 'hy-cap__fill', style: { width: pct + '%' } }) : null,
+          behind ? D.el('span', { class: 'hy-cap__gap', style: { left: pct + '%', width: ((Math.min(tn, e) - fillEnd) / w * 100) + '%' } }) : null
+        ]) : null,
         chip
       ]),
       details(project, ctx, now, health, pct, elapsed)

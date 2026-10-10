@@ -413,13 +413,13 @@
     var elapsed = span ? Math.max(0, Math.min(100, (now.getTime() - start) / (end - start) * 100)) : null;
     var closed = project.status === 'done';
     var gap = span && !closed && elapsed > pct;
-    return D.el('div', {
-      class: 'kb' + (closed ? ' is-closed' : ''),
-      attrs: { role: 'img', 'aria-label': 'Postęp ' + pct + '%' + (span ? ', upłynęło ' + Math.round(elapsed) + '% czasu umowy' : ''), 'data-tooltip': 'Postęp ' + pct + '%' + (span ? ' · upłynęło ' + Math.round(elapsed) + '% czasu umowy' : '') }
-    }, [
-      D.el('span', { class: 'kb__fill', style: { width: pct + '%' } }),
-      gap ? D.el('span', { class: 'kb__gap', style: { left: pct + '%', width: (elapsed - pct) + '%' } }) : null,
-      span && !closed ? D.el('span', { class: 'kb__now', style: { left: elapsed + '%' } }) : null
+    var text = 'Postęp ' + pct + '%' + (span ? ' · upłynęło ' + Math.round(elapsed) + '% czasu umowy' : '');
+    return D.el('div', { class: 'pm' + (closed ? ' is-closed' : ''), attrs: { role: 'img', 'aria-label': text, 'data-tooltip': text } }, [
+      D.el('span', { class: 'pm__cap' }, [
+        D.el('span', { class: 'pm__fill', style: { width: pct + '%' } }),
+        gap ? D.el('span', { class: 'pm__gap', style: { left: pct + '%', width: (elapsed - pct) + '%' } }) : null
+      ]),
+      span && !closed ? D.el('span', { class: 'pm__now', style: { left: elapsed + '%' } }) : null
     ]);
   }
 
