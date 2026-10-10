@@ -47,12 +47,13 @@
     var decider = a.decidedBy ? Team.findPerson(people, a.decidedBy) : null;
     var meta = [workdays(A.workdays(a))];
     if (a.status === 'pending') meta.push('czeka na decyzję zarządu');
+    if (a.cancelRequest) meta.push('prośba o anulowanie czeka na decyzję');
     if (a.status === 'rejected' && a.decisionNote) meta.push('powód: ' + a.decisionNote);
     var by = decider && a.status !== 'pending' ? (a.status === 'rejected' ? 'Odrzucił: ' : 'Zatwierdził: ') + Team.fullName(decider) : '';
     var past = a.status === 'approved' && a.to < Cal.isoOf(now);
     return D.el('li', { class: 'lv-req', dataset: { id: a.id, status: a.status } }, [
       D.el('span', { class: 'lv-kind' }, [kindLabel(a)]),
-      D.el('div', { class: 'lv-req__main' }, [
+      D.el(ctx.mine ? 'button' : 'div', { class: 'lv-req__main' + (ctx.mine ? ' is-link' : ''), attrs: ctx.mine ? { type: 'button', 'data-fk': 'lv-req-open', 'aria-label': 'Szczegóły: ' + range(a.from, a.to, now) } : {}, on: ctx.mine ? { click: function () { openDetail(a, ctx, now); } } : null }, [
         D.el('b', { text: (who ? who + ' · ' : '') + range(a.from, a.to, now) }),
         D.el('span', { class: 't-meta', text: meta.join(' · ') })
       ]),
@@ -101,7 +102,7 @@
       var inSel = sel && sel.from && key >= sel.from && key <= (sel.to || sel.from);
       var cls = CB.stripCls(kindAt, key);
       if (inSel && !wk && !hol) cls += ' is-selected';
-      return { cls: cls.trim(), tip: hol || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() : ''), pressed: inSel, disabled: wk || !!hol || !!rec, onClick: function (k) { ctx.actions.pickLeaveDay(k); } };
+      return { cls: cls.trim(), tip: hol || (rec ? kindLabel(rec) + ' · ' + A.STATUS[rec.status].toLowerCase() + ' (kliknij, by zobaczyć szczegóły)' : ''), pressed: inSel, disabled: wk || !!hol, onClick: function (k) { if (rec) openDetail(rec, ctx, ctx.now); else ctx.actions.pickLeaveDay(k); } };
     }, today);
   }
 
@@ -188,7 +189,8 @@
           from: a.from, to: a.to, kind: CB.kindOf(a.kind, pend),
           label: pend ? 'Wniosek: ' + kindLabel(a).toLowerCase() + ' (czeka na decyzję)' : kindLabel(a),
           sub: range(a.from, a.to, now) + ' · ' + workdays(A.workdays(a)),
-          tip: kindLabel(a) + ' · ' + A.STATUS[a.status].toLowerCase() + ' · ' + range(a.from, a.to, now), fk: 'lv-bar'
+          tip: kindLabel(a) + ' · ' + A.STATUS[a.status].toLowerCase() + ' · ' + range(a.from, a.to, now), fk: 'lv-bar',
+          onClick: function () { openDetail(a, ctx, now); }
         }));
       });
     } else {
@@ -257,7 +259,8 @@
     var person = Team.findPerson(ctx.people, a.personId);
     var projects = state.workspace.projects || [];
     var bal = A.balance(state.workspace.absences || [], person, new Date(a.from + 'T12:00:00'));
-    var leader = A.isLeaderOf(me.id, a, projects);
+    var cancel = !!a.cancelRequest;
+    var leader = !cancel && A.isLeaderOf(me.id, a, projects);
     var after = a.kind === 'leave' ? bal.left - A.workdays(a) : null;
     var impact = A.impact(a, { projects: projects, people: ctx.people, absences: state.workspace.absences || [] });
     var note = UI.input({ id: 'lv-note-' + a.id, placeholder: management ? 'Powód odrzucenia lub uwaga (opcjonalnie)' : 'Uwaga do opinii (opcjonalnie)', maxlength: 200 });
@@ -267,8 +270,8 @@
     });
     var actions = [];
     if (management) {
-      actions.push(UI.button({ label: 'Zaakceptuj', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'lv-approve' }, onClick: function () { ctx.actions.decideLeave(a.id, 'approve', note.value); } }));
-      actions.push(UI.button({ label: 'Odrzuć', size: 'sm', attrs: { 'data-fk': 'lv-reject' }, onClick: function () { ctx.actions.decideLeave(a.id, 'reject', note.value); } }));
+      actions.push(UI.button({ label: cancel ? 'Anuluj urlop' : 'Zaakceptuj', variant: 'primary', size: 'sm', attrs: { 'data-fk': 'lv-approve' }, onClick: function () { ctx.actions.decideLeave(a.id, 'approve', note.value); } }));
+      actions.push(UI.button({ label: cancel ? 'Zostaw urlop' : 'Odrzuć', size: 'sm', attrs: { 'data-fk': 'lv-reject' }, onClick: function () { ctx.actions.decideLeave(a.id, 'reject', note.value); } }));
     }
     if (leader && !management) {
       actions.push(UI.button({ label: 'Bez zastrzeżeń', size: 'sm', attrs: { 'data-fk': 'lv-op-ok' }, onClick: function () { ctx.actions.opinionLeave(a.id, 'ok', note.value); } }));
@@ -282,12 +285,13 @@
       D.el('div', { class: 'lv-inbox__main' }, [
         D.el('div', { class: 'lv-inbox__head' }, [
           D.el('b', { text: person ? Team.fullName(person) : 'Osoba' }),
-          D.el('span', { class: 'lv-kind', text: kindLabel(a) }),
+          D.el('span', { class: 'lv-kind', text: cancel ? 'Prośba o anulowanie' : kindLabel(a) }),
           D.el('b', { text: range(a.from, a.to, now) }),
           D.el('span', { class: 't-meta', text: workdays(A.workdays(a)) + (after !== null ? ' · po wniosku zostanie ' + days(Math.max(0, after)) + (after < 0 ? ' (brakuje ' + days(-after) + ')' : '') : '') })
         ]),
         D.el('div', { class: 'lv-impactbox' }, [D.el('span', { class: 'lv-impactbox__t', text: 'WPŁYW NA PLAN' }), impactList(impact)]),
         a.note ? D.el('p', { class: 't-meta', text: 'Uwaga pracownika: ' + a.note }) : null,
+        cancel && a.cancelRequest.note ? D.el('p', { class: 't-meta', text: 'Powód anulowania: ' + a.cancelRequest.note }) : null,
         opinions.length ? D.el('ul', { class: 'lv-opinions' }, opinions) : null,
         actions.length ? D.el('div', { class: 'lv-inbox__actions' }, [note].concat(actions)) : null
       ])
@@ -299,7 +303,7 @@
     var projects = state.workspace.projects || [];
     var all = state.workspace.absences || [];
     var visible = all.filter(function (a) { return a.personId !== me.id && A.canSee(me.id, a, projects, ctx.people); });
-    var pending = visible.filter(function (a) { return a.status === 'pending'; }).sort(function (a, b) { return a.from < b.from ? -1 : 1; });
+    var pending = visible.filter(function (a) { return a.status === 'pending' || (management && !!a.cancelRequest); }).sort(function (a, b) { return a.from < b.from ? -1 : 1; });
     var cutoff = Cal.addDays ? Cal.isoOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 45)) : '';
     var decided = visible.filter(function (a) { return a.status !== 'pending' && a.decidedAt && a.decidedAt.slice(0, 10) >= cutoff; }).sort(function (a, b) { return a.decidedAt < b.decidedAt ? 1 : -1; });
     var list = pending.length
@@ -321,8 +325,16 @@
     var onDemand = UI.checkbox({ id: 'lv-ondemand', label: 'Urlop na żądanie', hint: 'Limit ' + A.ON_DEMAND_LIMIT + ' dni w roku. Pozostało: ' + Math.max(0, info.onDemandLeft), checked: v.onDemand === true });
     var note = UI.input({ id: 'lv-note', value: v.note || '', maxlength: 200, placeholder: 'np. wyjazd rodzinny' });
     var count = D.el('p', { class: 't-meta', attrs: { 'data-fk': 'lv-days', 'aria-live': 'polite' } });
+    /* Podgląd wpływu: to samo, co zobaczy osoba decydująca (kolizje z terminami, obsada zespołów). */
+    var preview = D.el('div', { class: 'lv-impactbox', attrs: { 'data-fk': 'lv-impact', 'aria-live': 'polite' } });
+    function refreshPreview() {
+      var items = info.impact && from.value && to.value && to.value >= from.value ? info.impact(from.value, to.value) : [];
+      preview.hidden = !items.length;
+      D.render(preview, items.length ? [D.el('span', { class: 'lv-impactbox__t', text: 'WPŁYW NA PLAN' }), impactList(items)] : []);
+    }
     function recount() {
-            if (!from.value || !to.value) { count.textContent = ''; return; }
+      refreshPreview();
+      if (!from.value || !to.value) { count.textContent = ''; return; }
       var n = Cal.workdaysIn(from.value, to.value);
       var left = info.free - n;
       count.textContent = workdays(n) + ' (bez weekendów i świąt)' + (kind.value === 'leave' ? (left >= 0 ? ' · po wniosku zostanie ' + days(left) : ' · brakuje ' + days(-left)) : '');
@@ -339,6 +351,7 @@
       body: [
         D.el('div', { class: 'form__row' }, [UI.field({ id: 'lv-from', label: 'Od', control: from, error: problems.from }), UI.field({ id: 'lv-to', label: 'Do (włącznie)', control: to, error: problems.to })]),
         count,
+        preview,
         problems.onDemand ? D.el('p', { class: 'field__error', text: problems.onDemand }) : null,
         onDemand,
         UI.field({ id: 'lv-note', label: 'Uwaga', optional: true, control: note })
@@ -363,7 +376,7 @@
     recount();
     var form = E.Dialog.drawerForm({
       id: 'leave-form',
-      submitLabel: 'Zgłoś L4',
+      submitLabel: info.editing ? 'Zapisz zmiany' : 'Zgłoś L4',
       onCancel: handlers.onCancel,
       onSubmit: function () { handlers.onSubmit({ personId: person ? person.value : '', from: from.value, to: to.value, note: note.value }); },
       body: [
@@ -375,6 +388,72 @@
     });
     window.setTimeout(function () { from.focus(); }, 0);
     return form;
+  }
+
+  /* ---------- Szczegóły wniosku (panel boczny) ---------- */
+  function fact(label, value) { return [D.el('div', { class: 'lv-detail__row' }, [D.el('span', { class: 'lv-detail__k', text: label }), D.el('span', { class: 'lv-detail__v' }, [value])])]; }
+
+  /** Panel szczegółów własnego urlopu, wniosku albo L4 z dostępnymi działaniami. */
+  function openDetail(a, ctx, now) {
+    if (!a) return;
+    var act = ctx.actions;
+    var close = function () { E.Dialog.closeDrawer(); };
+    var past = a.to < Cal.isoOf(now);
+    var facts = [].concat(
+      fact('Rodzaj', document.createTextNode(kindLabel(a))),
+      fact('Termin', document.createTextNode(range(a.from, a.to, now))),
+      fact('Dni robocze', document.createTextNode(workdays(A.workdays(a)))),
+      fact('Status', a.kind === 'sick' ? document.createTextNode('Zgłoszone') : (past && a.status === 'approved' ? UI.badge('Wykorzystany', null) : statusBadge(a.status)))
+    );
+    if (a.note) facts = facts.concat(fact('Uwaga', document.createTextNode(a.note)));
+    var decider = a.decidedBy ? Team.findPerson(ctx.people, a.decidedBy) : null;
+    if (decider && a.status !== 'pending' && a.decidedBy !== a.personId) facts = facts.concat(fact(a.status === 'rejected' ? 'Odrzucił' : 'Zatwierdził', document.createTextNode(Team.fullName(decider))));
+    if (a.status === 'rejected' && a.decisionNote) facts = facts.concat(fact('Powód', document.createTextNode(a.decisionNote)));
+    var body = [D.el('div', { class: 'lv-detail__dl' }, facts)];
+    var actions = [];
+    var mine = a.personId === ctx.me.id;
+    if (a.kind === 'sick') {
+      body.push(D.el('p', { class: 't-meta', text: 'L4 nie zmniejsza puli urlopu. Zespół widzi tylko, że jesteś nieobecny/a, bez powodu.' }));
+      if (mine || ctx.management) {
+        actions.push(UI.button({ label: 'Zmień daty lub uwagę', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-d-sick-edit' }, onClick: function () { close(); act.openSickEdit(a.id); } }));
+        actions.push(UI.button({ label: 'Usuń zgłoszenie', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'lv-d-sick-del' }, onClick: function () { close(); act.deleteSick(a.id); } }));
+      }
+    } else if (mine && a.status === 'pending') {
+      var preview = ctx.impact ? ctx.impact(a) : [];
+      if (preview.length) body.push(D.el('div', { class: 'lv-impactbox' }, [D.el('span', { class: 'lv-impactbox__t', text: 'WPŁYW NA PLAN' }), impactList(preview)]));
+      actions.push(UI.button({ label: 'Wycofaj wniosek', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-d-withdraw' }, onClick: function () { close(); act.withdrawLeave(a.id); } }));
+    } else if (mine && a.status === 'approved') {
+      if (a.cancelRequest) {
+        body.push(D.el('p', { class: 'lv-detail__note', text: 'Prośba o anulowanie czeka na decyzję zarządu.' }));
+        actions.push(UI.button({ label: 'Wycofaj prośbę', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-d-cancel-withdraw' }, onClick: function () { close(); act.withdrawCancelLeave(a.id); } }));
+      } else if (A.cancellable(a, now)) {
+        var why = UI.input({ id: 'lv-cancel-note', placeholder: 'Powód (opcjonalnie)', maxlength: 200 });
+        if (!ctx.management) body.push(UI.field({ id: 'lv-cancel-note', label: 'Powód anulowania', optional: true, control: why }));
+        actions.push(UI.button({ label: ctx.management ? 'Anuluj urlop' : 'Poproś o anulowanie', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'lv-d-cancel' }, onClick: function () { close(); act.cancelLeave(a.id, why.value); } }));
+        if (!ctx.management) body.push(D.el('p', { class: 't-meta', text: 'Zatwierdzony urlop anuluje zarząd. Do czasu decyzji urlop zostaje w planie.' }));
+      } else {
+        body.push(D.el('p', { class: 't-meta', text: a.from <= Cal.isoOf(now) && !past ? 'Urlop już trwa. Zmiany ustal z zarządem.' : 'Ten urlop już się zakończył.' }));
+      }
+    }
+    body.push(D.el('div', { class: 'lv-detail__actions' }, actions));
+    E.Dialog.openDrawer({ title: a.kind === 'sick' ? 'Zwolnienie lekarskie' : (a.status === 'pending' ? 'Wniosek urlopowy' : 'Urlop'), subtitle: range(a.from, a.to, now), content: D.el('div', { class: 'lv-detail' }, body) });
+  }
+
+  /** Powiadomienia o decyzjach zarządu: baner nad kafelkami, znika po potwierdzeniu. */
+  function noticeBanners(state, ctx, me, now) {
+    var items = A.notices(state.workspace.absences || [], me.id);
+    if (!items.length) return null;
+    return D.el('div', { class: 'lv-notices', attrs: { role: 'status', 'data-fk': 'lv-notices' } }, items.map(function (a) {
+      var by = a.decidedBy ? Team.findPerson(ctx.people, a.decidedBy) : null;
+      var span = range(a.from, a.to, now);
+      var text = a.notice === 'approved' ? 'Twój wniosek na ' + span + ' został zatwierdzony' + (by ? ' (' + Team.fullName(by) + ')' : '') + '.'
+        : a.notice === 'rejected' ? 'Twój wniosek na ' + span + ' został odrzucony' + (a.decisionNote ? ': ' + a.decisionNote : '.')
+        : 'Prośba o anulowanie urlopu ' + span + ' została odrzucona, urlop zostaje' + (a.noticeNote ? ' (' + a.noticeNote + ')' : '.');
+      return D.el('div', { class: 'lv-notice is-' + (a.notice === 'approved' ? 'ok' : 'no'), dataset: { id: a.id } }, [
+        D.el('span', { class: 'lv-notice__t', text: text }),
+        UI.button({ label: 'OK', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'lv-notice-ok' }, onClick: function () { ctx.actions.ackLeave(a.id); } })
+      ]);
+    }));
   }
 
   /* ---------- Ekran ---------- */
@@ -393,7 +472,11 @@
     var who = lv.who === 'team' ? 'team' : 'me';
     var mode = lv.view === 'month' ? 'month' : 'year';
     var pendingN = pendingFor(state, me);
-    var vctx = { people: people, actions: ctx.actions };
+    var vctx = {
+      people: people, actions: ctx.actions, me: me, management: management, now: now,
+      /* Podgląd wpływu bez cudzych L4: do kolizji liczą się tylko urlopy. */
+      impact: function (a) { return A.impact(a, { projects: projects, people: people, absences: (state.workspace.absences || []).filter(function (x) { return x.kind === 'leave'; }) }); }
+    };
     var list = state.workspace.absences || [];
     var off = Number(lv.monthOffset) || 0;
     var base = new Date(now.getFullYear(), now.getMonth() + off, 1);
@@ -430,13 +513,13 @@
 
     var mine = list.filter(function (a) { return a.personId === me.id; }).sort(function (a, b) { return a.from < b.from ? 1 : -1; });
     var items = [{ id: 'mine', title: 'Moje wnioski', icon: 'sun', tone: 'accent', badge: mine.filter(function (a) { return a.status === 'pending'; }).length || '', side: [mine.length
-      ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, { people: people, actions: ctx.actions, mine: true }, now); }))
+      ? D.el('ul', { class: 'lv-reqs' }, mine.slice(0, 8).map(function (a) { return requestRow(a, Object.assign({}, vctx, { mine: true }), now); }))
       : D.el('p', { class: 't-meta', text: 'Nie ma jeszcze żadnych wniosków. Wybierz „Złóż wniosek”.' })] }];
     if (canInbox) items.push({ id: 'inbox', title: 'Do akceptacji' + (pendingN ? ' · ' + pendingN : ''), label: 'Do akceptacji', icon: 'check', tone: 'violet', badge: pendingN ? String(pendingN) : '', late: !!pendingN, side: [inbox(state, vctx, me, now)] });
     var railPref = lv.rail || 'none';
     var openId = railPref === 'none' ? null : (items.some(function (it) { return it.id === railPref; }) ? railPref : null);
     return { summary: 'Do wykorzystania w ' + bal.year + ' roku: ' + days(bal.left) + ' z ' + bal.total + '.', body: D.el('div', { class: 'lv lv-page' }, [toolbar,
-      UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])], onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
+      UI.railLayout({ id: 'leave', cls: 'lv-rl', mainCls: 'lv-main', items: items, active: openId, main: [noticeBanners(state, vctx, me, now), stats, D.el('section', { class: 'an-card ts-calcard lv-layout__main' }, [calendar])].filter(Boolean), onSelect: function (id) { ctx.actions.setLeave({ rail: id || 'none' }); } })]) };
   }
 
   /** Liczba wniosków czekających na decyzję lub opinię osoby (do licznika w menu). */
@@ -446,11 +529,17 @@
     var projects = state.workspace.projects || [];
     var management = E.Budget.isManagement(me.id, people);
     return (state.workspace.absences || []).filter(function (a) {
-      if (a.status !== 'pending' || a.personId === me.id) return false;
-      if (management) return true;
+      if (a.personId === me.id) return false;
+      if (management) return a.status === 'pending' || !!a.cancelRequest;
+      if (a.status !== 'pending') return false;
       return A.isLeaderOf(me.id, a, projects) && !(a.opinions || []).some(function (o) { return o.by === me.id; });
     }).length;
   }
 
-  E.LeaveScreen = { miniMonth: miniMonth, kindLabel: kindLabel, view: view, requestForm: requestForm, sickForm: sickForm, pendingFor: pendingFor, range: range };
+  /** Licznik w menu Urlopów: sprawy do decyzji plus nieprzeczytane decyzje o własnych wnioskach. */
+  function badgeFor(state, me) {
+    return me ? pendingFor(state, me) + A.notices(state.workspace.absences || [], me.id).length : 0;
+  }
+
+  E.LeaveScreen = { miniMonth: miniMonth, kindLabel: kindLabel, view: view, requestForm: requestForm, sickForm: sickForm, pendingFor: pendingFor, badgeFor: badgeFor, openDetail: openDetail, range: range };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

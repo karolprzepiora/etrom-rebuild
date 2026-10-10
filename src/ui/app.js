@@ -2216,6 +2216,14 @@
     var me = currentMe();
     if (!form || !me) return;
     var management = E.Budget.isManagement(me, people());
+    if (form.sick && form.editId) {
+      var ures = E.Absences.updateSick(store.getState().workspace.absences || [], form.editId, { from: values.from, to: values.to, note: values.note }, people());
+      if (!ures.valid) { store.set({ leaveForm: Object.assign({}, form, { draft: Object.assign({}, form.draft, values), errors: ures.errors }) }); return; }
+      setAbsences(function () { return ures.list; });
+      store.set({ leaveForm: null });
+      Toast.show({ message: 'Zapisano zmiany w L4', tone: 'success', timeout: 3000 });
+      return;
+    }
     if (form.sick) {
       var who = management && values.personId ? values.personId : me;
       var sres = E.Absences.request(store.getState().workspace.absences || [], { personId: who, from: values.from, to: values.to, kind: 'sick', note: values.note }, people(), { by: me, autoApprove: true, now: new Date() });
@@ -2235,8 +2243,62 @@
   function decideLeave(id, decision, note) {
     var me = currentMe();
     if (!me || !E.Budget.isManagement(me, people())) { Toast.show({ message: 'Wnioski rozpatruje zarząd.', tone: 'danger' }); return; }
+    var found = (store.getState().workspace.absences || []).filter(function (a) { return a.id === id; })[0];
+    if (found && found.cancelRequest) {
+      setAbsences(function (list) { return E.Absences.decideCancel(list, id, decision, me, note); });
+      Toast.show({ message: decision === 'approve' ? 'Urlop anulowany' : 'Urlop zostaje, pracownik dostanie informację', tone: decision === 'approve' ? 'success' : 'default', timeout: 3500 });
+      return;
+    }
     setAbsences(function (list) { return E.Absences.decide(list, id, decision, me, note, new Date()); });
     Toast.show({ message: decision === 'approve' ? 'Wniosek zaakceptowany. Urlop jest w Planie.' : 'Wniosek odrzucony', tone: decision === 'approve' ? 'success' : 'default', timeout: 3500 });
+  }
+
+  /** Anulowanie przyszłego urlopu: zarząd od razu (z cofnięciem), pracownik prośbą do zarządu. */
+  function cancelLeave(id, note) {
+    var me = currentMe();
+    var before = store.getState().workspace.absences || [];
+    var found = before.filter(function (a) { return a.id === id; })[0];
+    if (!me || !found || found.personId !== me) return;
+    var now = new Date();
+    if (!E.Absences.cancellable(found, now)) { Toast.show({ message: 'Anulować można tylko urlop, który jeszcze się nie zaczął.', tone: 'danger' }); return; }
+    if (E.Budget.isManagement(me, people())) {
+      setAbsences(function (list) { return E.Absences.remove(list, id); });
+      Toast.show({ message: 'Urlop anulowany', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
+      return;
+    }
+    var res = E.Absences.requestCancel(before, id, me, note, now);
+    if (!res.valid) { Toast.show({ message: res.error, tone: 'danger' }); return; }
+    setAbsences(function () { return res.list; });
+    Toast.show({ message: 'Prośba o anulowanie wysłana do zarządu', tone: 'success', timeout: 4000 });
+  }
+
+  function withdrawCancelLeave(id) {
+    var me = currentMe();
+    var found = (store.getState().workspace.absences || []).filter(function (a) { return a.id === id; })[0];
+    if (!found || found.personId !== me || !found.cancelRequest) return;
+    setAbsences(function (list) { return E.Absences.withdrawCancel(list, id); });
+    Toast.show({ message: 'Prośba o anulowanie wycofana', timeout: 3000 });
+  }
+
+  /** Właściciel potwierdza powiadomienie o decyzji (znika z Urlopów i licznika w menu). */
+  function ackLeave(id) { setAbsences(function (list) { return E.Absences.acknowledge(list, id); }); }
+
+  /** Zmiana własnego L4 (zarząd: dowolnego): skrócenie, przedłużenie, poprawka uwagi. */
+  function openSickEdit(id) {
+    var me = currentMe();
+    var found = (store.getState().workspace.absences || []).filter(function (a) { return a.id === id; })[0];
+    if (!me || !found || found.kind !== 'sick') return;
+    if (found.personId !== me && !E.Budget.isManagement(me, people())) { Toast.show({ message: 'L4 zmienia osoba, której dotyczy, albo zarząd.', tone: 'danger' }); return; }
+    store.set({ leaveForm: { sick: true, editId: id, draft: { personId: found.personId, from: found.from, to: found.to, kind: 'sick', note: found.note || '' }, errors: {} } });
+  }
+
+  function deleteSick(id) {
+    var me = currentMe();
+    var before = store.getState().workspace.absences || [];
+    var found = before.filter(function (a) { return a.id === id; })[0];
+    if (!me || !found || found.kind !== 'sick' || (found.personId !== me && !E.Budget.isManagement(me, people()))) return;
+    setAbsences(function (list) { return E.Absences.remove(list, id); });
+    Toast.show({ message: 'Zgłoszenie L4 usunięte', actionLabel: 'Cofnij', timeout: 6000, onAction: function () { setAbsences(function () { return before; }); } });
   }
 
   function opinionLeave(id, verdict, note) {
@@ -3766,7 +3828,7 @@
     isTiming: isTiming,
     logTime: function (projectId, stageId, taskId) { openTimeForm({ mode: 'manual', projectId: projectId, stageId: stageId, taskId: taskId }); },
     editEntry: function (id) { openTimeForm({ mode: 'edit', entryId: id }); },
-    addTimeEntry: function () { openTimeForm({ mode: 'manual', needsTask: true }); },
+    addTimeEntry: function (spec) { openTimeForm(Object.assign({ mode: 'manual', needsTask: true }, spec || {})); },
     logTimeRange: function (fromMs, toMs) {
       openTimeForm({ mode: 'manual', needsTask: true, date: TL.dayKey(fromMs), from: TL.clockOf(fromMs), to: TL.clockOf(toMs) });
     },
@@ -3776,7 +3838,7 @@
     replyMail: replyToMail,
     deleteMail: deleteMail,
     toggleMailAction: toggleMailAction,
-    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, openSickReport: openSickReport, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave,
+    setTaskSpan: setTaskSpan, reassignTask: reassignTask, setProjectOrder: setProjectOrder, openAbsence: openAbsence, openTrip: openTrip, setOrders: setOrders, setOrderPanel: setOrderPanel, openOrder: openOrder, completeOrder: completeOrder, passOrder: passOrder, nudgeOrder: nudgeOrder, cancelOrder: cancelOrder, setCal: setCal, dashPrefs: dashPrefs, setDash: setDash, toggleDashCard: toggleDashCard, exportIcs: exportIcs, setLeave: setLeave, pickLeaveDay: pickLeaveDay, openLeaveRequest: openLeaveRequest, openSickReport: openSickReport, decideLeave: decideLeave, opinionLeave: opinionLeave, withdrawLeave: withdrawLeave, cancelLeave: cancelLeave, withdrawCancelLeave: withdrawCancelLeave, ackLeave: ackLeave, openSickEdit: openSickEdit, deleteSick: deleteSick,
     libAddTask: libAddTask, libRenameTask: libRenameTask, libRemoveTask: libRemoveTask, libResetTasks: libResetTasks,
     mailTask: function (id) { mailToTask(id); },
     mailDecide: mailDecide,
@@ -4339,14 +4401,16 @@
       var mgmt = !!meL && E.Budget.isManagement(meL.id, people());
       var balL = E.Absences.balance(state.workspace.absences || [], meL, new Date());
       if (current.sick) {
-        settings.title = 'Zgłoszenie L4';
-        settings.subtitle = mgmt ? 'Zwolnienie lekarskie zapisuje się od razu. Możesz zgłosić je za osobę z zespołu.' : 'Bez wniosku i akceptacji. Zespół zobaczy tylko, że jesteś nieobecny/a, bez powodu.';
-        settings.content = E.LeaveScreen.sickForm(current.draft, current.errors, { onSubmit: submitLeaveRequest, onCancel: function () { store.set({ leaveForm: null }); } }, { canPick: mgmt, people: people() });
+        settings.title = current.editId ? 'Zmiana L4' : 'Zgłoszenie L4';
+        if (current.editId) settings.subtitle = 'Skróć, przedłuż albo popraw uwagę. Zespół nadal widzi tylko, że ta osoba jest nieobecna.';
+        else settings.subtitle = mgmt ? 'Zwolnienie lekarskie zapisuje się od razu. Możesz zgłosić je za osobę z zespołu.' : 'Bez wniosku i akceptacji. Zespół zobaczy tylko, że jesteś nieobecny/a, bez powodu.';
+        settings.content = E.LeaveScreen.sickForm(current.draft, current.errors, { onSubmit: submitLeaveRequest, onCancel: function () { store.set({ leaveForm: null }); } }, { canPick: mgmt && !current.editId, people: people(), editing: !!current.editId });
       } else {
       settings.title = mgmt ? 'Nowy urlop' : 'Wniosek urlopowy';
       settings.subtitle = mgmt ? 'Jako zarząd zapisujesz urlop od razu, bez akceptacji.' : 'Wniosek trafia do zarządu. Po akceptacji urlop pojawi się w Planie.';
       settings.content = E.LeaveScreen.requestForm(current.draft, current.errors, { onSubmit: submitLeaveRequest, onCancel: function () { store.set({ leaveForm: null }); } },
-        { free: balL.free, onDemandLeft: balL.onDemandLimit - balL.onDemandUsed - balL.onDemandPending, auto: mgmt });
+        { free: balL.free, onDemandLeft: balL.onDemandLimit - balL.onDemandUsed - balL.onDemandPending, auto: mgmt,
+          impact: function (from, to) { return E.Absences.impact({ id: '', personId: meL.id, from: from, to: to }, { projects: state.workspace.projects || [], people: people(), absences: (state.workspace.absences || []).filter(function (x) { return x.kind === 'leave'; }) }); } });
       }
     } else if (current === state.caseForm) {
       settings.title = 'Sprawa w toku';

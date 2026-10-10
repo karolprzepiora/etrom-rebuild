@@ -510,20 +510,21 @@
     var now = Date.now();
     var parts = dayParts(entries, ctx);
     var total = partsTotal(parts, now);
-    var left = Math.max(0, DAY_TARGET - total);
+    var goal = typeof ctx.target === 'number' ? ctx.target : DAY_TARGET;
+    var left = Math.max(0, goal - total);
     var live = ctx.noLive ? null : nowCard(entries, ctx);
-    return D.el('section', { class: 'etoday', attrs: { 'aria-label': 'Czas zapisany dziś' } }, [
+    return D.el('section', { class: 'etoday', attrs: { 'aria-label': 'Czas zapisany w dniu' } }, [
       live,
       D.el('div', { class: 'etoday__head' }, [
-        D.el('h2', { class: 'msec__title', text: 'Dzisiaj' }),
-        ctx.actions && ctx.actions.addTimeEntry ? UI.iconButton({ icon: 'plus', label: 'Dopisz czas wstecz', size: 'sm', tooltip: 'Dopisz czas wstecz', attrs: { 'data-fk': 'time-add' }, onClick: function () { ctx.actions.addTimeEntry(); } }) : null,
+        D.el('h2', { class: 'msec__title', text: ctx.title || 'Dzisiaj' }),
+        ctx.actions && ctx.actions.addTimeEntry ? UI.iconButton({ icon: 'plus', label: 'Dopisz czas wstecz', size: 'sm', tooltip: 'Dopisz czas wstecz', attrs: { 'data-fk': 'time-add' }, onClick: function () { ctx.actions.addTimeEntry(ctx.date ? { date: ctx.date } : undefined); } }) : null,
         D.el('span', { class: 'etoday__total t-num', attrs: { 'data-total': '1' } }, [
           D.el('span', { text: total ? TL.duration(total) : '0 min', attrs: { 'data-dm-total': '1' } }),
-          D.el('span', { class: 'etoday__goal', text: ' / ' + hoursLabel(DAY_TARGET) })
+          D.el('span', { class: 'etoday__goal', text: goal ? ' / ' + hoursLabel(goal) : '' })
         ])
       ]),
       meterTrack(parts, now, 'dmtrack--big'),
-      D.el('p', { class: 'etoday__hint t-meta', text: total >= DAY_TARGET ? 'Cel dnia osiągnięty' + (total > DAY_TARGET ? ' · +' + TL.duration(total - DAY_TARGET) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + hoursLabel(DAY_TARGET)) }),
+      D.el('p', { class: 'etoday__hint t-meta', text: !goal ? 'Dzień wolny od pracy' : total >= goal ? 'Cel dnia osiągnięty' + (total > goal ? ' · +' + TL.duration(total - goal) : '') : (total ? 'Do celu dnia ' + TL.duration(left) + (parts.some(function (p) { return p.liveStart; }) ? ' · norma o ' + hm(now + left * 60000) : '') : 'Cel dnia: ' + hoursLabel(goal)) }),
       parts.length && !ctx.noShares ? projectShares(parts) : null,
       ctx.noResume ? null : resumeButton(ctx),
       entries.length

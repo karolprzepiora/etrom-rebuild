@@ -110,3 +110,19 @@
 .lv-side-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); font-size: var(--fs-sm); }
 .lv-side-list li { display: grid; gap: 1px; }
 .lv-rl .lv-card--balance { background: none; padding: 0; }
+
+/* Szczegóły wniosku, powiadomienia o decyzjach, podgląd wpływu w formularzu */
+.lv-req__main.is-link { text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; border-radius: 8px; }
+.lv-req__main.is-link:hover b, .lv-req__main.is-link:focus-visible b { text-decoration: underline; }
+.lv-detail { display: grid; gap: var(--space-4); padding: var(--space-5) var(--space-5) var(--space-6); align-content: start; }
+.lv-detail__dl { display: grid; gap: .1rem; }
+.lv-detail__row { display: grid; grid-template-columns: 8.5rem 1fr; gap: var(--space-3); align-items: center; padding: .55rem 0; border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 14%, transparent); }
+.lv-detail__k { font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.lv-detail__v { font-weight: 600; }
+.lv-detail__note { margin: 0; padding: .6rem .8rem; border-radius: 10px; background: color-mix(in srgb, var(--warn, #c4811a) 14%, var(--sheet)); }
+.lv-detail__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.lv-notices { display: grid; gap: var(--space-2); }
+.lv-notice { display: flex; align-items: center; gap: var(--space-3); padding: .6rem .9rem; border-radius: 12px; border-left: 4px solid var(--leave); background: color-mix(in srgb, var(--leave) 10%, var(--sheet)); }
+.lv-notice.is-no { border-left-color: var(--danger, #c0392b); background: color-mix(in srgb, var(--danger, #c0392b) 9%, var(--sheet)); }
+.lv-notice__t { flex: 1; font-weight: 600; }
+.lv-impactbox[hidden] { display: none; }

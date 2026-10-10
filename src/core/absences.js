@@ -14,6 +14,8 @@
   var DEFAULT_LEAVE_DAYS = 26;
   var ON_DEMAND_LIMIT = 4;
   var VERDICTS = { ok: 'Bez zastrzeżeń', concern: 'Mam zastrzeżenia' };
+  /** Powiadomienie dla właściciela wniosku, dopóki go nie potwierdzi: decyzja zarządu albo odmowa anulowania. */
+  var NOTICES = { approved: 1, rejected: 1, 'cancel-rejected': 1 };
 
   function isDay(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v + 'T00:00:00')); }
   function dayOf(iso) { return new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))); }
@@ -38,7 +40,9 @@
         onDemand: kind === 'leave' && a.onDemand === true,
         requestedBy: str(a.requestedBy, 40), requestedAt: stamp(a.requestedAt),
         decidedBy: str(a.decidedBy, 40), decidedAt: stamp(a.decidedAt), decisionNote: str(a.decisionNote, 200),
-        opinions: opinions
+        opinions: opinions,
+        cancelRequest: a.cancelRequest && typeof a.cancelRequest === 'object' && kind === 'leave' ? { by: str(a.cancelRequest.by, 40), at: stamp(a.cancelRequest.at), note: str(a.cancelRequest.note, 200) } : null,
+        notice: NOTICES[a.notice] ? a.notice : '', noticeNote: str(a.noticeNote, 200)
       };
     }).filter(Boolean).map(function (a, i, all) {
       if (!a.id) { var n = 1; var used = all.map(function (x) { return x.id; }); while (used.indexOf('a-' + n) >= 0) n += 1; a.id = 'a-' + n; }
@@ -197,8 +201,62 @@
     var stampNow = (now instanceof Date ? now : new Date()).toISOString();
     return normalize(list).map(function (a) {
       if (a.id !== id || a.status !== 'pending') return a;
-      return Object.assign({}, a, { status: decision === 'approve' ? 'approved' : 'rejected', decidedBy: by || '', decidedAt: stampNow, decisionNote: str(note, 200) });
+      return Object.assign({}, a, { status: decision === 'approve' ? 'approved' : 'rejected', decidedBy: by || '', decidedAt: stampNow, decisionNote: str(note, 200), notice: a.personId === by ? '' : (decision === 'approve' ? 'approved' : 'rejected'), noticeNote: '' });
     });
+  }
+
+  /** Czy zatwierdzony urlop można jeszcze anulować (nie zaczął się). */
+  function cancellable(a, now) {
+    var today = isoOf(now instanceof Date ? now : new Date());
+    return !!a && a.kind === 'leave' && a.status === 'approved' && a.from > today;
+  }
+
+  /** Prośba pracownika o anulowanie zatwierdzonego, przyszłego urlopu. Zarząd anuluje od razu (patrz `remove`). */
+  function requestCancel(list, id, by, note, now) {
+    var current = normalize(list);
+    var a = current.filter(function (x) { return x.id === id; })[0];
+    if (!cancellable(a, now)) return { valid: false, error: 'Anulować można tylko zatwierdzony urlop, który jeszcze się nie zaczął.', list: current };
+    if (a.cancelRequest) return { valid: false, error: 'Prośba o anulowanie już czeka na decyzję.', list: current };
+    var stampNow = (now instanceof Date ? now : new Date()).toISOString();
+    return { valid: true, list: current.map(function (x) { return x.id === id ? Object.assign({}, x, { cancelRequest: { by: by || '', at: stampNow, note: str(note, 200) } }) : x; }) };
+  }
+
+  /** Decyzja zarządu o prośbie o anulowanie: zgoda usuwa urlop, odmowa zostawia go i powiadamia właściciela. */
+  function decideCancel(list, id, decision, by, note) {
+    var current = normalize(list);
+    if (decision === 'approve') return current.filter(function (a) { return !(a.id === id && a.cancelRequest); });
+    return current.map(function (a) {
+      if (a.id !== id || !a.cancelRequest) return a;
+      return Object.assign({}, a, { cancelRequest: null, notice: 'cancel-rejected', noticeNote: str(note, 200) });
+    });
+  }
+
+  /** Pracownik wycofuje własną prośbę o anulowanie. */
+  function withdrawCancel(list, id) {
+    return normalize(list).map(function (a) { return a.id === id ? Object.assign({}, a, { cancelRequest: null }) : a; });
+  }
+
+  /** Właściciel potwierdza, że przeczytał powiadomienie. */
+  function acknowledge(list, id) {
+    return normalize(list).map(function (a) { return a.id === id ? Object.assign({}, a, { notice: '', noticeNote: '' }) : a; });
+  }
+
+  /** Nieprzeczytane powiadomienia osoby o jej wnioskach. */
+  function notices(list, personId) {
+    return normalize(list).filter(function (a) { return a.personId === personId && a.notice; });
+  }
+
+  /** Zmiana L4: początek, koniec i uwaga. Sprawdza dni robocze i kolizję z innymi nieobecnościami tej osoby. */
+  function updateSick(list, id, data, people) {
+    var current = normalize(list);
+    var a = current.filter(function (x) { return x.id === id; })[0];
+    if (!a || a.kind !== 'sick') return { valid: false, errors: { from: 'Nie znaleziono zwolnienia.' }, list: current };
+    var d = { personId: a.personId, from: data.from, to: data.to, kind: 'sick', note: data.note };
+    var check = validate(d, people);
+    var errors = Object.assign({}, check.errors);
+    if (check.valid && current.some(function (x) { return x.personId === a.personId && x.id !== id && x.status !== 'rejected' && overlaps(x, d.from, d.to); })) errors.from = 'W tym terminie jest już inny wniosek lub nieobecność.';
+    if (Object.keys(errors).length) return { valid: false, errors: errors, list: current };
+    return { valid: true, errors: {}, list: current.map(function (x) { return x.id === id ? Object.assign({}, x, { from: d.from, to: d.to, note: str(d.note, 200) }) : x; }) };
   }
 
   /** Opinia lidera projektu do oczekującego wniosku (jedna na osobę, nowa zastępuje starą). */
@@ -281,7 +339,7 @@
     return absence.kind === 'sick' ? 'who' : 'full';
   }
 
-  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
+  var api = { withdrawCancel: withdrawCancel, cancellable: cancellable, requestCancel: requestCancel, decideCancel: decideCancel, acknowledge: acknowledge, notices: notices, updateSick: updateSick, VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, FORM_KINDS: FORM_KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

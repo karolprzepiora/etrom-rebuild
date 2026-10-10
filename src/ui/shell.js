@@ -428,7 +428,7 @@
     if (nodes.counts.library) nodes.counts.library.hidden = true;
     if (nodes.counts.plan) nodes.counts.plan.hidden = true;
     if (nodes.counts.calendar) nodes.counts.calendar.hidden = true;
-    var pendingLeave = E.LeaveScreen ? E.LeaveScreen.pendingFor(state, meNow) : 0;
+    var pendingLeave = E.LeaveScreen ? E.LeaveScreen.badgeFor(state, meNow) : 0;
     if (nodes.counts.leave) {
       nodes.counts.leave.hidden = !pendingLeave;
       nodes.counts.leave.textContent = String(pendingLeave);

@@ -2321,6 +2321,47 @@ async function main() {
     await sleep(300);
     check('urlopy: wniosek pracownika czeka na zarząd i nie wchodzi do nieobecności w planie',
       await evaluate('const st = window.ETROM.app.store.getState(); const a = st.workspace.absences.find(x => x.personId === "p-8" && x.from === "2026-12-14"); return !!a && a.status === "pending" && a.requestedBy === "p-8" && Object.keys(window.ETROM.Absences.daysOf(st.workspace.absences, "p-8")).indexOf("2026-12-14") < 0 && !!document.querySelector(".lv-req[data-status=pending]");'));
+    /* Szczegóły wniosku, podgląd wpływu, decyzje z powiadomieniem, anulowanie urlopu i zmiana L4 */
+    await evaluate('window.ETROM.app.actions.setLeave({ who: "me", view: "month", rail: "mine" }); return true;');
+    await sleep(300);
+    await evaluate('document.querySelector("#view-leave [data-fk=lv-req-open]").click(); return true;');
+    await sleep(350);
+    check('urlopy: klik we własny wniosek otwiera szczegóły z możliwością wycofania',
+      await evaluate('return !!document.querySelector(".lv-detail") && !!document.querySelector("[data-fk=lv-d-withdraw]");'));
+    await evaluate('window.ETROM.Dialog.closeDrawer(); return true;');
+    await sleep(250);
+    await evaluate('window.ETROM.app.actions.openLeaveRequest({ from: "2026-12-21", to: "2026-12-22", kind: "leave" }); return true;');
+    await sleep(400);
+    check('urlopy: formularz wniosku pokazuje podgląd wpływu na plan',
+      await evaluate('const b = document.querySelector("[data-fk=lv-impact]"); return !!b && !b.hidden && /WPŁYW NA PLAN/.test(b.textContent);'));
+    await evaluate('window.ETROM.Dialog.closeDrawer(); window.ETROM.app.store.set({ leaveForm: null }); return true;');
+    await sleep(250);
+    const reqId = await evaluate('return window.ETROM.app.store.getState().workspace.absences.find(x => x.personId === "p-8" && x.from === "2026-12-14").id;');
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.decideLeave(' + JSON.stringify(reqId) + ', "approve", ""); window.ETROM.app.actions.setMe("p-8"); window.ETROM.app.actions.setLeave({ who: "me", view: "month" }); return true;');
+    await sleep(400);
+    check('urlopy: decyzja zarządu daje właścicielowi baner i licznik w menu, a „OK” je zdejmuje',
+      (await evaluate('const n = document.querySelector("[data-screen=leave] .nav__count"); return !!document.querySelector("[data-fk=lv-notices]") && !!n && !n.hidden;'))
+      && await (async () => { await evaluate('document.querySelector("[data-fk=lv-notice-ok]").click(); return true;'); await sleep(300); return evaluate('return !document.querySelector("[data-fk=lv-notices]");'); })());
+    await evaluate('window.ETROM.app.actions.cancelLeave(' + JSON.stringify(reqId) + ', "zmiana planów"); return true;');
+    await sleep(300);
+    check('urlopy: pracownik prosi o anulowanie zatwierdzonego urlopu, a zarząd widzi prośbę w liczniku',
+      (await evaluate('return !!window.ETROM.app.store.getState().workspace.absences.find(x => x.id === ' + JSON.stringify(reqId) + ').cancelRequest;'))
+      && await (async () => { await evaluate('window.ETROM.app.actions.setMe("p-1"); return true;'); await sleep(300); return evaluate('return window.ETROM.LeaveScreen.pendingFor(window.ETROM.app.store.getState(), window.ETROM.Team.findPerson(window.ETROM.app.store.getState().workspace.people, "p-1")) >= 1;'); })());
+    await evaluate('window.ETROM.app.actions.decideLeave(' + JSON.stringify(reqId) + ', "reject", "projekt w alarmie"); return true;');
+    await sleep(250);
+    check('urlopy: odmowa anulowania zostawia urlop i powiadamia pracownika',
+      await evaluate('const a = window.ETROM.app.store.getState().workspace.absences.find(x => x.id === ' + JSON.stringify(reqId) + '); return !!a && !a.cancelRequest && a.notice === "cancel-rejected";'));
+    await evaluate('window.ETROM.app.actions.setMe("p-8"); window.ETROM.app.actions.ackLeave(' + JSON.stringify(reqId) + '); window.ETROM.app.actions.cancelLeave(' + JSON.stringify(reqId) + ', ""); window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.decideLeave(' + JSON.stringify(reqId) + ', "approve", ""); window.ETROM.app.actions.setMe("p-8"); return true;');
+    await sleep(300);
+    check('urlopy: zgoda zarządu na anulowanie usuwa urlop',
+      await evaluate('return !window.ETROM.app.store.getState().workspace.absences.some(x => x.id === ' + JSON.stringify(reqId) + ');'));
+    const sickId = await evaluate('return window.ETROM.app.store.getState().workspace.absences.find(x => x.personId === "p-8" && x.kind === "sick" && x.from === "2026-11-02").id;');
+    await evaluate('window.ETROM.app.actions.openSickEdit(' + JSON.stringify(sickId) + '); return true;');
+    await sleep(400);
+    await evaluate('document.getElementById("lv-to").value = "2026-11-03"; document.getElementById("lv-to").dispatchEvent(new Event("change")); document.getElementById("leave-form").requestSubmit(); return true;');
+    await sleep(350);
+    check('urlopy: L4 można przedłużyć lub skrócić (zmiana dat zapisuje się w rekordzie)',
+      await evaluate('const a = window.ETROM.app.store.getState().workspace.absences.find(x => x.id === ' + JSON.stringify(sickId) + '); return !!a && a.to === "2026-11-03";'));
     await evaluate('window.ETROM.app.actions.setLeave({ who: "team" }); return true;');
     await sleep(300);
     check('urlopy: widok „Zespół” pokazuje kółka osób; urlopy widać z rodzajem, a cudze L4 tylko jako „nieobecność”',
@@ -2330,6 +2371,17 @@ async function main() {
     check('urlopy: widok Rok ma 12 miesięcy, a „Zespół” w roku pokazuje zagęszczenie nieobecności',
       (await evaluate('return document.querySelectorAll("#view-leave .lv-month").length === 12;')) && await (async () => { await evaluate('window.ETROM.app.actions.setLeave({ who: "team" }); return true;'); await sleep(250); return evaluate('return document.querySelectorAll("#view-leave .lv-month").length === 12 && document.querySelectorAll("#view-leave .lv-day[class*=is-heat]").length > 0;'); })());
     await evaluate('window.ETROM.app.actions.setLeave({ who: "me", view: "month" }); return true;');
+    /* Czas → Dzień: nawigacja po dniach wstecz */
+    await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTime({ timeMode: "day", timeOffset: 0 }); location.hash = "#/czas"; return true;');
+    await sleep(400);
+    check('czas: w widoku Dzień jest nawigacja po dniach, a dziś ma wyłączone „następny”',
+      await evaluate('const n = document.querySelector("#view-time [data-fk=ts-next]"); return !!document.querySelector("#view-time [data-fk=ts-prev]") && !!n && n.disabled && /Dziś/.test(document.querySelector("[data-fk=ts-day-title]").textContent);'));
+    await evaluate('document.querySelector("#view-time [data-fk=ts-prev]").click(); return true;');
+    await sleep(350);
+    check('czas: „poprzedni dzień” pokazuje wcześniejszy dzień z przyciskiem „Dziś”, a dopisanie czasu ma datę tego dnia',
+      (await evaluate('const t = document.querySelector("[data-fk=ts-day-title]").textContent; return !/Dziś ·/.test(t) && !!document.querySelector("#view-time [data-fk=ts-today]");'))
+      && await (async () => { await evaluate('document.querySelector("#view-time [data-fk=time-add]").click(); return true;'); await sleep(350); const ok = await evaluate('const d = document.getElementById("tm-date"); return !!d && d.value !== "" && d.value < new Date().toISOString().slice(0, 10);'); await evaluate('window.ETROM.app.store.set({ timeForm: null }); return true;'); return ok; })());
+    await evaluate('window.ETROM.app.actions.setTime({ timeMode: "week", timeOffset: 0 }); window.ETROM.app.actions.setMe("p-8"); return true;');
     /* 38k. Zespół → Konta i role: tylko dyrekcja, kreator, hasło tymczasowe, stawki z historią */
     await evaluate('location.hash = "#/zespol"; return true;');
     await sleep(300);

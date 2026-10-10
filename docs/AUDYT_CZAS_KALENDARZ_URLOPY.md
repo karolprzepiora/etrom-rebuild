@@ -11,14 +11,14 @@
 - Obrys podkreślenia dni z wydarzeniami dopasowany do szarego podkładu.
 
 ## Lista optymalizacji (priorytet)
-### Przed domknięciem (wysoki)
+### Przed domknięciem (wysoki). Punkty 2–7 wdrożone 10.10.2026
 1. Migracja starych szkoleń i „innych” nieobecności do wyjazdów (dziś są szare w Kalendarzu, a ukryte w Urlopach).
-2. Anulowanie zatwierdzonego, przyszłego urlopu (prośba do zarządu, zarząd może od razu).
-3. Edycja i skracanie L4 („wróciłem wcześniej”, „przedłuż”).
-4. Klik w własny pasek lub wniosek w Urlopach otwiera szczegóły (wycofaj, anuluj, zmień).
-5. Czas, Dzień: nawigacja wstecz, żeby uzupełnić i poprawić zapomniany dzień.
-6. Podgląd wpływu przy składaniu wniosku (kto jeszcze nieobecny, terminy etapów) dla pracownika, nie tylko dla decydenta.
-7. Powiadomienia o decyzji (Skrzynka lub Aktualności, potem e-mail).
+2. (zrobione) Anulowanie zatwierdzonego, przyszłego urlopu (prośba do zarządu, zarząd może od razu).
+3. (zrobione) Edycja i skracanie L4 („wróciłem wcześniej”, „przedłuż”).
+4. (zrobione) Klik w własny pasek lub wniosek w Urlopach otwiera szczegóły (wycofaj, anuluj, zmień).
+5. (zrobione) Czas, Dzień: nawigacja wstecz, żeby uzupełnić i poprawić zapomniany dzień.
+6. (zrobione) Podgląd wpływu przy składaniu wniosku (kto jeszcze nieobecny, terminy etapów) dla pracownika, nie tylko dla decydenta.
+7. (zrobione) Powiadomienia o decyzji (Skrzynka lub Aktualności, potem e-mail).
 
 ### Szybkie wygrane (niski koszt)
 8. Legenda reaguje na wybraną warstwę („Pokaż”).

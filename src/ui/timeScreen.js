@@ -17,6 +17,14 @@
 
   var MONTHS_SHORT = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
 
+  var DAYS_FULL = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+  var MONTHS_GEN = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+  function keyOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  /** Dzień oglądany w widoku Dzień: dziś przesunięte o `offset` dni (0 = dziś, ujemne = wstecz). */
+  function shownDay(now, offset) { return new Date(now.getFullYear(), now.getMonth(), now.getDate() + Math.min(0, Number(offset) || 0), 12); }
+  function dayTitle(d, offset) { return (offset ? '' : 'Dziś · ') + DAYS_FULL[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_GEN[d.getMonth()] + (offset ? ' ' + d.getFullYear() : ''); }
+
   function h(minutes) { return minutes ? TS.hours(minutes) : ''; }
   function hh(hours) { return String(Math.round(hours * 10) / 10).replace('.', ','); }
 
@@ -49,7 +57,18 @@
         on: { change: function () { a.setTime({ timePerson: select.value }); } }, attrs: { 'aria-label': 'Osoba', 'data-fk': 'ts-person' }
       });
     }
-    if (mode === 'day') return D.el('div', { class: 'ts-bar' }, [seg.node]);
+    if (mode === 'day') {
+      var dOff = Math.min(0, offset);
+      var shown = shownDay(new Date(), dOff);
+      return D.el('div', { class: 'ts-bar' }, [seg.node,
+        D.el('div', { class: 'ts-nav', attrs: { role: 'group', 'aria-label': 'Przesuń dzień' } }, [
+          UI.iconButton({ icon: 'chevronLeft', label: 'Poprzedni dzień', attrs: { 'data-fk': 'ts-prev' }, onClick: function () { a.setTime({ timeOffset: dOff - 1 }); } }),
+          D.el('h2', { class: 'ts-title', text: dayTitle(shown, dOff), attrs: { 'data-fk': 'ts-day-title' } }),
+          UI.iconButton({ icon: 'chevronRight', label: 'Następny dzień', disabled: dOff >= 0, attrs: { 'data-fk': 'ts-next' }, onClick: function () { a.setTime({ timeOffset: Math.min(0, dOff + 1) }); } }),
+          dOff !== 0 ? UI.button({ label: 'Dziś', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'ts-today' }, onClick: function () { a.setTime({ timeOffset: 0 }); } }) : null
+        ])
+      ]);
+    }
     var title = sheet.period.title;
     var bar = [
       seg.node,
@@ -211,24 +230,31 @@
 
   /** Dzień: wszystko, co zapisano dziś (oś dnia, luki, wpisy, podsumowanie). Zegar włącza się paskiem na dole. */
   function dayView(state, ctx, me, now) {
-    var todays = TL.forDay(state.workspace.entries || [], me.id, now);
+    var offset = Math.min(0, Number(state.timeOffset) || 0);
+    var date = shownDay(now, offset);
+    var key = keyOf(date);
+    var past = offset !== 0;
+    var todays = TL.forDay(state.workspace.entries || [], me.id, now, key);
     var base = TL.sum(todays, now);
-    var todaySheet = TS.build(state.workspace.entries || [], me.id, now, { mode: 'week', offset: 0, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
-    var today = todaySheet.days.filter(function (d) { return d.today; })[0];
+    /* Arkusz tygodnia, w którym leży oglądany dzień: z niego bierzemy wyjazd i normę dnia. */
+    var mon = function (d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7), 12); };
+    var weekOffset = Math.round((mon(date) - mon(now)) / (7 * 86400000));
+    var todaySheet = TS.build(state.workspace.entries || [], me.id, now, { mode: 'week', offset: weekOffset, target: state.prefs.dayTarget, absences: state.workspace.absences || [], trips: state.workspace.trips || [] });
+    var today = todaySheet.days.filter(function (d) { return d.key === key; })[0];
     var trip = today && today.trip ? today.trip : null;
     var minutes = base + (trip ? trip.credited : 0);
     var seg = controls(Object.assign({}, state, { timeMode: 'day' }), ctx, false, [], me.id, null);
-    var target = state.prefs.dayTarget || 480;
+    var target = past && today && typeof today.norm === 'number' ? today.norm : (state.prefs.dayTarget || 480);
     var left = Math.max(0, target - minutes);
     var pct = target ? Math.round(minutes / target * 100) : 0;
     var codes = {};
     todays.forEach(function (e) { codes[e.projectId || e.code || e.taskId] = 1; });
     var nProj = Object.keys(codes).length;
     var stats = D.el('div', { class: 'ts-stats' }, [
-      stat('Przepracowano dziś', TL.duration(minutes), 'z normy ' + TL.duration(target) + ' · ' + pct + '%', D.el('span', { class: 'ts-meter' }, [D.el('i', { style: { width: Math.min(100, pct) + '%' } })])),
-      stat(minutes > target ? 'Nadwyżka' : 'Do celu dnia', TL.duration(Math.abs(target - minutes)), minutes > target ? 'ponad normę dnia' : (left ? 'zostało do normy' : 'norma wypełniona')),
+      stat(past ? 'Przepracowano' : 'Przepracowano dziś', TL.duration(minutes), target ? 'z normy ' + TL.duration(target) + ' · ' + pct + '%' : 'dzień bez normy', D.el('span', { class: 'ts-meter' }, [D.el('i', { style: { width: Math.min(100, pct) + '%' } })])),
+      stat(minutes > target ? 'Nadwyżka' : 'Do celu dnia', TL.duration(Math.abs(target - minutes)), minutes > target ? 'ponad normę dnia' : (left ? 'zostało do normy' : (target ? 'norma wypełniona' : 'dzień wolny od pracy'))),
       stat('Wpisy', String(todays.length), todays.length ? 'zapisanych odcinków czasu' : 'brak zapisu'),
-      stat('Projekty', String(nProj), nProj ? F2(nProj, 'projekt', 'projekty', 'projektów') + ' dziś' : 'brak zapisu')
+      stat('Projekty', String(nProj), nProj ? F2(nProj, 'projekt', 'projekty', 'projektów') + (past ? '' : ' dziś') : 'brak zapisu')
     ]);
     var tripCard = trip ? D.el('section', { class: 'an-card ts-trip', attrs: { 'data-fk': 'ts-trip' } }, [
       D.el('div', { class: 'ts-trip__t' }, [
@@ -240,10 +266,10 @@
     ]) : null;
     var side = D.el('section', { class: 'an-card ts-calcard ts-day-view' }, [
       D.el('div', { class: 'ts-day-view__main' }, [
-        E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true })
+        E.Timer.todayBlock(todays, { find: ctx.find, actions: ctx.actions, entries: state.workspace.entries || [], meId: me.id, pending: null, noLive: true, noShares: true, noResume: true, openLog: true, date: past ? key : null, title: past ? 'Zapisane tego dnia' : null, target: target })
       ])
     ]);
-    return { body: [seg, stats, tripCard, side].filter(Boolean), summary: 'Dziś · ' + TL.duration(minutes) + ' z ' + TL.duration(state.prefs.dayTarget || 480) };
+    return { body: [seg, stats, tripCard, side].filter(Boolean), summary: (past ? dayTitle(date, offset) : 'Dziś') + ' · ' + TL.duration(minutes) + (target ? ' z ' + TL.duration(target) : '') };
   }
 
   function sheetView(state, ctx, person, now) {

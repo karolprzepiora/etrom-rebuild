@@ -102,8 +102,8 @@
       var look = UI.button({ label: 'Wpływ na plan', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-leave-view-' + id }, onClick: function () { openItem(item, actions); } });
       if (item.management) {
         return [
-          UI.button({ label: 'Zaakceptuj', icon: 'check', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-leave-ok-' + id }, onClick: function () { actions.decideLeave(id, 'approve', ''); } }),
-          UI.button({ label: 'Odrzuć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-leave-no-' + id }, onClick: function () { actions.decideLeave(id, 'reject', ''); } }),
+          UI.button({ label: item.cancel ? 'Anuluj urlop' : 'Zaakceptuj', icon: 'check', variant: 'secondary', size: 'sm', attrs: { 'data-fk': 'inbox-leave-ok-' + id }, onClick: function () { actions.decideLeave(id, 'approve', ''); } }),
+          UI.button({ label: item.cancel ? 'Zostaw urlop' : 'Odrzuć', variant: 'ghost', size: 'sm', attrs: { 'data-fk': 'inbox-leave-no-' + id }, onClick: function () { actions.decideLeave(id, 'reject', ''); } }),
           look
         ];
       }

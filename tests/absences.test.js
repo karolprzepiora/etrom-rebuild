@@ -169,3 +169,41 @@ test('zapis nieobecności bez dni roboczych (sama sobota i niedziela) jest odrzu
   assert.equal(r.valid, false);
   assert.ok(r.errors.to);
 });
+
+test('anulowanie zatwierdzonego urlopu: prośba, zgoda usuwa, odmowa zostawia i powiadamia', () => {
+  const now = new Date('2026-10-10T10:00:00');
+  const list = [{ id: 'u1', personId: 'p-1', from: '2026-10-20', to: '2026-10-21', kind: 'leave', status: 'approved' }, { id: 'u2', personId: 'p-1', from: '2026-10-05', to: '2026-10-12', kind: 'leave', status: 'approved' }];
+  assert.equal(A.cancellable(list[0], now), true);
+  assert.equal(A.cancellable(list[1], now), false);
+  assert.equal(A.requestCancel(list, 'u2', 'p-1', '', now).valid, false);
+  const asked = A.requestCancel(list, 'u1', 'p-1', 'zmiana planów', now);
+  assert.equal(asked.valid, true);
+  assert.equal(asked.list.find((a) => a.id === 'u1').cancelRequest.note, 'zmiana planów');
+  assert.equal(A.requestCancel(asked.list, 'u1', 'p-1', '', now).valid, false);
+  assert.equal(A.decideCancel(asked.list, 'u1', 'approve', 'p-2').some((a) => a.id === 'u1'), false);
+  const kept = A.decideCancel(asked.list, 'u1', 'reject', 'p-2', 'projekt w alarmie');
+  const row = kept.find((a) => a.id === 'u1');
+  assert.equal(row.cancelRequest, null);
+  assert.equal(row.notice, 'cancel-rejected');
+  assert.equal(A.notices(kept, 'p-1').length, 1);
+  assert.equal(A.notices(A.acknowledge(kept, 'u1'), 'p-1').length, 0);
+});
+
+test('decyzja zarządu zostawia powiadomienie właścicielowi, własna decyzja nie', () => {
+  const list = [{ id: 'u1', personId: 'p-1', from: '2026-10-20', to: '2026-10-21', kind: 'leave', status: 'pending' }, { id: 'u2', personId: 'p-2', from: '2026-10-22', to: '2026-10-22', kind: 'leave', status: 'pending' }];
+  let next = A.decide(list, 'u1', 'approve', 'p-2', '');
+  next = A.decide(next, 'u2', 'approve', 'p-2', '');
+  assert.equal(A.notices(next, 'p-1')[0].notice, 'approved');
+  assert.equal(A.notices(next, 'p-2').length, 0);
+  assert.equal(A.notices(A.decide(list, 'u1', 'reject', 'p-2', 'brak obsady'), 'p-1')[0].notice, 'rejected');
+});
+
+test('zmiana L4: skracanie, przedłużanie i kolizje', () => {
+  const list = [{ id: 's1', personId: 'p-1', from: '2026-10-05', to: '2026-10-09', kind: 'sick', status: 'approved' }, { id: 'u1', personId: 'p-1', from: '2026-10-14', to: '2026-10-15', kind: 'leave', status: 'approved' }];
+  const shorter = A.updateSick(list, 's1', { from: '2026-10-05', to: '2026-10-07', note: 'wróciłem' }, people);
+  assert.equal(shorter.valid, true);
+  assert.equal(shorter.list.find((a) => a.id === 's1').to, '2026-10-07');
+  assert.equal(A.updateSick(list, 's1', { from: '2026-10-05', to: '2026-10-14' }, people).valid, false);
+  assert.equal(A.updateSick(list, 'u1', { from: '2026-10-14', to: '2026-10-15' }, people).valid, false);
+  assert.ok(A.updateSick(list, 's1', { from: '2026-10-09', to: '2026-10-05' }, people).errors.to);
+});

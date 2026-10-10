@@ -76,8 +76,9 @@
   function leaveItems(personId, absences, people, projects, ref) {
     var management = Budget.isManagement(personId, people || []);
     return (absences || []).filter(function (a) {
-      if (a.status !== 'pending' || a.personId === personId) return false;
-      if (management) return true;
+      if (a.personId === personId) return false;
+      if (management) return a.status === 'pending' || !!a.cancelRequest;
+      if (a.status !== 'pending') return false;
       return Absences.isLeaderOf(personId, a, projects || []) && !(a.opinions || []).some(function (o) { return o.by === personId; });
     }).map(function (a) {
       var who = Team.findPerson(people || [], a.personId);
@@ -85,10 +86,10 @@
       var worst = Absences.impact(a, { projects: projects, people: people, absences: absences }).filter(function (x) { return x.tone === 'alarm'; })[0];
       var span = a.from === a.to ? shortDay(a.from) : shortDay(a.from) + '–' + shortDay(a.to);
       return {
-        key: 'leave:' + a.id, kind: 'leave', absence: a, management: management, project: null,
-        title: (who ? Team.fullName(who) : 'Osoba') + ' · ' + (Absences.KINDS[a.kind] || 'Nieobecność') + ' ' + span,
+        key: 'leave:' + a.id + (a.cancelRequest ? ':cancel' : ''), kind: 'leave', absence: a, management: management, project: null, cancel: !!a.cancelRequest,
+        title: (who ? Team.fullName(who) : 'Osoba') + ' · ' + (a.cancelRequest ? 'prośba o anulowanie urlopu ' : (Absences.KINDS[a.kind] || 'Nieobecność') + ' ') + span,
         detail: (Absences.workdays(a) === 1 ? '1 dzień roboczy' : Absences.workdays(a) + ' dni rob.') + (worst ? ' · ' + worst.text : ''),
-        why: management ? 'Wniosek czeka na decyzję zarządu. Wpływ na plan jest w pełnym widoku Urlopów.' : 'Jesteś liderem projektu tej osoby. Dopisz opinię, a decyzję podejmie zarząd.',
+        why: a.cancelRequest ? 'Pracownik prosi o anulowanie zatwierdzonego urlopu' + (a.cancelRequest.note ? ': ' + a.cancelRequest.note : '.') : management ? 'Wniosek czeka na decyzję zarządu. Wpływ na plan jest w pełnym widoku Urlopów.' : 'Jesteś liderem projektu tej osoby. Dopisz opinię, a decyzję podejmie zarząd.',
         days: days, urgent: days !== null && days <= 2 && !!worst
       };
     });
