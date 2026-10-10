@@ -5086,6 +5086,7 @@
         newProject: function () { if (store.getState().route.name === 'team') goTo('projects'); openCreate(); },
         newPerson: function () { goTo('team'); openNewPerson(); },
         showShortcuts: showShortcuts,
+        openSettings: function (section) { if (section) store.set({ settingsSection: section }); goTo('settings'); },
         toggleSidebar: toggleSidebar,
         setPref: setPref,
         previewLook: applyLook,

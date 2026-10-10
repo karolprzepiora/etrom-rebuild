@@ -2252,6 +2252,13 @@ async function main() {
     check('menu przy logo ma skrót „Wszystkie ustawienia…” i nie zawiera już długich list ustawień',
       await evaluate('const m = document.querySelector(".popover--settings"); return !!m && /Wszystkie ustawienia/.test(m.textContent) && !m.querySelector("#look-hdr") && !m.querySelector("#rule-warn");'));
     await pressKey('escape');
+    await go('#/pulpit');
+    await click('#action-settings');
+    await sleep(300);
+    await evaluate('[...document.querySelectorAll(".popover--settings .menu__item")].find(b => /Wszystkie ustawienia/.test(b.textContent)).click(); return true;');
+    await sleep(400);
+    check('klik w „Wszystkie ustawienia…” w menu przy logo otwiera stronę Ustawienia',
+      await evaluate('return location.hash === "#/ustawienia" && !!document.querySelector(".set-nav") && !document.querySelector("#view-settings").hidden;'));
     await evaluate('window.ETROM.app.actions.setSettingsSection("look"); return true;');
     await go('#/projekty');
     await sleep(300);
@@ -2470,7 +2477,7 @@ async function main() {
       && await (async () => {
         await sleep(600);
         const locked = await evaluate('const l = window.ETROM.app.store.getState().workspace.timeLocks; return l.length === 1 && l[0].personId === "p-8" && l[0].status === "submitted" && window.ETROM.WeekLock.isLocked(l, "p-8", l[0].week);');
-        if (!locked) { lastStep = 'blokada'; return false; }
+        if (!locked) { lastStep = 'blokada: ' + (await evaluate('return JSON.stringify(window.ETROM.app.store.getState().workspace.timeLocks) + " me=" + window.ETROM.app.store.getState().prefs.me + " hash=" + location.hash;')); return false; }
         await evaluate('window.ETROM.app.actions.setMe("p-1"); location.hash = "#/skrzynka"; return true;');
         await sleep(650);
         const inb = await evaluate('return !!document.querySelector("#view-inbox [data-kind=timeweek] [data-fk^=inbox-week-ok-]");');
@@ -2515,7 +2522,8 @@ async function main() {
     await evaluate('location.hash = "#/zespol"; return true;');
     await sleep(300);
     check('konta: pracownik nie widzi zakładki „Konta i role”, ma „Dziś i tydzień” i „Katalog osób”',
-      await evaluate('return !document.querySelector("#team-tabs [data-value=accounts]") && !!document.querySelector("#team-tabs [data-value=board]") && !!document.querySelector("#team-tabs [data-value=people]");'));
+      await evaluate('return !document.querySelector("#team-tabs [data-value=accounts]") && !!document.querySelector("#team-tabs [data-value=board]") && !!document.querySelector("#team-tabs [data-value=people]");'),
+      await evaluate('return location.hash + " me=" + window.ETROM.app.store.getState().prefs.me + " tabs=" + [...document.querySelectorAll("#team-tabs [data-value]")].map(x => x.dataset.value).join();'));
     await evaluate('window.ETROM.app.actions.setMe("p-1"); window.ETROM.app.actions.setTeamTab("accounts"); return true;');
     await sleep(350);
     check('konta: dyrekcja widzi tabelę kont z rolą, stanem konta, stawką i funkcjami',
