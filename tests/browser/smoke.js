@@ -836,9 +836,9 @@ async function main() {
     /* 21c. Ekran „Czas”: karta czasu, eksport, plan obciążenia */
     await go('#/czas');
     check('ekran „Czas” pokazuje kartę czasu z macierzą dni i sumą',
-      await evaluate('return !!document.querySelector(".ts-hm") && document.querySelectorAll(".ts-hm__head .ts-hm__day").length === 7 && !!document.querySelector(".ts-hm__foot .an-hm__sum") && document.querySelector("#view-time").hidden === false;'));
-    check('wiersz „Razem” w karcie czasu ocenia dni kolorem względem celu dnia (is-ok / is-warn / is-bad / is-run / is-off)',
-      await evaluate('const c = [...document.querySelectorAll(".ts-hm__total")]; return c.length >= 7 && c.every(x => /\\bis-(ok|warn|bad|run|off)\\b/.test(x.className)) && c.some(x => x.classList.contains("is-off"));'));
+      await evaluate('return !!document.querySelector(".ts-cal.is-week") && document.querySelectorAll(".ts-cal .ts-day:not(.is-out)").length === 7 && document.querySelectorAll(".ts-stat").length === 4 && document.querySelector("#view-time").hidden === false;'));
+    check('dni w kalendarzu czasu: weekend jest wyszarzony, każdy dzień ma numer',
+      await evaluate('const c = [...document.querySelectorAll(".ts-cal .ts-day:not(.is-out)")]; return c.length === 7 && c.some(x => x.classList.contains("is-weekend")) && c.every(x => !!x.querySelector(".ts-day__n"));'));
     check('pozycja „Czas” w menu bocznym jest zaznaczona',
       await evaluate('return document.querySelector(\'.sidebar a[href="#/czas"]\').getAttribute("aria-current") === "page";'));
     await click('[data-fk="ts-prev"]');
@@ -848,8 +848,8 @@ async function main() {
     await click('[data-fk="ts-today"]');
     await click('.ts-bar .segmented button:nth-child(2)');
     await sleep(200);
-    check('widok miesiąca ma kolumnę na każdy dzień miesiąca',
-      await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-hm__head .ts-hm__day").length === days;'));
+    check('widok miesiąca ma komórkę na każdy dzień miesiąca i sumy tygodni',
+      await evaluate('const n = new Date(); const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return document.querySelectorAll(".ts-cal.is-month .ts-day:not(.is-out)").length === days && document.querySelectorAll(".ts-cal .ts-wk").length >= 4;'));
     await go('#/przeglad');
     await sleep(300);
     check('ekran „Przegląd” pokazuje 7 sekcji spraw do decyzji z klikalnymi wierszami i ma pozycję w menu',
@@ -1105,7 +1105,7 @@ async function main() {
     await evaluate('ETROM.app.actions.setTime({ planMode: "people" }); return true;');
     await sleep(500);
     check('Sprawy w toku: Plan pokazuje osobny pas „Sprawy w toku” z wierszem sprawy i licznikiem dni',
-      await evaluate('const r = document.querySelector(".pb-row--case"); return !!document.querySelector(".pb-row--casehead") && !!r && /\\d+ dni/.test(r.textContent) && !!r.querySelector(".pb-case__m--filed");'));
+      await evaluate('const r = document.querySelector(".pb-row--case"); return !!document.querySelector(".pb-row--casehead") && !!r && /\\d+ dni/.test(r.textContent) && !!document.querySelector(".pb-row--case .pb-case__m--filed");'));
     const caseInfo = JSON.parse(await evaluate('const c = ETROM.app.store.getState().workspace.cases[0]; return JSON.stringify({ id: c.id, owner: c.ownerId, n: c.events.length });'));
     await evaluate('ETROM.app.actions.caseCall("' + caseInfo.id + '", "Rozmowa testowa"); return true;');
     await sleep(500);

@@ -83,6 +83,18 @@
   }
 
 
+  /** To samo co daysOf, ale ze szczegółami: { 'YYYY-MM-DD': { kind, onDemand } } (do karty czasu: U / UŻ / L4). */
+  function dayInfo(list, personId) {
+    var out = {};
+    (list || []).forEach(function (a) {
+      if (a.personId !== personId || a.status === 'pending' || a.status === 'rejected') return;
+      for (var d = dayOf(a.from); isoOf(d) <= a.to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+        if (d.getDay() !== 0 && d.getDay() !== 6 && !Cal.isHoliday(isoOf(d))) out[isoOf(d)] = { kind: a.kind, onDemand: a.onDemand === true };
+      }
+    });
+    return out;
+  }
+
   /** Tylko zaakceptowane nieobecności wpływają na plan, kalendarz zespołu i kartę czasu. */
   function approved(list) { return (list || []).filter(function (a) { return a.status !== 'pending' && a.status !== 'rejected'; }); }
 
@@ -258,7 +270,7 @@
     return m === 'own' ? null : (m === 'kind' ? 'full' : 'who');
   }
 
-  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, isoOf: isoOf };
+  var api = { VISIBILITY: VISIBILITY, normalizeSettings: normalizeSettings, peek: peek, STATUS: STATUS, VERDICTS: VERDICTS, DEFAULT_LEAVE_DAYS: DEFAULT_LEAVE_DAYS, ON_DEMAND_LIMIT: ON_DEMAND_LIMIT, approved: approved, workdays: workdays, balance: balance, request: request, decide: decide, addOpinion: addOpinion, impact: impact, canSee: canSee, isLeaderOf: isLeaderOf, entitlementOf: entitlementOf, KINDS: KINDS, normalize: normalize, validate: validate, save: save, remove: remove, daysOf: daysOf, dayInfo: dayInfo, isoOf: isoOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.ETROM = root.ETROM || {}; root.ETROM.Absences = api; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

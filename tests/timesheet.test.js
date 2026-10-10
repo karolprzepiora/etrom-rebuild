@@ -106,3 +106,29 @@ test('dzień świąteczny nie wymaga godzin i nie liczy się do celu tygodnia', 
   assert.equal(hol.state, 'off');
   assert.equal(r.workdays, 4);
 });
+
+test('build: norma bez urlopu i chorobowego, bilans co do minuty, liczniki i tygodnie', () => {
+  const now = at(2026, 10, 10, 12);
+  // 5–9 paź: pon 7:50, wt 7:50, śr urlop, czw L4, pt 8:00
+  const entries = [
+    mk('a', 'p-1', 1, 't-1', at(2026, 10, 5, 8), at(2026, 10, 5, 15, 50)),
+    mk('b', 'p-1', 1, 't-1', at(2026, 10, 6, 8), at(2026, 10, 6, 15, 50)),
+    mk('c', 'p-1', 1, 't-1', at(2026, 10, 9, 8), at(2026, 10, 9, 16))
+  ];
+  const absences = [
+    { id: 'a-1', personId: 'p-1', from: '2026-10-07', to: '2026-10-07', kind: 'leave', onDemand: true, status: 'approved' },
+    { id: 'a-2', personId: 'p-1', from: '2026-10-08', to: '2026-10-08', kind: 'sick', status: 'approved' }
+  ];
+  const s = TS.build(entries, 'p-1', now, { mode: 'week', offset: 0, target: 480, absences });
+  assert.equal(s.target, 3 * 480, 'norma: 5 dni − urlop − L4');
+  assert.equal(s.total, 470 + 470 + 480);
+  assert.equal(s.balance, -20, 'brakuje 10 min w pon i wt');
+  assert.deepEqual([s.days[0].diff, s.days[1].diff, s.days[2].diff, s.days[4].diff], [-10, -10, null, 0]);
+  assert.equal(s.days[2].absentKind, 'leave');
+  assert.equal(s.days[2].onDemand, true);
+  assert.equal(s.counts.leave, 1); assert.equal(s.counts.onDemand, 1); assert.equal(s.counts.sick, 1);
+  assert.equal(s.weeks.length, 1); assert.equal(s.weeks[0].minutes, 1420); assert.equal(s.weeks[0].norm, 3 * 480);
+  const m = TS.build(entries, 'p-1', now, { mode: 'month', offset: 0, target: 480, absences });
+  assert.equal(m.weeks.length, 5, 'październik 2026 obejmuje 5 tygodni ISO');
+  assert.equal(m.weeks[0].indices.length, 4, 'pierwszy tydzień zaczyna się w czwartek');
+});

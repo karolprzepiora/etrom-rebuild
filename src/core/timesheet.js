@@ -82,6 +82,7 @@
     var order = [];
     var firstKey = '';
     var gone = Absences.daysOf(o.absences || [], personId);
+    var goneInfo = Absences.dayInfo(o.absences || [], personId);
     (entries || []).forEach(function (entry) {
       if (entry.personId !== personId) return;
       var k = TL.dayKey(entry.start);
@@ -127,10 +128,38 @@
     });
     var expected = settled * target;
     var settledMinutes = days.reduce(function (sum, d) { return sum + (d.state === 'ok' || d.state === 'warn' || d.state === 'bad' ? d.minutes : 0); }, 0);
+    // Norma dnia: tylko dzień roboczy bez święta i bez zaakceptowanej nieobecności. Różnica liczy się dla dni już rozliczonych (co do minuty).
+    var counts = { leave: 0, onDemand: 0, sick: 0, training: 0, other: 0, holidays: 0 };
+    var normTotal = 0;
+    var balance = 0;
+    days.forEach(function (d) {
+      var iso = Absences.isoOf(new Date(d.date));
+      var info = goneInfo[iso];
+      d.holidayName = d.holiday ? String(d.holiday) : '';
+      d.absentKind = info ? info.kind : '';
+      d.onDemand = !!(info && info.onDemand);
+      d.norm = d.weekend || d.holiday || info ? 0 : target;
+      d.diff = (d.state === 'ok' || d.state === 'warn' || d.state === 'bad') ? d.minutes - target : null;
+      if (d.diff !== null) balance += d.diff;
+      normTotal += d.norm;
+      if (info) { counts[info.kind] = (counts[info.kind] || 0) + 1; if (info.onDemand) counts.onDemand += 1; }
+      else if (d.holiday && !d.weekend) counts.holidays += 1;
+    });
+    // Tygodnie (pon–ndz) przecinające okres: etykieta ISO i sumy.
+    var weeks = [];
+    days.forEach(function (d, i) {
+      var date = new Date(d.date);
+      var monday = addDays(date, -((date.getDay() + 6) % 7));
+      var key = TL.dayKey(monday.getTime());
+      var w = weeks[weeks.length - 1];
+      if (!w || w.key !== key) { w = { key: key, number: TL.isoWeek(monday), indices: [], minutes: 0, norm: 0 }; weeks.push(w); }
+      w.indices.push(i); w.minutes += d.minutes; w.norm += d.norm;
+    });
     return {
       state: expected ? ratioState(settledMinutes, expected, settled) : 'off',
       period: p, days: days, rows: list, total: total,
-      target: workdays * target, dayTarget: target, workdays: workdays,
+      target: normTotal, dayTarget: target, workdays: workdays, counts: counts, balance: balance, weeks: weeks,
+      absentDays: counts.leave + counts.sick + counts.training + counts.other,
       activeDays: days.filter(function (d) { return d.minutes > 0; }).length
     };
   }
