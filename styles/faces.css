@@ -12,11 +12,13 @@ tr.is-closed .pf-num--num, .kc.is-closed .pf-num--num { color: var(--ink-4); }
 
 /* ---------- Pasek-kapsuła: postęp, luka do upływu czasu, „dziś” ---------- */
 .pm { position: relative; height: .6rem; }
-.pm__cap { position: absolute; inset: 0; overflow: hidden; border-radius: 999px; background: var(--wash-2); }
-.pm__fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--ink); }
-.pm__gap { border-radius: 999px; border-left: 2px solid transparent; background-clip: padding-box; box-sizing: border-box; position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--alarm) 0 2px, color-mix(in oklab, var(--alarm) 12%, var(--sheet)) 2px 5px); }
+.pm__cap { position: absolute; inset: 0; }
+.pm__fill, .pm__gap, .pm__rest { position: absolute; top: 0; bottom: 0; border-radius: 999px; border-inline: 1.5px solid transparent; background-clip: padding-box; box-sizing: border-box; }
+.pm__fill { background: var(--ink) padding-box; }
+.pm__rest { background: var(--wash-2) padding-box; }
+.pm__gap { background-color: transparent; }
 .pm__now { position: absolute; top: -.2rem; bottom: -.2rem; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--flow); }
-.pm.is-closed .pm__fill { background: var(--ink-4); }
+.pm.is-closed .pm__fill { background: var(--ink-4) padding-box; }
 
 /* ---------- Kafle K1 ---------- */
 .pcard-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr)); gap: var(--space-3); }
@@ -114,3 +116,48 @@ html:root .pd-hero.is-closed { filter: saturate(.55); }
 }
 .pm__gap, .hy-cap__gap { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--alarm) 55%, #fff) 0 2px, color-mix(in oklab, var(--alarm) 6%, var(--sheet)) 2px 7px); }
 .pf-table .datum, .pf-table .statebtn svg { filter: saturate(.7); }
+
+/* ---- jedna kapsuła projektu we wszystkich widokach: numer na tle w barwach stylu; stan niesie znacznik, nie kolor numeru ---- */
+:root:root:root .pf-num--num, :root:root:root .pf-num--num b,
+:root:root:root .level-alarm .pf-num--num, :root:root:root .level-warning .pf-num--num, :root:root:root tr .pf-num--num { color: #fff; }
+:root:root:root .pf-num--num {
+  padding: .1rem .95rem .18rem; border-radius: 999px;
+  background: radial-gradient(8rem 3rem at 100% -40%, var(--bar-g1), transparent 70%), linear-gradient(115deg, color-mix(in oklab, var(--bar-base), #000 12%), var(--bar-base));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.22 * var(--hdr, 1))), 0 6px 14px -8px color-mix(in oklab, var(--bar-base) 80%, transparent);
+}
+:root:root:root .pf-num--num i { color: rgb(255 255 255 / .6); opacity: 1; }
+:root:root:root .pcard.kc .pf-num--num { font-size: 1.9rem; }
+:root:root:root .pf-table .pf-num--num { font-size: 1.35rem; }
+:root:root:root .is-closed .pf-num--num, :root:root:root tr.is-closed .pf-num--num { background: var(--wash-2); box-shadow: none; }
+:root:root:root .is-closed .pf-num--num, :root:root:root .is-closed .pf-num--num b, :root:root:root .is-closed .pf-num--num i { color: var(--ink-4); }
+:root:root:root .kc__top { align-items: center; }
+:root:root:root .pcard.kc, :root:root:root html[data-tiles="full"] .pcard.kc { background: var(--sheet); }
+/* Portfel: kapsuła numeru w tych samych barwach */
+:root:root:root .hy-n, :root:root:root html[data-tiles="full"] .hy-n {
+  background: radial-gradient(10rem 4rem at 100% -40%, var(--bar-g1), transparent 70%), linear-gradient(115deg, color-mix(in oklab, var(--bar-base), #000 12%), var(--bar-base));
+  color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / calc(.22 * var(--hdr, 1))), 0 6px 14px -8px color-mix(in oklab, var(--bar-base) 80%, transparent);
+}
+:root:root:root .hy-n b, :root:root:root .hy-r.level-alarm .hy-n, :root:root:root .hy-r.level-warning .hy-n { color: #fff; }
+:root:root:root .hy-n i { color: rgb(255 255 255 / .6); opacity: 1; }
+:root:root:root .hy-r.is-open .hy-n { box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 0 0 3px var(--sheet), 0 0 0 5px var(--flow); background: radial-gradient(10rem 4rem at 100% -40%, var(--bar-g1), transparent 70%), linear-gradient(115deg, color-mix(in oklab, var(--bar-base), #000 12%), var(--bar-base)); }
+:root:root:root .hy-r.is-closed .hy-n { background: var(--wash-2); box-shadow: none; }
+:root:root:root .hy-r.is-closed .hy-n b, :root:root:root .hy-r.is-closed .hy-n i { color: var(--ink-4); }
+.hy-n__ic { background: #fff; color: var(--alarm-ink); }
+.hy-r.level-warning .hy-n__ic { background: #fff; color: var(--warn-ink); }
+.hy-r.is-open .hy-n__ic { background: #fff; }
+
+/* ---- nagłówek projektu: duży numer po prawej, kolor projektu w pasku czasu umowy ---- */
+html:root:root:root:not([data-look]) .pd-hero, html:root:root:root[data-look="aurora"] .pd-hero { background: radial-gradient(34rem 16rem at 96% -30%, var(--bar-g1), transparent 62%), radial-gradient(30rem 14rem at 0% 130%, var(--bar-g2), transparent 64%), var(--bar-base); box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl, .3)), 0 22px 40px -22px color-mix(in oklab, var(--flow) 60%, transparent); }
+html:root:root[data-look="aurora"] .pd-hero { background: radial-gradient(34rem 16rem at 96% -30%, var(--bar-g1), transparent 62%), radial-gradient(30rem 14rem at 0% 130%, var(--bar-g2), transparent 64%), var(--bar-base); box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--hl, .3)), 0 22px 40px -22px color-mix(in oklab, var(--flow) 60%, transparent); }
+:root:root .pd-hero { min-height: 12.5rem; align-content: end; border-radius: 30px; padding: 2rem 2.4rem 1.8rem; }
+:root:root .pd-hero .pd-head__title { max-width: 62%; font-size: clamp(1.8rem, 3vw, 2.6rem); }
+:root:root .pd-hero .pd-head__client { max-width: 62%; }
+.pd-big { position: absolute; right: 2.4rem; top: 1.2rem; bottom: 1.2rem; display: flex; align-items: center; color: #fff; font-family: var(--font-display); line-height: .9; letter-spacing: -.06em; font-size: 8.5rem; pointer-events: none; }
+.pd-big i { font-style: normal; font-weight: 200; opacity: .55; margin-right: .06em; }
+.pd-big b { font-weight: 700; }
+.pd-hero.is-closed .pd-big { opacity: .7; }
+@media (max-width: 52rem) { .pd-big { font-size: 5rem; top: 1rem; } :root:root .pd-hero .pd-head__title, :root:root .pd-hero .pd-head__client { max-width: 100%; } }
+.pd-prop--ribbon { grid-column: span 2; }
+.pc-ribbon__track { height: 16px; border-radius: 999px; background: var(--wash-2); overflow: visible; margin-top: .45rem; }
+.pc-ribbon__fill { border-radius: 999px; background: oklch(.5 .15 var(--hue, 250)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .3); }
+.pc-ribbon__now { width: 4px; height: 26px; top: -5px; margin-left: -2px; border-radius: 4px; background: var(--ink); box-shadow: 0 0 0 2px var(--sheet); }

@@ -71,6 +71,16 @@
     ])]);
   }
 
+  /** Pasek jako trzy osobne kapsuły: wypełnienie (postęp), kreskowany brak do upływu czasu i pozostała część. */
+  function capSegments(pct, gapW) {
+    var gapEnd = Math.min(100, pct + gapW);
+    return [
+      pct > 0 ? D.el('span', { class: 'hy-cap__fill', style: { left: '0%', width: pct + '%' } }) : null,
+      gapW > 0 ? D.el('span', { class: 'hy-cap__gap', style: { left: pct + '%', width: gapW + '%' } }) : null,
+      gapEnd < 100 ? D.el('span', { class: 'hy-cap__rest', style: { left: gapEnd + '%', width: (100 - gapEnd) + '%' } }) : null
+    ];
+  }
+
   function row(project, ctx, now, P, tn) {
     var health = Insight.health(project, now);
     var pct = Math.max(0, Math.min(100, Math.round(Progress.projectProgress(project).percent)));
@@ -111,10 +121,7 @@
       style: E.Identity.hueStyle(project.code)
     }, [
       D.el('div', { class: 'hy-line' }, [
-        hasSpan ? D.el('span', { class: 'hy-cap', style: { left: s + '%', width: w + '%' } }, [
-          pct > 0 ? D.el('span', { class: 'hy-cap__fill', style: { width: pct + '%' } }) : null,
-          behind ? D.el('span', { class: 'hy-cap__gap', style: { left: pct + '%', width: ((Math.min(tn, e) - fillEnd) / w * 100) + '%' } }) : null
-        ]) : null,
+        hasSpan ? D.el('span', { class: 'hy-cap', style: { left: s + '%', width: w + '%' } }, capSegments(pct, behind ? (Math.min(tn, e) - fillEnd) / w * 100 : 0)) : null,
         chip
       ]),
       details(project, ctx, now, health, pct, elapsed)

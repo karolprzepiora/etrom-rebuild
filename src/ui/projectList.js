@@ -416,8 +416,9 @@
     var text = 'Postęp ' + pct + '%' + (span ? ' · upłynęło ' + Math.round(elapsed) + '% czasu umowy' : '');
     return D.el('div', { class: 'pm' + (closed ? ' is-closed' : ''), attrs: { role: 'img', 'aria-label': text, 'data-tooltip': text } }, [
       D.el('span', { class: 'pm__cap' }, [
-        D.el('span', { class: 'pm__fill', style: { width: pct + '%' } }),
-        gap ? D.el('span', { class: 'pm__gap', style: { left: pct + '%', width: (elapsed - pct) + '%' } }) : null
+        pct > 0 ? D.el('span', { class: 'pm__fill', style: { left: '0%', width: pct + '%' } }) : null,
+        gap ? D.el('span', { class: 'pm__gap', style: { left: pct + '%', width: (elapsed - pct) + '%' } }) : null,
+        (gap ? elapsed : pct) < 100 ? D.el('span', { class: 'pm__rest', style: { left: (gap ? elapsed : pct) + '%', width: (100 - (gap ? elapsed : pct)) + '%' } }) : null
       ]),
       span && !closed ? D.el('span', { class: 'pm__now', style: { left: elapsed + '%' } }) : null
     ]);

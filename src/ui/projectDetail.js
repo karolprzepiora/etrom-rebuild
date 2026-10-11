@@ -158,12 +158,15 @@
 
   function header(project, ctx, now) {
     var health = Insight.health(project, now);
-    return D.el('header', { class: 'pd-head' }, [
+    return D.el('header', { class: 'pd-head', style: E.Identity.hueStyle(project.code) }, [
       D.el('div', { class: 'pd-hero', style: E.Identity.hueStyle(project.code) }, [
         D.el('div', { class: 'pd-head__id' }, [
-          D.el('span', { class: 'pf-num pf-num--pill t-num', text: '#' + project.code }),
           statusControl(project, ctx)
         ]),
+        (function () {
+          var m = /^(\d{2})(\d{2})$/.exec(String(project.code || ''));
+          return D.el('div', { class: 'pd-big t-num', attrs: { role: 'img', 'aria-label': 'Projekt ' + project.code } }, m ? [D.el('i', { text: m[1] }), D.el('b', { text: m[2] })] : [D.el('b', { text: String(project.code || '') })]);
+        })(),
         D.el('h1', { class: 'pd-head__title', text: project.name, attrs: { id: 'project-title' } }),
         D.el('p', { class: 'pd-head__client', text: (project.client || 'Bez zamawiającego') + (E.Catalog.isScope(project.scope) ? ' · ' + E.Catalog.scopeLabel(project.scope) : '') })
       ]),
