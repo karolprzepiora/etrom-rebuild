@@ -102,3 +102,15 @@ html:root .pd-hero.is-closed { filter: saturate(.55); }
 .group-row__inner { padding: .3rem .9rem; border-radius: 999px; background: var(--wash); }
 :root:root:root .pf-table .col-time { width: 22rem; }
 :root:root:root .pf-table thead th { position: static; }
+
+/* ---- spokojniejsza paleta stanów w widokach projektów: przygaszona cegła i piasek zamiast czerwieni i żółci ---- */
+.hy, .pf-table, .pf-cardgroups, .kc-years, .pcard.kc {
+  --alarm: light-dark(#b8645c, #d9857b);
+  --alarm-ink: light-dark(#8f4a43, #e29a91);
+  --alarm-wash: light-dark(#f6ecea, #2a1a18);
+  --warn: light-dark(#b39055, #d3ad6c);
+  --warn-ink: light-dark(#7a5f2c, #dbb97c);
+  --warn-wash: light-dark(#f6f0e4, #272014);
+}
+.pm__gap, .hy-cap__gap { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--alarm) 55%, #fff) 0 2px, color-mix(in oklab, var(--alarm) 6%, var(--sheet)) 2px 7px); }
+.pf-table .datum, .pf-table .statebtn svg { filter: saturate(.7); }
