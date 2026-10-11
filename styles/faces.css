@@ -39,8 +39,8 @@ html[data-tiles="full"] .pcard.kc.level-warning { box-shadow: inset 0 0 0 1.5px 
 .kc__name a:hover { color: var(--ink); text-decoration: none; }
 .kc .pm { margin-top: .9rem; }
 .kc-years { gap: var(--space-4); }
-.kc-year__head { position: relative; height: 4.2rem; margin-bottom: 1rem; border-bottom: 1.5px solid var(--ink); }
-.kc-year__head b { position: absolute; left: 0; bottom: -.1rem; font-family: var(--font-display); font-size: 3.8rem; font-weight: 200; letter-spacing: -.06em; line-height: 1; font-feature-settings: 'tnum'; }
+.kc-year__head { position: relative; height: 5.8rem; margin-bottom: 1rem; border-bottom: 1.5px solid var(--ink); }
+.kc-year__head b { position: absolute; left: 0; bottom: -.1rem; font-family: var(--font-display); font-size: 5.6rem; font-weight: 200; letter-spacing: -.06em; line-height: 1; font-feature-settings: 'tnum'; }
 .kc-year__head em { position: absolute; right: 0; bottom: .4rem; font-style: normal; font-size: .76rem; color: var(--ink-3); }
 
 /* ---------- Lista L1 (tabela projektów) ---------- */
@@ -80,3 +80,25 @@ html:root .pd-hero.is-closed { filter: saturate(.55); }
 
 /* ---------- Pasek dnia u góry: odcinki w barwie stylu, projekt rozpoznaje się po numerze ---------- */
 :root:root .dribbon__seg { background: linear-gradient(180deg, color-mix(in oklab, var(--flow) 82%, #fff), var(--flow)); }
+
+/* ---- dopracowanie: rok neutralny, kolor stanu tylko na numerze, stan w kapsule terminu ---- */
+:root:root .pf-num--num i, :root:root .hy-n i { color: var(--ink-4); opacity: .75; }
+.pm__gap, .hy-cap__gap { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--alarm) 70%, #fff) 0 2px, color-mix(in oklab, var(--alarm) 8%, var(--sheet)) 2px 7px); }
+:root:root .pcard.kc, :root:root .pcard.kc.level-alarm, :root:root .pcard.kc.level-warning,
+:root:root html[data-tiles="full"] .pcard.kc.level-alarm, :root:root html[data-tiles="full"] .pcard.kc.level-warning { box-shadow: inset 0 0 0 1px var(--line); }
+.pcard.kc { border-radius: 26px; padding: 1.1rem 1.3rem 1.2rem; }
+.pcard.kc:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.kc__due { display: inline-flex; align-items: center; gap: .35rem; height: 1.5rem; margin-top: 0; padding: 0 .75rem; border-radius: 999px; background: var(--wash); color: var(--ink-2); }
+.kc.level-alarm .kc__due { background: var(--alarm-wash); color: var(--alarm-ink); }
+.kc.level-warning .kc__due { background: var(--warn-wash); color: var(--warn-ink); }
+.kc.level-alarm .kc__due::before, .kc.level-warning .kc__due::before { content: '!'; display: inline-grid; place-items: center; width: .95rem; height: .95rem; border-radius: 50%; color: #fff; font-size: .65rem; font-weight: 800; }
+.kc.level-alarm .kc__due::before { background: var(--alarm); }
+.kc.level-warning .kc__due::before { background: var(--warn); }
+.hy-today { opacity: .4; box-shadow: none; z-index: 0; }
+.hy-n { z-index: 2; }
+.hy-r.is-closed { opacity: .6; }
+/* tabela: nagłówek grupy jako kapsuła, szerszy postęp */
+.group-row th { padding: 1.1rem .75rem .4rem; }
+.group-row__inner { padding: .3rem .9rem; border-radius: 999px; background: var(--wash); }
+:root:root:root .pf-table .col-time { width: 22rem; }
+:root:root:root .pf-table thead th { position: static; }
